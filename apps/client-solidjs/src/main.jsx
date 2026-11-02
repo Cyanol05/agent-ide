@@ -1,3 +1,5 @@
+// The same stylesheet as apps/client: one look for both clients.
+import '../../client/client.css'
 import { createMemo, createSignal, Errored, Loading } from 'solid-js'
 import { render } from '@solidjs/web'
 
