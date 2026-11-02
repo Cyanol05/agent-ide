@@ -5,7 +5,7 @@ import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
 import { createModels } from '@earendil-works/pi-ai/models'
 import {
@@ -273,11 +273,12 @@ const clients = new Set()
 const runners = createRunners({ onChange: notify })
 // What each running `$ cmd` has printed so far.
 const shells = new Map()
-// The client: apps/client/client.html at /, and the modules it loads beside it.
+// The client: apps/client/client.html at /, and every module and stylesheet beside it.
 const page = await readFile(new URL('./apps/client/client.html', import.meta.url))
+const beside = await readdir(new URL('./apps/client/', import.meta.url))
 const scripts = Object.fromEntries(
 	await Promise.all(
-		['client.js', 'wires.js', 'agent-memory.js'].map(async (f) => [
+		beside.filter((f) => f.endsWith('.js')).map(async (f) => [
 			`/${f}`,
 			await readFile(new URL(`./apps/client/${f}`, import.meta.url)),
 		]),
@@ -285,7 +286,7 @@ const scripts = Object.fromEntries(
 )
 const styles = Object.fromEntries(
 	await Promise.all(
-		['client.css'].map(async (f) => [
+		beside.filter((f) => f.endsWith('.css')).map(async (f) => [
 			`/${f}`,
 			await readFile(new URL(`./apps/client/${f}`, import.meta.url)),
 		]),
