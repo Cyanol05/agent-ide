@@ -1,12 +1,24 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>client-solidjs</title>
-	</head>
-	<body>
-		<div id="app"></div>
-		<script type="module" src="/src/main.jsx"></script>
-	</body>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>agent-ide, in Solid</title>
+	<link rel="stylesheet" href="/client.css" />
+	<!-- Solid as it ships, straight from node_modules: the dev builds, so its warnings show in the console -->
+	<script type="importmap">
+		{
+			"imports": {
+				"solid-js": "/solid/node_modules/solid-js/dist/solid.dev.js",
+				"solid-js/internal": "/solid/node_modules/solid-js/dist/internal.js",
+				"@solidjs/signals": "/solid/node_modules/@solidjs/signals/dist/dev.js",
+				"@solidjs/web": "/solid/node_modules/@solidjs/web/dist/web.dev.js",
+				"@solidjs/html": "/solid/node_modules/@solidjs/html/dist/html.js"
+			}
+		}
+	</script>
+
+	<main class="page">
+		<aside class="stage" id="stage"></aside>
+	</main>
+	<script type="module" src="/solid/client.js"></script>
 </html>

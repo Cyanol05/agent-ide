@@ -289,6 +289,17 @@ const styles = Object.fromEntries(
 			.map(async (f) => [`/${f}`, await readFile(new URL(`./apps/client/${f}`, import.meta.url))]),
 	),
 )
+/** The Solid client: apps/client-solidjs at /solid, Solid itself from its node_modules, read as asked */
+const solid = path.join(import.meta.dirname, 'apps/client-solidjs')
+const solidTypes = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' }
+async function serveSolid(res, pathname) {
+	const file = path.join(solid, pathname.slice('/solid'.length).replace(/^\/?$/, '/index.html'))
+	const type = solidTypes[path.extname(file)]
+	const body = type && file.startsWith(solid + path.sep) && (await readFile(file).catch(() => null))
+	if (!body) return send(res, 404, { error: 'Not found' })
+	res.writeHead(200, { 'Content-Type': type })
+	res.end(body)
+}
 /** The runner this server ships, and the updater that fetches it */
 const bundle = await runnerBundle(import.meta.dirname)
 const updater = await readFile(new URL('./runner-updater.js', import.meta.url))
@@ -1055,6 +1066,8 @@ async function handleRequest(req, res) {
 		res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
 		return res.end(page)
 	}
+	if (req.method === 'GET' && (url.pathname === '/solid' || url.pathname.startsWith('/solid/')))
+		return serveSolid(res, url.pathname)
 	if (req.method === 'GET' && scripts[url.pathname]) {
 		res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' })
 		return res.end(scripts[url.pathname])

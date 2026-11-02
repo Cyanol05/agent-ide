@@ -2,17 +2,10 @@
 	"name": "client-solidjs",
 	"private": true,
 	"type": "module",
-	"scripts": {
-		"dev": "vite",
-		"build": "vite build",
-		"preview": "vite preview"
-	},
 	"dependencies": {
+		"@solidjs/html": "2.0.0-rc.20",
+		"@solidjs/signals": "2.0.0-rc.20",
 		"@solidjs/web": "2.0.0-rc.20",
 		"solid-js": "2.0.0-rc.20"
-	},
-	"devDependencies": {
-		"@solidjs/vite-plugin": "3.0.0-next.55",
-		"vite": "^8.3.5"
 	}
 }
