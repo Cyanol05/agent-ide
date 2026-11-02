@@ -1,5 +1,5 @@
 // A delivery that crash after crash cut off ends instead of running forever, and the thread says so: the agent gave no
-// answer, and its message waits, unseen, for the next ask.
+// answer, and its message waits, unseen, for the next ask. Stops aren't crashes: as many as you like cut nothing off.
 import { answered, api, check, done, runner, server, sleep, until, view } from './lib.js'
 
 let srv = await server()
@@ -13,6 +13,18 @@ await answered(id)
 laptop.kill()
 await until(() => api('GET', '/api/runners').then((r) => r.json.every((x) => !x.online)))
 await api('POST', `/api/threads/${id}/entries`, { body: 'hello', to })
+const stopped = (p) => new Promise((resolve) => p.once('exit', (code) => resolve(code)))
+for (let i = 0; i < 6; i++) {
+	const exit = stopped(srv)
+	srv.kill('SIGTERM')
+	if ((await exit) !== 0) check(false, 'a stop closes the server cleanly', `exit ${await exit}`)
+	srv = await server()
+}
+check(
+	(await view(id)).agents[0]?.status === 'blocked',
+	'six stops later, the delivery still waits for its runner',
+	(await view(id)).agents[0]?.status,
+)
 for (let i = 0; i < 6; i++) {
 	srv.kill('SIGKILL')
 	await sleep(300)

@@ -4,11 +4,13 @@ import { createHash, randomBytes } from 'node:crypto'
 import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
 import { createModels } from '@earendil-works/pi-ai/models'
 import {
 	AgentDoc,
+	ConversationTranscript,
 	configure,
 	createRegistry,
 	defineDoc,
@@ -51,7 +53,25 @@ import {
  * @typedef {{ author: string, command: string, to: To }} Command
  */
 
-// PORT, or 3000 and up to the first free one; each port keeps its own store.
+// One store, whatever the port: a second server on it would run its tasks twice, so it says who has it and stops. A
+// server that died without letting go leaves its pid, which the next one takes over.
+const file = process.env.DB_PATH || 'agent-ide.sqlite'
+const lock = `${file}.lock`
+const alive = (pid) => {
+	try {
+		return process.kill(pid, 0)
+	} catch (error) {
+		return error.code === 'EPERM'
+	}
+}
+const holder = Number(existsSync(lock) && readFileSync(lock, 'utf8'))
+if (holder && holder !== process.pid && alive(holder)) {
+	console.error(`${file} is served by process ${holder}; stop it, or DB_PATH=other.sqlite for another store`)
+	process.exit(1)
+}
+writeFileSync(lock, String(process.pid))
+process.on('exit', () => Number(readFileSync(lock, 'utf8')) === process.pid && rmSync(lock))
+// PORT, or 3000 and up to the first free one.
 let port = Number(process.env.PORT || 3000)
 const free = (p) =>
 	new Promise((resolve) => {
@@ -59,7 +79,6 @@ const free = (p) =>
 		probe.listen(p, '127.0.0.1', () => probe.close(() => resolve(true)))
 	})
 if (!process.env.PORT) while (!(await free(port))) port++
-const file = process.env.DB_PATH || `agent-ide-${port}.sqlite`
 const KIND = 'agent-ide.message'
 // An agent's input in its conversation; `held` names the thread messages it gave.
 const DELIVERY = 'agent-ide.delivery'
@@ -308,9 +327,11 @@ harness.closed.then(
 		end.kind === 'failed' &&
 		(console.error('pi-durable: storage failed, exiting:', end.error), process.exit(1)),
 )
-// A stop closes the harness, so the tasks it cuts off wait to resume, and Pi doesn't count them as crashed.
+// A stop closes the harness, so the tasks it cuts off wait to resume, and Pi doesn't count them as crashed. Kept on,
+// not once: signal-exit, which pi's lockfile brings, kills the process itself when it finds no other listener.
+let stopping
 for (const signal of ['SIGINT', 'SIGTERM'])
-	process.once(signal, () => harness.close(context).finally(() => process.exit(0)))
+	process.on(signal, () => (stopping ??= harness.close(context).finally(() => process.exit(0))))
 
 const known = async () => (await harness.snapshot(Runners, context)) ?? {}
 const thread = (id) => harness.snapshot(Thread, id, context)
@@ -648,6 +669,7 @@ async function threadRow(id, reader, live) {
 	return {
 		id,
 		...row,
+		readers: Object.keys(reads),
 		agents,
 		shells: [...shells.values()].filter((run) => run.threadId === id),
 		status: await status(id, reads, agents, shell, reader),
@@ -661,15 +683,16 @@ const threadList = async (reader) => {
 	)
 }
 // Who's in a thread, with no state of its own: its agents, and the people who wrote or read there.
+const peopleIn = (entries, readers) => [
+	...new Set([
+		...entries.filter((e) => !e.data.answer && !e.data.error && !e.data.from).map((e) => e.data.author),
+		...readers,
+	]),
+]
 const threadView = async (id, reader) => {
 	const entries = await messages(id)
-	const wrote = entries.filter((e) => !e.data.answer && !e.data.error && !e.data.from)
-	const { reads } = await thread(id)
-	return {
-		...(await threadRow(id, reader, await liveTasks())),
-		people: [...new Set([...wrote.map((e) => e.data.author), ...Object.keys(reads)])],
-		entries,
-	}
+	const row = await threadRow(id, reader, await liveTasks())
+	return { ...row, people: peopleIn(entries, row.readers), entries }
 }
 
 // An agent's thread owns its conversation, through its Anchor; its name is its key in that thread's agents.
@@ -1121,8 +1144,8 @@ function notify() {
 }
 harness.observeCommits({ advance: notify, end: () => {} })
 
-// A browser watches one thread: what each of its agents is doing, sent whole as it changes. The thread's doc says when
-// an agent joins. One socket's watches go in turn.
+// A browser watches one thread: its messages, every one first and then each as it lands, and what each of its agents
+// is doing, sent whole as it changes. The thread's doc says when an agent joins. One socket's watches go in turn.
 const watch = (socket, id) =>
 	(socket.watches = (socket.watches ?? Promise.resolve())
 		.then(() => rewatch(socket, id))
@@ -1130,23 +1153,53 @@ const watch = (socket, id) =>
 async function rewatch(socket, id) {
 	const old = socket.watching
 	socket.watching = undefined
-	for (const w of old?.values() ?? []) await w.stop()
+	for (const w of old ?? []) await w.stop()
 	const row = typeof id === 'number' && (await harness.watchDoc(Thread, id, context))
 	if (!row) return
-	const watching = (socket.watching = new Map([[id, row]]))
+	const watches = (socket.watching = [row])
+	// A watch that comes back after the socket moved on is stopped instead.
+	const keep = (w) => (socket.watching === watches ? (watches.push(w), true) : (w.stop(), false))
+	const send = (message) => socket.send(JSON.stringify({ thread: id, ...message }))
+	const handle = await harness.conversation(id, context)
+	const messages = await handle.watch(context)
+	if (!keep(messages)) return
+	await told(handle, messages, send)
+	const followed = new Set()
 	const follow = async (agents) => {
 		for (const [agent, { conversation }] of Object.entries(agents)) {
-			if (watching.has(conversation)) continue
+			if (followed.has(agent)) continue
+			followed.add(agent)
 			const w = await (await harness.conversation(conversation, context)).watch(context, { min: 20 })
-			if (socket.watching !== watching) return w.stop()
-			watching.set(conversation, w)
-			const send = (view) => socket.send(JSON.stringify({ thread: id, agent, live: doing(view) }))
-			send(w.value)
-			w.start(async ({ value }) => send(value))
+			if (!keep(w)) return
+			send({ agent, live: doing(w.value) })
+			w.start(async ({ value }) => send({ agent, live: doing(value) }))
 		}
 	}
 	await follow(row.value.agents)
 	row.start(async ({ value }) => follow(value.agents))
+}
+// The thread's messages through Pi's transcript, which keeps them whole: the window a watch holds, with what came
+// before it and any gap a burst left loaded. The first send has every message, later ones only the new.
+async function told(handle, watch, send) {
+	const transcript = new ConversationTranscript(
+		(query, limit, ctx) => handle.entries(query, limit, undefined, ctx),
+		{ pageSize: 500 },
+	)
+	let newest = 0,
+		first = true
+	const tell = async (value) => {
+		let view = transcript.merge(value)
+		while (view.items[0]?.kind === 'earlier') view = await transcript.loadEarlier(context)
+		for (let gap; (gap = view.items.find((i) => i.kind === 'gap')); )
+			view = await transcript.fillGap(gap, context)
+		const fresh = view.items.flatMap((i) => (i.kind === 'entry' && i.entry.id > newest ? [i.entry] : []))
+		if (!fresh.length && !first) return
+		first = false
+		newest = fresh.at(-1)?.id ?? newest
+		send({ entries: fresh.filter((e) => e.kind === KIND) })
+	}
+	await tell(watch.value)
+	watch.start(async ({ value }) => tell(value))
 }
 // What an agent is doing, from Pi's live doc: whether it runs, the reply it's writing, and the tool calls of this round,
 // each with the arguments its answer gave it.

@@ -61,8 +61,7 @@ let up = false,
 	bots = [] // with the bots module: each bot's name, home thread, recipe and instructions
 let current = Number(params.get('thread')) || null
 let picks = [] // whom the next message asks, the same as the text under the composer
-const details = new Map() // thread id → its entries
-const people = new Map() // thread id → who wrote or read there
+const details = new Map() // thread id → its messages, as the thread's socket sends them
 const live = new Map() // `${thread} ${agent}` → what that agent is doing right now
 
 const api = (path, body) =>
@@ -80,6 +79,17 @@ const api = (path, body) =>
 		if (!r.ok) throw new Error(json.error)
 		return json
 	})
+
+// Who's in a thread, as the server says it: the people who wrote there, not as an agent's answer or a post from
+// elsewhere, and who read it.
+const peopleIn = (id) => [
+	...new Set([
+		...(details.get(id) ?? [])
+			.filter((e) => !e.data.answer && !e.data.error && !e.data.from)
+			.map((e) => e.data.author),
+		...(threads.find((t) => t.id === id)?.readers ?? []),
+	]),
+]
 
 // The thread on screen and its family: what it forked from, the threads its agents started, and theirs.
 function family() {
@@ -521,13 +531,6 @@ async function refresh() {
 		if (t && current && !threads.some((x) => x.id === current)) current = null
 		const home = runners.find((x) => x.online) ?? runners[0]
 		if (!picks.length && home?.model) choose([{ runner: home.name, ...setting(home) }])
-		await Promise.all(
-			family().map(async (id) => {
-				const view = await api(`/api/threads/${id}`).catch(() => null)
-				details.set(id, view?.entries ?? details.get(id) ?? [])
-				people.set(id, view?.people ?? people.get(id) ?? [])
-			}),
-		)
 		watchAll()
 		render()
 	})()
@@ -539,7 +542,7 @@ async function refresh() {
 	}
 }
 
-// One socket hears that something changed; one per thread on screen streams what its agents are doing.
+// One socket hears that something changed; one per thread on screen streams its messages and what its agents are doing.
 function pulse() {
 	const socket = new WebSocket(`${url.replace(/^http/, 'ws')}/ws`)
 	socket.onopen = refresh
@@ -564,9 +567,14 @@ function watchAll() {
 		const socket = new WebSocket(`${url.replace(/^http/, 'ws')}/ws`)
 		socket.onopen = () => socket.send(JSON.stringify({ watch: id }))
 		socket.onmessage = (m) => {
-			const { thread, agent, live: now } = JSON.parse(m.data)
-			if (!now) return
-			live.set(`${thread} ${agent}`, now)
+			const { thread, agent, live: now, entries } = JSON.parse(m.data)
+			if (now) live.set(`${thread} ${agent}`, now)
+			// A socket opened again sends every message again; each is kept once.
+			if (entries) {
+				const had = details.get(thread) ?? []
+				const seen = new Set(had.map((e) => e.id))
+				details.set(thread, [...had, ...entries.filter((e) => !seen.has(e.id))])
+			}
 			render()
 		}
 		socket.onclose = () => {
@@ -943,7 +951,7 @@ function render() {
 	sheetFor(botAt(current))
 	// Who's here, named as their messages name them.
 	$('members').replaceChildren(
-		...[...(people.get(current) ?? []), ...(here?.agents ?? []).map((a) => a.name)].flatMap(
+		...[...peopleIn(current), ...(here?.agents ?? []).map((a) => a.name)].flatMap(
 			(n, i) => [i ? ', ' : '', el('span', { title: n, style: colorOf(n) }, who(n))],
 		),
 	)

@@ -20,7 +20,7 @@ The words it uses, how it fits together and its principles: [apps/client/client.
 npx github:oskarrough/agent-ide
 ```
 
-It lends the folder it starts in to its agents, as a runner named after this machine. From a clone, `bun install && bun server.js` does the same. On another machine, nothing to clone: `bun cli.js key desk` on the server prints the line that connects it, `curl -fsSL http://yourbox:3000/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --name desk --dir ~/code`.
+It lends the folder it starts in to its agents, as a runner named after this machine. From a clone, `pnpm install && bun server.js` does the same. On another machine, nothing to clone: `bun cli.js key desk` on the server prints the line that connects it, `curl -fsSL http://yourbox:3000/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --name desk --dir ~/code`.
 
 Open http://127.0.0.1:3000 and the page walks you through it, beside the app itself.
 
@@ -29,7 +29,7 @@ Or read [examples/](examples): one file per idea, each starting its own server a
 ## Running it
 
 ```sh
-bun server.js                          # http://127.0.0.1:3000, stored in agent-ide-3000.sqlite; if 3000 is taken, the next free port and its store
+bun server.js                          # http://127.0.0.1:3000, or the next free port, stored in agent-ide.sqlite
 HOST=0.0.0.0 PORT=3001 bun server.js   # reachable from other machines
 RUNNER=~/code bun server.js            # lends this machine another folder than the one it starts in; RUNNER=0 lends none
 MODULES=-talk,-status,-context bun server.js   # modules are picked as Pi picks tools: +name and -name change the defaults, names alone replace them, a path is a module of your own
@@ -40,7 +40,7 @@ MODULES=+matrix MATRIX_TOKEN=… MATRIX_ROOMS=… bun server.js   # matrix.js: M
 MODULES=+bots bun server.js            # bots.js: one name in many threads, with a home thread, a recipe and its instructions
 echo '{"modules": ["+memory", "+../mine.js"]}' > agent-ide.json   # the same, in the folder it starts in; MODULES then changes what the file picked
 bun scripts/replay-pi.js ~/.pi/agent/sessions/FOLDER   # pi sessions, or one .jsonl, as one long thread
-DB_PATH=other.sqlite bun server.js     # another store; only one server may use a file
+DB_PATH=other.sqlite bun server.js     # another store; a second server on one file says who has it and stops
 
 bun cli.js key laptop                  # a new key for runner laptop, replacing its old one, and the lines that connect it
 bun cli.js revoke laptop               # takes its key away: it goes offline and stays out
@@ -77,4 +77,4 @@ Send `x-user: name` to say who you are. The two POSTs that make something, a thr
 - `GET /api/conversations/:id`: any Pi conversation's view as Pi gives it, such as an agent's: its docs, and all its entries.
 - `GET /api/runners`: each runner, its `folders` (every `--dir`, the first its home, then with `--discover-dirs` the git and jj checkouts up to two levels beneath them, found on each connect), how many threads it's `busy` in, its `owner` and whom it `allow`s, its default model or `modelError` when pi's default doesn't resolve, the models it `offers` from pi's enabled models, the models it has resolved, and the calls it's answering.
 - Agents' tools, with talk: `post {"thread"?, "title"?, "body", "to"?}`, where no thread starts a child and `to` is an agent's name, `thread/name`, `model@runner` or `name=model@runner`, a runner, or `nobody`; and `threads {"thread"?, "agent"?, "last"?, "query"?}`, where `agent` reads that agent's own work in the thread, its tool calls and what they printed; with memory, `zoom {"id","n","at"?}`, where a long message comes in pages from character `at`.
-- `/ws`: pushes `{}` whenever something changes. Send `{"watch": threadId}` (or `null`) to watch one: `{thread, agent, live: {run, message, tools}}` for each of its agents, now and whenever it changes: whether it's running, the reply it's writing, and this round's tool calls as `{callId, name, status, args}`, from Pi's live doc. Runners connect here too and speak the protocol in [remote.js](remote.js).
+- `/ws`: pushes `{}` whenever something changes. Send `{"watch": threadId}` (or `null`) to watch one: `{thread, entries}` with every message first, then each new one as it lands, and `{thread, agent, live: {run, message, tools}}` for each of its agents, now and whenever it changes: whether it's running, the reply it's writing, and this round's tool calls as `{callId, name, status, args}`, from Pi's live doc. Runners connect here too and speak the protocol in [remote.js](remote.js).
