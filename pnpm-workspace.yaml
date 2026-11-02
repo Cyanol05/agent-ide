@@ -1,5 +1,5 @@
 packages:
-  - apps/heltborg
+  - apps/client-solidjs
 allowBuilds:
   '@google/genai': false
   protobufjs: false

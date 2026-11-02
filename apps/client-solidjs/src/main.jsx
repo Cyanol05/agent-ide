@@ -6,7 +6,7 @@ function App() {
 	const server = createMemo(() => fetch('/api/server').then((r) => r.json()))
 	return (
 		<main>
-			<h1>Hello, heltborg</h1>
+			<h1>Hello, client-solidjs</h1>
 			<button onClick={() => setCount((n) => n + 1)}>clicked {count()}</button>
 			<Errored fallback={(error) => <p>No agent-ide server: {String(error())}</p>}>
 				<Loading fallback={<p>Asking /api/server…</p>}>
