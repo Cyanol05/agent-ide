@@ -49,7 +49,7 @@ curl -fsSL http://127.0.0.1:3000/connect-runner | AGENT_IDE_KEY=air_… sh -s --
 
 bun cli.js post "hello" --to sonnet@laptop --to desk --thinkingLevel high   # a new thread; answers print as they land
 bun cli.js post "and you?" --thread 3                               # asks whom thread 3 last asked
-bun cli.js threads | runners | read 3 [--last 5] | stop 3 | retry 3         # runner.js and cli.js both read AGENT_IDE_SERVER=url, or --server
+bun cli.js threads | runners | read 3 [--last 5] | stop 3                   # runner.js and cli.js both read AGENT_IDE_SERVER=url, or --server
 ```
 
 The client is served at `/`, or by `bun apps/client/client.html` with live reload and `?server=http://…` pointing at a server; [cli.js](cli.js) is the same API from a terminal. `?user=ana` posts as someone else. [apps/matrix-sync](apps/matrix-sync) files GitHub issues from a Matrix mention, without anyone opening the IDE. A runner needs its key to connect, so nobody can take its name, and a revoked one stays out. People have no keys yet: anyone who can reach the server can claim any name, and mint a key, so keep it on a trusted network.
@@ -71,11 +71,10 @@ Send `x-user: name` to say who you are. The two POSTs that make something, a thr
 - `POST /api/threads/:id/fork` `{"at": entryId, "title"?}`: a new thread from that entry.
 - `POST /api/threads/:id/read`: marks it read for you, so its last answer stops counting as done.
 - `POST /api/threads/:id/stop`: stops its agents, deliveries and commands, and withdraws their queued inputs.
-- `POST /api/threads/:id/retry`: runs again the deliveries and commands that crashes left parked: a thread whose `status` is `parked`, whose work crashes cut off five times in a row.
 - `DELETE /api/threads/:id`: hides it; Pi Durable keeps everything.
 - `POST /api/bots` `{"name","to"?,"instructions"?}`: with bots, a new name makes the bot and its home thread, hands off, in one commit, and needs `to`, its recipe; a known name changes it. Asked by name in any thread, an agent of that name joins there from the recipe; `name=model@runner` gives it another model. Every agent of that name reads the instructions before each request and is told its other threads and the other bots, and at home its `bot` tool rewrites it or makes another bot (`-bot` in a thread's tools takes it away). `GET` lists the bots; `DELETE /api/bots/:name` forgets one and keeps every thread. A bot's home can't be hidden until it's forgotten.
 - `GET /api/threads/:id/memory?zoom=id,n&budget=bytes`: with memory, the thread's memory as `{lines: [{id, n, text}]}`, the lines an agent with `budget` bytes of room reads, or with `zoom` what a line was made from.
-- `GET /api/conversations/:id`: any Pi conversation's view as Pi gives it, such as an agent's: its entries and docs.
+- `GET /api/conversations/:id`: any Pi conversation's view as Pi gives it, such as an agent's: its docs, and all its entries.
 - `GET /api/runners`: each runner, its `folders` (every `--dir`, the first its home, then with `--discover-dirs` the git and jj checkouts up to two levels beneath them, found on each connect), how many threads it's `busy` in, its `owner` and whom it `allow`s, its default model or `modelError` when pi's default doesn't resolve, the models it `offers` from pi's enabled models, the models it has resolved, and the calls it's answering.
 - Agents' tools, with talk: `post {"thread"?, "title"?, "body", "to"?}`, where no thread starts a child and `to` is an agent's name, `thread/name`, `model@runner` or `name=model@runner`, a runner, or `nobody`; and `threads {"thread"?, "agent"?, "last"?, "query"?}`, where `agent` reads that agent's own work in the thread, its tool calls and what they printed; with memory, `zoom {"id","n","at"?}`, where a long message comes in pages from character `at`.
-- `/ws`: pushes `{}` whenever something changes. Send `{"watch": threadId}` (or `null`) to watch one: `{thread, events}` for its conversation and `{thread, agent, events}` for each agent's, Pi's `watchEvents` stream, snapshot first. Runners connect here too and speak the protocol in [remote.js](remote.js).
+- `/ws`: pushes `{}` whenever something changes. Send `{"watch": threadId}` (or `null`) to watch one: `{thread, agent, live: {run, message, tools}}` for each of its agents, now and whenever it changes: whether it's running, the reply it's writing, and this round's tool calls as `{callId, name, status, args}`, from Pi's live doc. Runners connect here too and speak the protocol in [remote.js](remote.js).

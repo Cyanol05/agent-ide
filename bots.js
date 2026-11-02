@@ -7,7 +7,7 @@
 //   GET /api/bots: every bot. POST /api/bots {name, to?, instructions?}: a new name makes the bot and its home thread,
 //   hands off, in one commit; a known name changes it. DELETE /api/bots/:name forgets it and keeps every thread. Its home
 //   can't be hidden while it's a bot.
-import { Type } from '@earendil-works/pi-ai'
+import { obj, opt, str } from '@earendil-works/pi-schema'
 import { defineDoc, defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
 import { agentTo } from './util.js'
@@ -86,18 +86,18 @@ export function server(core) {
 			'Only for a bot, in its home thread. Leave out `name`, or give your own, to rewrite yourself: your instructions, ' +
 			'which every agent of your name reads, or the model you join new threads with. A new name makes another bot, ' +
 			'with its own home thread, from your model unless you give one.',
-		parameters: Type.Object({
-			name: Type.Optional(
-				Type.String({ description: 'A new bot to make; leave out for yourself' }),
+		parameters: obj({
+			name: opt(
+				str({ description: 'A new bot to make; leave out for yourself' }),
 			),
-			instructions: Type.Optional(
-				Type.String({
+			instructions: opt(
+				str({
 					description:
 						'The whole text: who the bot is, how it works, what it knows about the people it works with',
 				}),
 			),
-			model: Type.Optional(
-				Type.String({ description: 'model@runner, as `pi --model` takes the model' }),
+			model: opt(
+				str({ description: 'model@runner, as `pi --model` takes the model' }),
 			),
 		}),
 		replay: 'safe',

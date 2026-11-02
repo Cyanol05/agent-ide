@@ -1,5 +1,6 @@
-// A browser watching a thread hears a snapshot, then the agent's reply stream in and its tool call start and end, all
-// before the answer lands in the thread. Watching again, as after a reconnect or a restart, starts from a fresh snapshot.
+// A browser watching a thread hears what each agent is doing as it changes: its run, the reply it's writing, and its tool
+// calls with their arguments, all before the answer lands in the thread. Watching again, as after a reconnect or a
+// restart, starts from what the agent is doing now.
 import {
 	answered,
 	api,
@@ -25,7 +26,7 @@ const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'live' })
 
-// Every message the socket hears for the thread, in order: `{agent?, events}`.
+// Every message the socket hears for the thread, in order: `{agent, live}`.
 function watch(thread) {
 	const heard = []
 	const socket = new WebSocket(`${base.replace('http', 'ws')}/ws`)
@@ -36,94 +37,62 @@ function watch(thread) {
 	socket.onopen = () => socket.send(JSON.stringify({ watch: thread }))
 	return { heard, close: () => socket.close() }
 }
-const flat = (heard) => heard.flatMap((m) => m.events.map((e) => ({ ...e, who: m.agent })))
-const answerAt = (events) =>
-	events.findIndex((e) => !e.who && e.type === 'entry_appended' && e.entry.data?.answer)
+const agent = 'echo/echo@bot'
+const lives = (heard) => heard.filter((m) => m.agent === agent).map((m) => m.live)
+const text = (message) =>
+	(message?.content ?? [])
+		.filter((b) => b.type === 'text')
+		.map((b) => b.text)
+		.join('')
 
 const first = watch(id)
-await until(async () => first.heard.length)
+await sleep(300)
+check(!first.heard.length, 'a thread without agents has nothing to say')
+await api('POST', `/api/threads/${id}/entries`, { body: 'work', to: { runner: 'bot', model: 'echo/echo' } })
 check(
-	first.heard[0]?.events[0]?.type === 'snapshot' && !first.heard[0].agent,
-	"the thread's snapshot comes first",
-	JSON.stringify(first.heard[0]),
+	Boolean(await until(async () => lives(first.heard).length, 8000, 20)),
+	'an agent the thread asks is followed from then on',
 )
 
-await api('POST', `/api/threads/${id}/entries`, {
-	body: 'work',
-	to: { runner: 'bot', model: 'echo/echo' },
-})
-// Joining mid-run, the agent's snapshot holds its run and the tool call in it.
-await until(async () => flat(first.heard).some((e) => e.type === 'tool_execution_start'), 8000, 20)
+// Joining mid-run, the first word shows the running tool call and what it runs.
+const running = (live) =>
+	live.run && live.tools.some((t) => t.name === 'bash' && t.status === 'running')
+await until(async () => lives(first.heard).some(running), 8000, 20)
 const late = watch(id)
-const joined = await until(async () => late.heard.find((m) => m.agent)?.events[0], 8000, 20)
+const joined = await until(async () => lives(late.heard)[0], 8000, 20)
 check(
-	joined?.type === 'snapshot' &&
-		joined.run &&
-		joined.tools.some((t) => t.name === 'bash' && t.status === 'running'),
-	"joining mid-run, the agent's snapshot shows its running tool call",
+	running(joined) && joined.tools[0].args?.command?.includes('sleep'),
+	'joining mid-run, the agent is running its tool call, with its arguments',
 	JSON.stringify(joined)?.slice(0, 300),
 )
 late.close()
-await answered(id)
-const events = await until(async () => answerAt(flat(first.heard)) >= 0 && flat(first.heard))
-const at = answerAt(events ?? [])
-const agent = (events ?? []).filter((e, i) => e.who === 'echo/echo@bot' && i < at)
+
+const v = await answered(id)
+check(v?.entries.at(-1)?.data.body === long, 'the answer lands in the thread')
+const heard = lives(first.heard)
+const lengths = [...new Set(heard.map((l) => text(l.message).length).filter(Boolean))]
 check(
-	agent[0]?.type === 'snapshot',
-	"the agent's stream starts with its own snapshot",
-	JSON.stringify(agent[0]),
+	lengths.length > 1 && lengths.every((n, i) => !i || n > lengths[i - 1]),
+	'its reply grows in several updates before the answer lands',
+	JSON.stringify(lengths),
 )
 check(
-	agent.some(
-		(e) =>
-			e.type === 'tool_execution_start' &&
-			e.toolName === 'bash' &&
-			e.args.command?.includes('sleep'),
-	) && agent.some((e) => e.type === 'tool_execution_end' && e.toolName === 'bash'),
-	'its tool call starts and ends before the answer lands',
+	await until(async () => {
+		const last = lives(first.heard).at(-1)
+		return !last.run && !last.message
+	}),
+	'and once it answered, the agent is idle',
+	JSON.stringify(lives(first.heard).at(-1))?.slice(0, 200),
 )
-// The reply as a client rebuilds it: the partial its message_start carries, then the text its updates add.
-const reply = agent.slice(
-	agent.findLastIndex((e) => e.type === 'message_start' && e.message.role === 'assistant'),
-)
-const streamed = [
-	...(reply[0]?.message.content.map((b) => b.text ?? '') ?? []),
-	...reply
-		.filter((e) => e.type === 'message_update')
-		.flatMap((e) => e.changes)
-		.map((c) => (c.type === 'text_start' ? c.block.text : c.type === 'text_delta' ? c.delta : '')),
-].join('')
-check(
-	reply.filter((e) => e.type === 'message_update').length > 1 &&
-		streamed.length > 20 &&
-		long.startsWith(streamed),
-	'its reply streams in, in several updates, before the answer lands',
-	JSON.stringify(streamed.slice(0, 80)),
-)
-check(events?.[at]?.entry.data.body === long, 'then the answer lands in the thread')
-check(!agent.some((e) => e.entries?.length), "an agent's snapshot leaves its entries out")
 first.close()
 
-const again = watch(id)
-await until(async () => again.heard.length)
-const snapshot = again.heard[0]?.events[0]
-check(
-	snapshot?.type === 'snapshot' && snapshot.entries.some((e) => e.data?.answer),
-	'watching again starts from a fresh snapshot with the answer in it',
-)
-again.close()
-
-// A restart closes the socket; watching the new server gives a snapshot of everything kept.
+// A restart closes the socket; watching the new server starts from where the agent is.
 srv.kill('SIGKILL')
 await sleep(500)
 srv = await server()
 const restarted = watch(id)
-await until(async () => restarted.heard.length)
-check(
-	restarted.heard[0]?.events[0]?.entries?.filter((e) => e.kind === 'agent-ide.message').length ===
-		2,
-	'after a restart, watching again gets the whole thread',
-)
+const now = await until(async () => lives(restarted.heard)[0], 8000, 20)
+check(now && !now.run && !now.tools.length, 'after a restart, watching again says the agent is idle')
 restarted.close()
 bot.close()
 done()

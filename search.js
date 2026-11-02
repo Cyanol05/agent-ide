@@ -1,6 +1,6 @@
 // MODULES=+search gives agents `web_search`: Exa's free search, which needs no key and is rate limited. Enough to find pages;
 // an agent reads one whole with curl. SEARCH_URL points it at anything else that answers Exa's MCP call.
-import { Type } from '@earendil-works/pi-ai'
+import { num, obj, opt, str } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 
 const url = process.env.SEARCH_URL || 'https://mcp.exa.ai/mcp?tools=web_search_exa'
@@ -10,10 +10,10 @@ export function server() {
 		name: 'web_search',
 		description:
 			"Search the web. Answers with each page's title, address and highlights; read a page whole with curl.",
-		parameters: Type.Object({
-			query: Type.String(),
-			results: Type.Optional(
-				Type.Number({ description: 'How many pages, 5 by default, at most 10' }),
+		parameters: obj({
+			query: str(),
+			results: opt(
+				num({ description: 'How many pages, 5 by default, at most 10' }),
 			),
 		}),
 		replay: 'safe',

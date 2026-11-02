@@ -1,5 +1,5 @@
 // A `post` call does everything in one commit, with a receipt keyed by its task id, so a replay finds it.
-import { Type } from '@earendil-works/pi-ai'
+import { num, obj, opt, str } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { messageText } from './remote.js'
 import { agentName, field, said } from './util.js'
@@ -20,14 +20,14 @@ export function server(core) {
 			'Ask someone. Leave out `thread` for a side question: a new child thread that holds only what you write. ' +
 			'Give a `thread` to ask whoever is there, with all they already know there. Posting to a thread that asked you something answers it. ' +
 			"Whoever answers, their answer comes to you here as a message, even mid-turn; don't read the thread to check for it.",
-		parameters: Type.Object({
-			thread: Type.Optional(
-				Type.Number({ description: 'The thread to post to. Leave out to start a new one.' }),
+		parameters: obj({
+			thread: opt(
+				num({ description: 'The thread to post to. Leave out to start a new one.' }),
 			),
-			title: Type.Optional(Type.String({ description: "The new thread's title" })),
-			body: Type.String(),
-			to: Type.Optional(
-				Type.String({
+			title: opt(str({ description: "The new thread's title" })),
+			body: str(),
+			to: opt(
+				str({
 					description:
 						'Who should answer. An agent already in the thread by its name, or thread/name from anywhere, which also picks the thread. Or a recipe for a new one: model@runner, where model is anything `pi --model` takes, a runner for its default model, name=model@runner to name it. Or "nobody". Leave out for whom the thread last asked; in a new thread, yourself.',
 				}),
@@ -110,19 +110,19 @@ export function server(core) {
 			"Read a thread's latest entries, or those that contain `query`, or list every thread by leaving out both. " +
 			"With `agent`, read that agent's own work in the thread instead: what it was handed, the tool calls it made and what they printed, word for word. " +
 			'Answers to your own posts come to you; no need to read for them.',
-		parameters: Type.Object({
-			thread: Type.Optional(
-				Type.Number({ description: 'With `query` or `agent`, your own thread by default' }),
+		parameters: obj({
+			thread: opt(
+				num({ description: 'With `query` or `agent`, your own thread by default' }),
 			),
-			agent: Type.Optional(
-				Type.String({
+			agent: opt(
+				str({
 					description:
 						'An agent in that thread, by its name or any unique part of it, or thread/name',
 				}),
 			),
-			last: Type.Optional(Type.Number({ description: 'How many entries, 20 by default' })),
-			query: Type.Optional(
-				Type.String({ description: 'Only entries containing this text, ignoring case' }),
+			last: opt(num({ description: 'How many entries, 20 by default' })),
+			query: opt(
+				str({ description: 'Only entries containing this text, ignoring case' }),
 			),
 		}),
 		replay: 'safe',

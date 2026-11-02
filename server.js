@@ -16,7 +16,6 @@ import {
 	defineExtension,
 	defineTask,
 	Harness,
-	watchEvents,
 } from '@earendil-works/pi-durable'
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node'
 import { CodingTools } from '@earendil-works/pi-durable/tools'
@@ -156,11 +155,7 @@ const Deliver = defineTask({
 			)
 			const settled = await submission.wait(ctx)
 			const told = await outcome(threadId, agent, settled, held)
-			await rt.commit(async (tx) => {
-				for (const { thread, data, steer } of told) await post(tx, thread, data, { steer })
-				if (settled.entry === undefined) await restore(tx, threadId, agent, held)
-				return finished()
-			}, ctx)
+			await rt.commit(async (tx) => (await tell(tx, threadId, agent, settled, held, told), finished()), ctx)
 		},
 	},
 	// Pi's abort of the thread withdrew its input if still queued.
@@ -300,14 +295,17 @@ const harness = await Harness.open(
 		},
 		// A failed run doesn't strand the messages queued behind it: the next run takes them.
 		settings: { afterFailedRun: 'continue' },
-		onReport: (error) => console.error('pi-durable:', error),
+		onReport: (report) => {
+			console.error(`pi-durable: ${report.kind}:`, report.error)
+			if (report.kind === 'task_faulted') faulted(report).catch((error) => console.error(error))
+		},
 	},
 	context,
 )
 // A storage error closes the harness for good; exit, so a supervisor can restart.
 harness.closed.then(
 	(end) =>
-		end.reason === 'failed' &&
+		end.kind === 'failed' &&
 		(console.error('pi-durable: storage failed, exiting:', end.error), process.exit(1)),
 )
 // A stop closes the harness, so the tasks it cuts off wait to resume, and Pi doesn't count them as crashed.
@@ -431,7 +429,7 @@ async function agentOf(id, named) {
 	}
 }
 
-// Working while a delivery to it is live; parked once Pi stops running one that crashes kept cutting off.
+// Working while a delivery to it is live.
 /** @returns {Promise<Agent[]>} */
 async function agentsIn(row, live) {
 	return Promise.all(
@@ -442,20 +440,17 @@ async function agentsIn(row, live) {
 			)
 			const status = !mine.length
 				? 'idle'
-				: mine.some((t) => t.parked)
-					? 'parked'
-					: to && runners.isOnline(to.runner)
-						? 'working'
-						: 'blocked'
+				: to && runners.isOnline(to.runner)
+					? 'working'
+					: 'blocked'
 			return { name, conversation, to, status }
 		}),
 	)
 }
-// The threads each runner is working for: an agent there answering, or a command running. Parked work isn't.
+// The threads each runner is working for: an agent there answering, or a command running.
 async function busyThreads() {
 	const by = {}
 	for (const t of await liveTasks()) {
-		if (t.parked) continue
 		const runner =
 			t.kind === Shell.definition.name
 				? t.input.to?.runner
@@ -468,19 +463,7 @@ async function busyThreads() {
 	}
 	return by
 }
-const liveTasks = async () =>
-	(await harness.inspect(context)).tasks.map(({ record, state }) => ({
-		...record,
-		parked: state.kind === 'blocked' && state.reason === 'restart_limit',
-	}))
-
-// Runs the thread's parked deliveries and commands again.
-async function retry(id) {
-	await conversation(id)
-	const parked = (await liveTasks()).filter((t) => t.parked && t.conversationId === id)
-	for (const t of parked) await harness.retryTask(t.id, context)
-	return { retried: parked.map((t) => t.id) }
-}
+const liveTasks = async () => (await harness.inspect(context)).tasks.map(({ record }) => record)
 
 /** @returns {Promise<Entry[]>} */
 // Any conversation's entries, oldest first: a thread's, or an agent's own.
@@ -614,9 +597,32 @@ async function outcome(threadId, agent, settled, mine) {
 	return told
 }
 
+// Posts what a settled input told; messages no input took are unseen again.
+async function tell(tx, threadId, agent, settled, held, told) {
+	for (const { thread, data, steer } of told) await post(tx, thread, data, { steer })
+	if (settled.entry === undefined) await restore(tx, threadId, agent, held)
+}
+
+// Work that threw, or that crashes kept cutting off, Pi ends instead of running again, and the thread says so: a
+// delivery as an agent that gave no answer, its messages unseen again for the next ask, and a command as one that failed.
+async function faulted({ task, reason }) {
+	const record = await harness.getTask(task.id, context)
+	const threadId = task.conversationId
+	if (task.kind === Shell.definition.name) {
+		const run = shells.get(task.id)
+		shells.delete(task.id)
+		return commit((tx) => printed(tx, threadId, record.input, { ...run, error: reason }))
+	}
+	if (task.kind !== Deliver.definition.name) return
+	const { agent, held } = record.input
+	const placed = await storage.submissionByRequest(agent, String(task.id), context)
+	const settled = { id: task.id, status: 'unanswered', reason, entry: placed?.entry }
+	const told = await outcome(threadId, agent, settled, held)
+	await commit((tx) => tell(tx, threadId, agent, settled, held, told))
+}
+
 // With no reader, anyone's read counts. A stopped `$ cmd` is no result.
-async function status(id, reads, agents, shell, parked, reader) {
-	if (parked || agents.some((a) => a.status === 'parked')) return 'parked'
+async function status(id, reads, agents, shell, reader) {
 	if (shell || agents.some((a) => a.status === 'working')) return 'working'
 	if (agents.some((a) => a.status === 'blocked')) return 'blocked'
 	const seen = new Set(reader ? [reads[reader]] : Object.values(reads))
@@ -639,13 +645,12 @@ async function threadRow(id, reader, live) {
 	const { reads, ...row } = await thread(id)
 	const agents = await agentsIn(row, live)
 	const shell = live.some((t) => t.kind === Shell.definition.name && t.conversationId === id)
-	const parked = live.some((t) => t.parked && t.conversationId === id)
 	return {
 		id,
 		...row,
 		agents,
 		shells: [...shells.values()].filter((run) => run.threadId === id),
-		status: await status(id, reads, agents, shell, parked, reader),
+		status: await status(id, reads, agents, shell, reader),
 		conversation: await storage.conversation(id, context),
 	}
 }
@@ -937,11 +942,13 @@ async function markRead(id, reader) {
 	return { read: newest ?? null }
 }
 
+// Pi's view of a conversation, with every entry instead of its window of the newest.
 async function conversationView(id) {
-	const view = await (await harness.conversation(id, context))?.viewState(context)
-	if (!view) throw Object.assign(new Error('Conversation not found'), { status: 404 })
-	view.dispose()
-	return view.value
+	const watch = await (await harness.conversation(id, context))?.watch(context, { min: 1 })
+	if (!watch) throw Object.assign(new Error('Conversation not found'), { status: 404 })
+	await watch.stop()
+	const { before, ...view } = watch.value
+	return { ...view, entries: await entries(id) }
 }
 
 // As the README lists them; a module may serve GET and POST /api/<its name> and /api/threads/:id/<its name>, and
@@ -985,7 +992,6 @@ const routes = [
 	['POST /api/threads/:id/fork', async (req, id) => forkThread(id, await input(req))],
 	['POST /api/threads/:id/tools', async (req, id) => setTools(id, await input(req))],
 	['POST /api/threads/:id/read', (req, id) => markRead(id, user(req))],
-	['POST /api/threads/:id/retry', (req, id) => retry(id)],
 	// Pi's abort of the thread reaches its tasks, and through each Anchor its agents.
 	[
 		'POST /api/threads/:id/stop',
@@ -1113,10 +1119,10 @@ function notify() {
 		for (const m of modules) m.changed?.()
 	}, 100)
 }
-harness.subscribeCommits(() => notify())
+harness.observeCommits({ advance: notify, end: () => {} })
 
-// A browser watches one thread: Pi's agent events of its conversation and of each agent's, each stream snapshot first.
-// An agent's snapshots leave out its entries, which the thread has no use for. One socket's watches go in turn.
+// A browser watches one thread: what each of its agents is doing, sent whole as it changes. The thread's doc says when
+// an agent joins. One socket's watches go in turn.
 const watch = (socket, id) =>
 	(socket.watches = (socket.watches ?? Promise.resolve())
 		.then(() => rewatch(socket, id))
@@ -1124,35 +1130,40 @@ const watch = (socket, id) =>
 async function rewatch(socket, id) {
 	const old = socket.watching
 	socket.watching = undefined
-	for (const stream of old?.streams.values() ?? []) (await stream).stop()
-	if (typeof id === 'number' && (await thread(id)))
-		await follow(socket, (socket.watching = { thread: id, streams: new Map() }))
+	for (const w of old?.values() ?? []) await w.stop()
+	const row = typeof id === 'number' && (await harness.watchDoc(Thread, id, context))
+	if (!row) return
+	const watching = (socket.watching = new Map([[id, row]]))
+	const follow = async (agents) => {
+		for (const [agent, { conversation }] of Object.entries(agents)) {
+			if (watching.has(conversation)) continue
+			const w = await (await harness.conversation(conversation, context)).watch(context, { min: 20 })
+			if (socket.watching !== watching) return w.stop()
+			watching.set(conversation, w)
+			const send = (view) => socket.send(JSON.stringify({ thread: id, agent, live: doing(view) }))
+			send(w.value)
+			w.start(async ({ value }) => send(value))
+		}
+	}
+	await follow(row.value.agents)
+	row.start(async ({ value }) => follow(value.agents))
 }
-// Starts a stream for the thread and for each agent not followed yet; the post that asks a new agent is a thread event,
-// which follows it from the commit that made it.
-async function follow(socket, w) {
-	const agents = Object.entries((await thread(w.thread)).agents).map(([name, a]) => [
-		a.conversation,
-		name,
-	])
-	for (const [c, agent] of [[w.thread], ...agents]) {
-		if (w.streams.has(c) || socket.watching !== w) continue
-		const send = (events) =>
-			socket.watching === w &&
-			socket.send(
-				JSON.stringify({
-					thread: w.thread,
-					...(agent ? { agent } : {}),
-					events: agent
-						? events.map((e) => (e.type === 'snapshot' ? { ...e, entries: [] } : e))
-						: events,
-				}),
-			)
-		const stream = watchEvents(harness, c, context)
-		w.streams.set(c, stream)
-		const { snapshot, start } = await stream
-		send([snapshot])
-		start(async (events) => (send(events), agent || follow(socket, w).catch(() => {})))
+// What an agent is doing, from Pi's live doc: whether it runs, the reply it's writing, and the tool calls of this round,
+// each with the arguments its answer gave it.
+function doing({ entries, docs }) {
+	const { run, generation, tools = [] } = docs['pi.live'] ?? {}
+	const calls = entries
+		.flatMap((e) => (e.model?.[0]?.role === 'assistant' ? e.model[0].content : []))
+		.filter((b) => b.type === 'toolCall')
+	return {
+		run: Boolean(run),
+		message: generation?.message ?? null,
+		tools: tools.map(({ callId, name, status }) => ({
+			callId,
+			name,
+			status,
+			args: calls.find((c) => c.id === callId)?.arguments,
+		})),
 	}
 }
 

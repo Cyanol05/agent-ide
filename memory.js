@@ -1,6 +1,7 @@
 // A thread's memory: one line of at most 512 bytes per message, merged in pairs up a binary tree. Line (l, i) covers
 // messages i·2^l to (i+1)·2^l - 1 by position.
-import { retryAssistantCall, Type } from '@earendil-works/pi-ai'
+import { retryAssistantCall } from '@earendil-works/pi-ai'
+import { num, obj, opt } from '@earendil-works/pi-schema'
 import {
 	CompactionTask,
 	defineExtension,
@@ -252,10 +253,10 @@ export function server(core) {
 		name: 'zoom',
 		description:
 			'Open a line of your memory of this thread, `id+n|…`: you get the two lines it was made from, or the message whole when n is 1, a long one in pages from character `at`.',
-		parameters: Type.Object({
-			id: Type.Number(),
-			n: Type.Number(),
-			at: Type.Optional(Type.Number()),
+		parameters: obj({
+			id: num(),
+			n: num(),
+			at: opt(num()),
 		}),
 		replay: 'safe',
 		execute: async ({ id, n, at = 0 }, api) => {

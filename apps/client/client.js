@@ -15,7 +15,7 @@ const el = (tag, props = {}, ...children) => {
 const EFFORTS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 // One dot everywhere: grey when there's nothing, green when it's on, pulsing green while it works, amber when it's blocked.
 const light = (state) =>
-	`dot${state === 'on' ? ' on' : state === 'working' ? ' working' : ['blocked', 'parked'].includes(state) ? ' blocked' : ''}`
+	`dot${state === 'on' ? ' on' : state === 'working' ? ' working' : state === 'blocked' ? ' blocked' : ''}`
 
 // The section in view says what the stage should show.
 const sections = new IntersectionObserver(
@@ -564,13 +564,9 @@ function watchAll() {
 		const socket = new WebSocket(`${url.replace(/^http/, 'ws')}/ws`)
 		socket.onopen = () => socket.send(JSON.stringify({ watch: id }))
 		socket.onmessage = (m) => {
-			const { thread, agent: who, events } = JSON.parse(m.data)
-			if (!who || !events) return
-			for (const e of events)
-				live.set(
-					`${thread} ${who}`,
-					step(live.get(`${thread} ${who}`) ?? { run: false, message: null, tools: [] }, e),
-				)
+			const { thread, agent, live: now } = JSON.parse(m.data)
+			if (!now) return
+			live.set(`${thread} ${agent}`, now)
 			render()
 		}
 		socket.onclose = () => {
@@ -580,44 +576,7 @@ function watchAll() {
 	}
 }
 
-// Pi's agent events, down to what this page shows: the reply being written and the tool calls of this run.
-function step(state, e) {
-	const tool = (id, change) => {
-		const old = state.tools.find((t) => t.callId === id) ?? { callId: id, name: e.toolName }
-		return { ...state, tools: [...state.tools.filter((t) => t !== old), { ...old, ...change }] }
-	}
-	switch (e.type) {
-		case 'snapshot':
-			return { run: Boolean(e.run), message: e.generation?.message ?? null, tools: e.tools ?? [] }
-		case 'run_start':
-			return { ...state, run: true }
-		case 'run_end':
-			return { run: false, message: null, tools: [] }
-		case 'message_start':
-			return e.message.role === 'assistant' ? { ...state, message: e.message } : state
-		case 'message_update':
-			return state.message
-				? { ...state, message: e.changes.reduce(changed, structuredClone(state.message)) }
-				: state
-		case 'message_end':
-			return { ...state, message: null }
-		case 'tool_execution_start':
-			return tool(e.toolCallId, { args: e.args, status: 'running' })
-		case 'tool_execution_end':
-			return tool(e.toolCallId, { status: 'done' })
-		default:
-			return state
-	}
-}
-function changed(message, c) {
-	const blocks = message.content
-	if (c.type === 'message') return structuredClone(c.message)
-	if (c.type.endsWith('_start')) blocks.splice(c.contentIndex, 0, structuredClone(c.block))
-	else if (c.type === 'block') blocks[c.contentIndex] = structuredClone(c.block)
-	else if (c.type === 'text_delta') blocks[c.contentIndex].text += c.delta
-	else if (c.type === 'thinking_delta') blocks[c.contentIndex].thinking += c.delta
-	return message
-}
+// What an agent is doing, as the server sends it: the reply it's writing, and its latest tool call.
 const text = (message) =>
 	(message?.content ?? [])
 		.filter((b) => b.type === 'text')
@@ -798,8 +757,8 @@ function threadBox(id) {
 	if (id === current && form.parentNode !== box) box.append(form)
 	return box
 }
-// A thread as a row, the same in the list of all threads and in a thread's family: its light, its name, delete on hover,
-// and retry when crashes left its work parked. A bot's home has no delete: hidden, it would strand the bot; forget it.
+// A thread as a row, the same in the list of all threads and in a thread's family: its light, its name, delete on hover.
+// A bot's home has no delete: hidden, it would strand the bot; forget it.
 const threadRow = (t, depth = 0) =>
 	el(
 		'li',
@@ -811,15 +770,6 @@ const threadRow = (t, depth = 0) =>
 		},
 		el('span', { className: light(t.status) }),
 		el('span', { textContent: t.title || 'untitled' }),
-		t.status === 'parked' &&
-			el('button', {
-				textContent: 'retry',
-				title: 'Crashes kept cutting this work off; run it again',
-				onclick: (e) => {
-					e.stopPropagation()
-					api(`/api/threads/${t.id}/retry`, {})
-				},
-			}),
 		!botAt(t.id) &&
 			el('button', {
 				textContent: 'delete',
@@ -835,7 +785,7 @@ const botRow = (b) => {
 	const mine = threads.flatMap((t) => t.agents.filter((a) => a.name === b.name))
 	const state = mine.some((a) => a.status === 'working')
 		? 'working'
-		: mine.some((a) => ['blocked', 'parked'].includes(a.status))
+		: mine.some((a) => a.status === 'blocked')
 			? 'blocked'
 			: ''
 	return el(
@@ -1121,7 +1071,7 @@ function runnerCard(r, asked) {
 	const stateOf = (list) =>
 		list.some((a) => a.status === 'working')
 			? 'working'
-			: list.some((a) => ['blocked', 'parked'].includes(a.status))
+			: list.some((a) => a.status === 'blocked')
 				? 'blocked'
 				: ''
 	const row = (to, ...children) => {

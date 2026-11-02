@@ -19,8 +19,7 @@ const usage = `bun cli.js [--server url] [--as name] <command>
   runners          every runner, online or not, and its models
   key <runner>     a new key for a runner, replacing its old one, and the line that connects it
   revoke <runner>  take its key away: it goes offline and stays out
-  stop <thread>    stop its agents and commands
-  retry <thread>   run again what crashes left parked`
+  stop <thread>    stop its agents and commands`
 
 const parse = (options) => {
 	try {
@@ -157,7 +156,6 @@ const commands = {
 		console.log(`${rest[0]} revoked`)
 	},
 	stop: () => api('POST', `/api/threads/${Number(rest[0])}/stop`),
-	retry: () => api('POST', `/api/threads/${Number(rest[0])}/retry`),
 }
 
 if (o.help || !commands[command]) {
