@@ -1,4 +1,4 @@
-// The API from a terminal: post to any agents in any thread, and print what comes back.
+/** The API from a terminal */
 import { parseArgs } from 'node:util'
 import { on, once } from 'node:events'
 import WebSocket from 'ws'
@@ -57,7 +57,7 @@ async function api(method, route, body) {
 	return json
 }
 
-// As the agents' own `post` tool names them: the last @ splits the model from the runner.
+/** As the agents' own `post` tool names them: the last @ splits the model from the runner */
 function agent(name) {
 	if (name === 'nobody') return null
 	const at = name.lastIndexOf('@')
@@ -89,7 +89,7 @@ async function post() {
 	if (!o.thread) console.error(`thread ${id}`)
 	const seen = (await api('GET', `/api/threads/${id}`)).entries.at(-1)?.id ?? 0
 	const to = o.to && (o.to.includes('nobody') ? null : o.to.map(agent))
-	// Listen before posting so even an immediate answer can't slip between the read and the wait.
+	/** Listen before posting so even an immediate answer can't slip between the read and the wait */
 	const socket = o['no-wait'] ? null : new WebSocket(o.server.replace(/^http/, 'ws') + '/ws')
 	const changes = socket && on(socket, 'message', { close: ['close'] })
 	try {

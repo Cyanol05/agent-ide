@@ -1,6 +1,4 @@
-// With memory, every message gets a line and neighbouring lines merge in pairs, once each, through a SIGKILL. A short
-// message is its own line; a long one is written by MEMORY_MODEL, retried when too long. A fork reads its source's
-// lines through and builds only its own.
+/** With memory, every message gets a line and neighbouring lines merge in pairs, once each, through a SIGKILL */
 import {
 	api,
 	check,

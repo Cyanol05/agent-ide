@@ -1,5 +1,4 @@
-// A steer joins the answer being written. The agent is busy in a tool call when a second message steers in, so one
-// answer comes back, and it says it answers both.
+/** A steer joins the answer being written */
 import {
 	answered,
 	answers,

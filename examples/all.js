@@ -1,5 +1,4 @@
-// Every example, as many at once as there are cores, each with its own server, port and store; each one's output shows whole when it ends.
-// All at once starves a small machine, and servers miss the examples' waits. The real-model examples spend tokens, so they only run with REAL=1.
+/** Every example, as many at once as there are cores, each with its own server, port and store */
 import { execFile } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { availableParallelism } from 'node:os'

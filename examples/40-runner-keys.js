@@ -1,11 +1,11 @@
-// A runner dials in with its own key, so nobody can take its name, and a revoked one goes offline and stays out.
+/** A runner dials in with its own key, so nobody can take its name, and a revoked one goes offline and stays out */
 import { api, base, check, done, runner, server, sleep, until } from './lib.js'
 
 await server()
 const online = async (name) =>
 	(await api('GET', '/api/runners')).json.find((r) => r.name === name)?.online
 const exited = (p) => new Promise((resolve) => p.on('exit', (code) => resolve(code)))
-// What the server says to a socket that claims `name`, with this key.
+/** What the server says to a socket that claims `name`, with this key */
 const dial = (name, key) =>
 	new Promise((resolve) => {
 		const socket = new WebSocket(`${base.replace('http', 'ws')}/ws?runner=${name}&dir=/`, {

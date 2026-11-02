@@ -1,5 +1,4 @@
-// A message that waits behind a run that fails still gets its answer. The agent is busy in a tool call when a second
-// message queues behind it; the model then fails the first run, and the second starts its own.
+/** A message that waits behind a run that fails still gets its answer */
 import { fauxAssistantMessage } from '@earendil-works/pi-ai/providers/faux'
 import { api, call, check, done, say, scriptedRunner, server, until, view } from './lib.js'
 

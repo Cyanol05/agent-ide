@@ -1,5 +1,4 @@
-// What pi reads in a folder before it starts: the AGENTS.md files and the skills, found by pi's own loader on the
-// agent's runner and read again before every model request, so an edit counts from the next one.
+/** What pi reads in a folder before it starts */
 import path from 'node:path'
 import {
 	DefaultResourceLoader,
@@ -8,13 +7,12 @@ import {
 	SettingsManager,
 } from '@earendil-works/pi-coding-agent'
 import { defineExtension } from '@earendil-works/pi-durable'
-import { within } from './remote.js'
+import { within } from '../remote.js'
 
 export function server({ runners }) {
 	const section = {
 		key: 'project',
 		tag: false,
-		// Pi Durable re-sends a section only when its text changed. A runner without this module answers null.
 		render: async ({ env }, context) => {
 			const runner = env?.id?.replace(/^runner:/, '')
 			if (!runner) return undefined
@@ -30,7 +28,7 @@ export function server({ runners }) {
 	return { extension: defineExtension({ name: 'agent-ide.context', sections: [section] }) }
 }
 
-// Skill files can sit outside the runner's folder, where the file tools don't reach, so agents read them with bash.
+/** Skill files can sit outside the runner's folder, where the file tools don't reach, so agents read them with bash */
 export function runner(core) {
 	async function context({ dir }) {
 		if (!within(core.roots ?? [core.dir], path.resolve(dir)))

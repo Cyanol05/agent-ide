@@ -1,6 +1,4 @@
-// Two agents in one thread at once. Each answers from its own Pi conversation, where the other's words arrive as user
-// text with its name, never as its own. The thread is working while either is, and stop stops both. A stop that withdraws
-// a queued input leaves its messages unseen, for the next input to carry.
+/** Two agents in one thread at once */
 import {
 	answered,
 	answers,
@@ -65,7 +63,7 @@ check(
 	brief(v),
 )
 
-// Ana asks ann again. Ann catches up on everything since it last looked: oskar's question to bob, and bob's answer.
+/** Ana asks ann again */
 const q3 = (
 	await api(
 		'POST',
@@ -97,7 +95,7 @@ check(
 	JSON.stringify(answers(v3).at(-1).data),
 )
 
-// Stop stops both.
+// Stop stops both
 await api('POST', `/api/threads/${id}/entries`, { body: 'both again', to: [toAnn, toBob] })
 await until(async () => (await view(id)).agents.every((a) => a.status === 'working'), 8000, 20)
 await api('POST', `/api/threads/${id}/stop`, {})
@@ -109,8 +107,7 @@ check(
 	JSON.stringify(stopped.agents),
 )
 
-// Cy works through a tool call. A follow-up queues behind the run; a steer is placed after the tool call. Stop withdraws
-// the follow-up, so the next input to cy carries it.
+/** Cy works through a tool call */
 const cy = await scriptedRunner('cy', (request) => {
 	const t = text(request.messages.findLast((m) => m.role === 'user'))
 	if (t.includes('again')) return say('cy heard it all')

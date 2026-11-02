@@ -1,7 +1,6 @@
-import { agentName } from './util.js'
+import { agentName } from '../util.js'
 
-// Whom a message asks: every agent of the thread it @mentions by its name, model@runner unless it was given another,
-// as @openai/gpt-6.1-sol@laptop or @reviewer; else its own `to`, or nobody.
+/** Whom a message asks: the agents it @mentions, else its own `to`, or nobody */
 export const server = () => ({ route })
 
 function route({ body, to }, agents) {

@@ -1,5 +1,4 @@
-// A runner keeps the conversation it last streamed for each agent, so the next model request sends only what's new.
-// A runner that reconnects starts with nothing, so it gets the whole conversation again; the model sees it all either way.
+/** A runner keeps the conversation it last streamed for each agent, so the next model request sends only what's new */
 import { createModels } from '@earendil-works/pi-ai/models'
 import { fauxAssistantMessage, fauxProvider, fauxText } from '@earendil-works/pi-ai/providers/faux'
 import { messageText, serveRunner } from '../remote.js'
@@ -7,7 +6,7 @@ import { answered, answers, api, base, check, done, keyFor, server, until, view 
 
 await server()
 const key = await keyFor('laptop')
-// What each stream request carried, and whether the model saw the first message.
+/** What each stream request carried, and whether the model saw the first message */
 const seen = []
 const online = (on) =>
 	until(() =>

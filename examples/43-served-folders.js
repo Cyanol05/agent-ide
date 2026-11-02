@@ -1,5 +1,4 @@
-// A runner serves several folders: every --dir, and with --discover-dirs the checkouts beneath them. Work runs in
-// any of them and nowhere else, and the runner says how many threads it's busy in.
+/** A runner serves several folders */
 import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'

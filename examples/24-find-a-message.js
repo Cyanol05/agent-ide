@@ -1,6 +1,4 @@
-// A detail the memory lost is still found word for word: here the writer keeps nothing of what it summarises, as any
-// line high in the tree must for most of what it covers, so no line says where crate 412 went. `threads` with a
-// `query` finds the message whole, ignoring case, in the agent's own thread when it names none.
+/** A detail the memory lost is still found word for word */
 import {
 	api,
 	call,

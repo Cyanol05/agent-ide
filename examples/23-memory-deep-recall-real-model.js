@@ -1,9 +1,4 @@
-// Promise 6 at depth: a locker code said once, early in a long thread of other small facts, and a new agent asked
-// for it late, with no hint to zoom. The agent's input holds the code's message only as a line high in the tree, so
-// it can be found word for word only if every line above the message kept it, or the agent zooms down the right path.
-// Prints which lines above the message still hold the code, then checks the answer.
-// Uses this machine's pi login and many tokens: every pair of messages is merged by the writer, about N calls.
-// bun examples/23-memory-deep-recall-real-model.js [agent model] [memory model] [messages, a power of two]
+/** Promise 6 at depth */
 import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -53,7 +48,7 @@ function resolve(pattern) {
 	}
 }
 
-// Each message is about 300 bytes of distinct small facts, so it is its own line and every pair needs the writer.
+/** Each message is about 300 bytes of distinct small facts, so it is its own line and every pair needs the writer */
 const teams = ['build', 'garden', 'kitchen', 'archive', 'radio', 'harbour', 'library', 'workshop']
 const fact = (k) =>
 	`${teams[k % 8]} team, ticket ${1000 + k}: moved crate ${((k * 37) % 900) + 100} from shelf ${k % 13} to bay ${(k * 7) % 31}, ` +
@@ -77,7 +72,7 @@ const all = await until(
 )
 check(Boolean(all), `all ${2 * N - 1} lines are built`)
 
-// The lines above the needle, leaf to root, and whether each still holds the code.
+/** The lines above the needle, leaf to root, and whether each still holds the code */
 const above = [...Array(Math.log2(N) + 1).keys()].map((l) =>
 	all.find((x) => x.l === l && x.i === NEEDLE >> l),
 )

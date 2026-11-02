@@ -1,6 +1,4 @@
-// Runners with owners. laptop takes work from oskar and from the agents on desktop; desktop also takes Ana.
-// A refusal writes nothing, says who the runner takes work from, and holds while the runner is offline.
-// The hop is honest: Ana reaches laptop through an agent on desktop, and an agent on Ana's own runner doesn't.
+/** Runners with owners */
 import {
 	answered,
 	answers,
@@ -79,7 +77,7 @@ check(
 )
 check((await view(id)).entries.length === before, 'a refusal writes nothing', brief(await view(id)))
 
-// Ana asks an agent on desktop, which desktop allows, to post to laptop, which allows desktop.
+/** Ana asks an agent on desktop, which desktop allows, to post to laptop, which allows desktop */
 const {
 	json: { id: hop },
 } = await api('POST', '/api/threads', { title: 'hop' }, 'ana')
@@ -103,7 +101,7 @@ check(
 	child ? brief(await view(child.id)) : 'no child',
 )
 
-// The same ask to an agent on ana-mbp: laptop doesn't allow it, and the agent sees why.
+/** The same ask to an agent on ana-mbp: laptop doesn't allow it, and the agent sees why */
 const {
 	json: { id: own },
 } = await api('POST', '/api/threads', { title: 'own' }, 'ana')

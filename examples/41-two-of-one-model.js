@@ -1,6 +1,4 @@
-// An agent's name in a thread is model@runner unless you give it another, so two of one model work side by side.
-// A recipe reaches the agent of its name, or makes one; the name reaches it in its thread, thread/name from anywhere.
-// A fork keeps the names, so what a message asked still means the same agent there, with nothing remapped.
+/** An agent's name in a thread is model@runner unless you give it another, so two of one model work side by side */
 import {
 	answered,
 	answers,
@@ -74,7 +72,7 @@ check(
 	JSON.stringify((await view(id)).people),
 )
 
-// An agent elsewhere asks the reviewer by its address; the reviewer answers and the answer comes back.
+// An agent elsewhere asks the reviewer by its address
 await scriptedRunner('desk', (request) => {
 	const last = request.messages.findLast((m) => m.role !== 'system')
 	return last.role === 'user' && text(last).includes('ask the reviewer')
@@ -95,7 +93,7 @@ check(
 )
 await until(async () => (await view(desk)).entries.some((e) => e.data.from === id))
 
-// A recipe makes an agent once: the same name with another recipe reaches that agent as it was made.
+/** A recipe makes an agent once */
 const moving = await post('over to the desk', {
 	runner: 'desk',
 	model: 'echo/echo',
@@ -111,7 +109,7 @@ check(
 	JSON.stringify(moving.json),
 )
 
-// Fork after the reviewer's answer: the same agents, and a message with no `to` asks the reviewer there too.
+/** Fork after the reviewer's answer */
 const reviewer = v.agents.find((a) => a.name === 'reviewer')
 const f = (await api('POST', `/api/threads/${id}/fork`, { at: answers(v).at(-1).id })).json.id
 await api('POST', `/api/threads/${f}/entries`, { body: 'in the fork' })

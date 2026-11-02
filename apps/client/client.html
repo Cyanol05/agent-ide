@@ -401,10 +401,10 @@ stateDiagram-v2
 
 			<h2 id="modules">Modules</h2>
 			<p>
-				Anything optional is a module: one file. They're picked the way Pi picks tools, in
-				<code>agent-ide.json</code> or <code>MODULES=+search,-talk</code>: names replace the
-				defaults, <code>+name</code> and <code>-name</code> change them, and a path is a module of
-				your own.
+				Anything optional is a module: one file in <code>modules/</code>. They're picked the way Pi
+				picks tools, in <code>agent-ide.json</code> or <code>MODULES=+search,-talk</code>: names
+				replace the defaults, <code>+name</code> and <code>-name</code> change them, and a path is a
+				module of your own.
 			</p>
 			<dl class="words">
 				<dt>talk.js <span class="tag" data-c="server">on</span></dt>
@@ -529,9 +529,9 @@ sequenceDiagram
 				<p id="members"></p>
 				<ul class="thread-family" id="family"></ul>
 			</section>
-			<button class="runner-toggle" id="fleet-open" type="button"></button>
+			<button class="runner-toggle" id="runner-count" type="button"></button>
 			<div class="model-picker" id="picker" popover><ul></ul></div>
-			<div class="runner-list" id="fleet" popover>
+			<div class="runner-list" id="runner-list" popover>
 				<ul></ul>
 				<p>To add a runner, run this on the computer you want to lend.</p>
 				<pre></pre>

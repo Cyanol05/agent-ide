@@ -1,7 +1,4 @@
-// With memory, an agent asked late in a long thread gets one input that stays bounded by its budget, as many bytes as
-// its model has tokens of context (64 Ki here): its newest messages whole within it, and everything older as the
-// thread's memory lines, within it too even while their pairs are not built yet.
-// It can still zoom down to the first message.
+/** With memory, an agent asked late in a long thread gets one input that stays bounded by its budget, as many bytes as its model has tokens of context (64 Ki here) */
 import {
 	api,
 	check,
@@ -35,7 +32,7 @@ const {
 } = await api('POST', '/api/threads', { title: 'late' })
 for (let k = 0; k < 300; k++)
 	await api('POST', `/api/threads/${id}/entries`, { body: long(k), to: null })
-// Every message has its line, and no pair does: those lines alone are past 64 KB.
+// Every message has its line, and no pair does
 check(
 	Boolean(await until(async () => (await linesOf(id)).length === 300, 60000, 500)),
 	'every message has its line',

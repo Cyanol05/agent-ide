@@ -1,11 +1,10 @@
-// A runner started with --read-only lends its folder to read: an agent there reads, but its writes and commands
-// come back as tool errors, and so does a `$ cmd`. Nothing in the folder changes.
+/** A runner started with --read-only lends its folder to read */
 import { existsSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { answered, api, call, check, dir, done, say, scriptedRunner, server, text } from './lib.js'
 
 writeFileSync(path.join(dir, 'notes.txt'), 'the plans are in the drawer')
-// Each message names one tool call; the agent answers with what the tool said.
+/** Each message names one tool call; the agent answers with what the tool said */
 const route = (request) => {
 	const last = request.messages.findLast((m) => m.role !== 'system')
 	if (last.role === 'toolResult') return say(`tool said: ${text(last)}`)

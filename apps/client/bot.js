@@ -1,4 +1,4 @@
-// Bots, with the bots module: a row in the list, its settings at its home, and naming a new one.
+/** Bots, with the bots module */
 import { h, dotClass } from './dom.js'
 import { busiest, formatAgent } from './agent.js'
 import {
@@ -16,7 +16,7 @@ import {
 } from './state.js'
 import { ThreadItem } from './thread.js'
 
-// A bot as a row: lit while an agent of its name works anywhere, its name in its color; it opens its home.
+/** A bot as a row */
 export const BotItem = (b) =>
 	h(
 		'li',
@@ -25,12 +25,15 @@ export const BotItem = (b) =>
 			title: b.instructions.split('\n')[0],
 			onclick: () => openThread(b.home),
 		},
-		h('span', { className: dotClass(busiest(threads.flatMap((t) => t.agents.filter((a) => a.name === b.name)))) }),
+		h('span', {
+			className: dotClass(
+				busiest(threads.flatMap((t) => t.agents.filter((a) => a.name === b.name))),
+			),
+		}),
 		h('span', { textContent: b.name, style: colorOf(b.name) }),
 	)
 
-// At a bot's home, the details are the bot's: its instructions, the model it joins threads with, where else it is.
-// One node, drawn again for whichever bot; hidden anywhere else.
+/** At a bot's home, the details are the bot's */
 let shown = null
 const instructions = h('textarea', {
 	className: 'instructions',
@@ -38,7 +41,7 @@ const instructions = h('textarea', {
 	placeholder: 'Who it is, in its words or yours',
 	onchange: (e) => saveBot({ name: shown.name, instructions: e.target.value }),
 })
-// As the composer's name line and `pi --model` take it.
+/** As the composer's name line and `pi --model` take it */
 const model = h('input', {
 	className: 'model',
 	spellcheck: false,
@@ -74,7 +77,8 @@ const settings = h(
 		textContent: 'Forget this bot',
 		title: 'Every thread stays; agents of its name stop reading its instructions',
 		onclick: () => {
-			if (confirm(`Forget ${shown.name}? Its instructions go; every thread stays.`)) forgetBot(shown.name)
+			if (confirm(`Forget ${shown.name}? Its instructions go; every thread stays.`))
+				forgetBot(shown.name)
 		},
 	}),
 )
@@ -95,7 +99,7 @@ export function BotSettings(bot) {
 	return settings
 }
 
-// A new bot: its name first, which is how anyone asks it; it starts on the model the composer would ask.
+/** A new bot */
 export function NewBot() {
 	const [pick] = recipients()
 	const field = h('input', {

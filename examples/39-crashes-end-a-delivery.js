@@ -1,5 +1,4 @@
-// A delivery that crash after crash cut off ends instead of running forever, and the thread says so: the agent gave no
-// answer, and its message waits, unseen, for the next ask. Stops aren't crashes: as many as you like cut nothing off.
+/** A delivery that crash after crash cut off ends instead of running forever, and the thread says so */
 import { answered, api, check, done, runner, server, sleep, until, view } from './lib.js'
 
 let srv = await server()

@@ -1,10 +1,9 @@
-// What the client knows, and every call that changes it. Components read it; only this file writes it or talks to
-// the server, and every change ends in changed(), which draws the page again.
+/** What the client knows, and every call that changes it */
 import { drawer } from './dom.js'
 import { parseAgent } from './agent.js'
 
 export const params = new URLSearchParams(location.search)
-// The server that served this page, or another with ?server=.
+/** The server that served this page, or another with ?server= */
 export const url =
 	params.get('server') ||
 	(location.protocol === 'file:' ? 'http://127.0.0.1:3000' : location.origin)
@@ -43,19 +42,18 @@ export const api = (path, body) =>
 		return json
 	})
 
-// Questions about what it knows.
+/** Questions about what it knows */
 export const titleOf = (id) => threads.find((t) => t.id === id)?.title || `thread ${id}`
-// Pi records where a fork came from.
+/** Pi records where a fork came from */
 export const forkedFrom = (t) => t?.conversation?.parent?.conversationId
 export const homeBot = (id) => bots.find((b) => b.home === id)
-// A bot asked by name is its recipe under its name, so a pick is one shape whoever it asks.
+/** A bot asked by name is its recipe under its name, so a pick is one shape whoever it asks */
 export const botAgent = (b) => ({ ...b.to, name: b.name })
-// A bot's color comes from its name, the same in every client.
+/** A bot's color comes from its name, the same in every client */
 const hue = (name) => [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
 export const colorOf = (author) =>
 	bots.some((b) => b.name === author) ? `color: oklch(0.6 0.14 ${hue(author)})` : ''
-// Who's in a thread, as the server says it: the people who wrote there, not as an agent's answer or a post from
-// elsewhere, and who read it.
+/** Who's in a thread, as the server says it */
 export const peopleIn = (id) => [
 	...new Set([
 		...(entries.get(id) ?? [])
@@ -64,7 +62,7 @@ export const peopleIn = (id) => [
 		...(threads.find((t) => t.id === id)?.readers ?? []),
 	]),
 ]
-// The thread on screen and its family: what it forked from, the threads its agents started, and theirs.
+/** The thread on screen and its family */
 export function family() {
 	if (!current) return []
 	const byId = new Map(threads.map((t) => [t.id, t]))
@@ -78,7 +76,7 @@ export function family() {
 	if (!out.includes(current)) out.push(current)
 	return out.filter((id) => byId.has(id))
 }
-// A name alone is that agent in this thread, or a bot; anything else is model:thinking@runner.
+/** A name alone is that agent in this thread, or a bot */
 export function resolveAgent(text) {
 	const there = threads.find((t) => t.id === current)?.agents.find((a) => a.name === text)
 	if (there?.to) return there.to
@@ -86,8 +84,7 @@ export function resolveAgent(text) {
 	return bot ? botAgent(bot) : parseAgent(text)
 }
 
-// Whom the next message asks: your picks, the same as the line under the composer. Typed there, the line stays as
-// you wrote it; picked anywhere else, it's written again from the picks.
+/** Whom the next message asks: your picks, the same as the line under the composer */
 export let picks = [],
 	picksTyped = false
 export const choose = (next, typed = false) => {
@@ -95,26 +92,26 @@ export const choose = (next, typed = false) => {
 	picksTyped = typed
 	changed()
 }
-// At a bot's home the bot, anywhere else your picks.
+/** At a bot's home the bot, anywhere else your picks */
 export const recipients = () => (homeBot(current) ? [botAgent(homeBot(current))] : picks)
-// What each runner's card is set to: the model and thinking it asks with, kept when it's not picked. A named pick,
-// such as a bot, is an agent of its own there, not the card's.
+/** What each runner's card is set to */
 export const runnerSettings = {}
 export const pickOn = (r) => picks.find((p) => p.runner === r.name && !p.name)
 export const settingFor = (r) => {
 	const p = pickOn(r)
-	// Low thinking unless you turn it up: quick answers suit a page you play with.
 	return p
 		? { model: p.model, thinkingLevel: p.thinkingLevel, dir: p.dir }
 		: (runnerSettings[r.name] ?? { model: r.model, thinkingLevel: 'low' })
 }
 export function tune(r, change) {
-	const next = Object.fromEntries(Object.entries({ ...settingFor(r), ...change }).filter(([, v]) => v))
+	const next = Object.fromEntries(
+		Object.entries({ ...settingFor(r), ...change }).filter(([, v]) => v),
+	)
 	runnerSettings[r.name] = next
 	if (pickOn(r)) choose(picks.map((p) => (p === pickOn(r) ? { runner: r.name, ...next } : p)))
 	else changed()
 }
-// Ask this runner, or with also, ask it too, or stop asking it.
+/** Ask this runner, or with also, ask it too, or stop asking it */
 export function pickRunner(r, also) {
 	const self = { runner: r.name, ...settingFor(r) }
 	const on = pickOn(r)
@@ -139,7 +136,7 @@ export const setNewThreadTools = (tools) => {
 	changed()
 }
 
-// Calls to the server.
+/** Calls to the server */
 export async function ask(body, to = recipients()) {
 	if (!to.length) return
 	if (!current) {
@@ -156,13 +153,14 @@ export async function ask(body, to = recipients()) {
 export async function fork(id, at) {
 	openThread((await api(`/api/threads/${id}/fork`, { at })).id)
 }
-// Hides it; Pi keeps everything.
+/** Hides it; Pi keeps everything */
 export async function deleteThread(id) {
 	await fetch(`${url}/api/threads/${id}`, { method: 'DELETE', headers: { 'x-user': me } })
 	if (family().includes(id)) openThread(null)
 	else refresh()
 }
-export const setThreadTools = (tools) => api(`/api/threads/${current}/tools`, { tools }).then(refresh)
+export const setThreadTools = (tools) =>
+	api(`/api/threads/${current}/tools`, { tools }).then(refresh)
 export const saveBot = (change) =>
 	api('/api/bots', change)
 		.then(refresh)
@@ -178,7 +176,7 @@ export async function forgetBot(name) {
 	refresh()
 }
 
-// Fetches what changed; the server says when over /ws.
+/** Fetches what changed; the server says when over /ws */
 let fetching = null,
 	again = false
 export async function refresh() {
@@ -193,7 +191,6 @@ export async function refresh() {
 		threads = t ?? []
 		modules ??= (await api('/api/server').catch(() => null))?.modules ?? null
 		bots = modules?.includes('bots') ? await api('/api/bots').catch(() => bots) : []
-		// A thread that's gone, deleted here or elsewhere, leaves a new one in its place.
 		if (t && current && !threads.some((x) => x.id === current)) current = null
 		const home = runners.find((x) => x.online) ?? runners[0]
 		if (!picks.length && home?.model) {
@@ -211,7 +208,7 @@ export async function refresh() {
 	}
 }
 
-// One socket hears that something changed; one per thread on screen streams its entries and what its agents are doing.
+/** One socket hears that something changed */
 export function watchServer() {
 	const socket = new WebSocket(`${url.replace(/^http/, 'ws')}/ws`)
 	socket.onopen = refresh
@@ -238,7 +235,6 @@ function watchThreads() {
 		socket.onmessage = (m) => {
 			const { thread, agent, live, entries: more } = JSON.parse(m.data)
 			if (live) doing.set(`${thread} ${agent}`, live)
-			// A socket opened again sends every entry again; each is kept once.
 			if (more) {
 				const had = entries.get(thread) ?? []
 				const seen = new Set(had.map((e) => e.id))

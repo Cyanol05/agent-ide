@@ -1,6 +1,4 @@
-// `curl -fsSL <server>/connect-runner | sh` installs a runner from the server and starts it. When the server is deployed
-// with a different runner, the installed one updates itself once it's idle, and answers again. A runner started from
-// a checkout is told it's outdated, and carries on.
+/** `curl -fsSL <server>/connect-runner | sh` installs a runner from the server and starts it */
 import { spawn } from 'node:child_process'
 import { cpSync, mkdirSync, readFileSync, readdirSync, appendFileSync, symlinkSync } from 'node:fs'
 import os from 'node:os'
@@ -69,12 +67,13 @@ const {
 } = await api('POST', '/api/threads', { title: 'installed' })
 check((await ask(id, 1)).includes('echo@fresh heard'), 'an agent on it answers')
 
-// A deploy: the server again, from a copy whose runner differs by one line.
+/** A deploy: the server again, from a copy whose runner differs by one line */
 const deployed = path.join(tmp, 'deployed')
 mkdirSync(deployed)
 for (const f of readdirSync(repo).filter((f) => /\.(js|html|json)$/.test(f)))
 	cpSync(path.join(repo, f), path.join(deployed, f))
-cpSync(path.join(repo, 'apps'), path.join(deployed, 'apps'), { recursive: true })
+for (const d of ['apps', 'modules'])
+	cpSync(path.join(repo, d), path.join(deployed, d), { recursive: true })
 symlinkSync(path.join(repo, 'node_modules'), path.join(deployed, 'node_modules'))
 appendFileSync(path.join(deployed, 'remote.js'), '// deployed\n')
 srv.kill('SIGTERM')

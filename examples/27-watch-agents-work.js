@@ -1,6 +1,4 @@
-// A browser watching a thread hears its messages, every one first and then each as it lands, and what each agent is
-// doing as it changes: its run, the reply it's writing, and its tool calls with their arguments, all before the answer
-// lands. Watching again, as after a reconnect or a restart, starts from the whole thread and what the agent does now.
+/** A browser watching a thread hears its messages, every one first and then each as it lands, and what each agent is doing as it changes */
 import {
 	answered,
 	api,
@@ -26,7 +24,7 @@ const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'live' })
 
-// Every message the socket hears for the thread, in order: `{entries}` or `{agent, live}`.
+/** Every message the socket hears for the thread, in order: `{entries}` or `{agent, live}` */
 function watch(thread) {
 	const heard = []
 	const socket = new WebSocket(`${base.replace('http', 'ws')}/ws`)
@@ -62,7 +60,7 @@ check(
 	'an agent the thread asks is followed from then on',
 )
 
-// Joining mid-run, the first word shows the running tool call and what it runs.
+/** Joining mid-run, the first word shows the running tool call and what it runs */
 const running = (live) =>
 	live.run && live.tools.some((t) => t.name === 'bash' && t.status === 'running')
 await until(async () => lives(first.heard).some(running), 8000, 20)
@@ -99,7 +97,7 @@ check(
 	JSON.stringify(lives(first.heard).at(-1))?.slice(0, 200),
 )
 
-// A burst bigger than Pi's window still arrives whole, in order, each message once.
+/** A burst bigger than Pi's window still arrives whole, in order, each message once */
 const burst = Array.from({ length: 250 }, (_, i) => `note ${i}`)
 await Promise.all(
 	burst.map((body) => api('POST', `/api/threads/${id}/entries`, { body, to: null })),
@@ -115,7 +113,7 @@ check(
 )
 first.close()
 
-// A restart closes the socket; watching the new server starts from where the agent is.
+// A restart closes the socket
 srv.kill('SIGKILL')
 await sleep(500)
 srv = await server()

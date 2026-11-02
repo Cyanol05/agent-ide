@@ -1,11 +1,10 @@
-// The runner reports status only to a terminal that answers the OSC 7501 query before device attributes (DA),
-// which every terminal answers. We play the terminal in a pty (Bun 1.3.5+): once answering both, once only DA.
+/** The runner reports status only to a terminal that answers the OSC 7501 query before device attributes (DA), which every terminal answers */
 import { base, check, dir, done, home, repo, server } from './lib.js'
 
 async function terminal(answers7501, ms = 4000) {
 	let out = ''
 	let answered = false
-	// A home of its own, as every example's runner has: no pi extensions to load first.
+	/** A home of its own, as every example's runner has: no pi extensions to load first */
 	const env = { ...process.env, HOME: home }
 	delete env.STATUS
 	const p = Bun.spawn(

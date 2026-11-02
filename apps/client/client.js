@@ -1,5 +1,4 @@
-// The web client on the page's stage. render() draws what's on screen, slot by slot, from what state.js knows;
-// each slot is a component, a function from data to nodes: Thread, ThreadItem, BotItem, Runner, Fleet, Picker.
+/** The web client on the page's stage */
 import './agent-memory.js'
 import { wires } from './wires.js'
 import { $, h, dotClass, drawer, phone } from './dom.js'
@@ -34,10 +33,10 @@ import {
 } from './state.js'
 import { NewThread, Thread, ThreadItem, Tools, threadNodes } from './thread.js'
 import { BotItem, BotSettings, NewBot } from './bot.js'
-import { Runner, FleetSummary, drawFleet } from './runner.js'
+import { Runner, RunnerCount, drawRunnerList } from './runner.js'
 import { drawComposer, form, pickButton } from './composer.js'
 
-// Just the chat, or the chat beside the story; the link remembers which.
+/** Just the chat, or the chat beside the story; the link remembers which */
 const setChatOnly = (chat) => {
 	document.body.classList.toggle('chat', chat)
 	$('mode').textContent = chat ? 'With the story' : 'Just the chat'
@@ -49,7 +48,6 @@ const setChatOnly = (chat) => {
 }
 $('mode').onclick = () => setChatOnly(!document.body.classList.contains('chat'))
 setChatOnly(params.has('chat'))
-// On a phone: all threads on the left, this thread's details on the right.
 $('back').onclick = () => drawer('list')
 $('pill').onclick = () => drawer('side')
 $('scrim').onclick = () => drawer(null)
@@ -61,12 +59,13 @@ phone.addEventListener('change', () => {
 	render()
 })
 
-// The thread's details hold its tools, for the thread on screen or the one about to start; at a bot's home, the bot's.
-const threadTools = Tools(null, (tools) => (current ? setThreadTools(tools) : setNewThreadTools(tools)))
+/** The thread's details hold its tools, for the thread on screen or the one about to start */
+const threadTools = Tools(null, (tools) =>
+	current ? setThreadTools(tools) : setNewThreadTools(tools),
+)
 $('side').append(h('h3', { textContent: 'Tools' }), threadTools, BotSettings(null))
 
-// Every thread on the server, newest first; a new one always on top. With bots, theirs first: a bot's row is its
-// home thread under its name.
+/** Every thread on the server, newest first; a new one always on top */
 function ThreadList() {
 	const homes = new Set(bots.map((b) => b.home))
 	const newBot = () => {
@@ -82,7 +81,12 @@ function ThreadList() {
 		}),
 		...(modules?.includes('bots')
 			? [
-					h('h3', {}, 'Bots', h('button', { type: 'button', textContent: '+ new', onclick: newBot })),
+					h(
+						'h3',
+						{},
+						'Bots',
+						h('button', { type: 'button', textContent: '+ new', onclick: newBot }),
+					),
 					h('ul', { className: 'bots' }, ...bots.map(BotItem)),
 					h('h3', { textContent: 'Threads' }),
 				]
@@ -94,10 +98,10 @@ function ThreadList() {
 				.filter((t) => !t.hidden && !homes.has(t.id) && !threads.some((p) => p.id === t.parent))
 				.map((t) => ThreadItem(t)),
 		),
-		$('fleet-open'),
+		$('runner-count'),
 	]
 }
-// Who's here, named as their messages name them.
+/** Who's here, named as their messages name them */
 const Members = (here) =>
 	[...peopleIn(current), ...(here?.agents ?? []).map((a) => a.name)].flatMap((n, i) => [
 		i ? ', ' : '',
@@ -110,7 +114,7 @@ function render() {
 	$('server').classList.toggle('off', !connected)
 	$('server').querySelector('.dot').className = dotClass(connected ? 'on' : '')
 	$('server').querySelector('code').textContent = url
-	// Another machine can't reach localhost; it needs the server's name on the network.
+	/** Another machine can't reach localhost; it needs the server's name on the network */
 	const reachable = /^https?:\/\/(localhost|127\.|\[::1\])/.test(url)
 		? url.replace(/\/\/[^:/]+/, '//yourbox')
 		: url
@@ -118,7 +122,7 @@ function render() {
 
 	const shown = family()
 	const shownThreads = shown.map((id) => threads.find((t) => t.id === id)).filter(Boolean)
-	// Moved only when they change: taking a thread out and back would lose the cursor in it.
+	/** Moved only when they change: taking a thread out and back would lose the cursor in it */
 	const next = [...shown.map(Thread), ...(current ? [] : [NewThread()])]
 	if (
 		next.length !== $('threads').children.length ||
@@ -132,12 +136,11 @@ function render() {
 	if (!$('list').contains(document.activeElement) || document.activeElement.tagName !== 'INPUT')
 		$('list').replaceChildren(...ThreadList())
 
-	// The phone's bar names the thread; its drawer lists the family, children indented under their parent.
+	/** The phone's bar names the thread */
 	const here = threads.find((t) => t.id === current)
 	$('pill').lastChild.textContent = current ? here?.title || 'untitled' : 'New thread'
 	$('pill').firstChild.className = dotClass(here?.status)
 	$('pill').classList.toggle('hands-off', Boolean(current ? here?.tools : newThreadTools))
-	// show keeps the field as typed while it has the cursor.
 	threadTools.show(current ? here?.tools : newThreadTools)
 	const depth = (id) => {
 		let d = 0
@@ -153,10 +156,10 @@ function render() {
 	$('members').replaceChildren(...Members(here))
 
 	drawComposer()
-	$('fleet-open').replaceChildren(...FleetSummary())
-	drawFleet()
+	$('runner-count').replaceChildren(...RunnerCount())
+	drawRunnerList()
 
-	// A runner is one card: click it to ask it, shift-click to ask it too. Its model and thinking are set on the card.
+	/** A runner is one card: click it to ask it, shift-click to ask it too */
 	const asked = shownThreads.flatMap((t) => t.agents.map((a) => ({ ...a, thread: t.id })))
 	const sig = JSON.stringify([
 		runners.map((r) => [r.name, r.online, r.dir, r.model, r.offers]),
@@ -172,7 +175,7 @@ function render() {
 	drawWires(shownThreads)
 }
 
-// Only the connections live here; wires owns their geometry.
+/** Only the connections live here; wires owns their geometry */
 const canvas = wires($('canvas'))
 function drawWires(shownThreads) {
 	const asking = recipients()
@@ -190,7 +193,7 @@ function drawWires(shownThreads) {
 			className: connected ? '' : 'off',
 		},
 	]
-	// A runner a thread wires to needs no wire of its own from the server: the thread's is that connection.
+	/** A runner a thread wires to needs no wire of its own from the server */
 	const reached = new Set([
 		...asking.map((p) => p.runner),
 		...shownThreads.flatMap((t) => t.agents.map((a) => a.to.runner)),
@@ -224,7 +227,6 @@ function drawWires(shownThreads) {
 }
 
 onChange(render)
-// Memory follows the current thread on its own; the page only says which.
 $('memory').setAttribute('server', url)
 watchServer()
 setInterval(refresh, 5000)

@@ -1,5 +1,4 @@
-// The runner tells its terminal over OSC 7501 how its threads stand: a root record and one per thread, with no
-// prompt or answer text. Its stdout is a pipe here, so STATUS=1 forces reports on; 09 shows a real terminal.
+/** The runner tells its terminal over OSC 7501 how its threads stand */
 import { api, check, done, runner, server, sleep, until, view } from './lib.js'
 
 const reports = []
@@ -28,7 +27,7 @@ function watch(p) {
 
 const srv = await server()
 
-// Off by default when stdout isn't a terminal: no reports at all.
+/** Off by default when stdout isn't a terminal: no reports at all */
 const quiet = await runner('quiet', { wait: false })
 let quietOut = ''
 quiet.stdout.on('data', (d) => {
@@ -72,7 +71,7 @@ check(
 )
 check(!reports.some((r) => r.app && r.id), 'only the root names the app; threads inherit it')
 
-// A command in the runner's folder: working, root too, then done.
+// A command in the runner's folder
 await api('POST', `/api/threads/${id}/entries`, { body: '$ sleep 1.5' })
 check(
 	Boolean(
@@ -92,7 +91,7 @@ check(
 	'done again after it, root idle',
 )
 
-// Another reader reading it changes nothing; the owner reading it clears the record.
+// Another reader reading it changes nothing
 await api('POST', `/api/threads/${id}/read`, {}, 'ana')
 await sleep(500)
 check(record(id)?.state === 'done', 'someone else reading leaves it done for the owner')
@@ -103,7 +102,7 @@ check(
 	JSON.stringify(reports.at(-1)),
 )
 
-// A thread whose agents are on another runner never shows here.
+/** A thread whose agents are on another runner never shows here */
 const {
 	json: { id: other },
 } = await api('POST', '/api/threads', { title: 'Elsewhere' })
@@ -127,7 +126,7 @@ check(
 	JSON.stringify(reports.slice(before)),
 )
 
-// A failure: the reader sees error until they read it.
+/** A failure: the reader sees error until they read it */
 const {
 	json: { id: broken },
 } = await api('POST', '/api/threads', { title: 'Broken' })
@@ -145,7 +144,7 @@ check(
 	'the API says error too',
 )
 
-// The server goes away: thread records are cleared, the root says it's offline.
+// The server goes away
 srv.kill()
 check(
 	Boolean(

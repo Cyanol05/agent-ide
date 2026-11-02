@@ -1,5 +1,4 @@
-// A thread's memory: one line of at most 512 bytes per message, merged in pairs up a binary tree. Line (l, i) covers
-// messages i·2^l to (i+1)·2^l - 1 by position.
+/** A thread's memory */
 import { retryAssistantCall } from '@earendil-works/pi-ai'
 import { num, obj, opt } from '@earendil-works/pi-schema'
 import {
@@ -9,8 +8,8 @@ import {
 	defineTool,
 	hook,
 } from '@earendil-works/pi-durable'
-import { messageText } from './remote.js'
-import { agentTo, collect, said } from './util.js'
+import { messageText } from '../remote.js'
+import { agentTo, collect, said } from '../util.js'
 
 const KIND = 'agent-ide.line'
 const RETRY = { enabled: true, maxRetries: 10, baseDelayMs: 2000 }
@@ -18,13 +17,13 @@ const LINE = 512,
 	PANEL = 64 * 1024,
 	CONTEXT = 16 * 1024,
 	RETRIES = 5
-// A zoomed page fits under Pi's cap on a tool's output, 2000 lines or 50 KB: 16K UTF-16 units are at most 48 KB.
+/** A zoomed page fits under Pi's cap on a tool's output, 2000 lines or 50 KB */
 const PAGE = 16 * 1024,
 	PAGE_LINES = /^(?:[^\n]*\n){1000}/
 const bytes = (text) => Buffer.byteLength(text)
 const key = (l, i) => `${l}:${i}`
 const RULER = '-'.repeat(LINE)
-// The first LINE bytes, whole characters only.
+/** The first LINE bytes, whole characters only */
 const cut = (text) => {
 	let s = Buffer.from(text).subarray(0, LINE).toString()
 	while (bytes(s) > LINE) s = s.slice(0, -1)
@@ -86,7 +85,6 @@ export function server(core) {
 	if (!name?.includes('@')) throw new Error('memory needs MEMORY_MODEL=model@runner')
 	const writer = agentTo(name)
 
-	// Its own lines, then those of the thread it forked from that end before the fork. Reads only: call before writing.
 	async function lines(tx, threadId) {
 		const map = new Map()
 		const own = await collect((cursor) =>
@@ -109,7 +107,6 @@ export function server(core) {
 		return map
 	}
 
-	// The shortest of a few tries wins, even over the limit: a cut would drop what came last, not what matters least.
 	async function lineOf(source, task, signal) {
 		if (bytes(source) <= LINE) return source
 		await core.runners.online(writer.runner, signal)
@@ -128,7 +125,6 @@ export function server(core) {
 			)
 			if (reply.stopReason === 'error' || reply.stopReason === 'aborted')
 				throw new Error(reply.errorMessage ?? reply.stopReason)
-			// A writer sometimes copies the `id+n|` marks of the lines it was shown; a line carries none of its own.
 			const text = messageText(reply)
 				.replace(/(^|\s)\d+\+\d+\|/g, '$1')
 				.trim()
@@ -148,7 +144,6 @@ export function server(core) {
 		version: 1,
 		initial: () => ({ phase: 'write' }),
 		phases: {
-			// { entry } compresses a message, { l, i } merges.
 			async write({ conversationId: threadId, input }, rt, ctx) {
 				const all = await core.messages(threadId)
 				const have = await core.commit((tx) => lines(tx, threadId))
@@ -189,19 +184,16 @@ export function server(core) {
 		abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),
 	})
 
-	// The newest thread position the agent's conversation had been given before `firstKept`, or -1.
 	async function cutPosition(agent, firstKept, threadId) {
 		const newest = Math.max(-1, ...(await core.seenBy(agent, firstKept - 1)))
 		return (await core.messages(threadId)).findIndex((e) => e.id === newest)
 	}
 
-	// As many bytes as the model has tokens: about a quarter of its window.
 	async function budget(agent) {
 		const to = await core.agentOf(agent)
 		return (to && core.models.getModel(`runner:${to.runner}`, to.model)?.contextWindow) || PANEL
 	}
 
-	// Compaction's summary is the thread's memory up to the cut; no model writes it.
 	const beforeCompact = async ({ firstKept }, api) => {
 		const home = await core.home(api.conversationId)
 		if (!home?.thread) return undefined
@@ -219,7 +211,6 @@ export function server(core) {
 			: undefined
 	}
 
-	// The newest messages whole, at least the last, as far as the budget goes; the older ones as memory.
 	async function catchUp(threadId, held, all, agent) {
 		const most = await budget(agent)
 		let k = held.length - 1,
@@ -237,7 +228,6 @@ export function server(core) {
 		return `${render(older)}\n\n${whole}`
 	}
 
-	// The two lines `id+n` was made from, or with n = 1 the message whole.
 	async function open(thread, id, n) {
 		const all = await core.messages(thread)
 		const l = Math.log2(n)
@@ -273,14 +263,12 @@ export function server(core) {
 		},
 	})
 
-	// `?zoom=id,n` answers as zoom does.
 	async function serve(thread, query) {
 		if (thread === undefined) throw new Error('Memory is per thread: /api/threads/:id/memory')
 		if (query.has('zoom')) {
 			const opened = await open(thread, ...query.get('zoom').split(',').map(Number))
 			return typeof opened === 'string' ? { message: opened } : { lines: opened.map(span) }
 		}
-		// `?budget=bytes` is what an agent with that much room would read: old messages coarse, the latest fine.
 		const T = (await core.messages(thread)).length
 		const budget = Math.min(Number(query.get('budget')) || PANEL, PANEL)
 		return { lines: memory(await core.commit((tx) => lines(tx, thread)), T, budget).map(span) }
@@ -300,8 +288,7 @@ export function server(core) {
 	}
 }
 
-// Lines over messages from..T-1, merging the most due pair, (T - last) / 2^l, until they fit the budget. A written
-// parent beats an unwritten one; ties go to the oldest.
+/** Lines over messages from..T-1, merging the most due pair, (T - last) / 2^l, until they fit the budget */
 export function memory(lines, T, budget, from = 0) {
 	const list = Array.from(
 		{ length: T - from },
@@ -330,7 +317,7 @@ export function memory(lines, T, budget, from = 0) {
 	return list
 }
 
-// Message `id` from character `at`, up to PAGE characters or PAGE_LINES lines, and where to go on.
+/** Message `id` from character `at`, up to PAGE characters or PAGE_LINES lines, and where to go on */
 function page(text, id, at) {
 	if (!Number.isInteger(at) || at < 0 || (at && at >= text.length))
 		throw new Error(`Message ${id} has ${text.length} characters; no page at ${at}`)

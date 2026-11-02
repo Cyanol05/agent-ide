@@ -1,8 +1,4 @@
-// A real model recalls a fact from before its compaction: a locker code planted early, then enough filler to cut it out
-// of the agent's context, then a question only zoom can answer word for word. Its runner is pi's own models in this
-// process, each with a 40000-token window so a compaction comes soon.
-// Uses this machine's pi login and some tokens; skipped without one. Whether the model zooms is its own choice.
-// bun examples/19-memory-recall-real-model.js [agent model] [memory model]
+/** A real model recalls a fact from before its compaction */
 import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -69,7 +65,7 @@ await api('POST', `/api/threads/${id}/entries`, {
 	to: null,
 })
 await ask('Note this.', 1)
-// Its line first, so the compaction's memory holds it.
+// Its line first, so the compaction's memory holds it
 await until(async () => (await linesOf(id)).some((x) => x.l === 0 && x.i === 0), 120000, 1000)
 for (let k = 0; k < 25; k++)
 	await api('POST', `/api/threads/${id}/entries`, { body: prose(`garden ${k}`, 4000), to: null })

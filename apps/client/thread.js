@@ -1,4 +1,4 @@
-// A thread on screen, its entries, and the ways the page points at one: a row, a link, its tools.
+/** A thread on screen, its entries, and the ways the page points at one */
 import { h, dotClass, drawer } from './dom.js'
 import { authorLabel, lastToolCall, messageText } from './agent.js'
 import {
@@ -20,7 +20,7 @@ import {
 } from './state.js'
 import { form, openPicker, pickButton } from './composer.js'
 
-// A thread's name opens its details in the chat, and writes in it on the page with the story.
+/** A thread's name opens its details in the chat, and writes in it on the page with the story */
 const onTitle = (id) => () =>
 	current !== id
 		? openThread(id)
@@ -28,19 +28,22 @@ const onTitle = (id) => () =>
 			? drawer('side')
 			: form.querySelector('input').focus()
 
-// One node per thread on screen, kept: taking one out and back would lose the cursor in it. The composer sits in the
-// current one.
+/** One node per thread on screen, kept: taking one out and back would lose the cursor in it */
 export const threadNodes = new Map()
 const opened = new Set() // `${thread} ${entry}` of the answers opened to read in full
 export function Thread(id) {
 	const t = threads.find((x) => x.id === id)
 	let node = threadNodes.get(id)
 	if (!node) {
-		// A thread that isn't current shows a box to write in all the same; clicking it brings the composer, and its model the picker.
+		/** A thread that isn't current shows a box to write in all the same */
 		const write = h(
 			'form',
 			{ className: 'elsewhere' },
-			h('div', { className: 'box' }, h('input', { placeholder: 'Write here', onfocus: () => openThread(id) })),
+			h(
+				'div',
+				{ className: 'box' },
+				h('input', { placeholder: 'Write here', onfocus: () => openThread(id) }),
+			),
 			h(
 				'div',
 				{ className: 'bar' },
@@ -69,17 +72,21 @@ export function Thread(id) {
 	const [title, dot] = node.querySelector('header').children
 	title.textContent = t?.title || 'untitled'
 	dot.className = dotClass(t?.status)
-	// A fork says where it came from up top; a thread an agent started says it on the question it was asked.
+	/** A fork says where it came from up top */
 	const origin = forkedFrom(t)
 	const from = node.querySelector('nav.from')
 	const fromSig = JSON.stringify([origin, titleOf(origin)])
 	if (from.dataset.sig !== fromSig) {
 		from.dataset.sig = fromSig
-		from.replaceChildren(...(origin ? [ThreadLink(origin, `← forked from ${titleOf(origin)}`)] : []))
+		from.replaceChildren(
+			...(origin ? [ThreadLink(origin, `← forked from ${titleOf(origin)}`)] : []),
+		)
 	}
 	node.querySelector('form.elsewhere').hidden = id === current
-	node.querySelector('form.elsewhere .pick').replaceChildren(...pickButton.cloneNode(true).childNodes)
-	// Messages, then any reply still being written; the list keeps its place unless it was at the bottom.
+	node
+		.querySelector('form.elsewhere .pick')
+		.replaceChildren(...pickButton.cloneNode(true).childNodes)
+	/** Messages, then any reply still being written */
 	const list = node.querySelector('ul')
 	const writing = (t?.agents ?? [])
 		.map((a) => {
@@ -88,7 +95,7 @@ export function Thread(id) {
 		})
 		.filter(([, s, call]) => s || call)
 	const messages = (entries.get(id) ?? []).filter((x) => x.kind === 'agent-ide.message')
-	// Forks made from a message, as links under it.
+	/** Forks made from a message, as links under it */
 	const forksAt = new Map()
 	for (const f of threads)
 		if (forkedFrom(f) === id && !f.hidden)
@@ -105,7 +112,6 @@ export function Thread(id) {
 		const stuck = grew || list.scrollTop + list.clientHeight >= list.scrollHeight - 4
 		const newBot = homeBot(id)?.instructions === '' && homeBot(id)
 		list.replaceChildren(
-			// Page chrome, not a message: nobody said it.
 			...(newBot
 				? [
 						h('li', {
@@ -123,7 +129,7 @@ export function Thread(id) {
 	return node
 }
 
-// One message. One from another thread is a card: an answer to a post comes back as a reply, a post arrives as a question.
+/** One message */
 function Message(id, { id: at, data }, previous, forks) {
 	const elsewhere = data.from && data.from !== id
 	return h(
@@ -149,7 +155,6 @@ function Message(id, { id: at, data }, previous, forks) {
 						h(
 							'summary',
 							{},
-							// From a bot's home, the bot answered, its name the link; from anywhere else, it says where.
 							...(homeBot(data.from)?.name === data.author
 								? [
 										Object.assign(ThreadLink(data.from, authorLabel(data.author)), {
@@ -168,7 +173,11 @@ function Message(id, { id: at, data }, previous, forks) {
 				]
 			: [
 					elsewhere &&
-						h('div', { className: 'links' }, ThreadLink(data.from, `→ asked from ${titleOf(data.from)}`)),
+						h(
+							'div',
+							{ className: 'links' },
+							ThreadLink(data.from, `→ asked from ${titleOf(data.from)}`),
+						),
 					h('small', { title: data.author, style: colorOf(data.author) }, authorLabel(data.author)),
 					h('span', { className: 'body' }, data.body),
 				]),
@@ -181,7 +190,7 @@ function Message(id, { id: at, data }, previous, forks) {
 		}),
 	)
 }
-// A reply still being written, and the tool it's calling.
+/** A reply still being written, and the tool it's calling */
 const Writing = (name, text, call) =>
 	h(
 		'li',
@@ -190,7 +199,7 @@ const Writing = (name, text, call) =>
 		text,
 	)
 
-// Where a new thread starts: a box with the composer in it, until the first message makes the thread.
+/** Where a new thread starts */
 let newThread
 export function NewThread() {
 	newThread ??= h(
@@ -203,8 +212,7 @@ export function NewThread() {
 	return newThread
 }
 
-// A thread as a row, the same in the list of all threads and in a thread's family: its dot, its name, delete on hover.
-// A bot's home has no delete: hidden, it would strand the bot; forget it.
+/** A thread as a row, the same in the list of all threads and in a thread's family */
 export const ThreadItem = (t, depth = 0) =>
 	h(
 		'li',
@@ -227,7 +235,7 @@ export const ThreadItem = (t, depth = 0) =>
 			}),
 	)
 
-// A link to another thread; its dot lives in its own header and the list.
+/** A link to another thread; its dot lives in its own header and the list */
 export const ThreadLink = (id, label) =>
 	h(
 		'a',
@@ -242,8 +250,7 @@ export const ThreadLink = (id, label) =>
 		label,
 	)
 
-// A thread's tools, as `pi --tools` takes them: a toggle and the list it stands for, kept in step; either one sets
-// them. Hands off is the common case: its agents read and ask others. show(tools) draws it again.
+/** A thread's tools, as `pi --tools` takes them */
 export const HANDS_OFF = ['-write', '-edit', '-bash']
 const parseTools = (text) => text.split(/[\s,]+/).filter(Boolean)
 export function Tools(tools, set) {

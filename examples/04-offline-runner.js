@@ -1,11 +1,10 @@
-// A runner that goes away. A thread waiting for it is blocked, not failed; stopping it leaves it idle, with no error.
-// Pi on the runner resolves models, so an offline runner takes only a model it has run before.
+/** A runner that goes away */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { answered, api, check, dir, done, runner, server, sleep, until, view } from './lib.js'
 
 await server()
-// The models pi has enabled in the runner's folder are offered, and what it can't resolve is skipped.
+// The models pi has enabled in the runner's folder are offered, and what it can't resolve is skipped
 mkdirSync(path.join(dir, '.pi'))
 writeFileSync(
 	path.join(dir, '.pi', 'settings.json'),

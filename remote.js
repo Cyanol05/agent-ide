@@ -1,6 +1,4 @@
-// The runner protocol, both ends. Server: { id, op: 'resolve' | 'stream' | 'env' | 'handle' | 'cancel' | a module's, … }, or a message with no id, for modules.
-// Runner: { id, event } | { id, output } | { id, result } | { id, error }. A stream's context with `since` extends the
-// conversation of its session that the connection already holds.
+/** The runner protocol, both ends */
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -10,9 +8,14 @@ import { BACKGROUND_CONTEXT, withCancel } from '@earendil-works/chord/context'
 import { ExecutionError, FileError } from '@earendil-works/pi-durable/env'
 import { NodeExecutionEnv } from '@earendil-works/pi-durable/env/node'
 
-// What a runner is made of, as the server ships it: these files, and these packages at the versions installed beside
-// them. Its hash is the runner's version, so a server and a runner agree on it exactly when their code does.
-const RUNNER_FILES = ['runner.js', 'remote.js', 'modules.js', 'status.js', 'context.js']
+/** What a runner is made of, as the server ships it */
+const RUNNER_FILES = [
+	'runner.js',
+	'remote.js',
+	'modules.js',
+	'modules/status.js',
+	'modules/context.js',
+]
 const RUNNER_PACKAGES = [
 	'@earendil-works/chord',
 	'@earendil-works/pi-ai',
@@ -121,7 +124,7 @@ export function createRunners({ onChange }) {
 		})
 	}
 
-	// `message` can be a function of what the connection holds, made as it is sent.
+	/** `message` can be a function of what the connection holds, made as it is sent */
 	async function call(name, message, { signal, onMessage }) {
 		signal?.throwIfAborted()
 		await online(name, signal)
@@ -199,18 +202,17 @@ function failure(model, partial, message, aborted) {
 	}
 }
 
-// Both ends of a connection keep the conversations of its last few sessions, by the same rule in the same order, so
-// they always agree on what the runner holds; a new connection starts with none.
+/** Both ends of a connection keep the conversations of its last few sessions, by the same rule in the same order, so they always agree on what the runner holds */
 function keep(kept, key, messages) {
 	kept.delete(key)
 	kept.set(key, messages)
 	if (kept.size > 16) kept.delete(kept.keys().next().value)
 }
-// Pi hands over the same message objects turn after turn, so each is encoded once.
+/** Pi hands over the same message objects turn after turn, so each is encoded once */
 const encoded = new WeakMap()
 const encodeOnce = (m) => encoded.get(m) ?? encoded.set(m, encode(m)).get(m)
 
-// The models pi on the runner resolved, by `provider/id`.
+/** The models pi on the runner resolved, by `provider/id` */
 export function runnerProvider(runners, name, resolved = {}) {
 	const id = `runner:${name}`
 	const models = Object.entries(resolved).map(([ref, m]) => ({
@@ -233,7 +235,7 @@ export function runnerProvider(runners, name, resolved = {}) {
 			...rest
 		} = options
 		let partial
-		// A call sends only the messages since the session's last, when the connection holds that one.
+		/** A call sends only the messages since the session's last, when the connection holds that one */
 		const send = (held) => {
 			const key = rest.sessionId
 			const sent = context.messages.map(encodeOnce)
@@ -247,7 +249,7 @@ export function runnerProvider(runners, name, resolved = {}) {
 		runners
 			.call(name, send, {
 				signal,
-				// The runner sends the growing message only now and then; deltas in between reuse the last.
+				/** The runner sends the growing message only now and then; deltas in between reuse the last */
 				onMessage: ({ event }) => {
 					if (event.partial) partial = event.partial
 					else if (!['done', 'error'].includes(event.type)) event.partial = partial
@@ -331,11 +333,10 @@ export function remoteEnv(runners, name, cwd) {
 	return env
 }
 
-// Whether a path is one of `folders` or inside one: the folders a runner lends.
+/** Whether a path is one of `folders` or inside one: the folders a runner lends */
 export const within = (folders, p) => folders.some((f) => p === f || p.startsWith(f + path.sep))
 
-// `resolve(pattern)` is pi's `--model pattern`: { model, thinkingLevel? }. `echo/echo` answers from a queue, one per request.
-// `ops` are the modules' own, each under its name; an op nobody serves answers null. A read-only runner reads its folder and changes nothing.
+/** `resolve(pattern)` is pi's `--model pattern`: { model, thinkingLevel? */
 export function serveRunner({
 	name,
 	dir,
@@ -372,7 +373,7 @@ export function serveRunner({
 		return full
 	}
 
-	// A model goes to the server without its headers, which can hold credentials.
+	/** A model goes to the server without its headers, which can hold credentials */
 	async function resolved(pattern) {
 		const {
 			model: { headers, ...model },

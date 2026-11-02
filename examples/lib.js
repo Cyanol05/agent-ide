@@ -1,4 +1,4 @@
-// What every example shares: a server and runners on a free port with a throwaway store. VERBOSE=1 shows their output.
+/** What every example shares */
 import { spawn } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import os from 'node:os'
@@ -15,7 +15,7 @@ import { messageText as text, serveRunner } from '../remote.js'
 export const repo = path.resolve(import.meta.dirname, '..')
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-// The first server asks for port 0 and says which it got; later ones, restarts, keep it.
+/** The first server asks for port 0 and says which it got; later ones, restarts, keep it */
 export let base
 let port = 0
 
@@ -23,7 +23,7 @@ const tmp = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-example-'))
 export const db = path.join(tmp, 'store.sqlite')
 export const dir = path.join(tmp, 'folder')
 mkdirSync(dir)
-// Runners get a home of their own, so no pi logins; 11-real-model lends them the real one.
+/** Runners get a home of their own, so no pi logins; 11-real-model lends them the real one */
 export const home = path.join(tmp, 'home')
 mkdirSync(home)
 
@@ -73,7 +73,7 @@ export async function runner(name, { args = [], env = {}, wait = true } = {}) {
 	return p
 }
 
-// A new key for a runner, which the store keeps across restarts.
+/** A new key for a runner, which the store keeps across restarts */
 export const keyFor = async (name) => (await api('POST', '/api/runners', { name })).json.key
 
 export async function api(method, route, body, user = 'oskar') {
@@ -85,11 +85,11 @@ export async function api(method, route, body, user = 'oskar') {
 	return { status: res.status, json: await res.json() }
 }
 export const view = async (id) => (await api('GET', `/api/threads/${id}`)).json
-// An agent's own Pi conversation in a thread: its entries and docs.
+/** An agent's own Pi conversation in a thread: its entries and docs */
 export const conversationOf = async (v, name) =>
 	(await api('GET', `/api/conversations/${v.agents.find((a) => a.name === name)?.conversation}`))
 		.json
-// A thread's memory lines, from its raw Pi conversation.
+/** A thread's memory lines, from its raw Pi conversation */
 export const linesOf = async (id) =>
 	(await api('GET', `/api/conversations/${id}`)).json.entries
 		.filter((e) => e.kind === 'agent-ide.line')
@@ -125,7 +125,7 @@ export function done() {
 	process.exit(failed ? 1 : 0)
 }
 
-// A runner in this process, reconnecting like runner.js, serving `models` as `serveRunner` does.
+/** A runner in this process, reconnecting like runner.js, serving `models` as `serveRunner` does */
 export async function localRunner(
 	name,
 	{ models, resolve, echo, onTell, model = '', query = [], readOnly = false },
@@ -167,8 +167,7 @@ export async function localRunner(
 	}
 }
 
-// A local runner whose only model, echo/echo, answers route(request). `model` adds to it, like a small `contextWindow`
-// to force a compaction. `query` adds to what it says when it connects, like `[['owner', 'oskar']]`.
+/** A local runner whose only model, echo/echo, answers route(request) */
 export async function scriptedRunner(name, route, { onTell, model = {}, query, readOnly } = {}) {
 	const script = fauxProvider({
 		provider: 'echo',

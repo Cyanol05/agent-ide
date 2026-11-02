@@ -1,6 +1,4 @@
-// Retries never double. A client that lost a response posts again with the same requestId and gets the first result:
-// one thread, one message, one answer, one command, even when the server restarted between the two posts. A request
-// id used for another command is refused.
+/** Retries never double */
 import { answered, answers, api, check, done, runner, server, sleep, until, view } from './lib.js'
 
 let srv = await server()

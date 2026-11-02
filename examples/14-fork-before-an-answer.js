@@ -1,4 +1,4 @@
-// Forking before an agent's first answer. The fork keeps the agent, in a new conversation that has seen nothing.
+/** Forking before an agent's first answer */
 import {
 	answered,
 	api,

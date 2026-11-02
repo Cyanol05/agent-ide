@@ -1,4 +1,4 @@
-// Pure helpers the server and its modules share: nothing here touches state.
+/** Pure helpers the server and its modules share */
 
 export async function collect(scan) {
 	const items = []
@@ -11,9 +11,9 @@ export async function collect(scan) {
 	return items
 }
 
-// An agent's name in its thread: `model@runner`, unless `name` gives another.
+/** An agent's name in its thread: `model@runner`, unless `name` gives another */
 export const agentName = (to) => to && (to.name ?? `${to.model}@${to.runner}`)
-// `model@runner`, or a bare runner for its default model; `name=model@runner` names the agent it makes.
+/** `model@runner`, or a bare runner for its default model */
 export const agentTo = (name) => {
 	const eq = name.indexOf('=')
 	const recipe = name.slice(eq + 1)
@@ -24,7 +24,7 @@ export const agentTo = (name) => {
 		...(eq > 0 ? { name: name.slice(0, eq) } : {}),
 	}
 }
-// A person's name as one line of printable text, so no author can write a speaker line of their own.
+/** A person's name as one line of printable text, so no author can write a speaker line of their own */
 export const speaker = (name) =>
 	[
 		...String(name ?? '')
@@ -42,8 +42,7 @@ export function field(value, name) {
 	return value.trim()
 }
 
-// A message as an agent reads it: a speaker line, then its later lines indented, so no body can start a line that
-// looks like someone speaking. Agents are marked by what they wrote, never by their name: an answer, or a post.
+/** A message as an agent reads it */
 export function said({ data: m }) {
 	const agent = Boolean(m.answer || m.error || m.from)
 	const who = agent

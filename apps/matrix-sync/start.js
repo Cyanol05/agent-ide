@@ -1,5 +1,4 @@
-// agent-ide with its Matrix bridge, set up so that each Matrix thread where the bot is mentioned is one GitHub issue. Reads .env beside it,
-// from wherever it is run.
+/** agent-ide with its Matrix bridge, set up so that each Matrix thread where the bot is mentioned is one GitHub issue */
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import os from 'node:os'

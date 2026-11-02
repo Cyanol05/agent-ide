@@ -1,6 +1,4 @@
-// Wires between elements: wires(container).draw([{from, to, fromSide?, toSide?, fromAt?, toAt?, className?}]) replaces them all,
-// and they follow along on resize, scroll and layout changes.
-// Offsets: 0..1 is a fraction, other numbers are pixels (negative from the end); fromAt: 'to' aligns with the target.
+/** Wires between elements */
 export function wires(container) {
 	const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'),
 		position = container.style.position
@@ -22,7 +20,7 @@ export function wires(container) {
 			? [side === 'left' ? r.left : r.right, r.top + offset]
 			: [r.left + offset, side === 'top' ? r.top : r.bottom]
 	}
-	// Intersect every clipping ancestor, including nested scrolling lists.
+	/** Intersect every clipping ancestor, including nested scrolling lists */
 	const visible = (node) => {
 		if (!node?.isConnected) return false
 		let { left, right, top, bottom, width, height } = node.getBoundingClientRect()

@@ -1,12 +1,11 @@
-// A `post` call does everything in one commit, with a receipt keyed by its task id, so a replay finds it.
+/** A `post` call does everything in one commit, with a receipt keyed by its task id, so a replay finds it */
 import { num, obj, opt, str } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
-import { messageText } from './remote.js'
-import { agentName, field, said } from './util.js'
+import { messageText } from '../remote.js'
+import { agentName, field, said } from '../util.js'
 
 export function server(core) {
 	const { agentOf, home } = core
-	// The posts from thread `by` that were answered in `thread`.
 	const answered = async (thread, by) =>
 		new Set(
 			(await core.messages(thread))
@@ -34,15 +33,12 @@ export function server(core) {
 		replay: 'safe',
 		execute: async (args, api) => {
 			const { thread: from, name } = await home(api.conversationId)
-			// `to` as thread/name picks the thread too.
 			const thread = args.thread ?? (Number(args.to?.match(/^(\d+)\//)?.[1]) || undefined)
 			if (thread === from) throw new Error('That is your own thread; just answer')
-			// A replay would run it twice, and its output would never reach the agent.
 			if (/^\$\s/.test(args.body))
 				throw new Error('Run commands with your own bash tool, not as a post')
 			const title = thread === undefined ? field(args.title, 'title') : ''
 			if (thread !== undefined) await core.conversation(thread)
-			// Posting to a thread that asked you something answers it, until it's answered, so the answer to that ends the exchange.
 			const done = thread !== undefined && (await answered(thread, from))
 			const asked =
 				thread === undefined
@@ -101,7 +97,6 @@ export function server(core) {
 		},
 	})
 
-	// Not `read`: a tool of that name would replace Pi's own.
 	const threads = defineTool({
 		name: 'threads',
 		description:
@@ -161,7 +156,6 @@ export function server(core) {
 		},
 	})
 
-	// An agent's own conversation as lines: what it was handed, what it said, each call and what it printed.
 	async function work(threadId, { agent, query, last = 20 }) {
 		const { agents } = await core.thread(threadId)
 		const names = Object.keys(agents)
@@ -205,8 +199,6 @@ export function server(core) {
 			"A message from another thread says which. Whatever text you end a turn with is posted, so while you wait for answers from other threads, end your turn with no text at all, not even to say you are waiting: each answer wakes you. When you have nothing new to tell, end with no text too. Don't sleep or poll.",
 	}
 
-	// An answer to posts goes back to each thread they came from, asking every agent there who posted. A post the
-	// agent already answered with its post tool gets no second answer.
 	async function reply(posts, answeredIn, agent, body) {
 		const replies = []
 		for (const from of new Set(posts.map((p) => p.data.from))) {

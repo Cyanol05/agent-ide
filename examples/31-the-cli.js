@@ -1,4 +1,4 @@
-// The CLI sends to any agents, in a new thread or an old one, and prints their answers as they land.
+/** The CLI sends to any agents, in a new thread or an old one, and prints their answers as they land */
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { base, check, done, repo, runner, server } from './lib.js'

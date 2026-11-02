@@ -1,5 +1,4 @@
-// With memory, an agent zooms a line into the two it was made from, and down to a message whole, a long one in pages
-// that say where to go on; a line that isn't in the tree is an error. The prompt tells it to zoom before it guesses, and that an agent's word is only a claim. Without it, neither the tool nor the prompt.
+/** With memory, an agent zooms a line into the two it was made from, and down to a message whole, a long one in pages that say where to go on */
 import { rmSync } from 'node:fs'
 import { getCurrentTools } from '@earendil-works/pi-ai/utils/transcript'
 import {
@@ -45,9 +44,9 @@ const bodies = [0, 1, 2, 3].map((k) => {
 	const head = k ? `message ${k} ` : 'message 0 the secret is secret-42 '
 	return head + 'y'.repeat(1000 - head.length)
 })
-// A long paste: 5,000 lines of "line k", longer than a page.
+/** A long paste: 5,000 lines of "line k", longer than a page */
 const long = Array.from({ length: 5000 }, (_, k) => `line ${k}`).join('\n')
-// A message's later lines come indented, so none of them can pass for a speaker.
+/** A message's later lines come indented, so none of them can pass for a speaker */
 const said = `oskar: ${long.replace(/\n/g, '\n  ')}`
 const upTo = (n) => said.split('\n').slice(0, n).join('\n').length + 1
 const pageOf = (at, end) =>

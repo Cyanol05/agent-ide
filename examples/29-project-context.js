@@ -1,5 +1,4 @@
-// An agent reads what pi would read in its folder: the AGENTS.md files and the skills, found on its runner. An edit
-// counts from the next request. MODULES=-context leaves them out.
+/** An agent reads what pi would read in its folder */
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
@@ -23,7 +22,7 @@ writeFileSync(
 	'---\nname: greet\ndescription: Greet someone warmly.\n---\nSay bonjour.',
 )
 
-// The prompt as the agent's conversation holds it: every system message's text, in order.
+/** The prompt as the agent's conversation holds it: every system message's text, in order */
 const prompt = async (id) =>
 	JSON.stringify(
 		(await conversationOf(await view(id), 'echo/echo@laptop')).entries.filter(

@@ -1,6 +1,4 @@
-// The runner's updater, which `curl -fsSL <server>/connect-runner | sh` downloads and starts. It fetches the runner from
-// the server into ~/.agent-ide/runner, installs its packages, runs it, and fetches it again whenever the runner exits
-// to update. Built-ins only: nothing is installed when it starts. `--no-update` keeps the runner as it is.
+/** The runner's updater, which `curl -fsSL <server>/connect-runner | sh` downloads and starts */
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
@@ -19,13 +17,15 @@ const read = (file) =>
 	existsSync(path.join(home, file)) ? readFileSync(path.join(home, file), 'utf8') : ''
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-// The server's runner, installed here; true when that changed anything.
+/** The server's runner, installed here; true when that changed anything */
 async function install() {
 	const bundle = await (await fetch(`${server}/runner/bundle`)).json()
 	if (bundle.version === read('version')) return false
 	mkdirSync(home, { recursive: true })
-	for (const [file, text] of Object.entries(bundle.files))
+	for (const [file, text] of Object.entries(bundle.files)) {
+		mkdirSync(path.dirname(path.join(home, file)), { recursive: true })
 		writeFileSync(path.join(home, file), text)
+	}
 	const manifest = JSON.stringify(
 		{ name: 'agent-ide-runner', private: true, type: 'module', dependencies: bundle.dependencies },
 		null,
@@ -52,7 +52,7 @@ let runner
 for (const signal of ['SIGINT', 'SIGTERM'])
 	process.on(signal, () => (runner ? runner.kill(signal) : process.exit(0)))
 
-// An update that changed nothing would only be asked for again, so after one the runner stops asking.
+/** An update that changed nothing would only be asked for again, so after one the runner stops asking */
 let stale = false
 let asked = false
 for (;;) {

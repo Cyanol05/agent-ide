@@ -1,5 +1,4 @@
-// The composer: what you write, and whom it asks as one editable name. It moves into whichever thread is current;
-// its model button opens the picker.
+/** The composer: what you write, and whom it asks as one editable name */
 import { $, h, dotClass, placePopover } from './dom.js'
 import { THINKING_LEVELS, agentLabel, formatAgent, sameAgent } from './agent.js'
 import {
@@ -48,7 +47,6 @@ recipientsField.oninput = () => {
 	for (const { runner, name, ...set } of next) if (!name) runnerSettings[runner] = set
 	choose(next, true)
 }
-// Enter in the name line keeps the name; it doesn't send.
 recipientsField.onkeydown = (e) => {
 	if (e.key === 'Enter') e.preventDefault()
 }
@@ -63,7 +61,7 @@ picker.addEventListener('toggle', (e) => {
 	}
 })
 
-// The composer names whom it asks. A bot's home asks the bot.
+/** The composer names whom it asks */
 export function drawComposer() {
 	const asking = recipients()
 	const agents = threads.find((t) => t.id === current)?.agents ?? []
@@ -72,7 +70,6 @@ export function drawComposer() {
 	pickButton.children[1].textContent = asking.length
 		? asking.map(agentLabel).join(' + ')
 		: 'Pick a model'
-	// Whom it asks is the whole invite: asked once, an agent is in the thread.
 	form.querySelector('input').placeholder = asking.length
 		? `Ask ${asking.map(agentLabel).join(' and ')}`
 		: 'Pick whom to ask, below'
@@ -83,7 +80,7 @@ export function drawComposer() {
 		picker.querySelector('ul').replaceChildren(...Picker())
 }
 
-// The model picker: whom the next message asks, chosen where you write. One row per runner that's online, then bots.
+/** The model picker: whom the next message asks, chosen where you write */
 export function Picker() {
 	const online = runners.filter((r) => r.online)
 	const rows = online.map((r) => PickerRunner(r, online.length > 1))
@@ -96,7 +93,7 @@ function PickerRunner(r, several) {
 	const set = settingFor(r),
 		on = Boolean(pickOn(r))
 	const models = [...new Set([set.model, r.model, ...(r.offers ?? [])].filter(Boolean))]
-	// A model is a row: click to ask it here, shift-click to ask it too. Thinking is a row of steps; the lit one again goes back to default.
+	/** A model is a row: click to ask it here, shift-click to ask it too */
 	const model = (o) =>
 		h(
 			'button',
@@ -120,7 +117,7 @@ function PickerRunner(r, several) {
 			ariaPressed: String(set.thinkingLevel === x),
 			onclick: () => tune(r, { thinkingLevel: set.thinkingLevel === x ? undefined : x }),
 		})
-	// The folders it serves, when there's a choice: its first is '', the rest relative to it when inside.
+	/** The folders it serves, when there's a choice */
 	const folders = (r.folders ?? []).map((f) => {
 		const rel = f === r.dir ? '' : f.startsWith(`${r.dir}/`) ? f.slice(r.dir.length + 1) : f
 		return new Option(rel || f, rel)
@@ -158,7 +155,7 @@ function PickerRunner(r, several) {
 		where,
 	)
 }
-// A bot: click to ask it here, shift-click to ask it too.
+/** A bot: click to ask it here, shift-click to ask it too */
 function PickerBot(b) {
 	const on = picks.some((p) => p.name === b.name)
 	return h(

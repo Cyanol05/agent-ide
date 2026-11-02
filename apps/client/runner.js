@@ -1,10 +1,9 @@
-// Runners: a card for each on the stage, and the fleet, the popover listing them all and how to add one.
+/** Runners */
 import { $, h, dotClass, placePopover } from './dom.js'
 import { THINKING_LEVELS, agentKey, busiest, lastToolCall } from './agent.js'
 import { doing, pickOn, pickRunner, picks, runners, settingFor, threads, tune } from './state.js'
 
-// One runner: its dot, its folder, the model it asks with and how hard it thinks, and what its agents are calling.
-// Agents the threads asked here with another model or name get a quiet row of their own, for their wire and dot.
+/** One runner */
 export function Runner(r, asked) {
 	const set = settingFor(r)
 	const on = Boolean(pickOn(r)),
@@ -37,7 +36,7 @@ export function Runner(r, asked) {
 		...models.map((o) => new Option(o, o)),
 	)
 	swap.value = set.model ?? ''
-	// How hard it thinks: a slider from the runner's default up to max.
+	/** How hard it thinks: a slider from the runner's default up to max */
 	const knob = h('input', {
 		type: 'range',
 		min: 0,
@@ -68,22 +67,25 @@ export function Runner(r, asked) {
 			{ className: 'models' },
 			models.length && row(own, swap, knob),
 			...others.map((to) =>
-				row(to, h('span', { className: 'name', textContent: to.name ?? to.model, title: to.model })),
+				row(
+					to,
+					h('span', { className: 'name', textContent: to.name ?? to.model, title: to.model }),
+				),
 			),
 		),
 	)
 }
 
-// The fleet's button: a dot per runner, and how many are online.
-export function FleetSummary() {
+/** The runner list's button: a dot per runner, and how many are online */
+export function RunnerCount() {
 	const online = runners.filter((r) => r.online).length
 	return [
 		...runners.map((r) => h('span', { className: dotClass(r.online ? 'on' : '') })),
 		h('span', { textContent: `${online} runner${online === 1 ? '' : 's'} online` }),
 	]
 }
-// The runners connected to this server: who's there, where, and what they're doing.
-export function Fleet() {
+/** The runners connected to this server: who's there, where, and what they're doing */
+export function RunnerList() {
 	const busy = (r) =>
 		threads.flatMap((t) =>
 			t.agents
@@ -113,17 +115,17 @@ export function Fleet() {
 		)
 	})
 }
-// The fleet popover, and under it how to add a runner: the line the page shows in the story.
-const fleet = $('fleet')
-export function drawFleet() {
-	if (!fleet.matches(':popover-open')) return
-	fleet.querySelector('ul').replaceChildren(...Fleet())
-	fleet.querySelector('pre').textContent = $('lend').textContent
+/** The runner list, and under it how to add a runner: the line the page shows in the story */
+const list = $('runner-list')
+export function drawRunnerList() {
+	if (!list.matches(':popover-open')) return
+	list.querySelector('ul').replaceChildren(...RunnerList())
+	list.querySelector('pre').textContent = $('lend').textContent
 }
-$('fleet-open').onclick = () => fleet.togglePopover()
-fleet.addEventListener('toggle', (e) => {
+$('runner-count').onclick = () => list.togglePopover()
+list.addEventListener('toggle', (e) => {
 	if (e.newState === 'open') {
-		drawFleet()
-		placePopover(fleet, $('fleet-open'))
+		drawRunnerList()
+		placePopover(list, $('runner-count'))
 	}
 })

@@ -1,6 +1,4 @@
-// Forking at any entry: a new thread with everything up to there, and each agent's conversation forked at the last
-// answer it gave by then, so it catches up on the rest. Authors survive a fork and a fork of a fork. A fork of a busy
-// thread starts idle; after a restart the director knows a fork's agents.
+/** Forking at any entry */
 import {
 	answered,
 	answers,
@@ -73,7 +71,7 @@ check(
 	'fork is in the thread list',
 )
 
-// Post in the fork: the forked agent catches up on what's new since that answer, and nothing reaches the source.
+// Post in the fork
 await api('POST', `/api/threads/${f}/entries`, { body: 'other way' }, 'ben')
 fv = await answered(f, 2)
 const ben = fv?.entries.find((e) => e.data.author === 'ben')
@@ -107,7 +105,7 @@ check(
 	brief(f2v),
 )
 
-// A fork of a busy thread: runner offline, its input queued in the source. The fork starts idle.
+// A fork of a busy thread
 laptop.kill()
 await until(() => api('GET', '/api/runners').then((r) => r.json.every((x) => !x.online)))
 await api('POST', `/api/threads/${a}/entries`, { body: 'while away' }, 'cy')
@@ -121,7 +119,7 @@ check(
 	JSON.stringify({ status: f3v.status, agents: f3v.agents }),
 )
 
-// Restart with the director: the queued input is followed in the source, not the fork.
+// Restart with the director
 srv.kill()
 await sleep(500)
 srv = await server({ MODULES: '+director' })

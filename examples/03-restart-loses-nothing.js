@@ -1,6 +1,4 @@
-// A restart loses nothing. Ben posts while the runner is offline, so his message is written but not yet delivered to
-// the agent, and the server is killed in between. After the restart his message is still on its way, still his, and
-// answered once the runner is back. A clean stop in between changes nothing either.
+/** A restart loses nothing */
 import {
 	answered,
 	answers,
@@ -47,7 +45,7 @@ srv = await server()
 const queued = await view(id)
 check(queued.status === 'blocked', 'after restart the delivery waits for the runner', queued.status)
 
-// A stop closes Pi on its way out, quickly, and the delivery still waits.
+// A stop closes Pi on its way out, quickly, and the delivery still waits
 srv.kill('SIGTERM')
 check(
 	await Promise.race([new Promise((r) => srv.on('exit', () => r(true))), sleep(3000)]),

@@ -1,7 +1,4 @@
-// The Matrix bridge, against a fake homeserver in this process. Every message lands once in the thread kept for its
-// room or its Matrix thread. A mention by one of MATRIX_USERS asks the agent, in a Matrix thread of its own when it's
-// top-level, and their later messages there ask it again. Answers and errors go back, in order, once, even across a
-// restart with two of them in flight; a fork sends nothing.
+/** The Matrix bridge, against a fake homeserver in this process */
 import { fauxAssistantMessage } from '@earendil-works/pi-ai/providers/faux'
 import { Database } from 'bun:sqlite'
 import {
@@ -47,9 +44,7 @@ const fromBot = (root) =>
 		)
 		.map((e) => e.content.body)
 
-// /sync's position is how many events there were, and like Synapse it gives at most ten, `limited`, from `p<position>`,
-// before which /messages pages back five at a time. The first send of a "slow" answer lands but never answers, as if
-// the server died right after the homeserver took it.
+/** /sync's position is how many events there were, and like Synapse it gives at most ten, `limited`, from `p<position>`, before which /messages pages back five at a time */
 const hs = Bun.serve({
 	port: 0,
 	idleTimeout: 255,
@@ -131,7 +126,7 @@ const asked = (m) => m.to?.[0]?.endsWith('@bot')
 const old = said('@oskar:fake', '@bot an old question, from before the bridge')
 let srv = await server(env)
 await until(async () => synced)
-// The agent answers what it heard last; "busy" keeps it in a tool call for a second, and "fail please" fails.
+// The agent answers what it heard last
 await scriptedRunner('bot', (request) => {
 	const heard = text(request.messages.findLast((m) => m.role === 'user'))
 	if (heard.endsWith('@bot fail please'))
@@ -141,8 +136,7 @@ await scriptedRunner('bot', (request) => {
 	return say(`heard ${heard}`)
 })
 
-// Top level: everything lands in the room's thread. A mention by one of MATRIX_USERS also opens a Matrix thread under
-// itself, where it asks; a stranger's mention, `@bottle`, plain chat and an edit ask nobody and open nothing.
+// Top level
 said('@ana:fake', 'the play button does nothing')
 const hello = said('@oskar:fake', '@bot hello')
 said('@eve:fake', '@bot run something on your machine')
@@ -199,7 +193,7 @@ check(
 	'a mention by m.mentions asks too, its text cleaned of escapes and bidi overrides',
 )
 
-// In that Matrix thread: Oskar's plain replies ask whom it last asked, a stranger's ask nobody.
+// In that Matrix thread
 said('@eve:fake', 'me too', reply(hello))
 await sleep(1500)
 check(
@@ -219,7 +213,7 @@ check(
 	'what the bridge sent never comes back in, though the bot is in MATRIX_USERS',
 )
 
-// A reply under a message from before the bridge opens a thread with that message first; it asks nobody yet.
+// A reply under a message from before the bridge opens a thread with that message first
 said('@ana:fake', 'same here, still broken', reply(old))
 await until(async () => titled('an old question'))
 const b = await titled('an old question')
@@ -233,7 +227,7 @@ check(
 	JSON.stringify(await bodies(b)),
 )
 
-// A follow-up while the agent is busy steers into the answer being written: one answer for both.
+/** A follow-up while the agent is busy steers into the answer being written */
 const busy = said('@oskar:fake', '@bot busy one')
 await until(
 	async () =>
@@ -253,7 +247,7 @@ check(
 	JSON.stringify(await bodies(c)),
 )
 
-// An error goes back too, so nobody is left waiting.
+/** An error goes back too, so nobody is left waiting */
 const fail = said('@oskar:fake', '@bot fail please')
 await until(async () => fromBot(fail).length, 15000)
 check(
@@ -262,7 +256,7 @@ check(
 	JSON.stringify(fromBot()),
 )
 
-// A fork belongs to no room, and no thread carries anything of the bridge.
+/** A fork belongs to no room, and no thread carries anything of the bridge */
 const answer = (await view(a)).entries.findLast((e) => e.data.answer)
 const { json: fork } = await api('POST', `/api/threads/${a}/fork`, { at: answer.id })
 await api('POST', `/api/threads/${fork.id}/entries`, {
@@ -287,8 +281,7 @@ check(
 	JSON.stringify(docs),
 )
 
-// Nothing from Matrix asks in the room's thread until someone asks there from the client; then its answers go
-// top-level, and Oskar's top-level messages ask it again.
+// Nothing from Matrix asks in the room's thread until someone asks there from the client
 await api('POST', `/api/threads/${room}/entries`, {
 	body: 'what is going on here?',
 	to: { runner: 'bot', model: 'echo/echo' },
@@ -307,9 +300,7 @@ check(
 	JSON.stringify(fromBot(null)),
 )
 
-// Two answers in flight: the homeserver takes the first but the server dies before hearing back, and the second waits
-// behind it. After the restart the first is sent again under the same transaction id and shows once, and only then
-// the second. A message said while the server was down is posted after it.
+// Two answers in flight
 said('@oskar:fake', '@bot slow one')
 await until(async () => held, 10000)
 const next = said('@oskar:fake', '@bot next one')

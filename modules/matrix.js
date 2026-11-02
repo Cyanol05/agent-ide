@@ -13,7 +13,7 @@
 //      ROOMS and USERS take several, comma-separated. AGENT is model@runner, or a runner for its default model.
 //   4. Write `@BOT …` in the room. Its thread shows up in the client, titled `matrix #room:matrix.org: …`.
 import { defineDoc, defineExtension, defineTask } from '@earendil-works/pi-durable'
-import { agentTo, speaker } from './util.js'
+import { agentTo, speaker } from '../util.js'
 
 // `threads` keys a room by its id and a Matrix thread by its root event; `last` is each room's newest send.
 const MatrixBridge = defineDoc({
@@ -42,9 +42,9 @@ const sleep = (ms, signal) =>
 		const t = setTimeout(r, ms)
 		signal?.addEventListener('abort', () => (clearTimeout(t), r()))
 	})
-// A no that asking again won't change.
+/** A no that asking again won't change */
 const refused = (error) => error.status >= 400 && error.status < 500 && error.status !== 429
-// Anyone in a room can write: no terminal escapes, control characters or bidi overrides reach an agent.
+/** Anyone in a room can write */
 const clean = (text) =>
 	text
 		.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
@@ -60,7 +60,7 @@ export function server(core) {
 	const names = list('MATRIX_ROOMS')
 	const users = new Set(list('MATRIX_USERS').map(speaker))
 	if (!token || !names.length)
-		throw new Error('matrix needs MATRIX_TOKEN and MATRIX_ROOMS: see matrix.js')
+		throw new Error('matrix needs MATRIX_TOKEN and MATRIX_ROOMS: see modules/matrix.js')
 
 	async function request(method, route, body, signal) {
 		const res = await fetch(`${home.replace(/\/$/, '')}/_matrix/client${route}`, {
@@ -159,7 +159,6 @@ export function server(core) {
 	const state = () =>
 		core.commit(async (tx) => JSON.parse(JSON.stringify(await tx.doc(MatrixBridge))))
 
-	// Matrix shows a sender its own transaction ids, which is how the bridge knows what it sent.
 	/** @returns {MatrixMessage | null} */
 	function messageOf(room, e) {
 		const relation = e.content?.['m.relates_to']
@@ -202,7 +201,6 @@ export function server(core) {
 		return messages
 	}
 
-	// May predate the bridge; one the homeserver won't show is left out.
 	const firstOf = ({ room, root }) =>
 		request('GET', `${roomPath(room)}/event/${encodeURIComponent(root)}`).then(
 			(e) => messageOf(room, e),
@@ -267,7 +265,6 @@ export function server(core) {
 		)
 	}
 
-	// A runner that never connected can't name its model yet, so this waits for it.
 	async function address() {
 		const asked = agentTo(agent)
 		return core
@@ -288,7 +285,7 @@ export function server(core) {
 
 	async function sync() {
 		me = (await retry('whoami', () => request('GET', '/v3/account/whoami'))).user_id
-		// `@bot` mentions it, but `@bottle` doesn't.
+		// `@bot` mentions it, but `@bottle` doesn't
 		const local = me.split(':')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 		mentioned = new RegExp(`${local}(?![\\w-])`)
 		rooms = {}

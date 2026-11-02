@@ -17,7 +17,7 @@ const { values: args } = parseArgs({
 		server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://localhost:3000' },
 		name: { type: 'string', default: os.hostname() },
 		alias: { type: 'string', default: '' },
-		// Each --dir is one more folder it lends; the first is its home, where pi's settings are read.
+		/** Each --dir is one more folder it lends */
 		dir: { type: 'string', multiple: true, default: [process.cwd()] },
 		'discover-dirs': { type: 'boolean', default: false },
 		owner: { type: 'string', default: '' },
@@ -26,7 +26,7 @@ const { values: args } = parseArgs({
 		key: { type: 'string', default: process.env.AGENT_IDE_KEY || saved() },
 	},
 })
-// The key connect-runner saved, for starts without it.
+/** The key connect-runner saved, for starts without it */
 function saved() {
 	const config = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')
 	try {
@@ -40,14 +40,13 @@ const dir = roots[0]
 const server = new URL(args.server).origin
 const name = args.name
 
-// pi's own models and logins, as pi reads them, with the providers its extensions add, such as claude-code; the
-// logins never leave this machine.
+/** pi's own models and logins, as pi reads them, with the providers its extensions add, such as claude-code */
 const { modelRuntime: models, diagnostics } = await createAgentSessionServices({ cwd: dir })
 for (const d of diagnostics) if (d.type === 'error') console.log(`pi: ${d.message}`)
 const echo = fauxProvider({ provider: 'echo', models: [{ id: 'echo' }] })
 models.registerNativeProvider(echo.provider)
 
-// What `pi --model pattern` runs; no pattern is pi's default model and thinking level, from its settings in the folder.
+/** What `pi --model pattern` runs */
 function resolve(pattern) {
 	const settings = SettingsManager.create(dir)
 	const asked = pattern
@@ -70,21 +69,20 @@ const defaultModel = () => {
 	}
 }
 
-// The models pi has enabled here, as `pi --models` expands them.
+/** The models pi has enabled here, as `pi --models` expands them */
 async function offers() {
 	const patterns = SettingsManager.create(dir).getEnabledModels() ?? []
 	const { scopedModels } = await resolveModelScopeWithDiagnostics(patterns, models)
 	return [...new Set(scopedModels.map(({ model }) => `${model.provider}/${model.id}`))]
 }
 
-// Sent to the server, which asks a runner its updater started to update when the server's differs.
+/** Sent to the server, which asks a runner its updater started to update when the server's differs */
 const { version } = await runnerBundle(import.meta.dirname).catch(() => ({ version: '' }))
 const launched = process.env.AGENT_IDE_LAUNCHER === '1'
 
 const modules = await load('runner', { status: true, context: true }, { name, server, dir, roots })
 
-// The folders it serves, for the picker: its own, and with --discover-dirs every git or jj checkout up to two levels
-// beneath them, found again on each connect. The checkouts are inside its folders, so they lend nothing more.
+/** The folders it serves, for the picker */
 function folders() {
 	const found = []
 	const list = (at) => {
@@ -150,7 +148,6 @@ async function connect() {
 	socket.onclose = ({ code, reason }) => {
 		runner.stopAll()
 		for (const m of modules) m.disconnected?.()
-		// Turned away, or revoked: dialling back would only be turned away again.
 		if (code === 4001) {
 			console.log(reason)
 			process.exit(1)
@@ -161,7 +158,7 @@ async function connect() {
 	socket.onerror = () => {}
 }
 
-// The server runs a newer runner. Its updater fetches it when this one exits with 75; one started by hand carries on.
+/** The server runs a newer runner */
 let warned = false
 function update() {
 	if (launched) {

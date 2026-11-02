@@ -1,5 +1,4 @@
-// MODULES=+search gives agents `web_search`: Exa's free search, which needs no key and is rate limited. Enough to find pages;
-// an agent reads one whole with curl. SEARCH_URL points it at anything else that answers Exa's MCP call.
+/** MODULES=+search gives agents `web_search` */
 import { num, obj, opt, str } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 
@@ -34,7 +33,6 @@ export function server() {
 				signal: context.abortSignal,
 			})
 			if (!res.ok) throw new Error(`search failed: ${res.status} ${await res.text()}`.slice(0, 500))
-			// Plain JSON, or a stream of events whose last data line holds the answer.
 			const raw = await res.text()
 			const reply = JSON.parse(
 				raw.includes('data:')

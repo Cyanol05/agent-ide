@@ -1,6 +1,4 @@
-// Who wrote what. A thread is plain messages, each with its author and the agents it asks. An agent answers from its
-// own Pi conversation, where the thread's messages are stock user input with their authors' names. Someone who names
-// no agent asks whom the thread last asked. A model is whatever `pi --model` makes of it on the runner.
+/** Who wrote what */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
@@ -74,7 +72,7 @@ check(
 	"the agent's conversation is no thread",
 )
 
-// Ana says something without a `to`: whom the thread last asked answers her, and reads only what's new.
+// Ana says something without a `to`
 await api('POST', `/api/threads/${id}/entries`, { body: 'me too' }, 'ana')
 const v2 = await answered(id, 2)
 const ana = v2?.entries.find((e) => e.data.author === 'ana')
@@ -89,8 +87,7 @@ check(
 	JSON.stringify(v2?.entries.at(-1)),
 )
 
-// Cy names the model as pi would let him, by its id with a thinking level: pi resolves it to the same agent, which
-// keeps the thinking it was made with.
+// Cy names the model as pi would let him, by its id with a thinking level
 await api(
 	'POST',
 	`/api/threads/${id}/entries`,
@@ -106,7 +103,7 @@ check(
 )
 check(v3?.agents.length === 1, 'the same model is the same agent', JSON.stringify(v3?.agents))
 
-// Dee names no model: the desk runner's default, pi's own, whose settings name it with its provider as pi takes it too.
+/** Dee names no model */
 const pi = path.join(dir, '..', 'pi')
 mkdirSync(pi)
 writeFileSync(
@@ -131,7 +128,7 @@ check(
 	JSON.stringify(v4?.entries.at(-1)),
 )
 
-// A default model pi can't resolve is said so, not offered.
+/** A default model pi can't resolve is said so, not offered */
 const odd = path.join(dir, '..', 'odd')
 mkdirSync(odd)
 writeFileSync(

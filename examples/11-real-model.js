@@ -1,7 +1,4 @@
-// A real model. Talk: a child thread has to ask its parent for the topic before writing the poem. Catch-up: a second
-// agent, asked afterwards, reads the thread so far and says who showed the poem.
-// Uses this machine's pi login and a few tokens; skipped without one.
-// bun examples/11-real-model.js [provider/model]
+/** A real model */
 import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'

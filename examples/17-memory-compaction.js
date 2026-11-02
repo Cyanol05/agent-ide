@@ -1,6 +1,4 @@
-// With memory, when Pi compacts an agent's conversation, its summary is the thread's memory up to the cut: lines
-// covering every message the agent had been given, coarse when old, within the agent's budget: as many bytes as its
-// model has tokens of context, 40000 here. No model writes a prose summary.
+/** With memory, when Pi compacts an agent's conversation, its summary is the thread's memory up to the cut */
 import {
 	answered,
 	api,
@@ -36,7 +34,7 @@ for (; k < 140; k++) await api('POST', `/api/threads/${id}/entries`, { body: fil
 await api('POST', `/api/threads/${id}/entries`, { body: 'go A', to: agent })
 await answered(id, 1, 20000)
 for (; k < 310; k++) await api('POST', `/api/threads/${id}/entries`, { body: filler(k), to: null })
-// 312 messages with A's answer: every leaf, and every pair under the 141 A held, so the memory can merge them.
+/** 312 messages with A's answer */
 const built = await until(
 	async () => {
 		const ls = await linesOf(id)

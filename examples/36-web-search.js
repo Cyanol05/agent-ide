@@ -1,4 +1,4 @@
-// MODULES=+search gives agents `web_search`. Off by default, the model isn't offered it. Here a stand-in answers the way Exa does.
+/** MODULES=+search gives agents `web_search` */
 import http from 'node:http'
 import { rmSync } from 'node:fs'
 import { getCurrentTools } from '@earendil-works/pi-ai/utils/transcript'

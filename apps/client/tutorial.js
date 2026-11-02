@@ -1,8 +1,18 @@
-// The story's side of the page: the section in view says what the stage shows, and the buttons in the text set
-// the stage up and press go. The app knows nothing of it.
+/** The story's side of the page */
 import { $ } from './dom.js'
 import { formatAgent } from './agent.js'
-import { api, ask, choose, current, entries, fork, openThread, runners, settingFor, url } from './state.js'
+import {
+	api,
+	ask,
+	choose,
+	current,
+	entries,
+	fork,
+	openThread,
+	runners,
+	settingFor,
+	url,
+} from './state.js'
 
 const sections = new IntersectionObserver(
 	(list) => {
@@ -81,7 +91,7 @@ const TRIES = {
 		link.searchParams.set('user', 'Ana')
 		open(link, '_blank')
 	},
-	// Every runner, or with one, two agents on it: another model if it offers one, and a name each.
+	/** Every runner, or with one, two agents on it */
 	two: () => {
 		fresh()
 		const [first, ...others] = defaults()
@@ -110,7 +120,7 @@ const TRIES = {
 		if (!first) throw new Error('Ask something first: a fork starts from a message.')
 		return fork(current, first.id)
 	},
-	// A thread long enough for memory to show: three people building a shed, with facts that change on the way.
+	/** A thread long enough for memory to show */
 	shed: async () => {
 		const { id } = await api('/api/threads', { title: 'The shed', requestId: crypto.randomUUID() })
 		for (const [i, [author, body]] of SHED.entries()) {

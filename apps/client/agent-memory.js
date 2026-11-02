@@ -1,7 +1,4 @@
-// <agent-memory server="http://…" thread="7">: a thread's memory, when its server runs memory.js. One tree: every
-// message has a line, two lines merge into one going up. An agent reads one cut through it, as much as its room
-// holds, and the slider moves that cut: lines above it are too coarse to need, a line in it opens on click into
-// what it was made from, down to a message word for word. It follows the thread on its own.
+/** <agent-memory server="http://…" thread="7"> */
 const el = (tag, props = {}, ...children) => {
 	const e = Object.assign(document.createElement(tag), props)
 	e.append(...children.filter((c) => c != null && c !== false))
@@ -56,7 +53,7 @@ class AgentMemory extends HTMLElement {
 		return Number(this.getAttribute('thread')) || null
 	}
 
-	// Redraws when the thread changes, grows, or has lines still being written.
+	/** Redraws when the thread changes, grows, or has lines still being written */
 	async update() {
 		if (!this.getAttribute('server')) return
 		this.modules ??= (await this.api('/api/server').catch(() => ({}))).modules
@@ -73,7 +70,7 @@ class AgentMemory extends HTMLElement {
 		if (!T) return this.say('No messages yet.')
 		const key = `${id} ${T}`
 		if (key === this.seen && !this.tree.querySelector('.pending')) return
-		// The slider runs from as squeezed as it gets to a line for every message, so all of its length matters.
+		/** The slider runs from as squeezed as it gets to a line for every message, so all of its length matters */
 		const top = (await this.api(`/api/threads/${id}/memory?budget=1`).catch(() => ({ lines: [] })))
 			.lines
 		this.least = Math.max(100, sizeOf(top))
@@ -91,7 +88,7 @@ class AgentMemory extends HTMLElement {
 		this.tree.replaceChildren(...(text.length ? [el('p', { className: 'mute' }, ...text)] : []))
 	}
 
-	// The tree, opened from the top down to the cut an agent with this much room reads.
+	/** The tree, opened from the top down to the cut an agent with this much room reads */
 	async draw() {
 		if (!this.T) return
 		const room = Math.round(this.least * (this.full / this.least) ** (this.room.value / 100))
@@ -114,7 +111,7 @@ class AgentMemory extends HTMLElement {
 			n = cut.length
 		this.bar.replaceChildren(
 			...cut.map((x) => {
-				// As wide as the messages it stands for, darker the more it squeezes.
+				/** As wide as the messages it stands for, darker the more it squeezes */
 				const shade = Math.min(1, Math.log2(x.n) / 5)
 				return el('span', {
 					title: `${x.id}+${x.n}: ${x.n > 1 ? `${x.n} messages in one line` : 'one message'}`,
@@ -133,7 +130,7 @@ class AgentMemory extends HTMLElement {
 		this.tree.replaceChildren(tree)
 	}
 
-	// The two lines under `id+n`: a line in the cut is highlighted, a line above the cut opens on its own down to it.
+	/** The two lines under `id+n` */
 	async open(id, n, cut) {
 		const inside = (x) => x.id >= id && x.id + x.n <= id + n
 		const halves =
@@ -142,7 +139,6 @@ class AgentMemory extends HTMLElement {
 						.lines
 				: null
 		if (!halves?.length) return el('ul', {}, ...cut.filter(inside).map((x) => this.line(x, 'cut')))
-		// The newest messages wait for a partner to merge with; a line with one half says nothing its half doesn't.
 		if (halves.length === 1 && !cut.some((x) => x.id === halves[0].id && x.n === halves[0].n))
 			return this.open(halves[0].id, halves[0].n, cut)
 		return el(
@@ -160,7 +156,7 @@ class AgentMemory extends HTMLElement {
 		)
 	}
 
-	// One line. In the cut or below it, a click opens the two lines it was made from, or at n = 1 the message.
+	/** One line */
 	line({ id, n, text }, kind) {
 		const waiting = unwritten({ text })
 		const label = !waiting

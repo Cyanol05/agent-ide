@@ -1,6 +1,4 @@
-// Modules turn off whole, picked the way Pi picks tools: MODULES=-talk,-status removes talk and status. Each check runs
-// with the module on first, so the off case proves something. agent-ide.json takes the same list, where names replace
-// the defaults and loads modules of your own; MODULES then changes what it picked.
+/** Modules turn off whole, picked the way Pi picks tools */
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -22,7 +20,7 @@ import {
 	view,
 } from './lib.js'
 
-// Pi carries the tools and the system prompt in system messages.
+/** Pi carries the tools and the system prompt in system messages */
 let offered = []
 let prompt = ''
 const route = (request) => {
@@ -117,7 +115,7 @@ check(
 check(off.children.length === 0, 'talk off: no child thread')
 check(off.told.length === 0, 'status off: no status pushes', JSON.stringify(off.told))
 
-// The runner end: STATUS=1 reports even to a pipe; MODULES=-status drops the module, so even STATUS=1 reports nothing.
+// The runner end
 fresh()
 const srv = await server()
 for (const status of ['1', '0']) {
@@ -143,8 +141,7 @@ for (const status of ['1', '0']) {
 srv.kill()
 await sleep(300)
 
-// agent-ide.json in the folder the server starts in: its names replace the defaults, so status and context are off and
-// search and a module of its own on; MODULES then adds status back.
+// agent-ide.json in the folder the server starts in
 fresh()
 const own = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-own-'))
 writeFileSync(

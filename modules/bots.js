@@ -1,18 +1,10 @@
-// MODULES=+bots: a bot is a name that's in many threads as one person. It has a home thread, a recipe and its
-// instructions. Asked by name in any other thread, an agent of that name joins there the usual way, made from the bot's
-// recipe; name=model@runner gives that thread another model. Every agent of a bot's name reads the bot's instructions
-// before each request, so an edit counts from the next one, and is told which other threads it's in, to read one with
-// talk's `threads` when it matters. At home, its `bot` tool rewrites it or makes another bot; -bot in a thread's
-// tools takes that away.
-//   GET /api/bots: every bot. POST /api/bots {name, to?, instructions?}: a new name makes the bot and its home thread,
-//   hands off, in one commit; a known name changes it. DELETE /api/bots/:name forgets it and keeps every thread. Its home
-//   can't be hidden while it's a bot.
+/** MODULES=+bots */
 import { obj, opt, str } from '@earendil-works/pi-schema'
 import { defineDoc, defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
-import { agentTo } from './util.js'
+import { agentTo } from '../util.js'
 
-// A bot's name → { home: its thread, to: its recipe, instructions }.
+/** A bot's name → { home */
 const Bots = defineDoc({
 	kind: 'agent-ide.bots',
 	version: 1,
@@ -26,7 +18,6 @@ export function server(core) {
 	const bots = () => core.commit(async (tx) => JSON.parse(JSON.stringify(await tx.doc(Bots))))
 	const list = async () => Object.entries(await bots()).map(([name, bot]) => ({ name, ...bot }))
 
-	// What a POST or the tool asks for, checked before the commit: a recipe resolves on its runner.
 	async function change({ name, to, instructions }) {
 		if (typeof name !== 'string' || !/^[\w.-]{1,40}$/.test(name))
 			throw new Error('A name is 1 to 40 letters, digits, _ . or -')
@@ -39,7 +30,6 @@ export function server(core) {
 		}
 		return { name, to, instructions }
 	}
-	// In the caller's commit. A new name needs a recipe; its home thread starts hands off.
 	async function write(tx, author, { name, to, instructions }) {
 		const all = await tx.doc(Bots)
 		if (!all[name]) {
@@ -68,13 +58,11 @@ export function server(core) {
 		})
 	}
 
-	// A bot's home stays: hidden, nobody could open it to change the bot, nor could the bot itself.
 	async function hiding(tx, threadId) {
 		const [name] = Object.entries(await tx.doc(Bots)).find(([, b]) => b.home === threadId) ?? []
 		if (name) throw new Error(`Thread ${threadId} is ${name}'s home; forget ${name} first`)
 	}
 
-	// A bot's name in a thread without it: the bot's recipe, under its name.
 	async function recipe(name) {
 		const bot = (await bots())[name]
 		return bot && { ...bot.to, name }

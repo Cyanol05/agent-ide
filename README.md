@@ -2,16 +2,6 @@
 
 A small agent IDE on [Pi Durable](https://www.npmjs.com/package/@earendil-works/pi-durable), built to show how little it takes. One server keeps every thread. Runners on your machines lend it their model logins and a folder. Runs with bun or Node.js 24+, no build step.
 
-## What's in it
-
-- Threads with many authors. You, your friends and any number of agents talk in one thread, and each agent can be any model pi can name.
-- Runners: your machines lend the server a folder, their tools and their model logins, so agents work where your code is.
-- Threads that talk: agents post to other threads and read them back.
-- Forks: start a new thread from any message, with the same agents.
-- Stays on: a restart or a stop loses nothing.
-- Modules you switch on with `MODULES=+name`, or write your own: director (@mentions), bots, matrix, memory, search.
-- A browser client, a CLI and an HTTP API. About five thousand lines of plain JS, no build step.
-
 The words it uses, how it fits together and its principles: [apps/client/client.html](apps/client/client.html), the page every server serves at `/`, beside the app itself. The code is the truth, and [examples/](examples) shows each idea working.
 
 ## Try it
@@ -20,61 +10,36 @@ The words it uses, how it fits together and its principles: [apps/client/client.
 npx github:oskarrough/agent-ide
 ```
 
-It lends the folder it starts in to its agents, as a runner named after this machine. From a clone, `pnpm install && bun server.js` does the same. On another machine, nothing to clone: `bun cli.js key desk` on the server prints the line that connects it, `curl -fsSL http://yourbox:3000/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --name desk --dir ~/code`.
+It lends the folder it starts in to its agents, as a runner named after this machine. From a clone, `pnpm install && bun server.js` does the same. Open http://127.0.0.1:3000 and the page walks you through it.
 
-Open http://127.0.0.1:3000 and the page walks you through it, beside the app itself.
-
-Or read [examples/](examples): one file per idea, each starting its own server and runner, checking what it claims. `bun run examples` runs them all, `bun examples/05-fork.js` one. Those named `real-model` use a real model through your pi login, so they only run on their own or with `REAL=1 bun run examples`.
+Read [examples/](examples): one file per idea, each starting its own server and runner. `bun run examples` runs them all, `bun examples/05-fork.js` one. The `real-model` ones use your pi login, so they only run on their own or with `REAL=1`.
 
 ## Running it
 
 ```sh
-bun server.js                          # http://127.0.0.1:3000, or the next free port, stored in agent-ide.sqlite
 HOST=0.0.0.0 PORT=3001 bun server.js   # reachable from other machines
-RUNNER=~/code bun server.js            # lends this machine another folder than the one it starts in; RUNNER=0 lends none
-MODULES=-talk,-status,-context bun server.js   # modules are picked as Pi picks tools: +name and -name change the defaults, names alone replace them, a path is a module of your own
-MODULES=+director bun server.js        # director.js asks the agents a message @mentions by name, as @echo/echo@laptop or @reviewer
-MODULES=+memory MEMORY_MODEL=haiku@laptop bun server.js   # memory.js: threads that never end
-MODULES=+search bun server.js          # search.js: agents' web_search, through Exa's free search
-MODULES=+matrix MATRIX_TOKEN=… MATRIX_ROOMS=… bun server.js   # matrix.js: Matrix rooms as threads; its top says how
-MODULES=+bots bun server.js            # bots.js: one name in many threads, with a home thread, a recipe and its instructions
-echo '{"modules": ["+memory", "+../mine.js"]}' > agent-ide.json   # the same, in the folder it starts in; MODULES then changes what the file picked
-bun scripts/replay-pi.js ~/.pi/agent/sessions/FOLDER   # pi sessions, or one .jsonl, as one long thread
-DB_PATH=other.sqlite bun server.js     # another store; a second server on one file says who has it and stops
+RUNNER=~/code bun server.js            # lend another folder; RUNNER=0 lends none
+MODULES=+memory,+bots bun server.js    # +name and -name change the defaults; each module's top says how it works
+DB_PATH=other.sqlite bun server.js     # another store
 
-bun cli.js key laptop                  # a new key for runner laptop, replacing its old one, and the lines that connect it
-bun cli.js revoke laptop               # takes its key away: it goes offline and stays out
-AGENT_IDE_KEY=air_… bun runner.js --server http://127.0.0.1:3000 --name laptop [--alias "Oskar's laptop"] --dir ~/code [--dir ~/notes] [--discover-dirs] [--owner oskar [--allow ana --allow @desktop]] [--read-only]
-curl -fsSL http://127.0.0.1:3000/connect-runner | AGENT_IDE_KEY=air_… sh -s -- [the same options] [--no-update]   # into ~/.agent-ide, kept up to date; the key goes in ~/.config/agent-ide/key
-
-bun cli.js post "hello" --to sonnet@laptop --to desk --thinkingLevel high   # a new thread; answers print as they land
-bun cli.js post "and you?" --thread 3                               # asks whom thread 3 last asked
-bun cli.js threads | runners | read 3 [--last 5] | stop 3                   # runner.js and cli.js both read AGENT_IDE_SERVER=url, or --server
+bun cli.js key desk                    # prints the line that connects runner desk to this server
+bun cli.js post "hello" --to sonnet@laptop
+bun cli.js threads | runners | read 3 | stop 3
 ```
 
-The client is served at `/`, or by `bun apps/client/client.html` with live reload and `?server=http://…` pointing at a server; [cli.js](cli.js) is the same API from a terminal. `?user=ana` posts as someone else. [apps/matrix-sync](apps/matrix-sync) files GitHub issues from a Matrix mention, without anyone opening the IDE. A runner needs its key to connect, so nobody can take its name, and a revoked one stays out. People have no keys yet: anyone who can reach the server can claim any name, and mint a key, so keep it on a trusted network.
+On another machine, nothing to clone: `curl -fsSL http://yourbox:3000/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --name desk --dir ~/code`. `bun runner.js --help` lists the rest.
+
+A runner needs its key to connect, so nobody can take its name. People have no keys yet: anyone who can reach the server can claim any name, so keep it on a trusted network.
 
 ## API
 
-Send `x-user: name` to say who you are. The two POSTs that make something, a thread and an entry, take an optional `"requestId"` (a string of up to 128 characters, such as `crypto.randomUUID()`): send the same one again after a dropped response and you get the first result back, whatever else changed. A thread entry is Pi's own, `{id, kind: "agent-ide.message", data}`, and `data` is a message:
+Everything the client does is in [server.js](server.js), under `/api`, with `/ws` pushing changes. Send `x-user: name` to say who you are. The POSTs that make a thread or an entry take an optional `"requestId"`: send the same one again after a dropped response and you get the first result back.
+
+An entry is Pi's own, `{id, kind: "agent-ide.message", data}`, and `data` is a message:
 
 ```
 { author, body, to?: [{runner, model, thinkingLevel?, dir?}], from?: threadId, re?: [entryId],
   answer?: {conversation, entry}, error?: true, shell?: {runner, code, stdout, stderr} }
 ```
 
-- `GET /api/server`: the server's options, its modules, and what Pi is running.
-- `GET|POST /api/threads` `{"title","parent"?,"tools"?,"requestId"?}`: each thread with its agents, status, running commands and Pi conversation record.
-- `GET /api/threads/:id`: the thread's row, its `agents` as `{name, conversation, to, status}`, the `people` who wrote or read there, and every entry.
-- `POST /api/threads/:id/entries` `{"body","to"?: agent | [agent] | null, "steer"?: true, "requestId"?}`, an agent being `{"runner","model"?,"thinkingLevel"?,"dir"?,"name"?}`, `dir` relative to the runner's first folder or a path in any of its folders, and its model anything `pi --model` takes, or an agent's name as a string: a steer joins the answer being written. An agent's name in the thread is its `name`, else `model@runner`; a recipe makes the agent once, and after that its name reaches it as it was made. A message stores the names it asks. A runner that doesn't take work from you answers 403.
-- `POST /api/threads/:id/tools` `{"tools"}`: the tools of every agent in the thread, as `pi --tools` takes them: names enable exactly those, `-name` and `+name` change the default, every tool; `null` is the default. `["-write","-edit","-bash"]` makes a thread hands off: its agents read and ask others, whose child threads do the work. A fork keeps them, a child doesn't.
-- `POST /api/threads/:id/fork` `{"at": entryId, "title"?}`: a new thread from that entry.
-- `POST /api/threads/:id/read`: marks it read for you, so its last answer stops counting as done.
-- `POST /api/threads/:id/stop`: stops its agents, deliveries and commands, and withdraws their queued inputs.
-- `DELETE /api/threads/:id`: hides it; Pi Durable keeps everything.
-- `POST /api/bots` `{"name","to"?,"instructions"?}`: with bots, a new name makes the bot and its home thread, hands off, in one commit, and needs `to`, its recipe; a known name changes it. Asked by name in any thread, an agent of that name joins there from the recipe; `name=model@runner` gives it another model. Every agent of that name reads the instructions before each request and is told its other threads and the other bots, and at home its `bot` tool rewrites it or makes another bot (`-bot` in a thread's tools takes it away). `GET` lists the bots; `DELETE /api/bots/:name` forgets one and keeps every thread. A bot's home can't be hidden until it's forgotten.
-- `GET /api/threads/:id/memory?zoom=id,n&budget=bytes`: with memory, the thread's memory as `{lines: [{id, n, text}]}`, the lines an agent with `budget` bytes of room reads, or with `zoom` what a line was made from.
-- `GET /api/conversations/:id`: any Pi conversation's view as Pi gives it, such as an agent's: its docs, and all its entries.
-- `GET /api/runners`: each runner, its `folders` (every `--dir`, the first its home, then with `--discover-dirs` the git and jj checkouts up to two levels beneath them, found on each connect), how many threads it's `busy` in, its `owner` and whom it `allow`s, its default model or `modelError` when pi's default doesn't resolve, the models it `offers` from pi's enabled models, the models it has resolved, and the calls it's answering.
-- Agents' tools, with talk: `post {"thread"?, "title"?, "body", "to"?}`, where no thread starts a child and `to` is an agent's name, `thread/name`, `model@runner` or `name=model@runner`, a runner, or `nobody`; and `threads {"thread"?, "agent"?, "last"?, "query"?}`, where `agent` reads that agent's own work in the thread, its tool calls and what they printed; with memory, `zoom {"id","n","at"?}`, where a long message comes in pages from character `at`.
-- `/ws`: pushes `{}` whenever something changes. Send `{"watch": threadId}` (or `null`) to watch one: `{thread, entries}` with every message first, then each new one as it lands, and `{thread, agent, live: {run, message, tools}}` for each of its agents, now and whenever it changes: whether it's running, the reply it's writing, and this round's tool calls as `{callId, name, status, args}`, from Pi's live doc. Runners connect here too and speak the protocol in [remote.js](remote.js).
+Runners speak the protocol in [remote.js](remote.js).

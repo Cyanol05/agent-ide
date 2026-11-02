@@ -1,5 +1,4 @@
-// A child thread keeps what's said in it: its parent hears only answers to its own posts (06), never a report of
-// the rest. A child that was stopped says nothing at all.
+/** A child thread keeps what's said in it */
 import {
 	api,
 	check,
@@ -38,7 +37,7 @@ check(
 	JSON.stringify((await view(parent)).entries),
 )
 
-// Stopped mid-answer: the input was placed, then aborted.
+/** Stopped mid-answer: the input was placed, then aborted */
 const slow = await scriptedRunner('slow', () => say(`thinking ${'slowly '.repeat(300)}`))
 const { json: stopped } = await api('POST', '/api/threads', { title: 'stopped', parent })
 await api('POST', `/api/threads/${stopped.id}/entries`, {

@@ -53,8 +53,7 @@ import {
  * @typedef {{ author: string, command: string, to: To }} Command
  */
 
-// One store, whatever the port: a second server on it would run its tasks twice, so it says who has it and stops. A
-// server that died without letting go leaves its pid, which the next one takes over.
+/** One store, whatever the port */
 const file = process.env.DB_PATH || 'agent-ide.sqlite'
 const lock = `${file}.lock`
 const alive = (pid) => {
@@ -73,7 +72,7 @@ if (holder && holder !== process.pid && alive(holder)) {
 }
 writeFileSync(lock, String(process.pid))
 process.on('exit', () => Number(readFileSync(lock, 'utf8')) === process.pid && rmSync(lock))
-// PORT, or 3000 and up to the first free one.
+/** PORT, or 3000 and up to the first free one */
 let port = Number(process.env.PORT || 3000)
 const free = (p) =>
 	new Promise((resolve) => {
@@ -82,13 +81,13 @@ const free = (p) =>
 	})
 if (!process.env.PORT) while (!(await free(port))) port++
 const KIND = 'agent-ide.message'
-// An agent's input in its conversation; `held` names the thread messages it gave.
+/** An agent's input in its conversation; `held` names the thread messages it gave */
 const DELIVERY = 'agent-ide.delivery'
-// How much of a `$ cmd`'s stdout and of its stderr is kept, from the end.
+/** How much of a `$ cmd`'s stdout and of its stderr is kept, from the end */
 const TAIL = 20000
-// Our docs are small, so every change stores the whole doc and a read replays nothing.
+/** Our docs are small, so every change stores the whole doc and a read replays nothing */
 const base = () => true
-// Every runner that ever connected, with the models pi resolved on it.
+/** Every runner that ever connected, with the models pi resolved on it */
 const Runners = defineDoc({
 	kind: 'agent-ide.runners',
 	version: 1,
@@ -96,7 +95,7 @@ const Runners = defineDoc({
 	checkpointWhen: base,
 	initial: () => ({}),
 })
-// Each runner's key, as its sha256: a runner dials in with its own, and taking it away keeps the runner out.
+/** Each runner's key, as its sha256 */
 const Keys = defineDoc({
 	kind: 'agent-ide.keys',
 	version: 1,
@@ -104,7 +103,7 @@ const Keys = defineDoc({
 	checkpointWhen: base,
 	initial: () => ({}),
 })
-// `agents`: an agent's name → its Pi conversation, and the thread messages not yet handed to it.
+/** `agents` */
 const Thread = defineDoc({
 	kind: 'agent-ide.thread',
 	version: 1,
@@ -122,7 +121,7 @@ const Thread = defineDoc({
 		tools: null,
 	}),
 })
-// By request id: the command a request made and what it answered, written in the commit that did the work.
+/** By request id */
 const Receipts = defineDocFamily({
 	kind: 'agent-ide.receipt',
 	version: 1,
@@ -139,7 +138,7 @@ const finished = (status = 'completed') => ({
 	outcome: { status, result: null },
 })
 
-// Owns an agent's conversation, so stopping the thread stops the agent.
+/** Owns an agent's conversation, so stopping the thread stops the agent */
 const Anchor = defineTask({
 	name: 'agent-ide.anchor',
 	version: 1,
@@ -148,7 +147,7 @@ const Anchor = defineTask({
 	abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),
 })
 
-// Asks an agent once, under its own id as request id so a rerun finds the input, and posts the outcome as it ends.
+/** Asks an agent once, under its own id as request id so a rerun finds the input, and posts the outcome as it ends */
 const Deliver = defineTask({
 	name: 'agent-ide.deliver',
 	version: 1,
@@ -182,7 +181,7 @@ const Deliver = defineTask({
 			)
 		},
 	},
-	// Pi's abort of the thread withdrew its input if still queued.
+	/** Pi's abort of the thread withdrew its input if still queued */
 	abort: ({ id, conversationId: threadId, input: { agent, held } }, rt, ctx) =>
 		rt.commit(async (tx) => {
 			if ((await tx.submissionByRequest(agent, String(id)))?.entry === undefined)
@@ -191,7 +190,7 @@ const Deliver = defineTask({
 		}, ctx),
 })
 
-// `$ cmd` as an effect sandwich: commit, run, post. Reopened mid-run, it says a restart interrupted it.
+/** `$ cmd` as an effect sandwich: commit, run, post */
 const Shell = defineTask({
 	name: 'agent-ide.shell',
 	version: 1,
@@ -271,35 +270,33 @@ function printed(
 
 const clients = new Set()
 const runners = createRunners({ onChange: notify })
-// What each running `$ cmd` has printed so far.
+/** What each running `$ cmd` has printed so far */
 const shells = new Map()
-// The client: apps/client/client.html at /, and every module and stylesheet beside it.
+/** The client: apps/client/client.html at /, and every module and stylesheet beside it */
 const page = await readFile(new URL('./apps/client/client.html', import.meta.url))
 const beside = await readdir(new URL('./apps/client/', import.meta.url))
 const scripts = Object.fromEntries(
 	await Promise.all(
-		beside.filter((f) => f.endsWith('.js')).map(async (f) => [
-			`/${f}`,
-			await readFile(new URL(`./apps/client/${f}`, import.meta.url)),
-		]),
+		beside
+			.filter((f) => f.endsWith('.js'))
+			.map(async (f) => [`/${f}`, await readFile(new URL(`./apps/client/${f}`, import.meta.url))]),
 	),
 )
 const styles = Object.fromEntries(
 	await Promise.all(
-		beside.filter((f) => f.endsWith('.css')).map(async (f) => [
-			`/${f}`,
-			await readFile(new URL(`./apps/client/${f}`, import.meta.url)),
-		]),
+		beside
+			.filter((f) => f.endsWith('.css'))
+			.map(async (f) => [`/${f}`, await readFile(new URL(`./apps/client/${f}`, import.meta.url))]),
 	),
 )
-// The runner this server ships, and the updater that fetches it: `curl -fsSL <server>/connect-runner | sh -s -- --dir ~/code`.
+/** The runner this server ships, and the updater that fetches it */
 const bundle = await runnerBundle(import.meta.dirname)
 const updater = await readFile(new URL('./runner-updater.js', import.meta.url))
 
 const models = createModels()
 const registry = createRegistry()
 registry.install(CodingTools)
-// Scripts that call the other tools, so a run of calls costs the model one turn; a thread can drop it with -codemode.
+// Scripts that call the other tools, so a run of calls costs the model one turn
 registry.install(
 	createCodemodeExtension({
 		sandbox: new CodemodeSandbox({ memoryLimitBytes: 256 * 1024 * 1024 }),
@@ -318,7 +315,7 @@ const harness = await Harness.open(
 			)?.model?.provider?.replace(/^runner:/, '')
 			return runner ? remoteEnv(runners, runner, cwd) : undefined
 		},
-		// A failed run doesn't strand the messages queued behind it: the next run takes them.
+		/** A failed run doesn't strand the messages queued behind it: the next run takes them */
 		settings: { afterFailedRun: 'continue' },
 		onReport: (report) => {
 			console.error(`pi-durable: ${report.kind}:`, report.error)
@@ -327,14 +324,12 @@ const harness = await Harness.open(
 	},
 	context,
 )
-// A storage error closes the harness for good; exit, so a supervisor can restart.
 harness.closed.then(
 	(end) =>
 		end.kind === 'failed' &&
 		(console.error('pi-durable: storage failed, exiting:', end.error), process.exit(1)),
 )
-// A stop closes the harness, so the tasks it cuts off wait to resume, and Pi doesn't count them as crashed. Kept on,
-// not once: signal-exit, which pi's lockfile brings, kills the process itself when it finds no other listener.
+/** A stop closes the harness, so the tasks it cuts off wait to resume, and Pi doesn't count them as crashed */
 let stopping
 for (const signal of ['SIGINT', 'SIGTERM'])
 	process.on(signal, () => (stopping ??= harness.close(context).finally(() => process.exit(0))))
@@ -348,7 +343,7 @@ const conversation = async (id) => {
 	return found
 }
 
-// Newest first. Threads are the only conversations without an owner; an agent's is owned by its Anchor.
+/** Newest first */
 const threadIds = async () =>
 	(
 		await collect((cursor) =>
@@ -360,7 +355,7 @@ const threadIds = async () =>
 
 const user = (req) => speaker(req.headers['x-user'])
 
-// A command needs no model.
+/** A command needs no model */
 async function address(to, command = false) {
 	const name = field(to?.runner, 'to.runner')
 	const runner = (await known())[name]
@@ -382,9 +377,7 @@ async function address(to, command = false) {
 	folder(runner, clean)
 	return clean
 }
-// Whom `to` asks in a thread: an agent there by its name, as `name` or `thread/name`, or else a recipe, an object or
-// `model@runner`, for a new one. A recipe whose name the thread has is that agent, as it was made. A name a module
-// knows, as bots knows its own, is that module's recipe.
+/** Whom `to` asks in a thread */
 const addresses = (to, command, threadId) =>
 	Promise.all((to === null ? [] : [to].flat()).map((t) => whom(threadId, t, command)))
 async function whom(threadId, t, command = false) {
@@ -399,7 +392,7 @@ async function whom(threadId, t, command = false) {
 	return name && agents?.[name] ? agentOf(agents[name].conversation, name) : recipe
 }
 
-// What `pi --model asked` makes of it on the runner, kept with its models; offline, only one it resolved before.
+/** What `pi --model asked` makes of it on the runner, kept with its models */
 async function modelOn(name, runner, asked) {
 	const had = runner.models?.[asked]
 	if (had) return { model: `${had.provider}/${had.id}` }
@@ -416,8 +409,7 @@ async function modelOn(name, runner, asked) {
 	return { model: ref, ...(thinkingLevel ? { thinkingLevel } : {}) }
 }
 
-// A runner with an owner takes work from its owner and the names it allows: people, or `@runner` for the agents there.
-// `by` is a person, or `@runner` for an agent. Offline, the runner's last word holds.
+/** A runner with an owner takes work from its owner and the names it allows */
 async function reach(to, by) {
 	for (const { runner: name } of to) {
 		const { owner, allow = [] } = (await known())[name]
@@ -430,7 +422,7 @@ async function reach(to, by) {
 	}
 }
 
-// `dir` is relative to the runner's first folder, or a path in any folder it lends.
+/** `dir` is relative to the runner's first folder, or a path in any folder it lends */
 function folder(runner, to) {
 	const cwd = path.resolve(runner.dir, to.dir || '.')
 	if (!within(runner.folders ?? [runner.dir], cwd))
@@ -438,7 +430,7 @@ function folder(runner, to) {
 	return cwd
 }
 
-// `named`, the agent's name when the caller has it, saves looking it up.
+/** `named`, the agent's name when the caller has it, saves looking it up */
 async function agentOf(id, named) {
 	const agent = await harness.snapshot(AgentDoc, id, context)
 	const runnerName = agent?.model?.provider?.match(/^runner:(.+)$/)?.[1]
@@ -456,7 +448,7 @@ async function agentOf(id, named) {
 	}
 }
 
-// Working while a delivery to it is live.
+// Working while a delivery to it is live
 /** @returns {Promise<Agent[]>} */
 async function agentsIn(row, live) {
 	return Promise.all(
@@ -474,7 +466,7 @@ async function agentsIn(row, live) {
 		}),
 	)
 }
-// The threads each runner is working for: an agent there answering, or a command running.
+/** The threads each runner is working for: an agent there answering, or a command running */
 async function busyThreads() {
 	const by = {}
 	for (const t of await liveTasks()) {
@@ -493,7 +485,7 @@ async function busyThreads() {
 const liveTasks = async () => (await harness.inspect(context)).tasks.map(({ record }) => record)
 
 /** @returns {Promise<Entry[]>} */
-// Any conversation's entries, oldest first: a thread's, or an agent's own.
+/** Any conversation's entries, oldest first: a thread's, or an agent's own */
 async function entries(id) {
 	const handle = await harness.conversation(id, context)
 	return handle
@@ -509,7 +501,7 @@ const lastAsked = async (id) =>
 		((await messages(id)).findLast((e) => e.data.to)?.data.to ?? []).map((n) => whom(id, n)),
 	)
 
-// An agent's own answer, which it never reads back: a person or a post from another thread under its name is news to it.
+/** An agent's own answer, which it never reads back */
 const ownAnswer = ({ data: m }, name) =>
 	m.author === name && !m.from && Boolean(m.answer || m.error)
 
@@ -536,7 +528,6 @@ async function post(tx, threadId, { to, ...message }, { steer = false, empty = f
 	for (const m of posted) await m(tx, threadId, entry)
 	for (const [name, agent] of Object.entries(row.agents))
 		if (!ownAnswer({ data }, name)) agent.unseen.push(entry.id)
-	// A recipe makes an agent once; after that its name is the agent, as its AgentDoc has it.
 	for (const [i, name] of names.entries()) {
 		if (!row.agents[name]) {
 			row.agents[name] = await newAgent(tx, threadId, [...prior, entry.id])
@@ -554,7 +545,7 @@ async function post(tx, threadId, { to, ...message }, { steer = false, empty = f
 	return { entry: entry.id, to: names }
 }
 
-// Owned by an Anchor in the thread; with `from`, Pi's fork of another agent's conversation at an entry.
+/** Owned by an Anchor in the thread */
 async function newAgent(tx, threadId, unseen, from) {
 	const anchor = await tx.createTask(Anchor, null, { ...own, conversationId: threadId })
 	const ownership = { ownership: { kind: 'task', taskId: anchor } }
@@ -575,7 +566,7 @@ const setUp = async (tx, agent, threadId, t) => {
 	})
 }
 
-// An input withdrawn before it was placed: its messages are unseen again.
+/** An input withdrawn before it was placed: its messages are unseen again */
 async function restore(tx, threadId, conversation, held) {
 	const agent = Object.values((await tx.doc(Thread, threadId)).agents).find(
 		(a) => a.conversation === conversation,
@@ -583,8 +574,7 @@ async function restore(tx, threadId, conversation, held) {
 	agent.unseen = [...new Set([...agent.unseen, ...held])].sort((a, b) => a - b)
 }
 
-// What a settled input posts, and where. Inputs sharing one answer post it once, by the first; posts from other
-// threads get it back. Reads the thread after settling, for steers that joined.
+/** What a settled input posts, and where */
 async function outcome(threadId, agent, settled, mine) {
 	const done = settled.status === 'done'
 	if (!done && settled.reason === 'aborted') return []
@@ -609,7 +599,6 @@ async function outcome(threadId, agent, settled, mine) {
 	const body = done
 		? messageText((await commit((tx) => tx.entry(settled.answer)))?.model?.[0])
 		: `gave no answer: ${settled.reason}${settled.detail ? ` (${JSON.stringify(settled.detail)})` : ''}`
-	// An answer with no text is an agent with nothing to say, such as one that posted and waits: it posts nothing.
 	if (done && !body.trim()) return []
 	const result = done ? { answer: { conversation: agent, entry: settled.answer } } : { error: true }
 	const told = [
@@ -624,14 +613,13 @@ async function outcome(threadId, agent, settled, mine) {
 	return told
 }
 
-// Posts what a settled input told; messages no input took are unseen again.
+/** Posts what a settled input told; messages no input took are unseen again */
 async function tell(tx, threadId, agent, settled, held, told) {
 	for (const { thread, data, steer } of told) await post(tx, thread, data, { steer })
 	if (settled.entry === undefined) await restore(tx, threadId, agent, held)
 }
 
-// Work that threw, or that crashes kept cutting off, Pi ends instead of running again, and the thread says so: a
-// delivery as an agent that gave no answer, its messages unseen again for the next ask, and a command as one that failed.
+/** Work that threw, or that crashes kept cutting off, Pi ends instead of running again, and the thread says so */
 async function faulted({ task, reason }) {
 	const record = await harness.getTask(task.id, context)
 	const threadId = task.conversationId
@@ -648,7 +636,7 @@ async function faulted({ task, reason }) {
 	await commit((tx) => tell(tx, threadId, agent, settled, held, told))
 }
 
-// With no reader, anyone's read counts. A stopped `$ cmd` is no result.
+/** With no reader, anyone's read counts */
 async function status(id, reads, agents, shell, reader) {
 	if (shell || agents.some((a) => a.status === 'working')) return 'working'
 	if (agents.some((a) => a.status === 'blocked')) return 'blocked'
@@ -688,7 +676,7 @@ const threadList = async (reader) => {
 		(row) => !row.hidden,
 	)
 }
-// Who's in a thread, with no state of its own: its agents, and the people who wrote or read there.
+/** Who's in a thread, with no state of its own */
 const peopleIn = (entries, readers) => [
 	...new Set([
 		...entries
@@ -703,7 +691,7 @@ const threadView = async (id, reader) => {
 	return { ...row, people: peopleIn(entries, row.readers), entries }
 }
 
-// An agent's thread owns its conversation, through its Anchor; its name is its key in that thread's agents.
+/** An agent's thread owns its conversation, through its Anchor */
 async function home(conversationId) {
 	const threadId = (await storage.conversation(conversationId, context))?.owner?.conversationId
 	const row = threadId && (await thread(threadId))
@@ -712,7 +700,7 @@ async function home(conversationId) {
 	return name ? { thread: threadId, name } : null
 }
 
-// Does `work` once per request id, or every time without one; a retry gets the first result.
+/** Does `work` once per request id, or every time without one; a retry gets the first result */
 const once = (requestId, command, work) =>
 	commit(async (tx) => {
 		if (requestId === undefined) return work(tx)
@@ -729,7 +717,7 @@ const once = (requestId, command, work) =>
 		return result
 	})
 
-// No `to` asks whom the thread last asked, or with the director, whom the body @mentions.
+/** No `to` asks whom the thread last asked, or with the director, whom the body @mentions */
 async function postEntry(id, author, input) {
 	await conversation(id)
 	const body = field(input.body, 'body')
@@ -769,7 +757,7 @@ async function postEntry(id, author, input) {
 	)
 }
 
-// Inside the caller's commit.
+/** Inside the caller's commit */
 async function startThread(tx, author, title, parent, tools = null) {
 	const { id } = await tx.createConversation(ownerless)
 	Object.assign(await tx.doc(Thread, id), { title, parent, createdAt: now(), tools })
@@ -785,8 +773,7 @@ async function createThread(author, { title, parent = null, tools = null, reques
 	}))
 }
 
-// A thread's tools, as `pi --tools` takes them: names, enabling exactly those, or -name and +name, changing the default,
-// which is every tool. Every agent in the thread gets them; a child thread starts with the default, a fork keeps them.
+/** A thread's tools, as `pi --tools` takes them */
 function toolList(tools) {
 	if (tools === null || tools === undefined) return null
 	if (!Array.isArray(tools) || !tools.length || tools.some((t) => typeof t !== 'string'))
@@ -805,7 +792,7 @@ function toolList(tools) {
 		throw new Error(`No tool ${unknown.join(', ')}; there are ${[...names].join(', ')}`)
 	return tools
 }
-// What Pi Durable takes for a thread's tools: every tool is enabled already, so +name changes nothing.
+/** What Pi Durable takes for a thread's tools */
 function toolsOf(tools) {
 	if (!tools) return null
 	const all = registry
@@ -818,7 +805,7 @@ function toolsOf(tools) {
 		: named(tools)
 }
 
-// The thread messages an agent had seen by its entry `cut`, a fork's parent's included.
+/** The thread messages an agent had seen by its entry `cut`, a fork's parent's included */
 async function seenBy(id, cut) {
 	const handle = await harness.conversation(id, context)
 	const entries = await collect((cursor) =>
@@ -827,8 +814,7 @@ async function seenBy(id, cut) {
 	return entries.filter((e) => e.kind === DELIVERY).flatMap((e) => e.data.held)
 }
 
-// Forks the thread at `at`, and each agent at its last answer up to there. One asked but unanswered starts fresh.
-// Changes a thread's tools, and each of its agents' in the same commit, so an answer being written gets them next.
+/** Forks the thread at `at`, and each agent at its last answer up to there */
 async function setTools(id, { tools }) {
 	await conversation(id)
 	tools = toolList(tools)
@@ -850,7 +836,7 @@ async function forkThread(id, { at, title }) {
 		for (const name of data.to ?? []) asked.add(name)
 	}
 	const source = await thread(id)
-	// Asked but not answered by then: a new agent, made as the source's.
+	/** Asked but not answered by then: a new agent, made as the source's */
 	const fresh = await Promise.all(
 		[...asked]
 			.filter((name) => !answers[name])
@@ -926,12 +912,12 @@ const defaults = {
 	bots: false,
 }
 const modules = await load('server', defaults, core)
-// A list of names alone replaces the defaults, so the start line says which of them it turned off.
+/** A list of names alone replaces the defaults, so the start line says which of them it turned off */
 const dropped = Object.keys(defaults).filter(
 	(n) => defaults[n] && !modules.some((m) => m.name === n),
 )
 for (const m of modules) if (m.extension) registry.install(m.extension)
-// One module answers each of these; two claiming one is a mistake, not an order.
+/** One module answers each of these; two claiming one is a mistake, not an order */
 const hook = (name) => {
 	const [first, second] = modules.filter((m) => m[name])
 	if (second)
@@ -973,7 +959,7 @@ async function markRead(id, reader) {
 	return { read: newest ?? null }
 }
 
-// Pi's view of a conversation, with every entry instead of its window of the newest.
+/** Pi's view of a conversation, with every entry instead of its window of the newest */
 async function conversationView(id) {
 	const watch = await (await harness.conversation(id, context))?.watch(context, { min: 1 })
 	if (!watch) throw Object.assign(new Error('Conversation not found'), { status: 404 })
@@ -982,8 +968,7 @@ async function conversationView(id) {
 	return { ...view, entries: await entries(id) }
 }
 
-// As the README lists them; a module may serve GET and POST /api/<its name> and /api/threads/:id/<its name>, and
-// DELETE /api/<its name>/:name with `remove`.
+/** As the README lists them */
 const routes = [
 	[
 		'GET /api/server',
@@ -1023,7 +1008,6 @@ const routes = [
 	['POST /api/threads/:id/fork', async (req, id) => forkThread(id, await input(req))],
 	['POST /api/threads/:id/tools', async (req, id) => setTools(id, await input(req))],
 	['POST /api/threads/:id/read', (req, id) => markRead(id, user(req))],
-	// Pi's abort of the thread reaches its tasks, and through each Anchor its agents.
 	[
 		'POST /api/threads/:id/stop',
 		async (req, id) => {
@@ -1109,7 +1093,7 @@ async function handleRequest(req, res) {
 	send(res, 404, { error: 'Not found' })
 }
 
-// Finds bun or Node, then hands over to the updater, which keeps the runner up to date with this server.
+/** Finds bun or Node, then hands over to the updater, which keeps the runner up to date with this server */
 const runnerScript = (server) => `#!/bin/sh
 # Lends this machine to the agent-ide server at ${server}, with a key from \`bun cli.js key laptop\` there:
 #   curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --dir ~/code [--name laptop] [--read-only] [--no-update]
@@ -1127,8 +1111,7 @@ echo "Next time, without curl: $run ~/.agent-ide/runner-updater.js ${server} $*"
 exec "$run" "$HOME/.agent-ide/runner-updater.js" "${server}" "$@"
 `
 
-// A launched runner whose version differs is asked to update once per connection, when it has no calls open, so
-// nothing it's doing is cut off. Threads that need it meanwhile wait for it, as for any offline runner.
+/** A launched runner whose version differs is asked to update once per connection, when it has no calls open, so nothing it's doing is cut off */
 const outdated = new Map()
 function nudge() {
 	for (const [name, socket] of outdated) {
@@ -1140,7 +1123,7 @@ function nudge() {
 	}
 }
 
-// Browsers hear that something changed, at most every 100 ms, and refresh their lists.
+/** Browsers hear that something changed, at most every 100 ms, and refresh their lists */
 let flushing
 function notify() {
 	flushing ??= setTimeout(() => {
@@ -1152,8 +1135,7 @@ function notify() {
 }
 harness.observeCommits({ advance: notify, end: () => {} })
 
-// A browser watches one thread: its messages, every one first and then each as it lands, and what each of its agents
-// is doing, sent whole as it changes. The thread's doc says when an agent joins. One socket's watches go in turn.
+/** A browser watches one thread */
 const watch = (socket, id) =>
 	(socket.watches = (socket.watches ?? Promise.resolve())
 		.then(() => rewatch(socket, id))
@@ -1165,7 +1147,7 @@ async function rewatch(socket, id) {
 	const row = typeof id === 'number' && (await harness.watchDoc(Thread, id, context))
 	if (!row) return
 	const watches = (socket.watching = [row])
-	// A watch that comes back after the socket moved on is stopped instead.
+	/** A watch that comes back after the socket moved on is stopped instead */
 	const keep = (w) => (socket.watching === watches ? (watches.push(w), true) : (w.stop(), false))
 	const send = (message) => socket.send(JSON.stringify({ thread: id, ...message }))
 	const handle = await harness.conversation(id, context)
@@ -1188,8 +1170,7 @@ async function rewatch(socket, id) {
 	await follow(row.value.agents)
 	row.start(async ({ value }) => follow(value.agents))
 }
-// The thread's messages through Pi's transcript, which keeps them whole: the window a watch holds, with what came
-// before it and any gap a burst left loaded. The first send has every message, later ones only the new.
+/** The thread's messages through Pi's transcript, which keeps them whole */
 async function told(handle, watch, send) {
 	const transcript = new ConversationTranscript(
 		(query, limit, ctx) => handle.entries(query, limit, undefined, ctx),
@@ -1213,8 +1194,7 @@ async function told(handle, watch, send) {
 	await tell(watch.value)
 	watch.start(async ({ value }) => tell(value))
 }
-// What an agent is doing, from Pi's live doc: whether it runs, the reply it's writing, and the tool calls of this round,
-// each with the arguments its answer gave it.
+/** What an agent is doing, from Pi's live doc */
 function doing({ entries, docs }) {
 	const { run, generation, tools = [] } = docs['pi.live'] ?? {}
 	const calls = entries
@@ -1232,12 +1212,12 @@ function doing({ entries, docs }) {
 	}
 }
 
-// The address this request reached the server at, as a runner on another machine dials it.
+/** The address this request reached the server at, as a runner on another machine dials it */
 const origin = (req) =>
 	`${req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'}://${String(req.headers.host).replace(/[^\w.:\[\]-]/g, '')}`
 const sha256 = (text) => createHash('sha256').update(text).digest('hex')
 
-// A new key for a runner, replacing its old one, whose runner is cut off; the server keeps only its hash.
+/** A new key for a runner, replacing its old one, whose runner is cut off */
 async function mintKey(name, server) {
 	if (!/^[\w.-]+$/.test(name))
 		throw new Error('name the runner: letters, digits, dot, dash or underscore')
@@ -1252,7 +1232,7 @@ async function mintKey(name, server) {
 		connect: `curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=${key} sh -s -- --name ${name} --dir ~/code`,
 	}
 }
-// Takes a runner's key away: it goes offline, stops dialling back, and stays out until it gets a new one.
+/** Takes a runner's key away */
 async function revoke(name) {
 	await commit(async (tx) => {
 		delete (await tx.doc(Keys))[name]
@@ -1262,7 +1242,7 @@ async function revoke(name) {
 }
 
 const sockets = new Map()
-// Compressed: a conversation sent whole, and an answer resent as it grows, shrink a few times over.
+/** Compressed */
 const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true })
 async function upgrade(req, raw, head) {
 	const url = new URL(req.url, 'http://localhost')
@@ -1279,7 +1259,7 @@ async function upgrade(req, raw, head) {
 	}
 	socket.on('close', close)
 	socket.on('error', close)
-	// A frame that doesn't parse is dropped, so one bad client never stops the server.
+	/** A frame that doesn't parse is dropped, so one bad client never stops the server */
 	const listen = (handle) =>
 		socket.on('message', (data) => {
 			try {
@@ -1292,7 +1272,7 @@ async function upgrade(req, raw, head) {
 		listen((text) => watch(socket, JSON.parse(text).watch))
 		return clients.add(socket)
 	}
-	// A runner shows its key before it counts, so nobody can take its name; 4001 tells it to stop dialling.
+	/** A runner shows its key before it counts, so nobody can take its name */
 	const given = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1]
 	const held = ((await harness.snapshot(Keys, context)) ?? {})[name]
 	if (!given || held !== sha256(given)) {
@@ -1304,7 +1284,6 @@ async function upgrade(req, raw, head) {
 				: `${name} needs a key; on the server: bun cli.js key ${name}`,
 		)
 	}
-	// A reconnecting runner replaces its old socket, whose calls fail.
 	if (sockets.has(name)) {
 		sockets.get(name).terminate()
 		runners.disconnect(name)
@@ -1344,9 +1323,7 @@ async function upgrade(req, raw, head) {
 	)
 }
 
-// The server lends this machine too, the folder it starts in or RUNNER=~/code: its own runner.js, one more process,
-// which stops with the server. RUNNER=0 lends nothing.
-// It gets a fresh key each start.
+/** The server lends this machine too, the folder it starts in or RUNNER=~/code */
 let lent
 async function lend(url) {
 	const dir = process.env.RUNNER ?? process.cwd()

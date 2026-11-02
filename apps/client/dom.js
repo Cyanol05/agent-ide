@@ -1,4 +1,4 @@
-// Building the page: h makes an element, $ finds one by id, and the few things every part of the page shares.
+/** Building the page */
 
 export const $ = (id) => document.getElementById(id)
 export const h = (tag, props = {}, ...children) => {
@@ -7,17 +7,17 @@ export const h = (tag, props = {}, ...children) => {
 	return e
 }
 
-// One dot everywhere: grey when there's nothing, green when it's on, pulsing green while it works, amber when it's blocked.
+/** One dot everywhere */
 export const dotClass = (state) =>
 	`dot${state === 'on' ? ' on' : state === 'working' ? ' working' : state === 'blocked' ? ' blocked' : ''}`
 
 export const phone = matchMedia('(max-width: 700px)')
-// On a phone: one drawer open at a time, all threads on the left ('list') or this thread's details on the right ('side').
+/** On a phone */
 export const drawer = (name) => {
 	document.body.classList.toggle('list', name === 'list')
 	document.body.classList.toggle('side', name === 'side')
 }
-// A popover opens next to what opened it: above it on a big screen, as a sheet from the bottom on a phone.
+/** A popover opens next to what opened it */
 export function placePopover(pop, from) {
 	if (phone.matches) return void pop.removeAttribute('style')
 	const r = from.getBoundingClientRect()

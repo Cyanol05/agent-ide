@@ -1,6 +1,6 @@
-// STATUS=1 on a runner skips asking the terminal, for when stdout isn't one.
+/** STATUS=1 on a runner skips asking the terminal, for when stdout isn't one */
 
-// One telling at a time, so an older one never lands after a newer one.
+/** One telling at a time, so an older one never lands after a newer one */
 export function server({ runners, known, threadList }) {
 	let telling
 	let again = false
@@ -35,7 +35,7 @@ export function server({ runners, known, threadList }) {
 }
 
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]+/g
-// Cut by characters so the limits hold in UTF-8: title 192 bytes, msg 2048.
+/** Cut by characters so the limits hold in UTF-8 */
 const base64 = (text, max) =>
 	Buffer.from([...text.replace(CONTROL_CHARACTERS, ' ').trim()].slice(0, max).join('')).toString(
 		'base64',
@@ -51,7 +51,7 @@ function programStatus({ state, id, app, title, msg }) {
 	return `\x1b]7501;${pairs.filter(Boolean).join(':')}\x1b\\`
 }
 
-// A terminal that speaks OSC 7501 answers its query before the device attributes every terminal answers.
+/** A terminal that speaks OSC 7501 answers its query before the device attributes every terminal answers */
 function detect() {
 	if (process.env.STATUS === '1') return Promise.resolve(true)
 	if (!process.stdin.isTTY || !process.stdout.isTTY) return Promise.resolve(false)
@@ -75,7 +75,6 @@ function detect() {
 
 export async function runner({ name, server }) {
 	if (!(await detect())) return {}
-	// A report replaces its record whole, so send it only when it changed; clear records no longer there.
 	let reported = new Map()
 	function report(root, threads = []) {
 		const next = new Map([

@@ -1,5 +1,4 @@
-// With memory, GET /api/threads/:id/memory gives the thread's memory as lines, and `?zoom=id,n` opens one, as the
-// zoom tool does, down to the message whole. The client's memory panel shows just this. Without memory, no endpoint.
+/** With memory, GET /api/threads/:id/memory gives the thread's memory as lines, and `?zoom=id,n` opens one, as the zoom tool does, down to the message whole */
 import { rmSync } from 'node:fs'
 import {
 	api,

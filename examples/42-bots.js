@@ -1,7 +1,4 @@
-// MODULES=+bots: a bot is one name in many threads. One call makes it and its home thread, hands off; asked by name
-// anywhere else, an agent of that name joins there from the bot's recipe, and name=model@runner gives that thread
-// another model. Every one of them reads the bot's instructions and knows its other threads. At home its `bot` tool
-// rewrites it or makes another bot. Its home can't be hidden while it's a bot; forgetting a bot keeps every thread.
+/** MODULES=+bots: a bot is one name in many threads */
 import {
 	answered,
 	answers,
@@ -16,7 +13,7 @@ import {
 } from './lib.js'
 
 await server({ MODULES: '+bots' })
-// Pi carries the system prompt in system messages: what each runner was last asked with.
+/** Pi carries the system prompt in system messages: what each runner was last asked with */
 const prompt = {}
 const route = (runner) => (request) => {
 	prompt[runner] = JSON.stringify(request.messages.filter((m) => m.role === 'system'))

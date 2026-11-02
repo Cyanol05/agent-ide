@@ -1,15 +1,15 @@
-// An agent reads another agent's work in a thread, not just its answer: the tool calls it made and what they printed.
+/** An agent reads another agent's work in a thread, not just its answer */
 import { answered, api, call, check, done, say, scriptedRunner, server, text } from './lib.js'
 
 const lastOf = (request) => request.messages.findLast((m) => m.role !== 'system')
 await server()
-// On the vps: looks at the log, then answers with only a summary.
+// On the vps
 await scriptedRunner('vps', (request) =>
 	lastOf(request).role === 'toolResult'
 		? say('found a problem in the log')
 		: call('bash', { command: 'echo "ERROR null user in /api/me (line 42)"' }),
 )
-// On the laptop: reads what the vps agent saw, then says what it found.
+// On the laptop
 await scriptedRunner('laptop', (request) => {
 	const last = lastOf(request)
 	if (last.role === 'toolResult') return say(`read: ${text(last)}`)

@@ -1,4 +1,4 @@
-// RUNNER=dir starts a runner on the server's own machine, named after it, as a process of its own that stops with the server.
+/** RUNNER=dir starts a runner on the server's own machine, named after it, as a process of its own that stops with the server */
 import { mkdtempSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -7,7 +7,7 @@ import { answered, api, check, dir, done, server, sleep, until, view } from './l
 const name = os.hostname()
 const online = async () =>
 	(await api('GET', '/api/runners')).json.find((r) => r.name === name)?.online
-// No pi logins of yours: echo needs none.
+/** No pi logins of yours: echo needs none */
 const HOME = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-home-'))
 
 let srv = await server({ RUNNER: dir, HOME })

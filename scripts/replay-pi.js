@@ -1,6 +1,4 @@
-// Replays pi sessions into one new thread, to try memory on a real history: each user text as `oskar`, and each turn's
-// last assistant text as `pi`, all asking nobody. Sessions go in order of their start.
-// bun scripts/replay-pi.js <session.jsonl | sessions folder> [--server URL] [--title T] [--limit N]
+/** Replays pi sessions into one new thread, to try memory on a real history */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
@@ -37,7 +35,7 @@ const textOf = (content) =>
 				.join('\n')
 	).trim()
 
-// A session's posts: each user text, then the last assistant text before the next user message or the end.
+/** A session's posts */
 function posts(file) {
 	const lines = readFileSync(file, 'utf8')
 		.split('\n')
@@ -85,7 +83,6 @@ const { id } = await api('POST', '/api/threads', {
 const failed = []
 const started = Date.now()
 for (const [k, { author, body }] of all.entries()) {
-	// The server takes 200 KB a request, and reads `$ ` as a command.
 	try {
 		await api(
 			'POST',

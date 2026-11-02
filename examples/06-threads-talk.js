@@ -1,6 +1,4 @@
-// Threads talking: an agent's `post` and `threads` tools. The answer to a post comes back with `from` and `re`
-// and wakes the agent who posted, asking nothing back. The server is killed mid-call; the rerun finds the child it started.
-// Killed again later, it replays nothing: no old reply asks anyone again.
+/** Threads talking: an agent's `post` and `threads` tools */
 import {
 	answers,
 	api,
@@ -48,7 +46,7 @@ const {
 } = await api('POST', '/api/threads', { title: 'parent' })
 await api('POST', `/api/threads/${parent}/entries`, { body: 'please delegate this', to })
 
-// Kill the server the moment the child appears, so the tool call or the child's answer replays.
+/** Kill the server the moment the child appears, so the tool call or the child's answer replays */
 const child = await until(
 	async () => (await api('GET', '/api/threads')).json.find((t) => t.parent === parent),
 	10000,
@@ -118,7 +116,7 @@ check(
 	"no hand-off message in the parent: the child's parent says it",
 )
 
-// The tools run in the parent agent's own conversation, so their results are there.
+/** The tools run in the parent agent's own conversation, so their results are there */
 const results = async () =>
 	(await conversationOf(await view(parent), 'echo/echo@bot')).entries
 		.filter((e) => e.kind === 'pi.tool-result')
@@ -143,7 +141,7 @@ check(
 )
 await idle()
 
-// Posting to its own thread is refused, as a tool error the model sees.
+// Posting to its own thread is refused, as a tool error the model sees
 await api('POST', `/api/threads/${parent}/entries`, { body: `post to own thread ${parent}` })
 check(
 	Boolean(await until(async () => (await results()).find((t) => t.includes('your own thread')))),
@@ -151,7 +149,7 @@ check(
 )
 await idle()
 
-// A human writing in a child gets the answer there; the parent hears nothing of it.
+/** A human writing in a child gets the answer there; the parent hears nothing of it */
 const {
 	json: { id: human },
 } = await api('POST', '/api/threads', { title: 'by hand', parent })
@@ -166,7 +164,7 @@ check(
 	'and the parent hears nothing of it',
 )
 
-// A note that asks nobody, then a restart. Nothing asks the agent again, so nobody answers the note.
+/** A note that asks nobody, then a restart */
 const settledParent = await view(parent)
 await api('POST', `/api/threads/${parent}/entries`, { body: 'just a note', to: null })
 srv.kill('SIGKILL')
@@ -180,7 +178,7 @@ check(
 	brief(quiet),
 )
 
-// Answering a post with the post tool is the answer: the text the agent ends with stays in its thread.
+/** Answering a post with the post tool is the answer */
 const {
 	json: { id: asker },
 } = await api('POST', '/api/threads', { title: 'asker' })
@@ -197,7 +195,7 @@ check(
 	brief(await view(asker)),
 )
 
-// Once answered, the next post to that thread is news, not a second answer.
+/** Once answered, the next post to that thread is news, not a second answer */
 const byPostThread = (await api('GET', '/api/threads')).json.find((t) => t.parent === asker).id
 await api('POST', `/api/threads/${byPostThread}/entries`, { body: `post again to ${asker}` })
 const news = await until(

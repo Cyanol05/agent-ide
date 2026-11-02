@@ -1,4 +1,4 @@
-// An unread answer stays done however many messages that ask nobody pile up on top of it.
+/** An unread answer stays done however many messages that ask nobody pile up on top of it */
 import { answered, api, check, done, say, scriptedRunner, server, view } from './lib.js'
 
 let srv = await server()
