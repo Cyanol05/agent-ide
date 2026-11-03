@@ -1057,18 +1057,20 @@ const routes = [
 ])
 
 function send(res, status, value) {
-	res.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+	res.writeHead(status, { 'Content-Type': 'application/json' })
 	res.end(JSON.stringify(value))
 }
 
 async function handleRequest(req, res) {
 	const url = new URL(req.url, 'http://localhost')
+	if (!['GET', 'HEAD'].includes(req.method) && req.headers.origin && req.headers.origin !== origin(req))
+		return send(res, 403, { error: 'Cross-origin writes are refused; use the server’s own page' })
+	if ((req.method === 'POST' && url.pathname === '/api/runners' ||
+		req.method === 'DELETE' && url.pathname.startsWith('/api/runners/')) &&
+		(!loopback(req.socket.remoteAddress) || !loopback(req.headers.host?.replace(/:\d+$/, ''))))
+		return send(res, 403, { error: 'Manage runner keys on the server’s machine through localhost' })
 	if (req.method === 'OPTIONS') {
-		res.writeHead(204, {
-			'Access-Control-Allow-Origin': '*',
-			'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-			'Access-Control-Allow-Headers': 'Content-Type, x-user',
-		})
+		res.writeHead(204)
 		return res.end()
 	}
 	if (req.method === 'GET' && url.pathname === '/') {
@@ -1250,11 +1252,17 @@ function doing({ entries, docs }) {
 const origin = (req) =>
 	`${req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'}://${String(req.headers.host).replace(/[^\w.:\[\]-]/g, '')}`
 const sha256 = (text) => createHash('sha256').update(text).digest('hex')
+const loopback = (address) => /^(127\.|::ffff:127\.)/.test(address) || ['::1', '[::1]', 'localhost'].includes(address)
 
 /** A new key for a runner, replacing its old one, whose runner is cut off */
 async function mintKey(name, server) {
 	if (!/^[\w.-]+$/.test(name))
 		throw new Error('name the runner: letters, digits, dot, dash or underscore')
+	if (process.env.HOST === '0.0.0.0' && loopback(new URL(server).hostname)) {
+		const interfaces = os.networkInterfaces()
+		const address = [...(interfaces.tailscale0 ?? []), ...Object.values(interfaces).flat()].find((a) => a.family === 'IPv4' && !a.internal)?.address
+		if (address) server = server.replace(new URL(server).hostname, address)
+	}
 	const key = `air_${randomBytes(24).toString('base64url')}`
 	await commit(async (tx) => {
 		;(await tx.doc(Keys))[name] = sha256(key)
@@ -1263,7 +1271,7 @@ async function mintKey(name, server) {
 	return {
 		name,
 		key,
-		connect: `curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=${key} sh -s -- --name ${name} --dir ~/code`,
+		connect: `curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=${key} sh -s -- --name ${name} --dir .`,
 	}
 }
 /** Takes a runner's key away */
@@ -1281,6 +1289,8 @@ const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true })
 async function upgrade(req, raw, head) {
 	const url = new URL(req.url, 'http://localhost')
 	if (url.pathname !== '/ws') return raw.destroy()
+	if (req.headers.origin && req.headers.origin !== origin(req))
+		return raw.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
 	const socket = await new Promise((resolve) => wss.handleUpgrade(req, raw, head, resolve))
 	const name = url.searchParams.get('runner')
 	const close = () => {
@@ -1348,6 +1358,7 @@ async function upgrade(req, raw, head) {
 		models.setProvider(runnerProvider(runners, name, resolved))
 	listen(runners.receive)
 	runners.connect(name, (text) => socket.send(text))
+	socket.send(JSON.stringify({ op: 'ready' }))
 	if (runner.version && runner.version !== bundle.version) {
 		outdated.set(name, socket)
 		notify()

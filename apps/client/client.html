@@ -58,7 +58,9 @@
 				run this there. Your laptop dials the server, so it has to reach it: the same network, or
 				<a href="https://tailscale.com">Tailscale</a>.
 			</p>
-			<pre id="lend"></pre>
+			<p>Start the server with <code>HOST=0.0.0.0</code> to lend another machine. On the server's own machine, open this page through localhost and create a private connection line with a runner key.</p>
+			<button id="connect" type="button">Create connection line</button>
+			<pre id="lend">Create a connection line, then paste it from the folder you want to lend.</pre>
 		</section>
 
 		<section data-focus="hands">
@@ -136,8 +138,8 @@
 				<button data-try="friend">Open this thread as Ana</button>
 			</div>
 			<p class="mute">
-				There are no accounts: a name is whatever you say it is. Keep the server on a network you
-				trust.
+				Anyone who can reach the server can read, post as anyone and ask its runners to work.
+				There are no people keys or accounts. Keep it on a trusted network.
 			</p>
 		</section>
 
@@ -377,8 +379,10 @@ sequenceDiagram
 				<li>
 					A runner shows its key when it dials in, so nobody can take its name. The server mints a
 					key per runner and keeps only its hash; a new key cuts off the old one. Revoking takes the
-					key away: the runner goes offline and stops dialling back. People have no keys yet, so
-					anyone who can reach the server can mint one.
+					key away: the runner goes offline and stops dialling back. Only localhost on the server's
+					own machine can mint or revoke runner keys. The page creates a connection line there;
+					a runner says online only after the server accepts it. Other websites cannot write to
+					this server, even on loopback. People have no keys: use a trusted network.
 				</li>
 			</ul>
 

@@ -4,6 +4,7 @@ import { wires } from './wires.js'
 import { $, h, dotClass, drawer, phone } from './dom.js'
 import { agentKey, authorLabel, lastToolCall, sameAgent } from './agent.js'
 import {
+	api,
 	bots,
 	colorOf,
 	connected,
@@ -48,6 +49,14 @@ const setChatOnly = (chat) => {
 }
 $('mode').onclick = () => setChatOnly(!document.body.classList.contains('chat'))
 setChatOnly(params.has('chat'))
+$('connect').onclick = async () => {
+	const name = prompt('Runner name (replaces its old key):', 'laptop')?.trim()
+	if (!name) return
+	$('connect').disabled = true
+	try { $('lend').textContent = (await api('/api/runners', { name })).connect }
+	catch (error) { alert(error.message) }
+	finally { $('connect').disabled = false }
+}
 $('back').onclick = () => drawer('list')
 $('pill').onclick = () => drawer('side')
 $('scrim').onclick = () => drawer(null)
@@ -114,11 +123,6 @@ function render() {
 	$('server').classList.toggle('off', !connected)
 	$('server').querySelector('.dot').className = dotClass(connected ? 'on' : '')
 	$('server').querySelector('code').textContent = url
-	/** Another machine can't reach localhost; it needs the server's name on the network */
-	const reachable = /^https?:\/\/(localhost|127\.|\[::1\])/.test(url)
-		? url.replace(/\/\/[^:/]+/, '//yourbox')
-		: url
-	$('lend').textContent = `curl -fsSL ${reachable}/connect-runner | sh -s -- --dir ~/code`
 
 	const shown = family()
 	const shownThreads = shown.map((id) => threads.find((t) => t.id === id)).filter(Boolean)

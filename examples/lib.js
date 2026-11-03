@@ -146,7 +146,7 @@ export async function localRunner(
 			echo,
 			readOnly,
 			send: (t) => socket.readyState === WebSocket.OPEN && socket.send(t),
-			onTell,
+			onTell: (m) => { if (m.op !== 'ready') onTell?.(m) },
 		})
 		socket.onmessage = ({ data }) => r.receive(data)
 		socket.onclose = () => {

@@ -142,11 +142,11 @@ async function connect() {
 				: modules.find((m) => m.name === message.op)?.told?.(message),
 	})
 	const from = args.owner ? `, to ${[args.owner, ...args.allow].join(', ')}` : ''
-	socket.onopen = () =>
+	const online = () =>
 		console.log(
 			`${name} online at ${server}, lending pi's logins and ${roots.join(', ')}${args['read-only'] ? ' to read only' : ''}${from}`,
 		)
-	socket.onmessage = ({ data }) => runner.receive(data)
+	socket.onmessage = ({ data }) => JSON.parse(data).op === 'ready' ? online() : runner.receive(data)
 	socket.onclose = ({ code, reason }) => {
 		runner.stopAll()
 		for (const m of modules) m.disconnected?.()

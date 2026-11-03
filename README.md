@@ -22,14 +22,14 @@ RUNNER=~/code bun server.js            # lend another folder; RUNNER=0 lends non
 MODULES=+memory,+bots bun server.js    # +name and -name change the defaults; each module's top says how it works
 DB_PATH=other.sqlite bun server.js     # another store
 
-bun cli.js key desk                    # prints the line that connects runner desk to this server
+bun cli.js key desk                    # on the server's machine, via localhost
 bun cli.js post "hello" --to sonnet@laptop
 bun cli.js threads | runners | read 3 | stop 3
 ```
 
-On another machine, nothing to clone: `curl -fsSL http://yourbox:3000/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --name desk --dir ~/code`. `bun runner.js --help` lists the rest.
+To lend another machine, start the server with `HOST=0.0.0.0`, open its page through localhost on the server's own machine, and click “Create connection line”. Paste that private line from the folder you want to lend on the runner's machine; it includes a new key, the server's network address and its actual port. Creating another line for the same name replaces its old key. A runner says “online” only after the server accepts it. `bun runner.js --help` lists the rest.
 
-A runner needs its key to connect, so nobody can take its name. People have no keys yet: anyone who can reach the server can claim any name, so keep it on a trusted network.
+Only localhost on the server's own machine can mint or revoke runner keys. Other websites cannot write to this server, even on loopback. People have no keys or accounts: anyone who can reach the server can read, post as anyone and ask its runners to work. Keep it on a trusted network.
 
 ## API
 
