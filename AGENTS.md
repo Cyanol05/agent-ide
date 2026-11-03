@@ -9,6 +9,7 @@
 - New features are modules, off by default.
 - Keep client.html and the README saying what the code does high level.
 - Prove things in `examples/`, one file per idea. No unit tests, no TypeScript, no build step, no migrations or shims.
+- Thread views omit `dir` at the runner's root, so use a subfolder to prove CLI folder options.
 - Pi forks restore `pi.agent` at the fork entry, so apply the thread's current tools and new identity in the creating commit without replacing the inherited model, thinking or folder.
 - Check UI changes in a browser: `agent-browser open <url>` with `server.js` running.
 - Connection lines minted through localhost need a network address, preferably Tailscale rather than the first non-loopback interface.

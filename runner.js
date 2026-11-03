@@ -25,8 +25,25 @@ const { values: args } = parseArgs({
 		allow: { type: 'string', multiple: true, default: [] },
 		key: { type: 'string', default: process.env.AGENT_IDE_KEY },
 		'key-file': { type: 'string' },
+		help: { type: 'boolean', short: 'h' },
 	},
 })
+if (args.help) {
+	console.log(`node runner.js [options]
+
+  --server url      server to dial (AGENT_IDE_SERVER or http://localhost:3000)
+  --name name       runner's name (this machine's hostname)
+  --alias name      another name for this runner
+  --dir folder      folder to lend (current folder); repeat for more
+  --discover-dirs   offer git and jj checkouts beneath the folders
+  --owner name      take work only from this person and those allowed
+  --allow name      also take work from this person or @runner; repeat for more
+  --read-only       refuse writes and commands
+  --key key         runner key (AGENT_IDE_KEY or the saved key)
+  --key-file file   read the saved key here instead of ~/.config/agent-ide/key
+  -h, --help        print these options`)
+	process.exit(0)
+}
 /** The key connect-runner saved, for starts without it */
 function saved(file) {
 	const config = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')

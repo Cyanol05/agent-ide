@@ -1,19 +1,35 @@
 /** The CLI sends to any agents, in a new thread or an old one, and prints their answers as they land */
 import { execFile } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
 import { promisify } from 'node:util'
-import { base, check, done, repo, runner, server } from './lib.js'
+import { api, base, check, dir, done, repo, runner, server, until, view } from './lib.js'
 
 const cli = async (...args) => {
 	const { stdout, stderr } = await promisify(execFile)(
 		process.execPath,
 		['cli.js', '--server', base, '--as', 'oskar', ...args],
-		{ cwd: repo },
+		{ cwd: repo, timeout: 8000 },
 	)
 	return stdout + stderr
 }
 
+for (const flag of ['--help', '-h']) {
+	const { stdout } = await promisify(execFile)(process.execPath, ['runner.js', flag], {
+		cwd: repo,
+		timeout: 8000,
+	})
+	check(
+		[
+			'server', 'name', 'alias', 'dir', 'discover-dirs', 'owner', 'allow',
+			'read-only', 'key', 'key-file', 'help',
+		].every((option) => stdout.includes(`--${option}`)),
+		`runner ${flag} prints its options without connecting`,
+		stdout,
+	)
+}
+
 await server()
-await runner('laptop')
+const laptop = await runner('laptop')
 await runner('desk')
 
 const first = await cli('post', '--to', 'echo/echo@laptop', 'hello')
@@ -72,4 +88,48 @@ check(
 	'runners lists both',
 	runners,
 )
+const named = await cli('post', '--to', 'reviewer=echo/echo@desk', 'review this')
+const namedId = /thread (\d+)/.exec(named)?.[1]
+check(namedId && /#\d+ reviewer\n/.test(named), '--to can give an agent a name', named)
+for (const to of ['reviewer', `${namedId}/reviewer`]) {
+	const reply = await cli('post', '--thread', namedId, '--to', to, 'review again')
+	check(/#\d+ reviewer\n/.test(reply), `--to ${to} reaches the thread's agent`, reply)
+}
+const nobody = await cli('post', '--thread', namedId, '--to', 'nobody', 'just a note')
+check(!nobody, '--to nobody posts without waiting for an answer', nobody)
+
+mkdirSync(`${dir}/review`)
+const options = await cli(
+	'post', '--to', 'echo/echo@desk', '--thinking', 'low', '--dir', 'review', 'with options',
+)
+const optionsId = /thread (\d+)/.exec(options)?.[1]
+const recipe = optionsId && (await view(optionsId)).agents[0]?.to
+check(
+	recipe?.thinkingLevel === 'low' && recipe?.dir === 'review',
+	'--thinking and --dir still set a model@runner recipe',
+	JSON.stringify(recipe),
+)
+
+/** A stop posts no answer, so waiting must end on the thread's status alone. */
+laptop.kill()
+check(
+	await until(async () =>
+		!(await api('GET', '/api/runners')).json.find((r) => r.name === 'laptop').online,
+	),
+	'laptop goes offline',
+)
+const stopped = (await api('POST', '/api/threads', { title: 'stop a CLI delivery' })).json.id
+const pending = cli('post', '--thread', String(stopped), '--to', 'echo/echo@laptop', 'wait for stop')
+	.then(
+		(output) => ({ output }),
+		(error) => ({ error: error.message }),
+	)
+check(
+	await until(async () => (await view(stopped)).status === 'blocked'),
+	'CLI waits for the offline runner',
+)
+await cli('stop', String(stopped))
+const result = await pending
+check(!result.error, 'stopping a delivery ends the CLI wait without an answer', JSON.stringify(result))
+check((await view(stopped)).entries.length === 1, 'a stopped delivery posts no answer')
 done()
