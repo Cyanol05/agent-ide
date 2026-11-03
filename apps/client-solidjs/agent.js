@@ -3,8 +3,12 @@ import { createRoot, createStore } from 'solid-js'
 
 export const [doing, setDoing] = createRoot(() => createStore({}))
 export const agentKey = ({ runner, model, name }) => `${name ?? model}@${runner}`
-export const busiest = (agents) => agents.some((a) => a.status === 'working') ? 'working'
-	: agents.some((a) => a.status === 'blocked') ? 'blocked' : ''
+export const busiest = (agents) =>
+	agents.some((a) => a.status === 'working')
+		? 'working'
+		: agents.some((a) => a.status === 'blocked')
+			? 'blocked'
+			: ''
 
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
@@ -32,7 +36,8 @@ export const sameAgent = (a, b) =>
 
 /** In the composer: its name or its model's own name, how hard it thinks, where it runs */
 export const agentLabel = (p) =>
-	`${p.name ?? (p.model ?? '').split('/').pop()}${p.thinkingLevel ? ` · ${p.thinkingLevel}` : ''} · ${p.runner}`
+	`${p.name ?? (p.model ?? '').split('/').pop()}` +
+	`${p.thinkingLevel ? ` · ${p.thinkingLevel}` : ''} · ${p.runner}`
 /** An author as a message shows it */
 export const authorLabel = (author) =>
 	author?.replace(/^(?:[^@]*\/)?([^/@:]+)(?::[^@]*)?@(.+)$/, '$1 · $2') ?? ''

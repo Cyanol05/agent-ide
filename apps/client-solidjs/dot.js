@@ -2,7 +2,8 @@
 import html from '@solidjs/html'
 
 export const Dot = (props) => html`
-	<span title=${() => props.title}
+	<span
+		title=${() => props.title}
 		class=${() => [
 			'dot',
 			{

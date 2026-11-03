@@ -4,6 +4,8 @@ import {
 	createProjection,
 	createRoot,
 	createSignal,
+	createStore,
+	latest,
 	onSettled,
 	refresh,
 } from 'solid-js'
@@ -11,10 +13,11 @@ import {
 export const params = new URLSearchParams(location.search)
 export const url = params.get('server') || location.origin
 export const me = params.get('user') || 'you'
-export const api = (path, body) =>
+export const api = (path, body, method = body === undefined ? 'GET' : 'POST') =>
 	fetch(url + path, {
 		headers: { 'Content-Type': 'application/json', 'x-user': me },
-		...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }),
+		method,
+		...(body === undefined ? {} : { body: JSON.stringify(body) }),
 	}).then(async (r) => {
 		const json = await r.json()
 		if (!r.ok) throw new Error(json.error)
@@ -42,20 +45,48 @@ export function watch(receive, opened = () => {}, closed = () => {}) {
 }
 
 /** Page lifetime; components own the messages of just the threads on screen. */
-export const { connected, threads, runners, current, openThread, family } = createRoot(() => {
+export const {
+	connected,
+	threads,
+	runners,
+	server,
+	bots,
+	entries,
+	setEntries,
+	current,
+	openThread,
+	family,
+	newThreadTools,
+	setNewThreadTools,
+	connectionLine,
+	setConnectionLine,
+} = createRoot(() => {
 	const [connected, setConnected] = createSignal(false)
+	const [newThreadTools, setNewThreadTools] = createSignal(null)
+	const [connectionLine, setConnectionLine] = createSignal(
+		'Create a connection line, then paste it from the folder you want to lend.',
+	)
+	const [entries, setEntries] = createStore({})
+	const server = createMemo(() => api('/api/server'))
+	const bots = createProjection(
+		() => (server().modules.includes('bots') ? api('/api/bots') : []),
+		[],
+		{ key: 'name' },
+	)
 	const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
 	const threads = createProjection(() => api('/api/threads'), [], { key: 'id' })
 	const runners = createProjection(() => api('/api/runners'), [], { key: 'name' })
 	const reload = () => {
 		refresh(threads)
 		refresh(runners)
+		refresh(bots)
 	}
 	onSettled(() =>
 		watch(
 			reload,
 			() => {
 				setConnected(true)
+				refresh(server)
 				reload()
 			},
 			() => setConnected(false),
@@ -63,7 +94,7 @@ export const { connected, threads, runners, current, openThread, family } = crea
 	)
 	const openThread = (id) => {
 		setCurrent(id)
-		document.body.classList.remove('list')
+		drawer(null)
 		const next = new URL(location.href)
 		if (id) next.searchParams.set('thread', id)
 		else next.searchParams.delete('thread')
@@ -81,9 +112,46 @@ export const { connected, threads, runners, current, openThread, family } = crea
 				if (parent(t.id) === ids[i] && !ids.includes(t.id) && !t.hidden) ids.push(t.id)
 		return ids
 	})
-	return { connected, threads, runners, current, openThread, family }
+	return {
+		connected,
+		threads,
+		runners,
+		server,
+		bots,
+		entries,
+		setEntries,
+		current,
+		openThread,
+		family,
+		newThreadTools,
+		setNewThreadTools,
+		connectionLine,
+		setConnectionLine,
+	}
 })
 
+export function drawer(which) {
+	for (const name of ['list', 'side'])
+		document.body.classList.toggle(name, name === which && !document.body.classList.contains(name))
+}
+export async function createThread(title) {
+	const tools = newThreadTools()
+	const { id } = await api('/api/threads', { title, tools })
+	if (latest(newThreadTools) === tools) setNewThreadTools(null)
+	if (!latest(current)) openThread(id)
+	return id
+}
+export async function deleteThread(id) {
+	await api(`/api/threads/${id}`, undefined, 'DELETE')
+	if (family().includes(id)) openThread(null)
+	refresh(threads)
+}
+export const homeBot = (id) => bots.find((b) => b.home === id)
+export const botAgent = (b) => ({ ...b.to, name: b.name })
+export const colorOf = (name) => {
+	const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+	return bots.some((b) => b.name === name) ? `color: oklch(0.6 0.14 ${hue})` : ''
+}
 export const forkedFrom = (t) => t?.conversation?.parent?.conversationId
 export const titleOf = (id) => threads.find((t) => t.id === id)?.title || `thread ${id}`
 export const fork = async (id, at) => openThread((await api(`/api/threads/${id}/fork`, { at })).id)
