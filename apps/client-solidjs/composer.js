@@ -1,15 +1,6 @@
 /** The draft and recipients stay with the composer as you move between threads. */
 import html from '@solidjs/html'
-import {
-	createEffect,
-	createRoot,
-	createSignal,
-	createStore,
-	For,
-	latest,
-	Show,
-	snapshot,
-} from 'solid-js'
+import { createEffect, createRoot, createStore, For, latest, Show, snapshot } from 'solid-js'
 import {
 	api,
 	bots,
@@ -29,13 +20,13 @@ import { Dot } from './dot.js'
 const [compose, setCompose] = createRoot(() =>
 	createStore({
 		draft: '',
-		draftVersion: 0,
 		sending: false,
 		to: null,
 		typed: null,
 		settings: {},
 	}),
 )
+let draftVersion = 0
 export const choiceFor = (r) =>
 	compose.to?.find((p) => p.runner === r.name && !p.name) ??
 	compose.settings[r.name] ?? {
@@ -85,7 +76,6 @@ export function configure(to) {
 
 export function Composer(props) {
 	let input, picker, button
-	const [expanded, setExpanded] = createSignal(false)
 	const active = () => current() === props.thread
 	const agents = () => threads.find((t) => t.id === current())?.agents ?? []
 	const busy = () =>
@@ -98,7 +88,7 @@ export function Composer(props) {
 		if (compose.sending || !recipients().length || !compose.draft.trim()) return
 		const body = compose.draft,
 			to = snapshot(recipients()),
-			version = compose.draftVersion
+			version = draftVersion
 		let id = current()
 		setCompose((s) => {
 			s.sending = true
@@ -109,7 +99,7 @@ export function Composer(props) {
 			await api(`/api/threads/${id}/entries`, { body, to })
 		} catch (error) {
 			setCompose((s) => {
-				if (latest(current) === id && s.draftVersion === version && !s.draft) s.draft = body
+				if (latest(current) === id && draftVersion === version && !s.draft) s.draft = body
 			})
 			alert(error.message)
 		} finally {
@@ -135,15 +125,10 @@ export function Composer(props) {
 		})
 	}
 	return html`
-		<form
-			class=${() => ({ compose: active(), elsewhere: !active() })}
-			onSubmit=${submit}
-		>
+		<form class=${() => ({ compose: active(), elsewhere: !active() })} onSubmit=${submit}>
 			<div class="box">
 				<input
-					ref=${(el) => {
-						input = el
-					}}
+					ref=${(el) => (input = el)}
 					autocomplete="off"
 					required
 					enterkeyhint="send"
@@ -157,18 +142,15 @@ export function Composer(props) {
 					value=${() => (active() ? compose.draft : '')}
 					onFocus=${() => {
 						if (!active()) openThread(props.thread)
-						const to = snapshot(recipients())
-						if (compose.to === null && to.length && !homeBot(current()))
-							setCompose((s) => {
-								s.to = to
-								for (const agent of to) if (!agent.name) s.settings[agent.runner] = agent
-							})
 					}}
-					onInput=${(e) =>
+					onInput=${(e) => {
+						draftVersion++
+						const to = homeBot(current()) ? null : snapshot(recipients())
 						setCompose((s) => {
 							s.draft = e.currentTarget.value
-							s.draftVersion++
-						})}
+							s.to ??= to
+						})
+					}}
 				/>
 				<${Show} when=${() => active()}>
 					<button
@@ -191,13 +173,7 @@ export function Composer(props) {
 				>
 					+
 				</button>
-				<button
-					type="button"
-					class="icon mic"
-					disabled
-					title="Voice (not yet)"
-					aria-label="Voice"
-				>
+				<button type="button" class="icon mic" disabled title="Voice (not yet)" aria-label="Voice">
 					<svg
 						width="15"
 						height="15"
@@ -207,13 +183,7 @@ export function Composer(props) {
 						stroke-width="2"
 						stroke-linecap="round"
 					>
-						<rect
-							x="9"
-							y="3"
-							width="6"
-							height="11"
-							rx="3"
-						/>
+						<rect x="9" y="3" width="6" height="11" rx="3" />
 						<path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
 					</svg>
 				</button>
@@ -236,10 +206,8 @@ export function Composer(props) {
 					type="button"
 					class="pick"
 					aria-label="Model"
-					ref=${(el) => {
-						button = el
-					}}
-					aria-expanded=${() => String(expanded())}
+					ref=${(el) => (button = el)}
+					aria-expanded="false"
 					disabled=${() => !!homeBot(current())}
 					title=${() =>
 						homeBot(current()) ? 'Its home asks the bot' : recipients().map(formatAgent).join(', ')}
@@ -255,11 +223,9 @@ export function Composer(props) {
 			<div
 				class="model-picker"
 				popover
-				ref=${(el) => {
-					picker = el
-				}}
+				ref=${(el) => (picker = el)}
 				onToggle=${(e) => {
-					setExpanded(e.newState === 'open')
+					button.setAttribute('aria-expanded', String(e.newState === 'open'))
 					if (e.newState === 'open') placePopover(picker, button)
 				}}
 			>
@@ -268,39 +234,12 @@ export function Composer(props) {
 						each=${() => runners.filter((r) => r.online)}
 						fallback=${html`<li class="mute">No runner is online.</li>`}
 					>
-						${(r) =>
-							html`<${PickerRunner}
-								runner=${() => r}
-								onClose=${(_e) => picker.hidePopover()}
-							/>`}
+						${(r) => PickerRunner(r, () => picker.hidePopover())}
 					<//>
 					<${Show} when=${() => bots.length}
 						><li><h4>Bots</h4></li><//
 					>
-					<${For} each=${() => bots}>
-						${(bot) => html`
-							<li class=${() => ({ on: recipients().some((p) => p.name === bot.name) })}>
-								<button
-									type="button"
-									class=${() => ['model', { on: recipients().some((p) => p.name === bot.name) }]}
-									onClick=${(e) => {
-										const previous = recipients()
-										selectRecipients(
-											!e.shiftKey
-												? [botAgent(bot)]
-												: previous.some((p) => p.name === bot.name)
-													? previous.filter((p) => p.name !== bot.name)
-													: [...previous, botAgent(bot)],
-										)
-										if (!e.shiftKey) picker.hidePopover()
-									}}
-								>
-									<span style=${() => colorOf(bot.name)}>${() => bot.name}</span>
-									<small>${() => formatAgent(bot.to)}</small>
-								</button>
-							</li>
-						`}
-					<//>
+					<${For} each=${() => bots}> ${(bot) => PickerBot(bot, () => picker.hidePopover())} <//>
 				</ul>
 				<input
 					class="recipients"
@@ -319,28 +258,53 @@ export function Composer(props) {
 	`
 }
 
-function PickerRunner(props) {
-	const runner = () => props.runner
-	const choice = () => choiceFor(runner())
-	const selected = () => recipients().some((p) => p.runner === runner().name && !p.name)
+function PickerBot(bot, close) {
+	const selected = () => recipients().some((p) => p.name === bot.name)
+	return html`
+		<li>
+			<button
+				type="button"
+				class=${() => ['model', { on: selected() }]}
+				onClick=${(e) => {
+					const previous = recipients()
+					selectRecipients(
+						!e.shiftKey
+							? [botAgent(bot)]
+							: selected()
+								? previous.filter((p) => p.name !== bot.name)
+								: [...previous, botAgent(bot)],
+					)
+					if (!e.shiftKey) close()
+				}}
+			>
+				<span style=${() => colorOf(bot.name)}>${() => bot.name}</span>
+				<small>${() => formatAgent(bot.to)}</small>
+			</button>
+		</li>
+	`
+}
+
+function PickerRunner(runner, close) {
+	const choice = () => choiceFor(runner)
+	const selected = () => recipients().some((p) => p.runner === runner.name && !p.name)
 	const models = () => [
-		...new Set([choice().model, runner().model, ...(runner().offers ?? [])].filter(Boolean)),
+		...new Set([choice().model, runner.model, ...(runner.offers ?? [])].filter(Boolean)),
 	]
 	const folderValue = (folder) =>
-		folder === runner().dir
+		folder === runner.dir
 			? ''
-			: folder.startsWith(`${runner().dir}/`)
-				? folder.slice(runner().dir.length + 1)
+			: folder.startsWith(`${runner.dir}/`)
+				? folder.slice(runner.dir.length + 1)
 				: folder
 	return html`
 		<li class=${() => ({ on: selected() })}>
 			<div class="who">
-				<${Dot} state=${() => (runner().busy ? 'working' : 'on')} /><b>${() => runner().name}</b>
-				<small title=${() => runner().dir}
+				<${Dot} state=${() => (runner.busy ? 'working' : 'on')} /><b>${() => runner.name}</b>
+				<small title=${() => runner.dir}
 					>${() =>
-						runner().busy
-							? `busy in ${runner().busy} thread${runner().busy > 1 ? 's' : ''}`
-							: runner().dir}</small
+						runner.busy
+							? `busy in ${runner.busy} thread${runner.busy > 1 ? 's' : ''}`
+							: runner.dir}</small
 				>
 				<${Show} when=${() => runners.filter((r) => r.online).length > 1}>
 					<button
@@ -363,7 +327,7 @@ function PickerRunner(props) {
 								const to = { ...choice(), model }
 								if (selected() && (e.shiftKey || recipients().length > 1)) configure(to)
 								else choose(to, e.shiftKey)
-								if (!e.shiftKey) props.onClose()
+								if (!e.shiftKey) close()
 							}}
 						>
 							<span>${() => model.split('/').pop()}</span
@@ -391,14 +355,14 @@ function PickerRunner(props) {
 					`}<//
 				>
 			</div>
-			<${Show} when=${() => runner().folders?.length > 1}>
+			<${Show} when=${() => runner.folders?.length > 1}>
 				<h4>Folder</h4>
 				<select
 					aria-label="Folder"
 					value=${() => choice().dir ?? ''}
 					onChange=${(e) => configure({ ...choice(), dir: e.currentTarget.value || undefined })}
 				>
-					<${For} each=${() => runner().folders}
+					<${For} each=${() => runner.folders}
 						>${(folder) => html`
 							<option value=${() => folderValue(folder)}>
 								${() => folderValue(folder) || folder}

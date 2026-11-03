@@ -6,10 +6,7 @@
 		content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
 	/>
 	<title>agent-ide, in Solid</title>
-	<link
-		rel="stylesheet"
-		href="/client.css"
-	/>
+	<link rel="stylesheet" href="/client.css" />
 	<style>
 		/* Keep a fork's origin below the phone's overlaid app bar. */
 		@media (max-width: 700px) {
@@ -115,12 +112,7 @@
 					line. Paste it on the laptop, in the folder you want to lend. It holds the laptop's key,
 					so keep it to yourself.
 				</p>
-				<button
-					id="connect"
-					type="button"
-				>
-					Create connection line
-				</button>
+				<button id="connect" type="button">Create connection line</button>
 				<pre id="lend">
 Create a connection line, then paste it from the folder you want to lend.</pre>
 			</section>
@@ -224,10 +216,7 @@ Create a connection line, then paste it from the folder you want to lend.</pre>
 				<agent-memory id="memory"></agent-memory>
 			</section>
 
-			<section
-				class="reference"
-				data-focus="all"
-			>
+			<section class="reference" data-focus="all">
 				<h2>What it's made of</h2>
 				<p>
 					The agents run on the server. Their tools run on runners, on machines you choose. You look
@@ -317,10 +306,7 @@ Create a connection line, then paste it from the folder you want to lend.</pre>
 					><span class="sep">:</span><span class="t">high<i>thinking</i></span
 					><span class="sep">@</span><span class="r">laptop<i>runner</i></span>
 				</div>
-				<p
-					class="caption"
-					style="text-align: center"
-				>
+				<p class="caption" style="text-align: center">
 					Each part is optional and falls back to pi's defaults on that runner:
 					<code>laptop</code> alone is its default model. The model part is anything
 					<code>pi --model</code> takes, resolved by pi on the runner.
@@ -482,11 +468,7 @@ stateDiagram-v2
 				<dl class="words">
 					<dt>
 						talk.js
-						<span
-							class="tag"
-							data-c="server"
-							>on</span
-						>
+						<span class="tag" data-c="server">on</span>
 					</dt>
 					<dd>
 						Gives agents <code>post</code> and <code>threads</code> tools: start or answer other
@@ -494,20 +476,12 @@ stateDiagram-v2
 					</dd>
 					<dt>
 						status.js
-						<span
-							class="tag"
-							data-c="server"
-							>on</span
-						>
+						<span class="tag" data-c="server">on</span>
 					</dt>
 					<dd>Has runners report status to their terminal.</dd>
 					<dt>
 						context.js
-						<span
-							class="tag"
-							data-c="server"
-							>on</span
-						>
+						<span class="tag" data-c="server">on</span>
 					</dt>
 					<dd>
 						Gives each agent what pi reads in its folder, AGENTS.md and the skills, found by pi on
@@ -515,20 +489,12 @@ stateDiagram-v2
 					</dd>
 					<dt>
 						director.js
-						<span
-							class="tag"
-							data-c="later"
-							>off</span
-						>
+						<span class="tag" data-c="later">off</span>
 					</dt>
 					<dd>Asks the agents a message @mentions by name.</dd>
 					<dt>
 						memory.js
-						<span
-							class="tag"
-							data-c="later"
-							>off</span
-						>
+						<span class="tag" data-c="later">off</span>
 					</dt>
 					<dd>
 						Gives each thread a memory of short lines that agents read within their context and zoom
@@ -537,29 +503,17 @@ stateDiagram-v2
 					</dd>
 					<dt>
 						search.js
-						<span
-							class="tag"
-							data-c="later"
-							>off</span
-						>
+						<span class="tag" data-c="later">off</span>
 					</dt>
 					<dd>Gives agents <code>web_search</code>, through Exa's free search.</dd>
 					<dt>
 						matrix.js
-						<span
-							class="tag"
-							data-c="later"
-							>off</span
-						>
+						<span class="tag" data-c="later">off</span>
 					</dt>
 					<dd>Mirrors Matrix rooms into threads, and its top says how to set it up.</dd>
 					<dt>
 						bots.js
-						<span
-							class="tag"
-							data-c="later"
-							>off</span
-						>
+						<span class="tag" data-c="later">off</span>
 					</dt>
 					<dd>
 						One name in many threads: a name with a home thread, a recipe and instructions. Ask
@@ -629,15 +583,9 @@ sequenceDiagram
 </pre>
 			</section>
 
-			<aside
-				class="stage"
-				id="stage"
-			></aside>
+			<aside class="stage" id="stage"></aside>
 		</main>
-		<script
-			type="module"
-			src="/solid/client.js"
-		></script>
+		<script type="module" src="/solid/client.js"></script>
 		<script type="module">
 			import { mount } from 'https://cdn.jsdelivr.net/npm/pele@1/dist/pele.js'
 			for (const pre of document.querySelectorAll('pre.mermaid')) {

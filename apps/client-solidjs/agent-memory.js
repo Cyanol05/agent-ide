@@ -10,6 +10,7 @@ import {
 	onSettled,
 	refresh,
 	Show,
+	untrack,
 } from 'solid-js'
 import { api, connected, current, server } from './server.js'
 
@@ -57,46 +58,92 @@ export function Memory() {
 }
 
 function ThreadMemory(props) {
-	const lines = createProjection(
-		() => api(`/api/threads/${props.thread}/memory`).then((r) => r.lines),
-		[],
-		{ key: 'id' },
-	)
+	// The keyed owner fixes the thread until this entire view is disposed.
+	const path = untrack(() => `/api/threads/${props.thread}/memory`)
+	const read = (query = '') => api(path + query)
+	const lines = createProjection(() => read().then((r) => r.lines), [], { key: 'id' })
 	const bounds = createMemo(async () => {
 		const total = lines.length ? lines.at(-1).id + lines.at(-1).n : 0
 		const full = sizeOf(lines)
-		const top = total ? await api(`/api/threads/${props.thread}/memory?budget=1`) : { lines: [] }
+		const top = total ? await read('?budget=1') : { lines: [] }
 		const least = Math.max(100, sizeOf(top.lines))
 		return { total, least, full: Math.max(least * 2, full) }
 	})
 	const tree = createMemo(async () => {
 		const { total, least, full } = bounds()
 		const budget = Math.round(least * (full / least) ** (props.room / 100))
-		const path = `/api/threads/${props.thread}/memory`
 		if (!total) return { total, budget, cut: [], nodes: [] }
-		const { lines: cut } = await api(`${path}?budget=${budget}`)
+		const { lines: cut } = await read(`?budget=${budget}`)
 		const nodes =
 			cut.length === 1 && cut[0].n >= total
 				? [{ ...cut[0], kind: 'cut' }]
-				: await openTree(path, 0, 2 ** Math.ceil(Math.log2(total)), cut)
+				: await openTree(read, 0, 2 ** Math.ceil(Math.log2(total)), cut)
 		return { total, budget, cut, nodes }
 	})
 	onSettled(() => {
 		const timer = setInterval(() => refresh(lines), 3000)
 		return () => clearInterval(timer)
 	})
+	const Lines = (props) => html`
+		<ul>
+			<${For} each=${() => props.nodes} keyed=${key}>
+				${(line) => html` <${Line} line=${() => line()} /> `}
+			<//>
+		</ul>
+	`
+	function Line(props) {
+		const [expanded, setExpanded] = createSignal(false)
+		const waiting = () => props.line.text.startsWith('(not summarized')
+		const opened = createMemo(() =>
+			expanded() ? read(`?zoom=${props.line.id},${props.line.n}`) : null,
+		)
+		return html`
+			<li
+				data-at=${() => key(props.line)}
+				class=${() => [props.line.kind, { pending: waiting() }]}
+				title=${() =>
+					props.line.n > 1
+						? `messages ${props.line.id} to ${props.line.id + props.line.n - 1}`
+						: `message ${props.line.id}`}
+				onClick=${(e) => {
+					e.stopPropagation()
+					if (props.line.kind !== 'above') setExpanded((on) => !on)
+				}}
+			>
+				<small>${() => key(props.line)}</small>
+				<span
+					>${() =>
+						!waiting()
+							? props.line.text
+							: props.line.id + props.line.n > tree().total
+								? `the last ${tree().total - props.line.id} messages, waiting for more before they merge`
+								: 'being written, from the messages up'}</span
+				>
+				<${Show} when=${() => props.line.children}>
+					<${Lines} nodes=${() => props.line.children} />
+				<//>
+				<${Show} when=${() => expanded() && props.line.kind !== 'above'}>
+					<${Loading} fallback=${html`<span class="opening">Opening…</span>`}>
+						<${Show}
+							when=${() => opened()?.message !== undefined}
+							fallback=${() => html`
+								<${Lines}
+									nodes=${() => (opened()?.lines ?? []).map((x) => ({ ...x, kind: 'below' }))}
+								/>
+							`}
+						>
+							<div class="whole">${() => opened()?.message}</div>
+						<//>
+					<//>
+				<//>
+			</li>
+		`
+	}
+
 	let root
 	return html`
-		<div
-			class="memory reads"
-			ref=${(el) => {
-				root = el
-			}}
-		>
-			<${Show}
-				when=${() => tree().total}
-				fallback=${html`<p class="mute">No messages yet.</p>`}
-			>
+		<div class="memory reads" ref=${(el) => (root = el)}>
+			<${Show} when=${() => tree().total} fallback=${html`<p class="mute">No messages yet.</p>`}>
 				<label class="room"
 					>Room
 					<input
@@ -117,10 +164,7 @@ function ThreadMemory(props) {
 					>
 				</label>
 				<div class="bar">
-					<${For}
-						each=${() => tree().cut}
-						keyed=${key}
-					>
+					<${For} each=${() => tree().cut} keyed=${key}>
 						${(line) => html`
 							<span
 								title=${() =>
@@ -152,101 +196,25 @@ function ThreadMemory(props) {
 						)
 					}}
 				</p>
-				<${Lines}
-					nodes=${() => tree().nodes}
-					thread=${() => props.thread}
-					total=${() => tree().total}
-				/>
+				<${Lines} nodes=${() => tree().nodes} />
 			<//>
 		</div>
 	`
 }
 
 /** The same cut an agent reads, opened from the top down. All reads use the captured thread. */
-async function openTree(path, id, n, cut) {
-	const halves = n > 1 ? (await api(`${path}?zoom=${id},${n}`)).lines : null
+async function openTree(read, id, n, cut) {
+	const halves = n > 1 ? (await read(`?zoom=${id},${n}`)).lines : null
 	if (!halves?.length)
 		return cut.filter((x) => inside(x, id, n)).map((x) => ({ ...x, kind: 'cut' }))
 	if (halves.length === 1 && !cut.some((x) => key(x) === key(halves[0])))
-		return openTree(path, halves[0].id, halves[0].n, cut)
+		return openTree(read, halves[0].id, halves[0].n, cut)
 	return Promise.all(
 		halves.map(async (h) => {
 			const mine = cut.filter((x) => inside(x, h.id, h.n))
 			return mine.some((x) => key(x) === key(h))
 				? { ...h, kind: 'cut' }
-				: { ...h, kind: 'above', children: await openTree(path, h.id, h.n, mine) }
+				: { ...h, kind: 'above', children: await openTree(read, h.id, h.n, mine) }
 		}),
 	)
-}
-const Lines = (props) => html`
-	<ul>
-		<${For}
-			each=${() => props.nodes}
-			keyed=${key}
-		>
-			${(line) => html`
-				<${Line}
-					line=${() => line()}
-					thread=${() => props.thread}
-					total=${() => props.total}
-				/>
-			`}
-		<//>
-	</ul>
-`
-function Line(props) {
-	const [expanded, setExpanded] = createSignal(false)
-	const waiting = () => props.line.text.startsWith('(not summarized')
-	const opened = createMemo(() =>
-		expanded()
-			? api(`/api/threads/${props.thread}/memory?zoom=${props.line.id},${props.line.n}`)
-			: null,
-	)
-	return html`
-		<li
-			data-at=${() => key(props.line)}
-			class=${() => [props.line.kind, { pending: waiting() }]}
-			title=${() =>
-				props.line.n > 1
-					? `messages ${props.line.id} to ${props.line.id + props.line.n - 1}`
-					: `message ${props.line.id}`}
-			onClick=${(e) => {
-				e.stopPropagation()
-				if (props.line.kind !== 'above') setExpanded((on) => !on)
-			}}
-		>
-			<small>${() => key(props.line)}</small>
-			<span
-				>${() =>
-					!waiting()
-						? props.line.text
-						: props.line.id + props.line.n > props.total
-							? `the last ${props.total - props.line.id} messages, waiting for more before they merge`
-							: 'being written, from the messages up'}</span
-			>
-			<${Show} when=${() => props.line.children}>
-				<${Lines}
-					nodes=${() => props.line.children}
-					thread=${() => props.thread}
-					total=${() => props.total}
-				/>
-			<//>
-			<${Show} when=${() => expanded() && props.line.kind !== 'above'}>
-				<${Loading} fallback=${html`<span class="opening">Opening…</span>`}>
-					<${Show}
-						when=${() => opened()?.message !== undefined}
-						fallback=${() => html`
-							<${Lines}
-								nodes=${() => (opened()?.lines ?? []).map((x) => ({ ...x, kind: 'below' }))}
-								thread=${() => props.thread}
-								total=${() => props.total}
-							/>
-						`}
-					>
-						<div class="whole">${() => opened()?.message}</div>
-					<//>
-				<//>
-			<//>
-		</li>
-	`
 }

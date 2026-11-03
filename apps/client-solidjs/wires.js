@@ -117,10 +117,7 @@ export function Wires(props) {
 			"
 		>
 			<${For} each=${() => paths()} keyed=${false}>${(path) => html`
-				<path
-					d=${() => path().d}
-					class=${() => [path().state]}
-				/>
+				<path d=${() => path().d} class=${() => [path().state]} />
 			`}<//>
 		</svg>
 	`

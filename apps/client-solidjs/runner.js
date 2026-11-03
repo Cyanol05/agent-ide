@@ -19,6 +19,7 @@ export function Runner(props) {
 			(to) => agentKey(to) !== agentKey(choice()),
 		)
 	const stop = (e) => e.stopPropagation()
+	const pick = (e) => choose(choice(), e.shiftKey || e.metaKey || e.ctrlKey)
 	return html`
 		<div
 			class=${() => [
@@ -34,11 +35,11 @@ export function Runner(props) {
 			tabindex="0"
 			aria-label=${() => runner().name}
 			title="Click to ask it; shift-click to ask it too"
-			onClick=${(e) => choose(choice(), e.shiftKey || e.metaKey || e.ctrlKey)}
+			onClick=${pick}
 			onKeyDown=${(e) => {
 				if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
 					e.preventDefault()
-					choose(choice(), e.shiftKey || e.metaKey || e.ctrlKey)
+					pick(e)
 				}
 			}}
 		>
@@ -53,10 +54,7 @@ export function Runner(props) {
 			>
 			<ul class="models">
 				<${Show} when=${() => models().length}>
-					<${AgentRow}
-						to=${() => choice()}
-						agents=${() => agents()}
-					>
+					<${AgentRow} to=${() => choice()} agents=${() => agents()}>
 						<select
 							class="swap"
 							aria-label="Model"
@@ -87,15 +85,8 @@ export function Runner(props) {
 				<//>
 				<${For} each=${() => others()}
 					>${(to) => html`
-						<${AgentRow}
-							to=${() => to}
-							agents=${() => agents()}
-						>
-							<span
-								class="name"
-								title=${() => to.model}
-								>${() => to.name ?? to.model}</span
-							>
+						<${AgentRow} to=${() => to} agents=${() => agents()}>
+							<span class="name" title=${() => to.model}>${() => to.name ?? to.model}</span>
 						<//>
 					`}<//
 				>
@@ -114,16 +105,10 @@ function AgentRow(props) {
 		<li data-agent=${() => agentKey(props.to)}>
 			${() => props.children}
 			<${Show} when=${() => agents().length}
-				><${Dot}
-					state=${() => busiest(agents())}
-					title=${() => busiest(agents()) || 'idle'}
+				><${Dot} state=${() => busiest(agents())} title=${() => busiest(agents()) || 'idle'}
 			/><//>
 			<${Show} when=${() => call()}
-				><span
-					class="hands"
-					title=${() => call()}
-					>${() => call()}</span
-				><//
+				><span class="hands" title=${() => call()}>${() => call()}</span><//
 			>
 		</li>
 	`
@@ -137,9 +122,7 @@ export function RunnerList() {
 		<button
 			class="runner-toggle"
 			type="button"
-			ref=${(el) => {
-				button = el
-			}}
+			ref=${(el) => (button = el)}
 			onClick=${() => panel.togglePopover()}
 		>
 			<${For} each=${() => runners}
@@ -150,9 +133,7 @@ export function RunnerList() {
 		<div
 			class="runner-list"
 			popover
-			ref=${(el) => {
-				panel = el
-			}}
+			ref=${(el) => (panel = el)}
 			onToggle=${(e) => {
 				if (e.newState === 'open') placePopover(panel, button)
 			}}

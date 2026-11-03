@@ -41,25 +41,14 @@ export function ThreadItem(props) {
 export function ThreadList() {
 	const [creating, setCreating] = createSignal(false)
 	return html`
-		<nav
-			class="thread-list"
-			aria-label="Threads"
-		>
-			<button
-				class=${() => ['new', { current: !current() }]}
-				onClick=${() => openThread(null)}
-			>
+		<nav class="thread-list" aria-label="Threads">
+			<button class=${() => ['new', { current: !current() }]} onClick=${() => openThread(null)}>
 				+ New thread
 			</button>
 			<${Show} when=${() => server().modules.includes('bots')}>
 				<h3>
 					Bots
-					<button
-						type="button"
-						onClick=${() => setCreating(true)}
-					>
-						+ new
-					</button>
+					<button type="button" onClick=${() => setCreating(true)}>+ new</button>
 				</h3>
 				<ul class="bots">
 					<${Show} when=${() => creating()}><${NewBot} onDone=${(_e) => setCreating(false)} /><//>

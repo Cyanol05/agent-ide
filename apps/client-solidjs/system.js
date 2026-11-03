@@ -79,12 +79,7 @@ export function System() {
 			</div>
 			<div class="runners">
 				<${For} each=${() => runners}
-					>${(runner) => html`
-						<${Runner}
-							runner=${() => runner}
-							agents=${() => agents()}
-						/>
-					`}<//
+					>${(runner) => html` <${Runner} runner=${() => runner} agents=${() => agents()} /> `}<//
 				>
 			</div>
 		</div>

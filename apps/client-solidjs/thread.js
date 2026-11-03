@@ -153,10 +153,7 @@ export function Thread(props) {
 					>
 					<${For} each=${() => thread()?.agents ?? []}
 						>${(agent) => html`
-							<${Writing}
-								agent=${() => agent}
-								live=${() => doing[props.id]?.[agent.name]}
-							/>
+							<${Writing} agent=${() => agent} live=${() => doing[props.id]?.[agent.name]} />
 						`}<//
 					>
 				</ul>
@@ -211,9 +208,7 @@ function Message(props) {
 							>
 						</div>
 					<//>
-					<small
-						title=${() => data().author}
-						style=${() => colorOf(data().author)}
+					<small title=${() => data().author} style=${() => colorOf(data().author)}
 						>${() => authorLabel(data().author)}</small
 					>
 					<span class="body">${() => data().body}</span>

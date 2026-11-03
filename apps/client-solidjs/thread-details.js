@@ -40,22 +40,14 @@ export function ThreadDetails() {
 		return d
 	}
 	return html`
-		<div
-			class="scrim"
-			onClick=${() => drawer(null)}
-		></div>
-		<section
-			class="thread-details"
-			aria-label="Thread details"
-		>
+		<div class="scrim" onClick=${() => drawer(null)}></div>
+		<section class="thread-details" aria-label="Thread details">
 			<h3>In this thread</h3>
 			<p id="members">
 				<${For} each=${() => members()}>
 					${(name, i) => [
 						() => (i() ? ', ' : ''),
-						html`<span
-							title=${() => name}
-							style=${() => colorOf(name)}
+						html`<span title=${() => name} style=${() => colorOf(name)}
 							>${() => authorLabel(name)}</span
 						>`,
 					]}
@@ -68,11 +60,7 @@ export function ThreadDetails() {
 							.map((id) => threads.find((t) => t.id === id))
 							.filter(Boolean)}
 				>
-					${(t) =>
-						html`<${ThreadItem}
-							thread=${() => t}
-							depth=${() => depth(t.id)}
-						/>`}
+					${(t) => html`<${ThreadItem} thread=${() => t} depth=${() => depth(t.id)} />`}
 				<//>
 			</ul>
 			<h3>Tools</h3>
