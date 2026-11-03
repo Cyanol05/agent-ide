@@ -93,6 +93,8 @@ const hs = createServer(async (req, res) => {
 		for await (const chunk of req) chunks.push(chunk)
 		const { body, ...content } = JSON.parse(Buffer.concat(chunks).toString())
 		sends.push({ txn, body })
+		if (body.endsWith('@bot forbidden'))
+			return send({ errcode: 'M_FORBIDDEN', error: 'not allowed to send' }, 403)
 		if (!sent.has(txn)) {
 			sent.set(txn, said(BOT, body, content))
 			events.at(-1).unsigned = { transaction_id: txn }
@@ -374,6 +376,57 @@ check(
 	sends.every((s) => /^agent-ide-[0-9a-f-]{36}-\d+-\d+$/.test(s.txn)),
 	"transaction ids carry the store's salt, so a fresh store never reuses one",
 	sends[0]?.txn,
+)
+
+/** A permanent refusal is a failure in the thread, not a delivered answer */
+const forbidden = said('@oskar:fake', '@bot forbidden')
+await until(async () => sends.some((s) => s.body.endsWith('@bot forbidden')))
+const refusedThread = await titled('@bot forbidden')
+const failures = async () =>
+	(await messages(refusedThread)).filter((m) => m.author === 'matrix' && m.error)
+await until(async () => (await failures()).length)
+const refusedAnswer = (await view(refusedThread)).entries.find((e) => e.data.answer)
+check(
+	(await failures()).length === 1 &&
+		(await failures())[0].re?.includes(refusedAnswer.id) &&
+		(await failures())[0].body.includes('403') &&
+		(await failures())[0].body.includes(ROOM) &&
+		fromBot(forbidden).length === 0,
+	'a 403 leaves a visible failure linked to the undelivered answer and its room',
+	JSON.stringify(await bodies(refusedThread)),
+)
+const records = new DatabaseSync(db, { readOnly: true })
+const delivery = JSON.parse(
+	records
+		.prepare(
+			'select record from tasks where kind = ? and conversation_id = ? order by id desc limit 1',
+		)
+		.get(JSON.stringify('agent-ide.matrix.send'), refusedThread).record,
+)
+records.close()
+check(
+	delivery.state.outcome?.status === 'failed',
+	'the refused send ends failed, not completed',
+	JSON.stringify(delivery.state),
+)
+said('@oskar:fake', 'try the next answer', reply(forbidden))
+await until(async () => fromBot(forbidden).length)
+check(
+	fromBot(forbidden).length === 1 && fromBot(forbidden)[0].includes('try the next answer'),
+	'a failed send does not block the next answer in the room',
+	JSON.stringify(fromBot(forbidden)),
+)
+const exited = once(srv, 'exit')
+srv.kill('SIGTERM')
+await exited
+srv = await server(env)
+await sleep(1000)
+check(
+	(await failures()).length === 1 &&
+		sends.filter((s) => s.body.endsWith('@bot forbidden')).length === 1 &&
+		!sends.some((s) => s.body.startsWith('Could not deliver to Matrix room')),
+	'a restart keeps the failure once, without retrying the refusal or relaying the failure to Matrix',
+	JSON.stringify(sends.map((s) => s.body.slice(-80))),
 )
 
 hs.closeAllConnections()

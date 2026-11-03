@@ -96,7 +96,7 @@ export function server(core) {
 					}),
 					ctx,
 				),
-			async send({ input: { room, root, txn, body } }, rt, ctx) {
+			async send({ input: { room, root, txn, body, entry } }, rt, ctx) {
 				const content = {
 					msgtype: 'm.text',
 					body: body.slice(0, 30000),
@@ -121,19 +121,35 @@ export function server(core) {
 						)
 						break
 					} catch (error) {
+						if (rt.signal.aborted) return
 						console.error(`matrix send: ${error.message}`)
-						if (refused(error)) break
+						if (refused(error))
+							return rt.commit(
+								async (tx) => {
+									await core.post(tx, rt.conversationId, {
+										author: 'matrix',
+										body: `Could not deliver to Matrix room ${room}: ${error.message}`,
+										re: [entry],
+										error: true,
+									})
+									return {
+										status: 'terminal',
+										outcome: { status: 'failed', error: { message: error.message } },
+									}
+								},
+								ctx,
+							)
 						await sleep(error.retryAfter ?? wait, rt.signal)
 					}
 				}
-				await rt.commit(() => finished(), ctx)
+				if (!rt.signal.aborted) await rt.commit(() => finished(), ctx)
 			},
 		},
 		abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),
 	})
 
 	async function posted(tx, threadId, { id, data }) {
-		if (!data.answer && !data.error) return
+		if (!data.answer && (!data.error || data.author === 'matrix')) return
 		const bridge = await tx.doc(MatrixBridge)
 		const { room, root } = Object.values(bridge.threads).find((t) => t.thread === threadId) ?? {}
 		if (!room) return
@@ -144,6 +160,7 @@ export function server(core) {
 				room,
 				root,
 				txn: `agent-ide-${bridge.salt}-${threadId}-${id}`,
+				entry: id,
 				body: data.body,
 				after: bridge.last[room],
 			},

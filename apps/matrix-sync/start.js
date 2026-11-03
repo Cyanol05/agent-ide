@@ -16,7 +16,7 @@ const env = {
 	...process.env,
 	PORT,
 	DB_PATH: path.join(import.meta.dirname, 'matrix-sync.sqlite'),
-	MATRIX: '1',
+	MODULES: '+matrix',
 	MATRIX_AGENT: `${MODEL}@issues`,
 	MATRIX_BRIEF:
 		'Each Matrix thread is one GitHub issue. The first time you are asked here, file what they report: ' +
