@@ -1126,10 +1126,22 @@ fi
 mkdir -p "$HOME/.agent-ide"
 if [ -n "$AGENT_IDE_KEY" ]; then
   config="\${XDG_CONFIG_HOME:-$HOME/.config}/agent-ide"
-  mkdir -p "$config" && (umask 077 && printf %s "$AGENT_IDE_KEY" > "$config/key")
+  name=$("$run" -e "process.stdout.write(require('node:os').hostname())")
+  next_name=
+  for arg do
+    if [ -n "$next_name" ]; then name=$arg; next_name=; continue; fi
+    case "$arg" in --name) next_name=1 ;; --name=*) name=\${arg#--name=} ;; esac
+  done
+  case "$name" in ''|*[!a-zA-Z0-9._-]*) echo 'Invalid runner name' >&2; exit 1 ;; esac
+  mkdir -p "$config"
+  keyfile="$config/key.$name"
+  (umask 077 && printf %s "$AGENT_IDE_KEY" > "$keyfile")
+  set -- "$@" --key-file "$keyfile"
 fi
 curl -fsSL "${server}/runner/updater.js" -o "$HOME/.agent-ide/runner-updater.js"
-echo "Next time, without curl: $run ~/.agent-ide/runner-updater.js ${server} $*"
+printf 'Next time, without curl: %s ~/.agent-ide/runner-updater.js %s' "$run" '${server}'
+for arg do printf " '%s'" "$(printf %s "$arg" | sed "s/'/'\\\\''/g")"; done
+printf '\\n'
 exec "$run" "$HOME/.agent-ide/runner-updater.js" "${server}" "$@"
 `
 

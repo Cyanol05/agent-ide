@@ -1,6 +1,6 @@
 /** The runner's updater, which `curl -fsSL <server>/connect-runner | sh` downloads and starts */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { constants, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -21,31 +21,50 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 async function install() {
 	const bundle = await (await fetch(`${server}/runner/bundle`)).json()
 	if (bundle.version === read('version')) return false
-	mkdirSync(home, { recursive: true })
-	for (const [file, text] of Object.entries(bundle.files)) {
-		mkdirSync(path.dirname(path.join(home, file)), { recursive: true })
-		writeFileSync(path.join(home, file), text)
-	}
-	const manifest = JSON.stringify(
-		{ name: 'agent-ide-runner', private: true, type: 'module', dependencies: bundle.dependencies },
-		null,
-		2,
-	)
-	if (manifest !== read('package.json') || !existsSync(path.join(home, 'node_modules'))) {
-		writeFileSync(path.join(home, 'package.json'), manifest)
-		const [command, ...rest] = bun
-			? [process.execPath, 'install']
-			: ['npm', 'install', '--omit=dev', '--no-audit', '--no-fund']
-		if (spawnSync(command, rest, { cwd: home, stdio: 'inherit' }).status !== 0)
-			throw new Error("installing the runner's packages failed")
-	}
-	if (!read('version') && !existsSync(path.join(os.homedir(), '.pi', 'agent', 'auth.json'))) {
-		console.log(
-			`No pi logins here yet, so only echo/echo answers. Log in once with ${path.join(home, 'node_modules', '.bin', 'pi')}, then /login.`,
+	mkdirSync(path.dirname(home), { recursive: true })
+	const staged = mkdtempSync(`${home}.new-`)
+	const backup = `${staged}.old`
+	try {
+		for (const [file, text] of Object.entries(bundle.files)) {
+			mkdirSync(path.dirname(path.join(staged, file)), { recursive: true })
+			writeFileSync(path.join(staged, file), text)
+		}
+		const manifest = JSON.stringify(
+			{ name: 'agent-ide-runner', private: true, type: 'module', dependencies: bundle.dependencies },
+			null,
+			2,
 		)
+		writeFileSync(path.join(staged, 'package.json'), manifest)
+		if (manifest === read('package.json') && existsSync(path.join(home, 'node_modules'))) {
+			cpSync(path.join(home, 'node_modules'), path.join(staged, 'node_modules'), {
+				recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE,
+			})
+		} else {
+			const [command, ...rest] = bun
+				? [process.execPath, 'install']
+				: ['npm', 'install', '--omit=dev', '--no-audit', '--no-fund']
+			if (spawnSync(command, rest, { cwd: staged, stdio: 'inherit' }).status !== 0)
+				throw new Error("installing the runner's packages failed")
+		}
+		if (!read('version') && !existsSync(path.join(os.homedir(), '.pi', 'agent', 'auth.json'))) {
+			console.log(
+				`No pi logins here yet, so only echo/echo answers. Log in once with ${path.join(home, 'node_modules', '.bin', 'pi')}, then /login.`,
+			)
+		}
+		writeFileSync(path.join(staged, 'version'), bundle.version)
+		const hadHome = existsSync(home)
+		if (hadHome) renameSync(home, backup)
+		try {
+			renameSync(staged, home)
+		} catch (error) {
+			if (hadHome) renameSync(backup, home)
+			throw error
+		}
+		rmSync(backup, { recursive: true, force: true })
+		return true
+	} finally {
+		rmSync(staged, { recursive: true, force: true })
 	}
-	writeFileSync(path.join(home, 'version'), bundle.version)
-	return true
 }
 
 let runner

@@ -23,18 +23,20 @@ const { values: args } = parseArgs({
 		owner: { type: 'string', default: '' },
 		'read-only': { type: 'boolean', default: false },
 		allow: { type: 'string', multiple: true, default: [] },
-		key: { type: 'string', default: process.env.AGENT_IDE_KEY || saved() },
+		key: { type: 'string', default: process.env.AGENT_IDE_KEY },
+		'key-file': { type: 'string' },
 	},
 })
 /** The key connect-runner saved, for starts without it */
-function saved() {
+function saved(file) {
 	const config = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')
 	try {
-		return readFileSync(path.join(config, 'agent-ide', 'key'), 'utf8').trim()
+		return readFileSync(file || path.join(config, 'agent-ide', 'key'), 'utf8').trim()
 	} catch {
 		return ''
 	}
 }
+args.key ||= saved(args['key-file'])
 const roots = [...new Set(args.dir.map((d) => path.resolve(d)))]
 const dir = roots[0]
 const server = new URL(args.server).origin
