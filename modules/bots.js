@@ -1,4 +1,7 @@
-/** MODULES=+bots */
+/**
+ * A bot is one name in many threads: a home thread, a recipe and instructions. Ask `ada` anywhere and an agent named ada
+ * joins from its recipe; at home, hands off, it rewrites its own instructions with the `bot` tool. MODULES=+bots
+ */
 import { obj, opt, str } from '@earendil-works/pi-schema'
 import { defineDoc, defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'

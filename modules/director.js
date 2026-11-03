@@ -1,3 +1,4 @@
+/** Asks the agents a message @mentions by name, instead of whom the thread asked last. MODULES=+director */
 import { agentName } from '../util.js'
 
 /** Whom a message asks: the agents it @mentions, else its own `to`, or nobody */

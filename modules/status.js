@@ -1,4 +1,7 @@
-/** STATUS=1 on a runner skips asking the terminal, for when stdout isn't one */
+/**
+ * Shows on a runner's terminal what its agents are doing, as OSC 7501 status, if the terminal speaks it.
+ * On by default; MODULES=-status turns it off. STATUS=1 on a runner skips asking the terminal, for when stdout isn't one.
+ */
 
 /** One telling at a time, so an older one never lands after a newer one */
 export function server({ runners, known, threadList }) {

@@ -1,4 +1,8 @@
-/** A `post` call does everything in one commit, with a receipt keyed by its task id, so a replay finds it */
+/**
+ * Gives agents `post`, to ask another thread or answer one, and `threads`, to read any thread or any agent's work.
+ * On by default; MODULES=-talk turns it off.
+ * A `post` call does everything in one commit, with a receipt keyed by its task id, so a replay finds it.
+ */
 import { num, obj, opt, str } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'

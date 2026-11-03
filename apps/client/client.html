@@ -55,10 +55,15 @@
 			<h2>Lend it your laptop</h2>
 			<p>
 				Now an agent can work on the server's own machine. To have it work on your laptop instead,
-				run this there. Your laptop dials the server, so it has to reach it: the same network, or
-				<a href="https://tailscale.com">Tailscale</a>.
+				lend the laptop. It dials the server, so it has to reach it: the same network, or
+				<a href="https://tailscale.com">Tailscale</a>, with the server started as
+				<code>HOST=0.0.0.0</code>.
 			</p>
-			<p>Start the server with <code>HOST=0.0.0.0</code> to lend another machine. On the server's own machine, open this page through localhost and create a private connection line with a runner key.</p>
+			<p>
+				On the server's own machine, open this page through localhost and create a connection line.
+				Paste it on the laptop, in the folder you want to lend. It holds the laptop's key, so keep it
+				to yourself.
+			</p>
 			<button id="connect" type="button">Create connection line</button>
 			<pre id="lend">Create a connection line, then paste it from the folder you want to lend.</pre>
 		</section>
@@ -121,7 +126,7 @@
 			<p>
 				Wish you'd asked differently? Hover any message for its <b>fork</b>. A new thread starts
 				from there, with the same agents, each remembering only what came before it. The two sit
-				side by side, linked both ways. The fork keeps the thread's current tools.
+				side by side, linked both ways. The fork keeps the thread's tools as they are now.
 			</p>
 			<div class="try">
 				<button data-try="fork">Fork this thread at its first answer</button>
@@ -196,8 +201,9 @@
 				<dt>Runner</dt>
 				<dd>
 					A program on a machine that lends the server two things: its folders and the model logins
-					pi has there. Started by hand, or installed with one line,
-					<code>curl -fsSL &lt;server&gt;/connect-runner | sh</code>. Each <code>--dir</code> lends
+					pi has there. Installed with the connection line the page makes,
+					<code>curl -fsSL &lt;server&gt;/connect-runner | AGENT_IDE_KEY=… sh</code>, or started by
+					hand with <code>node runner.js</code>. Each <code>--dir</code> lends
 					one more folder, and <code>--discover-dirs</code> offers the git and jj checkouts beneath
 					them; you pick one where you write.
 					<small
@@ -223,7 +229,10 @@
 
 				<dt>Thread</dt>
 				<dd>
-					A conversation on the server, with any number of people and agents in it.
+					A conversation on the server, with any number of people and agents in it. Its tools are its
+					agents' tools, as <code>pi --tools</code> takes them: click its title in Just the chat to set
+					them. <b>Hands off</b> is <code>-write,-edit,-bash</code>, so they read and ask others but
+					change nothing.
 					<small
 						>Threads don't live on runners. A thread can ask an agent on the laptop and one on the
 						vps side by side.</small
@@ -232,9 +241,9 @@
 
 				<dt>Client</dt>
 				<dd>
-					Whatever you look through: the web client in any browser, the CLI in a terminal, a Matrix
-					room. They all speak the same small HTTP and WebSocket API, and none of them stores
-					anything.
+					Whatever you look through: the web client in any browser, or the CLI in a terminal. Both
+					speak the same small HTTP and WebSocket API and store nothing. A Matrix room can be one
+					too, through the matrix module on the server.
 					<small
 						>What you might call the desktop or the mobile app: a browser tab, on your laptop or,
 						over Tailscale, your phone.</small
@@ -266,10 +275,8 @@ flowchart TB
 			<p>
 				Pi is the harness: its prompt, tools and loop. The server runs it for every agent, and the
 				tools run on a runner. Each model call and tool call crosses the socket the runner dialled,
-				so its logins never leave its machine. A model call sends only what's new since the agent's
-				last one, since the runner keeps its last few conversations while it's connected; one that
-				reconnects gets them whole again. File tools stay inside the runner's folders, but a command
-				only starts there, which is why that line is dashed.
+				so its logins never leave its machine. File tools stay inside the runner's folders, but a
+				command only starts there, which is why that line is dashed.
 			</p>
 			<p>
 				Pi Durable does the heavy lifting: storage, tasks, ordering, retries, restarts, stops and
@@ -381,9 +388,8 @@ sequenceDiagram
 					A runner shows its key when it dials in, so nobody can take its name. The server mints a
 					key per runner and keeps only its hash; a new key cuts off the old one. Revoking takes the
 					key away: the runner goes offline and stops dialling back. Only localhost on the server's
-					own machine can mint or revoke runner keys. The page creates a connection line there;
-					a runner says online only after the server accepts it. Other websites cannot write to
-					this server, even on loopback. People have no keys: use a trusted network.
+					own machine can mint or revoke keys, and other websites can't write to the server, even
+					on loopback.
 				</li>
 			</ul>
 
@@ -429,7 +435,8 @@ stateDiagram-v2
 				<dt>memory.js <span class="tag" data-c="later">off</span></dt>
 				<dd>
 					Gives each thread a memory of short lines that agents read within their context and zoom
-					back down to the words.
+					back down to the words. It needs <code>MEMORY_MODEL=model@runner</code>, the agent that
+					writes the lines.
 				</dd>
 				<dt>search.js <span class="tag" data-c="later">off</span></dt>
 				<dd>Gives agents <code>web_search</code>, through Exa's free search.</dd>
@@ -538,7 +545,7 @@ sequenceDiagram
 			<div class="model-picker" id="picker" popover><ul></ul></div>
 			<div class="runner-list" id="runner-list" popover>
 				<ul></ul>
-				<p>To add a runner, run this on the computer you want to lend.</p>
+				<p>To add a runner:</p>
 				<pre></pre>
 			</div>
 			<div class="system" id="canvas">

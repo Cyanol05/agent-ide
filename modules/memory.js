@@ -1,4 +1,8 @@
-/** A thread's memory */
+/**
+ * Gives each thread a memory: one short line per message, pairs of lines merged going up, so an agent reads the lines
+ * instead of every word and zooms back down with `zoom`. MODULES=+memory MEMORY_MODEL=model@runner, the agent that
+ * writes the lines; the server won't start without it.
+ */
 import { retryAssistantCall } from '@earendil-works/pi-ai'
 import { num, obj, opt } from '@earendil-works/pi-schema'
 import {

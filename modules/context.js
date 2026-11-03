@@ -1,4 +1,7 @@
-/** What pi reads in a folder before it starts */
+/**
+ * Gives each agent what pi reads in its folder before it starts, AGENTS.md and skills, found on the runner before every request.
+ * On by default; MODULES=-context turns it off.
+ */
 import path from 'node:path'
 import {
 	DefaultResourceLoader,
