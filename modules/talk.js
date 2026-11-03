@@ -31,7 +31,7 @@ export function server(core) {
 			),
 		}),
 		replay: 'safe',
-		execute: async (args, api) => {
+		execute: async (args, api, context) => {
 			const { thread: from, name } = await home(api.conversationId)
 			const thread = args.thread ?? (Number(args.to?.match(/^(\d+)\//)?.[1]) || undefined)
 			if (thread === from) throw new Error('That is your own thread; just answer')
@@ -56,7 +56,7 @@ export function server(core) {
 				args.to === 'nobody'
 					? []
 					: args.to !== undefined
-						? [await core.whom(thread, args.to)]
+						? [await core.whom(thread, args.to, false, context.abortSignal)]
 						: thread === undefined
 							? [await agentOf(api.conversationId)]
 							: asker
@@ -64,6 +64,7 @@ export function server(core) {
 								: await core.lastAsked(thread)
 			await core.reach(to, `@${(await agentOf(api.conversationId)).runner}`)
 			const id = await core.once(`post ${api.taskId}`, 'post', async (tx) => {
+				context.abortSignal?.throwIfAborted()
 				const id = thread ?? (await core.startThread(tx, name, title, from))
 				await core.post(
 					tx,

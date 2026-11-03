@@ -367,7 +367,7 @@ const threadIds = async () =>
 const user = (req) => speaker(req.headers['x-user'])
 
 /** A command needs no model */
-async function address(to, command = false) {
+async function address(to, command = false, signal) {
 	const name = field(to?.runner, 'to.runner')
 	const runner = (await known())[name]
 	if (!runner) throw new Error(`No runner ${name} has connected to this server`)
@@ -375,7 +375,7 @@ async function address(to, command = false) {
 		runner: name,
 		...(command
 			? {}
-			: await modelOn(name, runner, typeof to.model === 'string' ? to.model.trim() : '')),
+			: await modelOn(name, runner, typeof to.model === 'string' ? to.model.trim() : '', signal)),
 	}
 	for (const key of ['thinkingLevel', 'dir'])
 		if (typeof to[key] === 'string' && to[key].trim()) clean[key] = to[key].trim()
@@ -391,25 +391,25 @@ async function address(to, command = false) {
 /** Whom `to` asks in a thread */
 const addresses = (to, command, threadId) =>
 	Promise.all((to === null ? [] : [to].flat()).map((t) => whom(threadId, t, command)))
-async function whom(threadId, t, command = false) {
+async function whom(threadId, t, command = false, signal) {
 	const [, at, text = t] = (typeof t === 'string' && t.match(/^(\d+)\/(.+)$/)) || []
 	if (at && Number(at) !== threadId) throw new Error(`${t} is in thread ${at}, not ${threadId}`)
 	const agents = threadId !== undefined ? (await thread(threadId))?.agents : undefined
 	if (typeof text === 'string' && agents?.[text]) return agentOf(agents[text].conversation, text)
 	const found = typeof text === 'string' && !/[@=]/.test(text) && (await named?.(text))
-	if (found) return address(found, command)
-	const recipe = await address(typeof text === 'string' ? agentTo(text) : text, command)
+	if (found) return address(found, command, signal)
+	const recipe = await address(typeof text === 'string' ? agentTo(text) : text, command, signal)
 	const name = !command && agentName(recipe)
 	return name && agents?.[name] ? agentOf(agents[name].conversation, name) : recipe
 }
 
 /** What `pi --model asked` makes of it on the runner, kept with its models */
-async function modelOn(name, runner, asked) {
+async function modelOn(name, runner, asked, signal) {
 	const had = runner.models?.[asked]
 	if (had) return { model: `${had.provider}/${had.id}` }
 	if (!runners.isOnline(name))
 		throw new Error(`${name} is offline; name a model it has run, as provider/id`)
-	const { model, thinkingLevel } = await runners.call(name, { op: 'resolve', model: asked }, {})
+	const { model, thinkingLevel } = await runners.call(name, { op: 'resolve', model: asked }, { signal })
 	const ref = `${model.provider}/${model.id}`
 	if (!runner.models?.[ref]) {
 		await commit(async (tx) => {

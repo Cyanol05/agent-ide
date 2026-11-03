@@ -3,6 +3,8 @@
 - A change serves one of the promises in [apps/client/client.html](apps/client/client.html), or it requires a chat with Oskar. When a better design breaks a principle, or an idea looks wrong, Oskar's included, argue before building.
 - Use the words client.html uses, one per concept. Fewer concepts beats fewer lines.
 - Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own.
+- A tool's cancellation comes from `execute`'s third Context argument: pass its `abortSignal` through runner calls, and settle cancellation locally without waiting for the runner's reply.
+- Use `pnpm install --frozen-lockfile` in a fresh worktree; `bun install` rewrites package.json and adds bun.lock.
 - New features are modules, off by default.
 - Keep client.html and the README saying what the code does high level.
 - Prove things in `examples/`, one file per idea. No unit tests, no TypeScript, no build step, no migrations or shims.

@@ -115,12 +115,20 @@ export function createRunners({ onChange }) {
 	let next = 0
 
 	function online(name, signal) {
+		signal?.throwIfAborted()
 		if (sockets.has(name)) return Promise.resolve()
 		return new Promise((resolve, reject) => {
-			waiting.set(name, [...(waiting.get(name) ?? []), resolve])
-			signal?.addEventListener('abort', () => reject(signal.reason ?? new Error('aborted')), {
-				once: true,
-			})
+			const done = (fn) => () => {
+				const pending = waiting.get(name)
+				pending?.delete(ready)
+				if (!pending?.size) waiting.delete(name)
+				signal?.removeEventListener('abort', cancel)
+				fn(signal?.reason)
+			}
+			const ready = done(resolve)
+			const cancel = done(reject)
+			waiting.set(name, (waiting.get(name) ?? new Set()).add(ready))
+			signal?.addEventListener('abort', cancel, { once: true })
 		})
 	}
 
@@ -128,6 +136,7 @@ export function createRunners({ onChange }) {
 	async function call(name, message, { signal, onMessage }) {
 		signal?.throwIfAborted()
 		await online(name, signal)
+		signal?.throwIfAborted()
 		const id = ++next
 		if (typeof message === 'function') message = message(sockets.get(name).held)
 		return new Promise((resolve, reject) => {
@@ -137,7 +146,11 @@ export function createRunners({ onChange }) {
 				onChange()
 				fn(value)
 			}
-			const cancel = () => sockets.get(name)?.send({ id, op: 'cancel' })
+			const cancel = () => {
+				// The runner is told to stop, but local cancellation never waits for its reply.
+				done(reject)(signal.reason ?? new Error('aborted'))
+				sockets.get(name)?.send({ id, op: 'cancel' })
+			}
 			calls.set(id, {
 				runner: name,
 				op: message.op,
