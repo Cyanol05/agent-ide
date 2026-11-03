@@ -91,7 +91,10 @@ for (;;) {
 		stdio: 'inherit',
 		env: { ...process.env, ...(updates && !stale ? { AGENT_IDE_LAUNCHER: '1' } : {}) },
 	})
-	const code = await new Promise((resolve) => runner.on('exit', (code) => resolve(code)))
+	const code = await new Promise((resolve) => runner.on('exit', (code) => {
+		runner = undefined
+		resolve(code)
+	}))
 	if (code !== 75) process.exit(code ?? 0)
 	asked = true
 }

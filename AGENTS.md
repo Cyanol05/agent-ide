@@ -21,3 +21,4 @@
 - Don't assume the `hostname` command exists; use Node's `os.hostname()`.
 - For an example of a failed npm install, use a missing `.tgz` dependency: a missing `file:` directory can install successfully as a dangling symlink.
 - Pi Durable's SQLite task `kind` column stores a JSON string; bind `JSON.stringify(name)` when inspecting example outcomes.
+- Pi's `openTextLineReader` and `openBinaryReader` take an options object before Context; `openDirReader` takes Context directly.

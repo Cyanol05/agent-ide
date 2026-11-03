@@ -1,5 +1,5 @@
 /** The runner protocol, both ends */
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createAssistantMessageEventStream } from '@earendil-works/pi-ai'
@@ -365,8 +365,10 @@ export function serveRunner({
 	const running = new Map()
 	const handles = new Map()
 	const kept = new Map()
+	const connection = randomUUID()
 	let nextHandle = 0
-	const reply = (value) => send(encode(value))
+	let stopped = false
+	const reply = (value) => !stopped && send(encode(value))
 	const ops = {
 		...more,
 		resolve: ({ model }) => resolved(model),
@@ -452,8 +454,14 @@ export function serveRunner({
 		if (method === 'renameFile') args[1] = inside(args[1], root)
 		const result = await local[method](...args, context)
 		if (result.ok && READERS[method]) {
-			handles.set(++nextHandle, result.value)
-			return { ok: true, value: { handle: nextHandle } }
+			if (stopped) {
+				await result.value.close(BACKGROUND_CONTEXT)
+				throw new FileError('invalid', 'That runner connection is closed')
+			}
+			// A reader belongs to this connection, even when the next one reuses its number.
+			const handle = `${connection}:${++nextHandle}`
+			handles.set(handle, result.value)
+			return { ok: true, value: { handle } }
 		}
 		return result
 	}
@@ -467,6 +475,7 @@ export function serveRunner({
 
 	return {
 		receive(text) {
+			if (stopped) return
 			const message = decode(text)
 			if (message.id === undefined) return onTell?.(message)
 			if (message.op === 'cancel')
@@ -483,10 +492,13 @@ export function serveRunner({
 				)
 				.finally(() => running.delete(message.id))
 		},
-		stopAll() {
+		async stopAll() {
+			stopped = true
 			for (const { cancel } of running.values()) cancel(new Error('server disconnected'))
 			running.clear()
+			const readers = [...handles.values()]
 			handles.clear()
+			await Promise.all(readers.map((reader) => reader.close(BACKGROUND_CONTEXT)))
 		},
 	}
 }

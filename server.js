@@ -1388,7 +1388,9 @@ async function upgrade(req, raw, head) {
 		return raw.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
 	const socket = await new Promise((resolve) => wss.handleUpgrade(req, raw, head, resolve))
 	const name = url.searchParams.get('runner')
+	let closed = false
 	const close = () => {
+		closed = true
 		clients.delete(socket)
 		watch(socket, null)
 		if (!name || sockets.get(name) !== socket) return
@@ -1414,6 +1416,7 @@ async function upgrade(req, raw, head) {
 	/** A runner shows its key before it counts, so nobody can take its name */
 	const given = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1]
 	const held = ((await harness.snapshot(Keys, context)) ?? {})[name]
+	if (closed) return
 	if (!given || held !== sha256(given)) {
 		console.log(`runner ${name} turned away: ${given ? 'wrong or revoked key' : 'no key'}`)
 		return socket.close(
@@ -1430,6 +1433,7 @@ async function upgrade(req, raw, head) {
 	sockets.set(name, socket)
 	const q = (param) => url.searchParams.get(param) || ''
 	const resolved = (await known())[name]?.models ?? {}
+	if (closed || sockets.get(name) !== socket) return
 	const runner = {
 		alias: q('alias'),
 		owner: q('owner') && speaker(q('owner')),
@@ -1447,8 +1451,10 @@ async function upgrade(req, raw, head) {
 		models: resolved,
 	}
 	await commit(async (tx) => {
-		;(await tx.doc(Runners))[name] = runner
+		const all = await tx.doc(Runners)
+		if (!closed && sockets.get(name) === socket) all[name] = runner
 	})
+	if (closed || sockets.get(name) !== socket) return
 	if (!models.getProvider(`runner:${name}`))
 		models.setProvider(runnerProvider(runners, name, resolved))
 	listen(runners.receive)
