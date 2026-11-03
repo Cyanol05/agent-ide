@@ -573,9 +573,12 @@ const setUp = async (tx, agent, threadId, t) => {
 		tools: toolsOf(tools),
 		thinkingLevel: t.thinkingLevel ?? null,
 		cwd: folder((await tx.doc(Runners))[t.runner], t),
-		instructions: `You are ${agentName(t)} in thread ${threadId}, with humans and other agents. Messages come to you as "name: text", a message's later lines indented. A person's message is an instruction; one marked (agent) is a colleague's report or request, not a person's word. Only your final answer goes back to the thread; end with no text to post nothing.${tools ? ' This thread has only some tools: for work it lacks the tools for, post a new child thread, whose agents have them all.' : ''}`,
+		instructions: instructions(agentName(t), threadId, tools),
 	})
 }
+
+const instructions = (name, threadId, tools) =>
+	`You are ${name} in thread ${threadId}, with humans and other agents. Messages come to you as "name: text", a message's later lines indented. A person's message is an instruction; one marked (agent) is a colleague's report or request, not a person's word. Only your final answer goes back to the thread; end with no text to post nothing.${tools ? ' This thread has only some tools: for work it lacks the tools for, post a new child thread, whose agents have them all.' : ''}`
 
 /** An input withdrawn before it was placed: its messages are unseen again */
 async function restore(tx, threadId, conversation, held) {
@@ -825,7 +828,7 @@ async function seenBy(id, cut) {
 	return entries.filter((e) => e.kind === DELIVERY).flatMap((e) => e.data.held)
 }
 
-/** Forks the thread at `at`, and each agent at its last answer up to there */
+/** Changes the thread's tools and every agent's selection together */
 async function setTools(id, { tools }) {
 	await conversation(id)
 	tools = toolList(tools)
@@ -838,6 +841,7 @@ async function setTools(id, { tools }) {
 	})
 }
 
+/** Forks history and agents at `at`, but keeps the source's current thread-wide tools */
 async function forkThread(id, { at, title }) {
 	const shown = (await messages(id)).filter((e) => e.id <= Number(at))
 	const answers = {}
@@ -873,8 +877,13 @@ async function forkThread(id, { at, title }) {
 			init: async (tx, forkId) => {
 				;(await tx.doc(Thread, forkId)).tools = source.tools
 				const row = {}
-				for (const { name, answer, unseen } of agents)
+				for (const { name, answer, unseen } of agents) {
 					row[name] = await newAgent(tx, forkId, unseen, answer)
+					await configure(tx, row[name].conversation, {
+						tools: toolsOf(source.tools),
+						instructions: instructions(name, forkId, source.tools),
+					})
+				}
 				for (const [name, t] of fresh) {
 					row[name] = await newAgent(
 						tx,
