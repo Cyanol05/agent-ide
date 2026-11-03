@@ -26,7 +26,6 @@ const [compose, setCompose] = createRoot(() =>
 		settings: {},
 	}),
 )
-let draftVersion = 0
 export const choiceFor = (r) =>
 	compose.to?.find((p) => p.runner === r.name && !p.name) ??
 	compose.settings[r.name] ?? {
@@ -87,8 +86,7 @@ export function Composer(props) {
 		e.preventDefault()
 		if (compose.sending || !recipients().length || !compose.draft.trim()) return
 		const body = compose.draft,
-			to = snapshot(recipients()),
-			version = draftVersion
+			to = snapshot(recipients())
 		let id = current()
 		setCompose((s) => {
 			s.sending = true
@@ -99,7 +97,7 @@ export function Composer(props) {
 			await api(`/api/threads/${id}/entries`, { body, to })
 		} catch (error) {
 			setCompose((s) => {
-				if (latest(current) === id && draftVersion === version && !s.draft) s.draft = body
+				if (latest(current) === id && !s.draft) s.draft = body
 			})
 			alert(error.message)
 		} finally {
@@ -144,7 +142,6 @@ export function Composer(props) {
 						if (!active()) openThread(props.thread)
 					}}
 					onInput=${(e) => {
-						draftVersion++
 						const to = !compose.to && !homeBot(current()) ? snapshot(recipients()) : null
 						setCompose((s) => {
 							s.draft = e.currentTarget.value

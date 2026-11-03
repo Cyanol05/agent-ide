@@ -1,6 +1,6 @@
 /** Details and tools for the thread on screen, or the one about to start. */
 import html from '@solidjs/html'
-import { createEffect, createSignal, For, refresh } from 'solid-js'
+import { createEffect, createSignal, For, refresh, Show } from 'solid-js'
 import {
 	api,
 	colorOf,
@@ -65,7 +65,7 @@ export function ThreadDetails() {
 			</ul>
 			<h3>Tools</h3>
 			<${For} each=${() => [current()]}> ${(id) => html`<${Tools} thread=${id} />`} <//>
-			<${For} each=${() => (homeBot(current()) ? [homeBot(current())] : [])}>
+			<${Show} when=${() => homeBot(current())} keyed>
 				${(bot) => html`<${BotSettings} bot=${() => bot} />`}
 			<//>
 		</section>

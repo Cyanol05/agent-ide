@@ -40,7 +40,7 @@ export function Memory() {
 						</p>
 					`}
 				>
-					<${For} each=${() => (current() ? [current()] : [])}>
+					<${Show} when=${() => current()} keyed>
 						${(id) => html`
 							<${Loading} fallback=${html`<p class="mute">Reading memory…</p>`}>
 								<${ThreadMemory}

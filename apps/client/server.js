@@ -45,35 +45,30 @@ export function watch(receive, opened = () => {}, closed = () => {}) {
 }
 
 /** Page lifetime; components own the messages of just the threads on screen. */
-export const {
-	connected,
-	threads,
-	runners,
-	server,
-	bots,
-	entries,
-	setEntries,
-	current,
-	openThread,
-	family,
-	newThreadTools,
-	setNewThreadTools,
-	connectionLine,
-	setConnectionLine,
-} = createRoot(() => {
-	const [connected, setConnected] = createSignal(false)
-	const [newThreadTools, setNewThreadTools] = createSignal(null)
-	const [connectionLine, setConnectionLine] = createSignal(
-		'Create a connection line, then paste it from the folder you want to lend.',
-	)
-	const [entries, setEntries] = createStore({})
+export const [connected, setConnected] = createSignal(false)
+export const [newThreadTools, setNewThreadTools] = createSignal(null)
+export const [connectionLine, setConnectionLine] = createSignal(
+	'Create a connection line, then paste it from the folder you want to lend.',
+)
+export const [entries, setEntries] = createStore({})
+export const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
+
+export function openThread(id) {
+	setCurrent(id)
+	drawer(null)
+	const next = new URL(location.href)
+	if (id) next.searchParams.set('thread', id)
+	else next.searchParams.delete('thread')
+	history.replaceState(null, '', next)
+}
+
+export const { threads, runners, server, bots, family } = createRoot(() => {
 	const server = createMemo(() => api('/api/server'))
 	const bots = createProjection(
 		() => (server().modules.includes('bots') ? api('/api/bots') : []),
 		[],
 		{ key: 'name' },
 	)
-	const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
 	const threads = createProjection(() => api('/api/threads'), [], { key: 'id' })
 	const runners = createProjection(() => api('/api/runners'), [], { key: 'name' })
 	const reload = () => {
@@ -92,14 +87,6 @@ export const {
 			() => setConnected(false),
 		),
 	)
-	const openThread = (id) => {
-		setCurrent(id)
-		drawer(null)
-		const next = new URL(location.href)
-		if (id) next.searchParams.set('thread', id)
-		else next.searchParams.delete('thread')
-		history.replaceState(null, '', next)
-	}
 	const family = createMemo(() => {
 		if (!current()) return [null]
 		const byId = new Map(threads.map((t) => [t.id, t]))
@@ -112,22 +99,7 @@ export const {
 				if (parent(t.id) === ids[i] && !ids.includes(t.id) && !t.hidden) ids.push(t.id)
 		return ids
 	})
-	return {
-		connected,
-		threads,
-		runners,
-		server,
-		bots,
-		entries,
-		setEntries,
-		current,
-		openThread,
-		family,
-		newThreadTools,
-		setNewThreadTools,
-		connectionLine,
-		setConnectionLine,
-	}
+	return { threads, runners, server, bots, family }
 })
 
 export function drawer(which) {
