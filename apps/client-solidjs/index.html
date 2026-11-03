@@ -4,6 +4,17 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>agent-ide, in Solid</title>
 	<link rel="stylesheet" href="/client.css" />
+	<style>
+		/* Keep a fork's origin below the phone's overlaid app bar. */
+		@media (max-width: 700px) {
+			body.chat .thread > nav.from:not(:empty) {
+				margin-top: 3.4rem;
+			}
+			body.chat .thread:has(> nav.from:not(:empty)) > ul {
+				padding-top: 0.4rem;
+			}
+		}
+	</style>
 	<!-- Solid as it ships, straight from node_modules: the dev builds, so its warnings show in the console -->
 	<script type="importmap">
 		{
@@ -17,8 +28,10 @@
 		}
 	</script>
 
-	<main class="page">
-		<aside class="stage" id="stage"></aside>
-	</main>
-	<script type="module" src="/solid/client.js"></script>
+	<body class="chat">
+		<main class="page">
+			<aside class="stage" id="stage"></aside>
+		</main>
+		<script type="module" src="/solid/client.js"></script>
+	</body>
 </html>

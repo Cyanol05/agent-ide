@@ -22,3 +22,4 @@
 - For an example of a failed npm install, use a missing `.tgz` dependency: a missing `file:` directory can install successfully as a dangling symlink.
 - Pi Durable's SQLite task `kind` column stores a JSON string; bind `JSON.stringify(name)` when inspecting example outcomes.
 - Pi's `openTextLineReader` and `openBinaryReader` take an options object before Context; `openDirReader` takes Context directly.
+- In no-build Solid templates, wrap live values in `() =>`, give component callbacks an argument (zero-argument functions become getters even for `on…` props), and keep the phone header's async reads inside `Loading`.
