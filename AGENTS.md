@@ -3,6 +3,7 @@
 - A change serves one of the promises in [apps/client/client.html](apps/client/client.html), or it requires a chat with Oskar. When a better design breaks a principle, or an idea looks wrong, Oskar's included, argue before building.
 - Use the words client.html uses, one per concept. Fewer concepts beats fewer lines.
 - Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own.
+- Don't over-fix. A rare failure that would need a new store, task layer or journal stays a known gap, written on its issue. Small and readable beats covering every crash.
 - A tool's cancellation comes from `execute`'s third Context argument: pass its `abortSignal` through runner calls, and settle cancellation locally without waiting for the runner's reply.
 - Use `pnpm install --frozen-lockfile` in a fresh worktree; keep package.json and the lockfile unchanged.
 - Pi permits one `submit(tx, ...)` before table writes per commit, and document values must be copied before they leave that commit.
