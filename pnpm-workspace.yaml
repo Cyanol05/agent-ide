@@ -1,5 +1,3 @@
-packages:
-  - apps/client-solidjs
 allowBuilds:
   '@google/genai': false
   protobufjs: false

@@ -5,266 +5,279 @@
 		name="viewport"
 		content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
 	/>
-	<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-	<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121212" />
 	<title>agent-ide</title>
-	<link rel="stylesheet" href="./client.css" />
+	<link rel="stylesheet" href="/client.css" />
+	<!-- Solid, no build step. Serve the dev builds so their warnings stay visible. -->
+	<script type="importmap">
+		{
+			"imports": {
+				"solid-js": "/packages/solid-js/solid.dev.js",
+				"solid-js/internal": "/packages/solid-js/internal.js",
+				"@solidjs/signals": "/packages/@solidjs/signals/dev.js",
+				"@solidjs/web": "/packages/@solidjs/web/web.dev.js",
+				"@solidjs/html": "/packages/@solidjs/html/html.js"
+			}
+		}
+	</script>
 
-	<main class="page">
-		<section data-focus="all">
-			<h1>agent-ide</h1>
-			<p>
-				Why use this over ChatGPT, Claude, T3 and the rest? Maybe you wouldn't. I do, because I like
-				being able to change absolutely everything.
-			</p>
-			<p>
-				agent-ide is a minimal, stable base for building on AI. It's the chat app you know, with
-				many threads and any model you like, plus a few things on top:
-			</p>
-			<ol class="promises">
-				<li>
-					<b>Threads with many authors.</b> You, friends and agents talk in one thread, and each
-					agent can be any model pi can name, named the way pi names it.
-				</li>
-				<li>
-					<b>Runners.</b> Tools run on a machine and in a folder you choose, with that machine's
-					logins, and the agent knows that folder's AGENTS.md and skills.
-				</li>
-				<li>
-					<b>Threads that talk.</b> An agent asks another thread, and the answer comes back once,
-					even across restarts and stops.
-				</li>
-				<li><b>Forks.</b> Start a new thread from any message, with the same agents.</li>
-				<li><b>Stays on.</b> A restart or a stop loses nothing.</li>
-			</ol>
-			<p>
-				It runs on your own computer, with nothing third-party except the model. Bots, @mentions,
-				Matrix rooms, memory and search are modules you switch on, or write yourself. About five
-				thousand lines: fork it, point your AI at it, change it.
-			</p>
-			<p>The rest of this page walks you through it, then says what it's made of.</p>
-		</section>
+	<body class="chat">
+		<main class="page">
+			<section data-focus="all">
+				<h1>agent-ide</h1>
+				<p>
+					Why use this over ChatGPT, Claude, T3 and the rest? Maybe you wouldn't. I do, because I
+					like being able to change absolutely everything.
+				</p>
+				<p>
+					agent-ide is a minimal, stable base for building on AI. It's the chat app you know, with
+					many threads and any model you like, plus a few things on top:
+				</p>
+				<ol class="promises">
+					<li>
+						<b>Threads with many authors.</b> You, friends and agents talk in one thread, and each
+						agent can be any model pi can name, named the way pi names it.
+					</li>
+					<li>
+						<b>Runners.</b> Tools run on a machine and in a folder you choose, with that machine's
+						logins, and the agent knows that folder's AGENTS.md and skills.
+					</li>
+					<li>
+						<b>Threads that talk.</b> An agent asks another thread, and the answer comes back once,
+						even across restarts and stops.
+					</li>
+					<li><b>Forks.</b> Start a new thread from any message, with the same agents.</li>
+					<li><b>Stays on.</b> A restart or a stop loses nothing.</li>
+				</ol>
+				<p>
+					It runs on your own computer, with nothing third-party except the model. The client uses
+					Solid, with no build step; its code and diagrams are served locally. Bots, @mentions,
+					Matrix rooms, memory and search are modules you switch on, or write yourself. About five
+					thousand lines: fork it, point your AI at it, change it.
+				</p>
+				<p>The rest of this page walks you through it, then says what it's made of.</p>
+			</section>
 
-		<section data-focus="server">
-			<h2>Hello, Agent IDE</h2>
-			<p>Start it where it can stay on.</p>
-			<pre>npx github:oskarrough/agent-ide</pre>
-		</section>
+			<section data-focus="server">
+				<h2>Hello, Agent IDE</h2>
+				<p>Start it where it can stay on.</p>
+				<pre>npx github:oskarrough/agent-ide</pre>
+			</section>
 
-		<section data-focus="runners">
-			<h2>Lend it your laptop</h2>
-			<p>
-				Now an agent can work on the server's own machine. To have it work on your laptop instead,
-				lend the laptop. It dials the server, so it has to reach it: the same network, or
-				<a href="https://tailscale.com">Tailscale</a>, with the server started as
-				<code>HOST=0.0.0.0</code>.
-			</p>
-			<p>
-				On the server's own machine, open this page through localhost and create a connection line.
-				Paste it on the laptop, in the folder you want to lend. It holds the laptop's key, so keep it
-				to yourself.
-			</p>
-			<button id="connect" type="button">Create connection line</button>
-			<pre id="lend">Create a connection line, then paste it from the folder you want to lend.</pre>
-		</section>
+			<section data-focus="runners">
+				<h2>Lend it your laptop</h2>
+				<p>
+					Now an agent can work on the server's own machine. To have it work on your laptop instead,
+					lend the laptop. It dials the server, so it has to reach it: the same network, or
+					<a href="https://tailscale.com">Tailscale</a>, with the server started as
+					<code>HOST=0.0.0.0</code>.
+				</p>
+				<p>
+					On the server's own machine, open this page through localhost and create a connection
+					line. Paste it on the laptop, in the folder you want to lend. It holds the laptop's key,
+					so keep it to yourself.
+				</p>
+				<button id="connect" type="button">Create connection line</button>
+				<pre id="lend">
+Create a connection line, then paste it from the folder you want to lend.</pre>
+			</section>
 
-		<section data-focus="hands">
-			<h2>Where the work happens</h2>
-			<p>
-				The agents run on the server, their tools on the runner. Each tool the agent calls travels
-				down its wire and runs in the runner's folder, with the runner's logins.
-			</p>
-			<div class="try">
-				<button data-try="hands">Ask which file here is biggest</button>
-			</div>
-		</section>
+			<section data-focus="hands">
+				<h2>Where the work happens</h2>
+				<p>
+					The agents run on the server, their tools on the runner. Each tool the agent calls travels
+					down its wire and runs in the runner's folder, with the runner's logins.
+				</p>
+				<div class="try">
+					<button data-try="hands">Ask which file here is biggest</button>
+				</div>
+			</section>
 
-		<section data-focus="runners">
-			<h2>Ask two at once</h2>
-			<p>
-				Click a runner to ask it. Shift-click another to ask it too. One message, two agents, each
-				answering from its own machine. With one runner, two of its models answer side by side.
-			</p>
-			<div class="try">
-				<button data-try="two">Ask every runner what machine it's on</button>
-			</div>
-		</section>
+			<section data-focus="runners">
+				<h2>Ask two at once</h2>
+				<p>
+					Click a runner to ask it. Shift-click another to ask it too. One message, two agents, each
+					answering from its own machine. With one runner, two of its models answer side by side.
+				</p>
+				<div class="try">
+					<button data-try="two">Ask every runner what machine it's on</button>
+				</div>
+			</section>
 
-		<section data-focus="thread">
-			<h2>Agents talk to each other</h2>
-			<p>
-				An agent asks another with its <code>post</code> tool. With no thread, it starts a child
-				that holds just the question. Given a thread, it asks whoever is there, with everything they
-				already know there.
-			</p>
-			<p>
-				The answer comes back once, as a card, and wakes whoever asked. Nothing else crosses: what's
-				said in a child stays in the child. And an agent's words reach others marked as an agent's,
-				so none can pass for yours.
-			</p>
-			<div class="try">
-				<button data-try="talk">Have one agent ask another</button>
-			</div>
-		</section>
+			<section data-focus="thread">
+				<h2>Agents talk to each other</h2>
+				<p>
+					An agent asks another with its <code>post</code> tool. With no thread, it starts a child
+					that holds just the question. Given a thread, it asks whoever is there, with everything
+					they already know there.
+				</p>
+				<p>
+					The answer comes back once, as a card, and wakes whoever asked. Nothing else crosses:
+					what's said in a child stays in the child. And an agent's words reach others marked as an
+					agent's, so none can pass for yours.
+				</p>
+				<div class="try">
+					<button data-try="talk">Have one agent ask another</button>
+				</div>
+			</section>
 
-		<section data-focus="server">
-			<h2>Pull the plug</h2>
-			<p>
-				Ask something slow. While its wire is green, stop the server where it runs, with
-				<code>Ctrl-C</code>, and start it again. The server goes dashed, then green, and the answer
-				lands, once. A command that was running when the plug came out is cut off, and the agent
-				says so: it picks up where Pi left it, not where the shell was.
-			</p>
-			<div class="try"><button data-try="slow">Ask something slow</button></div>
-			<p>
-				This page keeps nothing itself. Close the tab, or the laptop, and nothing is lost either.
-			</p>
-		</section>
+			<section data-focus="server">
+				<h2>Pull the plug</h2>
+				<p>
+					Ask something slow. While its wire is green, stop the server where it runs, with
+					<code>Ctrl-C</code>, and start it again. The server goes dashed, then green, and the
+					answer lands, once. A command that was running when the plug came out is cut off, and the
+					agent says so: it picks up where Pi left it, not where the shell was.
+				</p>
+				<div class="try"><button data-try="slow">Ask something slow</button></div>
+				<p>
+					This page keeps nothing itself. Close the tab, or the laptop, and nothing is lost either.
+				</p>
+			</section>
 
-		<section data-focus="thread">
-			<h2>Fork</h2>
-			<p>
-				Wish you'd asked differently? Hover any message for its <b>fork</b>. A new thread starts
-				from there, with the same agents, each remembering only what came before it. The two sit
-				side by side, linked both ways. The fork keeps the thread's tools as they are now.
-			</p>
-			<div class="try">
-				<button data-try="fork">Fork this thread at its first answer</button>
-			</div>
-		</section>
+			<section data-focus="thread">
+				<h2>Fork</h2>
+				<p>
+					Wish you'd asked differently? Hover any message for its <b>fork</b>. A new thread starts
+					from there, with the same agents, each remembering only what came before it. The two sit
+					side by side, linked both ways. The fork keeps the thread's tools as they are now.
+				</p>
+				<div class="try">
+					<button data-try="fork">Fork this thread at its first answer</button>
+				</div>
+			</section>
 
-		<section data-focus="thread">
-			<h2>Bring a friend</h2>
-			<p>
-				A thread isn't yours alone. Send someone the link and they're in it, writing next to you and
-				your agents.
-			</p>
-			<div class="try">
-				<button data-try="friend">Open this thread as Ana</button>
-			</div>
-			<p class="mute">
-				Anyone who can reach the server can read, post as anyone and ask its runners to work.
-				There are no people keys or accounts. Keep it on a trusted network.
-			</p>
-		</section>
+			<section data-focus="thread">
+				<h2>Bring a friend</h2>
+				<p>
+					A thread isn't yours alone. Send someone the link and they're in it, writing next to you
+					and your agents.
+				</p>
+				<div class="try">
+					<button data-try="friend">Open this thread as Ana</button>
+				</div>
+				<p class="mute">
+					Anyone who can reach the server can read, post as anyone and ask its runners to work.
+					There are no people keys or accounts. Keep it on a trusted network.
+				</p>
+			</section>
 
-		<section data-focus="memory">
-			<h2>Memory</h2>
-			<p>
-				A thread that never has to end. Each message gets one short line, pairs of lines merge into
-				one going up, and an agent reads those lines instead of every word. When it needs the words,
-				it zooms back down. Click a line to do the same.
-			</p>
-			<p>
-				Load a thread of three people building a shed: 32 messages, where the gate code and the
-				colour change halfway. Watch the lines get written, from the messages up. Then ask an agent
-				what's true now.
-			</p>
-			<div class="try">
-				<button data-try="shed">Load the example thread</button
-				><button data-try="recall">Ask about the shed</button>
-			</div>
-			<agent-memory id="memory"></agent-memory>
-		</section>
+			<section data-focus="memory">
+				<h2>Memory</h2>
+				<p>
+					A thread that never has to end. Each message gets one short line, pairs of lines merge
+					into one going up, and an agent reads those lines instead of every word. When it needs the
+					words, it zooms back down. Click a line to do the same.
+				</p>
+				<p>
+					Load a thread of three people building a shed: 32 messages, where the gate code and the
+					colour change halfway. Watch the lines get written, from the messages up. Then ask an
+					agent what's true now.
+				</p>
+				<div class="try">
+					<button data-try="shed">Load the example thread</button
+					><button data-try="recall">Ask about the shed</button>
+				</div>
+				<agent-memory id="memory"></agent-memory>
+			</section>
 
-		<section class="reference" data-focus="all">
-			<h2>What it's made of</h2>
-			<p>
-				The agents run on the server. Their tools run on runners, on machines you choose. You look
-				in through any client, from any device. Five words name everything else.
-			</p>
-			<p class="contents">
-				<a href="#words">The words</a> · <a href="#machine">The machine</a> ·
-				<a href="#one-message">One message</a> · <a href="#principles">Principles</a> ·
-				<a href="#runner-life">A runner's life</a> · <a href="#modules">Modules</a> ·
-				<a href="#who-pays">Who pays</a> ·
-				<a href="#whole-picture">The whole picture</a>
-			</p>
+			<section class="reference" data-focus="all">
+				<h2>What it's made of</h2>
+				<p>
+					The agents run on the server. Their tools run on runners, on machines you choose. You look
+					in through any client, from any device. Five words name everything else.
+				</p>
+				<p class="contents">
+					<a href="#words">The words</a> · <a href="#machine">The machine</a> ·
+					<a href="#one-message">One message</a> · <a href="#principles">Principles</a> ·
+					<a href="#runner-life">A runner's life</a> · <a href="#modules">Modules</a> ·
+					<a href="#who-pays">Who pays</a> ·
+					<a href="#whole-picture">The whole picture</a>
+				</p>
 
-			<h2 id="words">The words</h2>
-			<p>
-				One word per thing. The test for a word: it names something you can point at in the code or
-				the API, and nothing else in the list overlaps it. Under each, the words people reach for
-				instead, and what they map to here.
-			</p>
+				<h2 id="words">The words</h2>
+				<p>
+					One word per thing. The test for a word: it names something you can point at in the code
+					or the API, and nothing else in the list overlaps it. Under each, the words people reach
+					for instead, and what they map to here.
+				</p>
 
-			<dl class="words">
-				<dt>Server</dt>
-				<dd>
-					The one process you start,
-					<code>npx github:oskarrough/agent-ide</code>, on any box you own. It lends the folder it
-					starts in as its first runner, and keeps every thread and every agent's conversation in
-					one SQLite file.
-					<small>What you might call a workspace, or the cloud. One server is one world.</small>
-				</dd>
+				<dl class="words">
+					<dt>Server</dt>
+					<dd>
+						The one process you start,
+						<code>npx github:oskarrough/agent-ide</code>, on any box you own. It lends the folder it
+						starts in as its first runner, and keeps every thread and every agent's conversation in
+						one SQLite file.
+						<small>What you might call a workspace, or the cloud. One server is one world.</small>
+					</dd>
 
-				<dt>Runner</dt>
-				<dd>
-					A program on a machine that lends the server two things: its folders and the model logins
-					pi has there. Installed with the connection line the page makes,
-					<code>curl -fsSL &lt;server&gt;/connect-runner | AGENT_IDE_KEY=… sh</code>, or started by
-					hand with <code>node runner.js</code>. Each <code>--dir</code> lends
-					one more folder, and <code>--discover-dirs</code> offers the git and jj checkouts beneath
-					them; you pick one where you write.
-					<small
-						>What you might call a machine, a computer or a daemon. A machine is where runners run,
-						one per folder if you like, and a cloud sandbox is just another machine.</small
-					>
-				</dd>
+					<dt>Runner</dt>
+					<dd>
+						A program on a machine that lends the server two things: its folders and the model
+						logins pi has there. Installed with the connection line the page makes,
+						<code>curl -fsSL &lt;server&gt;/connect-runner | AGENT_IDE_KEY=… sh</code>, or started
+						by hand with <code>node runner.js</code>. Each <code>--dir</code> lends one more folder,
+						and <code>--discover-dirs</code> offers the git and jj checkouts beneath them; you pick
+						one where you write.
+						<small
+							>What you might call a machine, a computer or a daemon. A machine is where runners
+							run, one per folder if you like, and a cloud sandbox is just another machine.</small
+						>
+					</dd>
 
-				<dt>Agent</dt>
-				<dd>
-					A model, how hard it thinks, and the runner it runs on:
-					<code>sonnet:high@laptop</code>. In each thread an agent has its own conversation, and
-					knows its folder the way pi does there: AGENTS.md and skills. Its name in the thread is
-					<code>sonnet@laptop</code>, unless you give it another, as
-					<code>reviewer=sonnet@laptop</code>, so two of one model can work side by side. In its
-					thread the name reaches it; from anywhere, <code>12/reviewer</code> does. A fork keeps the
-					names.
-					<small
-						>Not a bot. A name is not a character; the agent is "this model, this hard,
-						there".</small
-					>
-				</dd>
+					<dt>Agent</dt>
+					<dd>
+						A model, how hard it thinks, and the runner it runs on:
+						<code>sonnet:high@laptop</code>. In each thread an agent has its own conversation, and
+						knows its folder the way pi does there: AGENTS.md and skills. Its name in the thread is
+						<code>sonnet@laptop</code>, unless you give it another, as
+						<code>reviewer=sonnet@laptop</code>, so two of one model can work side by side. In its
+						thread the name reaches it; from anywhere, <code>12/reviewer</code> does. A fork keeps
+						the names.
+						<small
+							>Not a bot. A name is not a character; the agent is "this model, this hard,
+							there".</small
+						>
+					</dd>
 
-				<dt>Thread</dt>
-				<dd>
-					A conversation on the server, with any number of people and agents in it. Its tools are its
-					agents' tools, as <code>pi --tools</code> takes them: click its title in Just the chat to set
-					them. <b>Hands off</b> is <code>-write,-edit,-bash</code>, so they read and ask others but
-					change nothing.
-					<small
-						>Threads don't live on runners. A thread can ask an agent on the laptop and one on the
-						vps side by side.</small
-					>
-				</dd>
+					<dt>Thread</dt>
+					<dd>
+						A conversation on the server, with any number of people and agents in it. Its tools are
+						its agents' tools, as <code>pi --tools</code> takes them: click its title to set them.
+						<b>Hands off</b> is <code>-write,-edit,-bash</code>, so they read and ask others but
+						change nothing.
+						<small
+							>Threads don't live on runners. A thread can ask an agent on the laptop and one on the
+							vps side by side.</small
+						>
+					</dd>
 
-				<dt>Client</dt>
-				<dd>
-					Whatever you look through: the web client in any browser, or the CLI in a terminal. Both
-					speak the same small HTTP and WebSocket API and store nothing. A Matrix room can be one
-					too, through the matrix module on the server.
-					<small
-						>What you might call the desktop or the mobile app: a browser tab, on your laptop or,
-						over Tailscale, your phone.</small
-					>
-				</dd>
-			</dl>
+					<dt>Client</dt>
+					<dd>
+						Whatever you look through: the web client in any browser, or the CLI in a terminal. Both
+						speak the same small HTTP and WebSocket API and store nothing. A Matrix room can be one
+						too, through the matrix module on the server.
+						<small
+							>What you might call the desktop or the mobile app: a browser tab, on your laptop or,
+							over Tailscale, your phone.</small
+						>
+					</dd>
+				</dl>
 
-			<h3>How an agent is named</h3>
-			<div class="name">
-				<span class="m">sonnet<i>model</i></span
-				><span class="sep">:</span><span class="t">high<i>thinking</i></span
-				><span class="sep">@</span><span class="r">laptop<i>runner</i></span>
-			</div>
-			<p class="caption" style="text-align: center">
-				Each part is optional and falls back to pi's defaults on that runner:
-				<code>laptop</code> alone is its default model. The model part is anything
-				<code>pi --model</code> takes, resolved by pi on the runner.
-			</p>
+				<h3>How an agent is named</h3>
+				<div class="name">
+					<span class="m">sonnet<i>model</i></span
+					><span class="sep">:</span><span class="t">high<i>thinking</i></span
+					><span class="sep">@</span><span class="r">laptop<i>runner</i></span>
+				</div>
+				<p class="caption" style="text-align: center">
+					Each part is optional and falls back to pi's defaults on that runner:
+					<code>laptop</code> alone is its default model. The model part is anything
+					<code>pi --model</code> takes, resolved by pi on the runner.
+				</p>
 
-			<h2 id="machine">The machine</h2>
-			<pre class="mermaid">
+				<h2 id="machine">The machine</h2>
+				<pre class="mermaid">
 flowchart TB
   clients["client.html and cli.js, anywhere"] -- "HTTP and /ws" --> server["server.js: one Pi Durable harness, threads, every agent's loop, one SQLite file; checks each runner's owner"]
   runner["runner.js on laptop: stores nothing"] -- "dials /ws" --> server
@@ -272,36 +285,35 @@ flowchart TB
   runner -. "file tools stay inside; $ commands only start here" .-> folder["~/code"]
   runner -- "pi logins" --> providers["Anthropic, OpenAI, …"]
 </pre>
-			<p>
-				Pi is the harness: its prompt, tools and loop. The server runs it for every agent, and the
-				tools run on a runner. Each model call and tool call crosses the socket the runner dialled,
-				so its logins never leave its machine. File tools stay inside the runner's folders, but a
-				command only starts there, which is why that line is dashed.
-			</p>
-			<p>
-				Pi Durable does the heavy lifting: storage, tasks, ordering, retries, restarts, stops and
-				forks. agent-ide adds three things on top.
-			</p>
-			<ul>
-				<li>
-					A <b>thread</b> is a Pi conversation that never runs a model. Every entry is a message
-					with an author and a body. What agent-ide adds, like a title, a parent, read markers and
-					the thread's agents, sits beside it as a Pi doc.
-				</li>
-				<li>
-					A <b>runner</b> is, to the server, a Pi model provider and the execution environment of
-					every conversation whose model runs on it. Calls to an offline runner wait for it.
-				</li>
-				<li>
-					A <b>task</b> is Pi's. Admit hands an agent its messages in order, Deliver brings its
-					answer back, Shell runs
-					<code>$ cmd</code> on a runner, and Anchor owns an agent's conversation so that a stop
-					reaches it.
-				</li>
-			</ul>
+				<p>
+					Pi is the harness: its prompt, tools and loop. The server runs it for every agent, and the
+					tools run on a runner. Each model call and tool call crosses the socket the runner
+					dialled, so its logins never leave its machine. File tools stay inside the runner's
+					folders, but a command only starts there, which is why that line is dashed.
+				</p>
+				<p>
+					Pi Durable does the heavy lifting: storage, tasks, ordering, retries, restarts, stops and
+					forks. agent-ide adds three things on top.
+				</p>
+				<ul>
+					<li>
+						A <b>thread</b> is a Pi conversation that never runs a model. Every entry is a message
+						with an author and a body. What agent-ide adds, like a title, a parent, read markers and
+						the thread's agents, sits beside it as a Pi doc.
+					</li>
+					<li>
+						A <b>runner</b> is, to the server, a Pi model provider and the execution environment of
+						every conversation whose model runs on it. Calls to an offline runner wait for it.
+					</li>
+					<li>
+						A <b>task</b> is Pi's. Admit hands an agent its messages in order, Deliver brings its
+						answer back, Shell runs <code>$ cmd</code> on a runner, and Anchor owns an agent's
+						conversation so that a stop reaches it.
+					</li>
+				</ul>
 
-			<h2 id="one-message">One message, start to finish</h2>
-			<pre class="mermaid">
+				<h2 id="one-message">One message, start to finish</h2>
+				<pre class="mermaid">
 sequenceDiagram
   participant You as You, in any client
   participant T as Thread, on the server
@@ -319,82 +331,82 @@ sequenceDiagram
   A-->>T: only its final answer
   T-->>You: live, as it lands
 </pre>
-			<p class="caption">If the runner drops mid-way, the agent waits for it and carries on.</p>
+				<p class="caption">If the runner drops mid-way, the agent waits for it and carries on.</p>
 
-			<h2 id="principles">Principles</h2>
-			<h3>Messages</h3>
-			<ul>
-				<li>
-					Agents are handed messages, and can look up anything. Each delivery hands an agent
-					everything it hasn't seen yet as one input, and only its final answer comes back to the
-					thread. Its tool calls stay in its own conversation, where any agent can read them with
-					<code>threads</code>, as any person can through the API. Long output is cut at 4,000
-					characters, saying how much is left; <code>query</code> finds the part that matters.
-				</li>
-				<li>
-					A message asks the agents in its <code>to</code>. With no <code>to</code>, it asks whoever
-					the thread asked last, and <code>to: null</code> asks nobody.
-				</li>
-				<li>
-					Threads talk like email. An agent asks with <code>post</code>. With no thread, it starts a
-					child that holds only the question, for a side question. Given a thread, it asks whoever
-					is there, with all they know there. The answer goes back to the asking thread, and a reply
-					to that answer ends the exchange. Nothing else crosses: what's said in a child stays in
-					the child.
-				</li>
-				<li>
-					Posting to a thread that asked you something answers it, so a progress note mid-work comes
-					back once and goes no further.
-				</li>
-				<li>
-					A name is one line of plain text and a message's later lines are indented, so nobody can
-					forge a speaker in an agent's input. Agents are marked as agents by what they wrote, never
-					by their name: a person's message is an instruction, an agent's is a colleague's report or
-					request.
-				</li>
-				<li>
-					The client watches Pi's own event streams, so replies and tool calls show live. A
-					reconnect starts from fresh snapshots.
-				</li>
-			</ul>
-			<h3>Durability</h3>
-			<ul>
-				<li>
-					Every write lands in the commit that ends or advances a Pi task, so a restart repeats
-					nothing. A retried request with the same
-					<code>requestId</code> gets the first result back.
-				</li>
-				<li>
-					A stop posts nothing, and messages that were never delivered wait for the next delivery.
-				</li>
-				<li>
-					A fork forks the thread and each agent's conversation at the same point, in one commit.
-				</li>
-			</ul>
-			<h3>Runners</h3>
-			<ul>
-				<li>
-					A runner with an <code>--owner</code> takes work only from its owner and the names it
-					<code>--allow</code>s: people, or <code>@runner</code> for the agents there. An agent
-					always reaches its own runner. Allowing is transitive: allow <code>@desktop</code>, and
-					whoever desktop takes can reach you through its agents. A refusal starts no agent work. Agents
-					can't pick their name, but a person can claim to be the owner.
-				</li>
-				<li>
-					A runner started <code>--read-only</code> lends its folder to read: writes and commands
-					come back as errors.
-				</li>
-				<li>
-					A runner shows its key when it dials in, so nobody can take its name. The server mints a
-					key per runner and keeps only its hash; a new key cuts off the old one. Revoking takes the
-					key away: the runner goes offline and stops dialling back. Only localhost on the server's
-					own machine can mint or revoke keys, and other websites can't write to the server, even
-					on loopback.
-				</li>
-			</ul>
+				<h2 id="principles">Principles</h2>
+				<h3>Messages</h3>
+				<ul>
+					<li>
+						Agents are handed messages, and can look up anything. Each delivery hands an agent
+						everything it hasn't seen yet as one input, and only its final answer comes back to the
+						thread. Its tool calls stay in its own conversation, where any agent can read them with
+						<code>threads</code>, as any person can through the API. Long output is cut at 4,000
+						characters, saying how much is left; <code>query</code> finds the part that matters.
+					</li>
+					<li>
+						A message asks the agents in its <code>to</code>. With no <code>to</code>, it asks
+						whoever the thread asked last, and <code>to: null</code> asks nobody.
+					</li>
+					<li>
+						Threads talk like email. An agent asks with <code>post</code>. With no thread, it starts
+						a child that holds only the question, for a side question. Given a thread, it asks
+						whoever is there, with all they know there. The answer goes back to the asking thread,
+						and a reply to that answer ends the exchange. Nothing else crosses: what's said in a
+						child stays in the child.
+					</li>
+					<li>
+						Posting to a thread that asked you something answers it, so a progress note mid-work
+						comes back once and goes no further.
+					</li>
+					<li>
+						A name is one line of plain text and a message's later lines are indented, so nobody can
+						forge a speaker in an agent's input. Agents are marked as agents by what they wrote,
+						never by their name: a person's message is an instruction, an agent's is a colleague's
+						report or request.
+					</li>
+					<li>
+						The client watches Pi's own event streams, so replies and tool calls show live. A
+						reconnect starts from fresh snapshots.
+					</li>
+				</ul>
+				<h3>Durability</h3>
+				<ul>
+					<li>
+						Every write lands in the commit that ends or advances a Pi task, so a restart repeats
+						nothing. A retried request with the same
+						<code>requestId</code> gets the first result back.
+					</li>
+					<li>
+						A stop posts nothing, and messages that were never delivered wait for the next delivery.
+					</li>
+					<li>
+						A fork forks the thread and each agent's conversation at the same point, in one commit.
+					</li>
+				</ul>
+				<h3>Runners</h3>
+				<ul>
+					<li>
+						A runner with an <code>--owner</code> takes work only from its owner and the names it
+						<code>--allow</code>s: people, or <code>@runner</code> for the agents there. An agent
+						always reaches its own runner. Allowing is transitive: allow <code>@desktop</code>, and
+						whoever desktop takes can reach you through its agents. A refusal starts no agent work.
+						Agents can't pick their name, but a person can claim to be the owner.
+					</li>
+					<li>
+						A runner started <code>--read-only</code> lends its folder to read: writes and commands
+						come back as errors.
+					</li>
+					<li>
+						A runner shows its key when it dials in, so nobody can take its name. The server mints a
+						key per runner and keeps only its hash; a new key cuts off the old one. Revoking takes
+						the key away: the runner goes offline and stops dialling back. Only localhost on the
+						server's own machine can mint or revoke keys, and other websites can't write to the
+						server, even on loopback.
+					</li>
+				</ul>
 
-			<h2 id="runner-life">A runner's life</h2>
-			<pre class="mermaid">
+				<h2 id="runner-life">A runner's life</h2>
+				<pre class="mermaid">
 stateDiagram-v2
   direction LR
   [*] --> Online: curl …/connect-runner | sh, with its key
@@ -405,60 +417,84 @@ stateDiagram-v2
   Online --> Updating: new runner on the server, and it's idle
   Updating --> Online: fetched, installed, restarted
 </pre>
-			<p class="caption">
-				The server ships its own runner, so a runner always matches its server. It never updates
-				mid-answer: the server asks only when it has nothing open.
-			</p>
+				<p class="caption">
+					The server ships its own runner, so a runner always matches its server. It never updates
+					mid-answer: the server asks only when it has nothing open.
+				</p>
 
-			<h2 id="modules">Modules</h2>
-			<p>
-				Anything optional is a module: one file in <code>modules/</code>. They're picked the way Pi
-				picks tools, in <code>agent-ide.json</code> or <code>MODULES=+search,-talk</code>: names
-				replace the defaults, <code>+name</code> and <code>-name</code> change them, and a path is a
-				module of your own.
-			</p>
-			<dl class="words">
-				<dt>talk.js <span class="tag" data-c="server">on</span></dt>
-				<dd>
-					Gives agents <code>post</code> and <code>threads</code> tools: start or answer other
-					threads, and read any thread or any agent's work.
-				</dd>
-				<dt>status.js <span class="tag" data-c="server">on</span></dt>
-				<dd>Has runners report status to their terminal.</dd>
-				<dt>context.js <span class="tag" data-c="server">on</span></dt>
-				<dd>
-					Gives each agent what pi reads in its folder, AGENTS.md and the skills, found by pi on the
-					runner before every request.
-				</dd>
-				<dt>director.js <span class="tag" data-c="later">off</span></dt>
-				<dd>Asks the agents a message @mentions by name.</dd>
-				<dt>memory.js <span class="tag" data-c="later">off</span></dt>
-				<dd>
-					Gives each thread a memory of short lines that agents read within their context and zoom
-					back down to the words. It needs <code>MEMORY_MODEL=model@runner</code>, the agent that
-					writes the lines.
-				</dd>
-				<dt>search.js <span class="tag" data-c="later">off</span></dt>
-				<dd>Gives agents <code>web_search</code>, through Exa's free search.</dd>
-				<dt>matrix.js <span class="tag" data-c="later">off</span></dt>
-				<dd>Mirrors Matrix rooms into threads, and its top says how to set it up.</dd>
-				<dt>bots.js <span class="tag" data-c="later">off</span></dt>
-				<dd>
-					One name in many threads: a name with a home thread, a recipe and instructions. Ask
-					<code>ada</code> in any thread and an agent named ada joins it from her recipe;
-					<code>ada=haiku@desk</code> gives that thread another model. Every ada reads her
-					instructions before each request and knows her other threads and the other bots, so she's
-					one person, not one conversation. At home she rewrites them herself, or makes another bot.
-					Forgetting her keeps every thread.
-				</dd>
-			</dl>
+				<h2 id="modules">Modules</h2>
+				<p>
+					Anything optional is a module: one file in <code>modules/</code>. They're picked the way
+					Pi picks tools, in <code>agent-ide.json</code> or <code>MODULES=+search,-talk</code>:
+					names replace the defaults, <code>+name</code> and <code>-name</code> change them, and a
+					path is a module of your own.
+				</p>
+				<dl class="words">
+					<dt>
+						talk.js
+						<span class="tag" data-c="server">on</span>
+					</dt>
+					<dd>
+						Gives agents <code>post</code> and <code>threads</code> tools: start or answer other
+						threads, and read any thread or any agent's work.
+					</dd>
+					<dt>
+						status.js
+						<span class="tag" data-c="server">on</span>
+					</dt>
+					<dd>Has runners report status to their terminal.</dd>
+					<dt>
+						context.js
+						<span class="tag" data-c="server">on</span>
+					</dt>
+					<dd>
+						Gives each agent what pi reads in its folder, AGENTS.md and the skills, found by pi on
+						the runner before every request.
+					</dd>
+					<dt>
+						director.js
+						<span class="tag" data-c="later">off</span>
+					</dt>
+					<dd>Asks the agents a message @mentions by name.</dd>
+					<dt>
+						memory.js
+						<span class="tag" data-c="later">off</span>
+					</dt>
+					<dd>
+						Gives each thread a memory of short lines that agents read within their context and zoom
+						back down to the words. It needs <code>MEMORY_MODEL=model@runner</code>, the agent that
+						writes the lines.
+					</dd>
+					<dt>
+						search.js
+						<span class="tag" data-c="later">off</span>
+					</dt>
+					<dd>Gives agents <code>web_search</code>, through Exa's free search.</dd>
+					<dt>
+						matrix.js
+						<span class="tag" data-c="later">off</span>
+					</dt>
+					<dd>Mirrors Matrix rooms into threads, and its top says how to set it up.</dd>
+					<dt>
+						bots.js
+						<span class="tag" data-c="later">off</span>
+					</dt>
+					<dd>
+						One name in many threads: a name with a home thread, a recipe and instructions. Ask
+						<code>ada</code> in any thread and an agent named ada joins it from her recipe;
+						<code>ada=haiku@desk</code> gives that thread another model. Every ada reads her
+						instructions before each request and knows her other threads and the other bots, so
+						she's one person, not one conversation. At home she rewrites them herself, or makes
+						another bot. Forgetting her keeps every thread.
+					</dd>
+				</dl>
 
-			<h2 id="who-pays">Who pays: the runner</h2>
-			<p>
-				An agent's model calls go out through the pi logins on its runner, so whoever lends a runner
-				pays for the thinking on it, and the server holds no logins.
-			</p>
-			<pre class="mermaid">
+				<h2 id="who-pays">Who pays: the runner</h2>
+				<p>
+					An agent's model calls go out through the pi logins on its runner, so whoever lends a
+					runner pays for the thinking on it, and the server holds no logins.
+				</p>
+				<pre class="mermaid">
 flowchart LR
   subgraph yours["Your runner pays for your agents"]
     a1["sonnet@laptop"] -- "thinks with" --> l1["the laptop's login"]
@@ -469,33 +505,33 @@ flowchart LR
     a2 -- "works in" --> f2["its folder"]
   end
 </pre>
-			<ul>
-				<li><b>Just you:</b> every runner is yours, with your logins. Nothing to decide.</li>
-				<li>
-					<b>A team:</b> Ana's runners pay for the agents on them. Nobody's subscription quietly
-					becomes everyone's, and someone who leaves takes their logins along by stopping their
-					runner.
-				</li>
-				<li>
-					<b>A shared pool</b>, if a team wants one: a runner without an owner, next to the server,
-					with a key in its environment. pi's enabled models there are the list, and pi's default
-					there is the default.
-				</li>
-			</ul>
-			<p>
-				Two costs we accept: a machine with no login needs a key in its environment, and each
-				machine needs <code>pi</code> and <code>/login</code> once. Thinking on one runner while
-				working on another would be one optional field, if it's ever needed.
-			</p>
+				<ul>
+					<li><b>Just you:</b> every runner is yours, with your logins. Nothing to decide.</li>
+					<li>
+						<b>A team:</b> Ana's runners pay for the agents on them. Nobody's subscription quietly
+						becomes everyone's, and someone who leaves takes their logins along by stopping their
+						runner.
+					</li>
+					<li>
+						<b>A shared pool</b>, if a team wants one: a runner without an owner, next to the
+						server, with a key in its environment. pi's enabled models there are the list, and pi's
+						default there is the default.
+					</li>
+				</ul>
+				<p>
+					Two costs we accept: a machine with no login needs a key in its environment, and each
+					machine needs <code>pi</code> and <code>/login</code> once. Thinking on one runner while
+					working on another would be one optional field, if it's ever needed.
+				</p>
 
-			<h2 id="whole-picture">The whole picture lives in the thread</h2>
-			<p>
-				When work spans machines, an agent on each one does its part, and any agent can read
-				another's work with <code>threads {thread, agent}</code>, word for word. Every hop stays a
-				message you can read, and nobody works from a summary. So each agent keeps one runner; for
-				more reach, its bash has ssh.
-			</p>
-			<pre class="mermaid">
+				<h2 id="whole-picture">The whole picture lives in the thread</h2>
+				<p>
+					When work spans machines, an agent on each one does its part, and any agent can read
+					another's work with <code>threads {thread, agent}</code>, word for word. Every hop stays a
+					message you can read, and nobody works from a summary. So each agent keeps one runner; for
+					more reach, its bash has ssh.
+				</p>
+				<pre class="mermaid">
 sequenceDiagram
   participant You
   participant L as sonnet@laptop
@@ -509,119 +545,25 @@ sequenceDiagram
   L->>L: edit and test, in ~/code
   L-->>You: fixed, and why
 </pre>
-		</section>
-
-		<aside class="stage" id="stage">
-			<button class="mode-toggle" id="mode" type="button" aria-pressed="false">
-				Just the chat
-			</button>
-			<!-- On a phone: back to every thread, and the thread's name, which opens its sheet. -->
-			<header class="app-bar" id="bar">
-				<button id="back" class="round" type="button" aria-label="All threads">
-					<svg
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2.2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<path d="M15 5l-7 7 7 7" />
-					</svg>
-				</button>
-				<button class="thread-pill" id="pill" type="button">
-					<span class="dot"></span><span></span>
-				</button>
-			</header>
-			<div class="scrim" id="scrim"></div>
-			<section class="thread-details" id="side" aria-label="Thread details">
-				<h3>In this thread</h3>
-				<p id="members"></p>
-				<ul class="thread-family" id="family"></ul>
 			</section>
-			<button class="runner-toggle" id="runner-count" type="button"></button>
-			<div class="model-picker" id="picker" popover><ul></ul></div>
-			<div class="runner-list" id="runner-list" popover>
-				<ul></ul>
-				<p>To add a runner:</p>
-				<pre></pre>
-			</div>
-			<div class="system" id="canvas">
-				<div class="node client" id="client"><b>Client</b></div>
-				<div class="node off server" id="server">
-					<b><span class="dot"></span>Server</b><small><code></code></small>
-					<div class="body">
-						<nav class="thread-list" id="list"></nav>
-						<div class="threads" id="threads"></div>
-					</div>
-				</div>
-				<div class="runners" id="runners"></div>
-			</div>
-		</aside>
-	</main>
 
-	<!-- The composer moves into whichever thread is current. -->
-	<template id="composer">
-		<form class="compose">
-			<div class="box">
-				<input
-					autocomplete="off"
-					required
-					enterkeyhint="send"
-					placeholder="Write a message"
-				/><button class="icon send" title="Send" aria-label="Send">↵</button>
-			</div>
-			<div class="bar">
-				<button
-					type="button"
-					class="icon add"
-					disabled
-					title="Attach (not yet)"
-					aria-label="Attach"
-				>
-					+
-				</button>
-				<button type="button" class="icon mic" disabled title="Voice (not yet)" aria-label="Voice">
-					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-					>
-						<rect x="9" y="3" width="6" height="11" rx="3" />
-						<path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-					</svg>
-				</button>
-				<button type="button" class="pick" aria-label="Model">
-					<span class="dot"></span><span></span>
-				</button>
-				<input
-					class="recipients"
-					id="to"
-					autocomplete="off"
-					spellcheck="false"
-					title="model:thinking@runner, comma between several"
-				/>
-			</div>
-		</form>
-	</template>
-	<script type="module" src="./client.js"></script>
-	<script type="module" src="./tutorial.js"></script>
-	<script type="module">
-		import { mount } from 'https://cdn.jsdelivr.net/npm/pele@1/dist/pele.js'
-		for (const pre of document.querySelectorAll('pre.mermaid')) {
-			const box = document.createElement('div')
-			box.className = 'diagram pele'
-			pre.before(box)
-			mount(box, pre.textContent, {
+			<aside class="stage" id="stage"></aside>
+		</main>
+		<script type="module" src="/client.js"></script>
+		<script type="module">
+			import mermaid from '/packages/mermaid/mermaid.esm.min.mjs'
+			mermaid.initialize({
+				startOnLoad: false,
+				securityLevel: 'strict',
+				theme: 'neutral',
 				fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-				fontSize: 14,
 			})
-		}
-	</script>
+			for (const [i, pre] of [...document.querySelectorAll('pre.mermaid')].entries()) {
+				const box = document.createElement('div')
+				box.className = 'diagram'
+				box.innerHTML = (await mermaid.render(`diagram-${i}`, pre.textContent)).svg
+				pre.replaceWith(box)
+			}
+		</script>
+	</body>
 </html>

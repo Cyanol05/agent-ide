@@ -1,8 +1,7 @@
 /* iA Writer Quattro S, the same face as the oskar bb theme. */
 @font-face {
 	font-family: 'iA Writer Quattro S';
-	src: url('https://cdn.jsdelivr.net/gh/iaolo/iA-Fonts@master/iA%20Writer%20Quattro/Webfonts/iAWriterQuattroS-Regular.woff2')
-		format('woff2');
+	src: url('/fonts/iAWriterQuattroS-Regular.woff2') format('woff2');
 	font-weight: 400;
 	font-style: normal;
 	font-display: swap;
@@ -10,8 +9,7 @@
 
 @font-face {
 	font-family: 'iA Writer Quattro S';
-	src: url('https://cdn.jsdelivr.net/gh/iaolo/iA-Fonts@master/iA%20Writer%20Quattro/Webfonts/iAWriterQuattroS-Italic.woff2')
-		format('woff2');
+	src: url('/fonts/iAWriterQuattroS-Italic.woff2') format('woff2');
 	font-weight: 400;
 	font-style: italic;
 	font-display: swap;
@@ -19,8 +17,7 @@
 
 @font-face {
 	font-family: 'iA Writer Quattro S';
-	src: url('https://cdn.jsdelivr.net/gh/iaolo/iA-Fonts@master/iA%20Writer%20Quattro/Webfonts/iAWriterQuattroS-Bold.woff2')
-		format('woff2');
+	src: url('/fonts/iAWriterQuattroS-Bold.woff2') format('woff2');
 	font-weight: 700;
 	font-style: normal;
 	font-display: swap;
@@ -28,8 +25,7 @@
 
 @font-face {
 	font-family: 'iA Writer Quattro S';
-	src: url('https://cdn.jsdelivr.net/gh/iaolo/iA-Fonts@master/iA%20Writer%20Quattro/Webfonts/iAWriterQuattroS-BoldItalic.woff2')
-		format('woff2');
+	src: url('/fonts/iAWriterQuattroS-BoldItalic.woff2') format('woff2');
 	font-weight: 700;
 	font-style: italic;
 	font-display: swap;
@@ -1817,16 +1813,6 @@ body.chat {
 		overflow-x: auto;
 	}
 
-	.pele {
-		--pele-bg: #ffffff;
-		--pele-fg: #100f0f;
-		--pele-muted: #6f6e69;
-		--pele-line: #575653;
-		--pele-surface: #f2f0e5;
-		--pele-surface-alt: #e6e4d9;
-		--pele-border: #b7b5ac;
-	}
-
 	.caption {
 		color: var(--mute);
 		font-size: 0.92rem;
@@ -1925,4 +1911,40 @@ body.chat {
 
 ol.promises li {
 	margin: 0.35rem 0;
+}
+
+/* Keep a fork's origin below the phone's overlaid app bar. */
+@media (max-width: 700px) {
+	body.chat .thread > nav.from:not(:empty) {
+		margin-top: 3.4rem;
+	}
+	body.chat .thread:has(> nav.from:not(:empty)) > ul {
+		padding-top: 0.4rem;
+	}
+}
+/* The same details sheet is reachable beside the story, not just in chat. */
+body:not(.chat) .thread-details {
+	display: block;
+	position: fixed;
+	inset: 0 0 0 auto;
+	z-index: 10;
+	width: min(85vw, 22rem);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	background: Canvas;
+	padding: 0.6rem;
+	border-left: 1px solid var(--line);
+	visibility: hidden;
+	transform: translateX(100%);
+}
+body:not(.chat).side .thread-details {
+	visibility: visible;
+	transform: none;
+}
+body:not(.chat).side .scrim {
+	display: block;
+	position: fixed;
+	inset: 0;
+	z-index: 9;
+	background: rgb(0 0 0 / 0.4);
 }

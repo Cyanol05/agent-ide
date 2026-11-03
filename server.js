@@ -336,31 +336,49 @@ const runners = createRunners({ onChange: notify })
 const shells = new Map()
 /** The client: apps/client/client.html at /, and every module and stylesheet beside it */
 const page = await readFile(new URL('./apps/client/client.html', import.meta.url))
-const beside = await readdir(new URL('./apps/client/', import.meta.url))
-const scripts = Object.fromEntries(
+const types = {
+	'.js': 'text/javascript; charset=utf-8',
+	'.css': 'text/css; charset=utf-8',
+	'.woff2': 'font/woff2',
+}
+const files = (await readdir(new URL('./apps/client/', import.meta.url), { recursive: true })).map(
+	(f) => f.split(path.sep).join('/'),
+)
+const clientFiles = new Map(
 	await Promise.all(
-		beside
-			.filter((f) => f.endsWith('.js'))
-			.map(async (f) => [`/${f}`, await readFile(new URL(`./apps/client/${f}`, import.meta.url))]),
+		files
+			.filter((f) => types[path.extname(f)])
+			.map(async (f) => [
+				`/${f}`,
+				{
+					type: types[path.extname(f)],
+					body: await readFile(new URL(`./apps/client/${f}`, import.meta.url)),
+				},
+			]),
 	),
 )
-const styles = Object.fromEntries(
-	await Promise.all(
-		beside
-			.filter((f) => f.endsWith('.css'))
-			.map(async (f) => [`/${f}`, await readFile(new URL(`./apps/client/${f}`, import.meta.url))]),
-	),
-)
-/** The Solid client: apps/client-solidjs at /solid, Solid itself from its node_modules, read as asked */
-const solid = path.join(import.meta.dirname, 'apps/client-solidjs')
-const solidTypes = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' }
-async function serveSolid(res, pathname) {
-	const file = path.join(solid, pathname.slice('/solid'.length).replace(/^\/?$/, '/index.html'))
-	const type = solidTypes[path.extname(file)]
-	const body = type && file.startsWith(solid + path.sep) && (await readFile(file).catch(() => null))
-	if (!body) return send(res, 404, { error: 'Not found' })
-	res.writeHead(200, { 'Content-Type': type })
-	res.end(body)
+/** Browser packages resolve through Node, so npm's hoisted installs work too. */
+const browserPackages = new Map([
+	['solid-js', new URL('./', import.meta.resolve('solid-js'))],
+	['@solidjs/web', new URL('./', import.meta.resolve('@solidjs/web'))],
+	['@solidjs/html', new URL('./', import.meta.resolve('@solidjs/html'))],
+	['@solidjs/signals', new URL('./dist/', import.meta.resolve('@solidjs/signals/package.json'))],
+	['mermaid', new URL('./', import.meta.resolve('mermaid'))],
+])
+async function servePackage(res, pathname) {
+	for (const [name, root] of browserPackages) {
+		const prefix = `/packages/${name}/`
+		if (!pathname.startsWith(prefix)) continue
+		const file = new URL(`./${pathname.slice(prefix.length)}`, root)
+		const body =
+			file.href.startsWith(root.href) &&
+			/\.m?js$/.test(file.pathname) &&
+			(await readFile(file).catch(() => null))
+		if (!body) break
+		res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' })
+		return res.end(body)
+	}
+	return send(res, 404, { error: 'Not found' })
 }
 /** The runner this server ships, and the updater that fetches it */
 const bundle = await runnerBundle(import.meta.dirname)
@@ -1172,15 +1190,12 @@ async function handleRequest(req, res) {
 		res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
 		return res.end(page)
 	}
-	if (req.method === 'GET' && (url.pathname === '/solid' || url.pathname.startsWith('/solid/')))
-		return serveSolid(res, url.pathname)
-	if (req.method === 'GET' && scripts[url.pathname]) {
-		res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' })
-		return res.end(scripts[url.pathname])
-	}
-	if (req.method === 'GET' && styles[url.pathname]) {
-		res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8' })
-		return res.end(styles[url.pathname])
+	if (req.method === 'GET' && url.pathname.startsWith('/packages/'))
+		return servePackage(res, url.pathname)
+	if (req.method === 'GET' && clientFiles.has(url.pathname)) {
+		const { type, body } = clientFiles.get(url.pathname)
+		res.writeHead(200, { 'Content-Type': type })
+		return res.end(body)
 	}
 	if (req.method === 'GET' && url.pathname === '/runner/updater.js') {
 		res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' })

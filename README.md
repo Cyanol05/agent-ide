@@ -1,6 +1,6 @@
 # agent-ide
 
-A small agent IDE on [Pi Durable](https://www.npmjs.com/package/@earendil-works/pi-durable), built to show how little it takes. One server keeps every thread. Runners on your machines lend it their model logins and a folder. Runs with Node.js 24+ and pnpm, no build step.
+A small agent IDE on [Pi Durable](https://www.npmjs.com/package/@earendil-works/pi-durable), built to show how little it takes. One server keeps every thread. Runners on your machines lend it their model logins and a folder. Runs with Node.js 24+. The client uses Solid 2, with no build step; its code and Mermaid diagrams are served locally.
 
 The words it uses, how it fits together and its principles: [apps/client/client.html](apps/client/client.html), the page every server serves at `/`, beside the app itself. The code is the truth, and [examples/](examples) shows each idea working.
 
@@ -10,7 +10,7 @@ The words it uses, how it fits together and its principles: [apps/client/client.
 npx github:oskarrough/agent-ide
 ```
 
-It lends the folder it starts in to its agents, as a runner named after this machine. They think with the models [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) is logged into there, so run `pi` and `/login` once first. From a clone, `pnpm install && node server.js` does the same. Open the address it prints and the page walks you through it.
+It lends the folder it starts in to its agents, as a runner named after this machine. They think with the models [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) is logged into there, so run `pi` and `/login` once first. From a clone, `npm install && node server.js` does the same; for development, use `pnpm install --frozen-lockfile`. Open the address it prints and the page walks you through it.
 
 `pnpm examples` runs every example, each with its own server and runner; `node examples/05-fork.js` runs one. The `real-model` ones use your pi login, so they run only on their own or with `REAL=1`.
 

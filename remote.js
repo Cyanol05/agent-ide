@@ -2,6 +2,8 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { createRequire } from 'node:module'
+import { existsSync } from 'node:fs'
 import { createAssistantMessageEventStream } from '@earendil-works/pi-ai'
 import { fauxAssistantMessage } from '@earendil-works/pi-ai/providers/faux'
 import { BACKGROUND_CONTEXT, withCancel } from '@earendil-works/chord/context'
@@ -27,12 +29,17 @@ export async function runnerBundle(dir) {
 	const files = Object.fromEntries(
 		await Promise.all(RUNNER_FILES.map(async (f) => [f, await read(f)])),
 	)
+	const require = createRequire(path.join(dir, 'package.json'))
 	const dependencies = Object.fromEntries(
 		await Promise.all(
-			RUNNER_PACKAGES.map(async (p) => [
-				p,
-				JSON.parse(await read(`node_modules/${p}/package.json`)).version,
-			]),
+			RUNNER_PACKAGES.map(async (p) => {
+				// These manifests needn't be exported. Node's search paths also work in Bun runners.
+				const file = require.resolve
+					.paths(p)
+					.map((root) => path.join(root, p, 'package.json'))
+					.find(existsSync)
+				return [p, JSON.parse(await readFile(file, 'utf8')).version]
+			}),
 		),
 	)
 	return {

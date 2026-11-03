@@ -1,34 +1,30 @@
-/** The story's side of the page */
-import { $ } from './dom.js'
-import { formatAgent } from './agent.js'
+/** The story's buttons use the same server and recipients as the chat. */
+import html from '@solidjs/html'
+import { Portal } from '@solidjs/web'
+import { onSettled, snapshot } from 'solid-js'
 import {
 	api,
-	ask,
-	choose,
 	current,
+	createThread,
 	entries,
 	fork,
 	openThread,
 	runners,
-	settingFor,
+	setConnectionLine,
 	url,
-} from './state.js'
+} from './server.js'
+import { choiceFor, selectRecipients } from './composer.js'
+import { formatAgent } from './agent.js'
+import { Memory } from './agent-memory.js'
 
-const sections = new IntersectionObserver(
-	(list) => {
-		for (const e of list) if (e.isIntersecting) $('stage').dataset.focus = e.target.dataset.focus
-	},
-	{ rootMargin: '-45% 0px -45% 0px' },
-)
-document.querySelectorAll('.page > section').forEach((s) => sections.observe(s))
-
-const defaults = () =>
-	runners
-		.filter((r) => r.online && settingFor(r).model)
-		.map((r) => ({ runner: r.name, ...settingFor(r) }))
-const fresh = () => {
-	if (current) openThread(null)
+const defaults = () => runners.filter((r) => r.online && choiceFor(r).model).map(choiceFor)
+async function ask(body, to, was = current()) {
+	if (!to.length) throw new Error('Pick a model first.')
+	selectRecipients(to)
+	const id = was ?? (await createThread(body.slice(0, 60)))
+	await api(`/api/threads/${id}/entries`, { body, to: snapshot(to) })
 }
+const fresh = () => openThread(null)
 const SHED = [
 	[
 		'Oskar',
@@ -78,78 +74,132 @@ const SHED = [
 	['Ben', 'Three shelves up on the left wall. The mitre saw goes back to my uncle on Friday.'],
 	['Oskar', 'Shed done. Housewarming for the shed on Saturday, bring beers.'],
 ]
+
 const TRIES = {
 	hands: () => {
 		fresh()
-		choose(defaults().slice(0, 1))
-		return ask("Which file in this folder is biggest? Look, don't guess. One line.")
+		return ask(
+			"Which file in this folder is biggest? Look, don't guess. One line.",
+			defaults().slice(0, 1),
+			null,
+		)
 	},
 	friend: async () => {
-		if (!current) openThread((await api('/api/threads', { title: 'A thread for two' })).id)
+		const id = current() ?? (await api('/api/threads', { title: 'A thread for two' })).id
+		if (!current()) openThread(id)
 		const link = new URL(location.href)
-		link.searchParams.set('thread', current)
+		link.searchParams.set('thread', id)
 		link.searchParams.set('user', 'Ana')
 		open(link, '_blank')
 	},
-	/** Every runner, or with one, two agents on it */
 	two: () => {
 		fresh()
 		const [first, ...others] = defaults()
 		const other = runners
 			.find((r) => r.name === first?.runner)
 			?.offers?.find((m) => m !== first.model)
-		choose(
+		const to =
 			others.length || !first
 				? [first, ...others].filter(Boolean)
 				: [
 						{ ...first, name: 'first' },
 						{ ...first, ...(other && { model: other }), name: 'second' },
-					],
+					]
+		return ask(
+			'What machine are you on, in which folder, and which model are you? One line.',
+			to,
+			null,
 		)
-		return ask('What machine are you on, in which folder, and which model are you? One line.')
 	},
 	slow: () => {
 		fresh()
-		choose(defaults().slice(0, 1))
 		return ask(
 			'Count from 1 to 20 in your shell, one number a second: run `for i in $(seq 1 20); do echo $i; sleep 1; done`. Then say how far you got, in one line.',
+			defaults().slice(0, 1),
+			null,
 		)
 	},
-	fork: async () => {
-		const first = (entries.get(current) ?? []).find((e) => e.data.answer)
+	fork: () => {
+		const first = (entries[current()] ?? []).find((e) => e.data.answer)
 		if (!first) throw new Error('Ask something first: a fork starts from a message.')
-		return fork(current, first.id)
+		return fork(current(), first.id)
 	},
-	/** A thread long enough for memory to show */
 	shed: async () => {
 		const { id } = await api('/api/threads', { title: 'The shed', requestId: crypto.randomUUID() })
 		for (const [i, [author, body]] of SHED.entries()) {
-			await fetch(`${url}/api/threads/${id}/entries`, {
+			const response = await fetch(`${url}/api/threads/${id}/entries`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', 'x-user': author },
 				body: JSON.stringify({ body, to: null, requestId: `shed-${id}-${i}` }),
 			})
+			if (!response.ok) throw new Error((await response.json()).error)
 		}
 		openThread(id)
 	},
 	recall: () => {
-		if (!current) throw new Error('Load the example thread first.')
-		choose(defaults().slice(0, 1))
+		if (!current()) throw new Error('Load the example thread first.')
 		return ask(
 			'What is the gate code now, what colour is the shed, and how long are the rafters? Say which message you found each in.',
+			defaults().slice(0, 1),
 		)
 	},
 	talk: () => {
 		fresh()
 		const [first, second = first] = defaults()
-		choose([first])
+		if (!first) throw new Error('Pick a model first.')
 		return ask(
 			`Use your post tool to start a thread asking ${formatAgent(second)} what is in its folder. Wait for its answer, then tell me in one line.`,
+			[first],
+			null,
 		)
 	},
 }
-for (const b of document.querySelectorAll('[data-try]'))
-	b.onclick = () => {
-		if (matchMedia('(max-width: 1000px)').matches) $('stage').scrollIntoView({ behavior: 'smooth' })
-		TRIES[b.dataset.try]().catch((error) => alert(error.message))
-	}
+
+export function Tutorial() {
+	onSettled(() => {
+		const stage = document.getElementById('stage')
+		const sections = new IntersectionObserver(
+			(list) => {
+				for (const e of list) if (e.isIntersecting) stage.dataset.focus = e.target.dataset.focus
+			},
+			{ rootMargin: '-45% 0px -45% 0px' },
+		)
+		document.querySelectorAll('.page > section').forEach((s) => sections.observe(s))
+		const buttons = [...document.querySelectorAll('[data-try]')]
+		const run = async (e) => {
+			const button = e.currentTarget
+			if (matchMedia('(max-width: 1000px)').matches) stage.scrollIntoView({ behavior: 'smooth' })
+			button.disabled = true
+			try {
+				await TRIES[button.dataset.try]()
+			} catch (error) {
+				alert(error.message)
+			} finally {
+				button.disabled = false
+			}
+		}
+		const connect = document.getElementById('connect')
+		const create = async () => {
+			const name = prompt('Runner name (replaces its old key):', 'laptop')?.trim()
+			if (!name) return
+			connect.disabled = true
+			try {
+				const line = (await api('/api/runners', { name })).connect
+				setConnectionLine(line)
+				document.getElementById('lend').textContent = line
+			} catch (error) {
+				alert(error.message)
+			} finally {
+				connect.disabled = false
+			}
+		}
+		buttons.forEach((b) => b.addEventListener('click', run))
+		connect.addEventListener('click', create)
+		return () => {
+			sections.disconnect()
+			buttons.forEach((b) => b.removeEventListener('click', run))
+			connect.removeEventListener('click', create)
+		}
+	})
+	return html`<${Portal} mount=${document.getElementById('memory')}><${Memory} /><//>`
+}

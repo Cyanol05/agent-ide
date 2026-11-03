@@ -5,7 +5,7 @@
 - Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own.
 - Don't over-fix. A rare failure that would need a new store, task layer or journal stays a known gap, written on its issue. Small and readable beats covering every crash.
 - A tool's cancellation comes from `execute`'s third Context argument: pass its `abortSignal` through runner calls, and settle cancellation locally without waiting for the runner's reply.
-- Use `pnpm install --frozen-lockfile` in a fresh worktree; keep package.json and the lockfile unchanged.
+- Use `pnpm install --frozen-lockfile` in a fresh worktree; keep package.json and the lockfile unchanged unless the task calls for dependency changes.
 - Pi permits one `submit(tx, ...)` before table writes per commit, and document values must be copied before they leave that commit.
 - New features are modules, off by default.
 - Keep client.html and the README saying what the code does high level.
@@ -15,10 +15,12 @@
 - Pi forks restore `pi.agent` at the fork entry, so apply the thread's current tools and new identity in the creating commit without replacing the inherited model, thinking or folder.
 - Check UI changes in a browser: `agent-browser open <url>` with `server.js` running.
 - Connection lines minted through localhost need a network address, preferably Tailscale rather than the first non-loopback interface.
-- Solid 2 is not Solid 1: read `CHEATSHEET.md` and `skills/solid-2.0/SKILL.md` in apps/client-solidjs/node_modules/solid-js before writing the Solid client, and fix any `[CODE]` warning in the browser console with `skills/reactivity-diagnostics/SKILL.md` there.
-- The Solid client's import map names every package Solid imports bare, so each one, `@solidjs/signals` too, is a direct dependency of apps/client-solidjs.
+- Solid 2 is not Solid 1: read `CHEATSHEET.md` and `skills/solid-2.0/SKILL.md` in node_modules/solid-js before writing the Solid client, and fix any `[CODE]` warning in the browser console with `skills/reactivity-diagnostics/SKILL.md` there.
+- There is one web client: Solid, no build step, in apps/client; client.html is served at `/`. Its import map names every package Solid imports bare, so each one, `@solidjs/signals` too, is a root dependency. Mermaid is served locally too.
+- Resolve installed packages, never assume `<app>/node_modules`: npm/npx hoist dependencies. Use `import.meta.resolve` for browser assets. `runnerBundle` uses `createRequire(...).resolve.paths` for manifests that needn't be exported; runners call it too, and Bun lacks Node's `findPackageJSON`.
 - bb worktrees are plain git worktrees jj can't see: commit there with git, then move `main` and push with jj from the main checkout.
 - Don't assume the `hostname` command exists; use Node's `os.hostname()`.
+- npm enforces Chord's optional `ws` peer too; the root range must admit it. Prove npm and npx installs after packaging changes.
 - For an example of a failed npm install, use a missing `.tgz` dependency: a missing `file:` directory can install successfully as a dangling symlink.
 - Pi Durable's SQLite task `kind` column stores a JSON string; bind `JSON.stringify(name)` when inspecting example outcomes.
 - Pi's `openTextLineReader` and `openBinaryReader` take an options object before Context; `openDirReader` takes Context directly.

@@ -1,195 +1,220 @@
-/** <agent-memory server="http://…" thread="7"> */
-const el = (tag, props = {}, ...children) => {
-	const e = Object.assign(document.createElement(tag), props)
-	e.append(...children.filter((c) => c != null && c !== false))
-	return e
-}
+/** Memory belongs to one visible thread. Disposing it discards every outstanding read. */
+import html from '@solidjs/html'
+import {
+	createMemo,
+	createProjection,
+	createSignal,
+	For,
+	Errored,
+	Loading,
+	onSettled,
+	refresh,
+	Show,
+	untrack,
+} from 'solid-js'
+import { api, connected, current, server } from './server.js'
+
 const bytes = (text) => new TextEncoder().encode(text).length
-const sizeOf = (lines) => lines.reduce((s, x) => s + bytes(`${x.id}+${x.n}|${x.text}`) + 1, 0)
-const unwritten = (x) => x.text.startsWith('(not summarized')
+const sizeOf = (lines) => lines.reduce((sum, x) => sum + bytes(`${x.id}+${x.n}|${x.text}`) + 1, 0)
+const inside = (x, id, n) => x.id >= id && x.id + x.n <= id + n
+const key = (x) => `${x.id}+${x.n}`
 
-class AgentMemory extends HTMLElement {
-	static observedAttributes = ['server', 'thread']
-
-	connectedCallback() {
-		this.room = el('input', {
-			type: 'range',
-			min: 0,
-			max: 100,
-			value: 30,
-			oninput: () => this.draw(),
-		})
-		this.roomSize = el('span')
-		this.bar = el('div', { className: 'bar' })
-		this.note = el('p', { className: 'mute' })
-		this.tree = el('div')
-		this.controls = el(
-			'div',
-			{},
-			el('label', { className: 'room' }, 'Room ', this.room, ' ', this.roomSize),
-			this.bar,
-			this.note,
-		)
-		this.replaceChildren(el('div', { className: 'memory reads' }, this.controls, this.tree))
-		this.timer = setInterval(() => this.update(), 3000)
-		this.update()
-	}
-	disconnectedCallback() {
-		clearInterval(this.timer)
-	}
-	attributeChangedCallback() {
-		if (this.timer) {
-			this.seen = ''
-			this.update()
-		}
-	}
-
-	api(path) {
-		return fetch(`${this.getAttribute('server')}${path}`).then((r) =>
-			r.ok ? r.json() : Promise.reject(new Error(r.status)),
-		)
-	}
-	get thread() {
-		return Number(this.getAttribute('thread')) || null
-	}
-
-	/** Redraws when the thread changes, grows, or has lines still being written */
-	async update() {
-		if (!this.getAttribute('server')) return
-		this.modules ??= (await this.api('/api/server').catch(() => ({}))).modules
-		if (!this.modules?.includes('memory'))
-			return this.say(
-				'This server runs without memory. Start it with ',
-				el('code', { textContent: 'MODULES=+memory MEMORY_MODEL=model@runner' }),
-				'.',
-			)
-		const id = this.thread
-		if (!id) return this.say()
-		const all = (await this.api(`/api/threads/${id}/memory`).catch(() => ({ lines: [] }))).lines
-		const T = all.length ? all.at(-1).id + all.at(-1).n : 0
-		if (!T) return this.say('No messages yet.')
-		const key = `${id} ${T}`
-		if (key === this.seen && !this.tree.querySelector('.pending')) return
-		/** The slider runs from as squeezed as it gets to a line for every message, so all of its length matters */
-		const top = (await this.api(`/api/threads/${id}/memory?budget=1`).catch(() => ({ lines: [] })))
-			.lines
-		this.least = Math.max(100, sizeOf(top))
-		this.full = Math.max(this.least * 2, sizeOf(all))
-		this.T = T
-		this.seen = key
-		this.controls.hidden = false
-		await this.draw()
-	}
-
-	say(...text) {
-		this.seen = ''
-		this.T = 0
-		this.controls.hidden = true
-		this.tree.replaceChildren(...(text.length ? [el('p', { className: 'mute' }, ...text)] : []))
-	}
-
-	/** The tree, opened from the top down to the cut an agent with this much room reads */
-	async draw() {
-		if (!this.T) return
-		const room = Math.round(this.least * (this.full / this.least) ** (this.room.value / 100))
-		this.roomSize.textContent =
-			room < 1024 ? `${room} B` : `${(room / 1024).toFixed(room < 10240 ? 1 : 0)} KB`
-		const turn = (this.turn ?? 0) + 1
-		this.turn = turn
-		const cut = (
-			await this.api(`/api/threads/${this.thread}/memory?budget=${room}`).catch(() => ({
-				lines: [],
-			}))
-		).lines
-		const top = 2 ** Math.ceil(Math.log2(Math.max(this.T, 1)))
-		const tree =
-			cut.length === 1 && cut[0].n >= this.T
-				? el('ul', {}, this.line(cut[0], 'cut'))
-				: await this.open(0, top, cut)
-		if (turn !== this.turn) return
-		const T = this.T,
-			n = cut.length
-		this.bar.replaceChildren(
-			...cut.map((x) => {
-				/** As wide as the messages it stands for, darker the more it squeezes */
-				const shade = Math.min(1, Math.log2(x.n) / 5)
-				return el('span', {
-					title: `${x.id}+${x.n}: ${x.n > 1 ? `${x.n} messages in one line` : 'one message'}`,
-					style: `flex-grow:${x.n};background:hsl(215 60% ${88 - shade * 50}%)`,
-					onclick: () => this.tree.querySelector(`[data-at="${x.id}+${x.n}"]`)?.click(),
-				})
-			}),
-		)
-		this.note.textContent =
-			`The agent reads the ${n} highlighted line${n === 1 ? '' : 's'}: ${sizeOf(cut).toLocaleString()} of ${room.toLocaleString()} bytes for ${T} messages. ` +
-			(n === T
-				? "Room for every message's own line."
-				: n <= 2
-					? 'As squeezed as it gets: it zooms to read more.'
-					: 'Old messages share lines; the latest have one each.')
-		this.tree.replaceChildren(tree)
-	}
-
-	/** The two lines under `id+n` */
-	async open(id, n, cut) {
-		const inside = (x) => x.id >= id && x.id + x.n <= id + n
-		const halves =
-			n > 1
-				? (await this.api(`/api/threads/${this.thread}/memory?zoom=${id},${n}`).catch(() => ({})))
-						.lines
-				: null
-		if (!halves?.length) return el('ul', {}, ...cut.filter(inside).map((x) => this.line(x, 'cut')))
-		if (halves.length === 1 && !cut.some((x) => x.id === halves[0].id && x.n === halves[0].n))
-			return this.open(halves[0].id, halves[0].n, cut)
-		return el(
-			'ul',
-			{},
-			...(await Promise.all(
-				halves.map(async (h) => {
-					const mine = cut.filter((x) => x.id >= h.id && x.id + x.n <= h.id + h.n)
-					if (mine.some((x) => x.id === h.id && x.n === h.n)) return this.line(h, 'cut')
-					const li = this.line(h, 'above')
-					li.append(await this.open(h.id, h.n, mine))
-					return li
-				}),
-			)),
-		)
-	}
-
-	/** One line */
-	line({ id, n, text }, kind) {
-		const waiting = unwritten({ text })
-		const label = !waiting
-			? text
-			: id + n > this.T
-				? `the last ${this.T - id} messages, waiting for more before they merge`
-				: 'being written, from the messages up'
-		const li = el(
-			'li',
-			{
-				className: `${kind}${waiting ? ' pending' : ''}`,
-				title: n > 1 ? `messages ${id} to ${id + n - 1}` : `message ${id}`,
-			},
-			el('small', { textContent: `${id}+${n}` }),
-			el('span', { textContent: label }),
-		)
-		li.dataset.at = `${id}+${n}`
-		if (kind === 'above') return li
-		li.onclick = async (e) => {
-			e.stopPropagation()
-			const shown = li.querySelector(':scope > ul, :scope > .whole')
-			if (shown) return shown.remove()
-			li.classList.add('opening')
-			const opened = await this.api(`/api/threads/${this.thread}/memory?zoom=${id},${n}`).finally(
-				() => li.classList.remove('opening'),
-			)
-			li.append(
-				opened.message !== undefined
-					? el('div', { className: 'whole', textContent: opened.message })
-					: el('ul', {}, ...opened.lines.map((x) => this.line(x, 'below'))),
-			)
-		}
-		return li
-	}
+export function Memory() {
+	const [room, setRoom] = createSignal(30)
+	return html`
+		<${Errored}
+			fallback=${(error, retry) => html`
+				<p class="mute">${() => error().message} <button onClick=${retry}>Retry memory</button></p>
+			`}
+		>
+			<${Show}
+				when=${() => connected()}
+				fallback=${html`<p class="mute">Disconnected from the server.</p>`}
+			>
+				<${Show}
+					when=${() => server().modules.includes('memory')}
+					fallback=${html`
+						<p class="mute">
+							This server runs without memory. Start it with
+							<code>MODULES=+memory MEMORY_MODEL=model@runner</code>.
+						</p>
+					`}
+				>
+					<${For} each=${() => (current() ? [current()] : [])}>
+						${(id) => html`
+							<${Loading} fallback=${html`<p class="mute">Reading memory…</p>`}>
+								<${ThreadMemory}
+									thread=${id}
+									room=${() => room()}
+									onRoom=${(value) => setRoom(value)}
+								/>
+							<//>
+						`}
+					<//>
+				<//>
+			<//>
+		<//>
+	`
 }
-customElements.define('agent-memory', AgentMemory)
+
+function ThreadMemory(props) {
+	// The keyed owner fixes the thread until this entire view is disposed.
+	const path = untrack(() => `/api/threads/${props.thread}/memory`)
+	const read = (query = '') => api(path + query)
+	const lines = createProjection(() => read().then((r) => r.lines), [], { key: 'id' })
+	const bounds = createMemo(async () => {
+		const total = lines.length ? lines.at(-1).id + lines.at(-1).n : 0
+		const full = sizeOf(lines)
+		const top = total ? await read('?budget=1') : { lines: [] }
+		const least = Math.max(100, sizeOf(top.lines))
+		return { total, least, full: Math.max(least * 2, full) }
+	})
+	const tree = createMemo(async () => {
+		const { total, least, full } = bounds()
+		const budget = Math.round(least * (full / least) ** (props.room / 100))
+		if (!total) return { total, budget, cut: [], nodes: [] }
+		const { lines: cut } = await read(`?budget=${budget}`)
+		const nodes =
+			cut.length === 1 && cut[0].n >= total
+				? [{ ...cut[0], kind: 'cut' }]
+				: await openTree(read, 0, 2 ** Math.ceil(Math.log2(total)), cut)
+		return { total, budget, cut, nodes }
+	})
+	onSettled(() => {
+		const timer = setInterval(() => refresh(lines), 3000)
+		return () => clearInterval(timer)
+	})
+	const Lines = (props) => html`
+		<ul>
+			<${For} each=${() => props.nodes} keyed=${key}>
+				${(line) => html` <${Line} line=${() => line()} /> `}
+			<//>
+		</ul>
+	`
+	function Line(props) {
+		const [expanded, setExpanded] = createSignal(false)
+		const waiting = () => props.line.text.startsWith('(not summarized')
+		const opened = createMemo(() =>
+			expanded() ? read(`?zoom=${props.line.id},${props.line.n}`) : null,
+		)
+		return html`
+			<li
+				data-at=${() => key(props.line)}
+				class=${() => [props.line.kind, { pending: waiting() }]}
+				title=${() =>
+					props.line.n > 1
+						? `messages ${props.line.id} to ${props.line.id + props.line.n - 1}`
+						: `message ${props.line.id}`}
+				onClick=${(e) => {
+					e.stopPropagation()
+					if (props.line.kind !== 'above') setExpanded((on) => !on)
+				}}
+			>
+				<small>${() => key(props.line)}</small>
+				<span
+					>${() =>
+						!waiting()
+							? props.line.text
+							: props.line.id + props.line.n > tree().total
+								? `the last ${tree().total - props.line.id} messages, waiting for more before they merge`
+								: 'being written, from the messages up'}</span
+				>
+				<${Show} when=${() => props.line.children}>
+					<${Lines} nodes=${() => props.line.children} />
+				<//>
+				<${Show} when=${() => expanded() && props.line.kind !== 'above'}>
+					<${Loading} fallback=${html`<span class="opening">Opening…</span>`}>
+						<${Show}
+							when=${() => opened()?.message !== undefined}
+							fallback=${() => html`
+								<${Lines}
+									nodes=${() => (opened()?.lines ?? []).map((x) => ({ ...x, kind: 'below' }))}
+								/>
+							`}
+						>
+							<div class="whole">${() => opened()?.message}</div>
+						<//>
+					<//>
+				<//>
+			</li>
+		`
+	}
+
+	let root
+	return html`
+		<div class="memory reads" ref=${(el) => (root = el)}>
+			<${Show} when=${() => tree().total} fallback=${html`<p class="mute">No messages yet.</p>`}>
+				<label class="room"
+					>Room
+					<input
+						type="range"
+						min="0"
+						max="100"
+						aria-label="Memory room"
+						value=${() => props.room}
+						onInput=${(e) => props.onRoom(Number(e.currentTarget.value))}
+					/>
+					<span
+						>${() => {
+							const { budget } = tree()
+							return budget < 1024
+								? `${budget} B`
+								: `${(budget / 1024).toFixed(budget < 10240 ? 1 : 0)} KB`
+						}}</span
+					>
+				</label>
+				<div class="bar">
+					<${For} each=${() => tree().cut} keyed=${key}>
+						${(line) => html`
+							<span
+								title=${() =>
+									`${key(line())}: ` +
+									(line().n > 1 ? `${line().n} messages in one line` : 'one message')}
+								style=${() => {
+									const n = line().n
+									const shade = 88 - Math.min(1, Math.log2(n) / 5) * 50
+									return `flex-grow:${n};background:hsl(215 60% ${shade}%)`
+								}}
+								onClick=${() => root.querySelector(`[data-at="${key(line())}"]`)?.click()}
+							></span>
+						`}
+					<//>
+				</div>
+				<p class="mute">
+					${() => {
+						const { cut, budget, total } = tree(),
+							n = cut.length
+						return (
+							`The agent reads the ${n} highlighted line${n === 1 ? '' : 's'}: ` +
+							`${sizeOf(cut).toLocaleString()} of ${budget.toLocaleString()} bytes ` +
+							`for ${total} messages. ` +
+							(n === total
+								? "Room for every message's own line."
+								: n <= 2
+									? 'As squeezed as it gets: it zooms to read more.'
+									: 'Old messages share lines; the latest have one each.')
+						)
+					}}
+				</p>
+				<${Lines} nodes=${() => tree().nodes} />
+			<//>
+		</div>
+	`
+}
+
+/** The same cut an agent reads, opened from the top down. All reads use the captured thread. */
+async function openTree(read, id, n, cut) {
+	const halves = n > 1 ? (await read(`?zoom=${id},${n}`)).lines : null
+	if (!halves?.length)
+		return cut.filter((x) => inside(x, id, n)).map((x) => ({ ...x, kind: 'cut' }))
+	if (halves.length === 1 && !cut.some((x) => key(x) === key(halves[0])))
+		return openTree(read, halves[0].id, halves[0].n, cut)
+	return Promise.all(
+		halves.map(async (h) => {
+			const mine = cut.filter((x) => inside(x, h.id, h.n))
+			return mine.some((x) => key(x) === key(h))
+				? { ...h, kind: 'cut' }
+				: { ...h, kind: 'above', children: await openTree(read, h.id, h.n, mine) }
+		}),
+	)
+}

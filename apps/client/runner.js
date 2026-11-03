@@ -1,131 +1,180 @@
-/** Runners */
-import { $, h, dotClass, placePopover } from './dom.js'
-import { THINKING_LEVELS, agentKey, busiest, lastToolCall } from './agent.js'
-import { doing, pickOn, pickRunner, picks, runners, settingFor, threads, tune } from './state.js'
+/** Runners show their agents and choose whom the composer asks. */
+import html from '@solidjs/html'
+import { For, Show } from 'solid-js'
+import { connectionLine, runners, threads } from './server.js'
+import { agentKey, busiest, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
+import { choiceFor, choose, configure, recipients } from './composer.js'
+import { placePopover } from './popover.js'
+import { Dot } from './dot.js'
 
-/** One runner */
-export function Runner(r, asked) {
-	const set = settingFor(r)
-	const on = Boolean(pickOn(r)),
-		routed = picks.some((p) => p.runner === r.name)
-	const here = asked.filter((a) => a.to.runner === r.name)
-	const row = (to, ...children) => {
-		const list = here.filter((a) => agentKey(a.to) === agentKey(to)),
-			state = busiest(list)
-		const call = list.map((a) => lastToolCall(doing.get(`${a.thread} ${a.name}`))).find(Boolean)
-		const li = h(
-			'li',
-			{},
-			...children,
-			list.length && h('span', { className: dotClass(state), title: state || 'idle' }),
-			call && h('span', { className: 'hands', textContent: call, title: call }),
-		)
-		li.dataset.agent = agentKey(to)
-		return li
-	}
-	const stop = (e) => e.stopPropagation()
-	const models = [...new Set([set.model, r.model, ...(r.offers ?? [])].filter(Boolean))]
-	const swap = h(
-		'select',
-		{
-			className: 'swap',
-			title: 'model',
-			onclick: stop,
-			onchange: () => tune(r, { model: swap.value }),
-		},
-		...models.map((o) => new Option(o, o)),
-	)
-	swap.value = set.model ?? ''
-	/** How hard it thinks: a slider from the runner's default up to max */
-	const knob = h('input', {
-		type: 'range',
-		min: 0,
-		max: THINKING_LEVELS.length,
-		value: THINKING_LEVELS.indexOf(set.thinkingLevel) + 1,
-		title: set.thinkingLevel || 'default thinking',
-		onclick: stop,
-	})
-	knob.onchange = () =>
-		tune(r, { thinkingLevel: knob.value > 0 ? THINKING_LEVELS[knob.value - 1] : undefined })
-	const own = { runner: r.name, model: set.model }
-	const others = [...new Map(here.map((a) => [agentKey(a.to), a.to])).values()].filter(
-		(to) => agentKey(to) !== agentKey(own),
-	)
-	return h(
-		'div',
-		{
-			className: `node card${r.online ? '' : ' off'}${routed ? ' routed' : ''}`,
-			id: `runner-${r.name}`,
-			title: on ? 'Shift-click to stop asking it' : 'Click to ask it; shift-click to ask it too',
-			onclick: (e) => pickRunner(r, e.shiftKey || e.metaKey || e.ctrlKey),
-		},
-		h('b', {}, h('span', { className: dotClass(r.online ? busiest(here) || 'on' : '') }), r.name),
-		h('small', { textContent: r.dir }),
-		!models.length && h('small', { textContent: 'No models here yet: run pi there and /login.' }),
-		h(
-			'ul',
-			{ className: 'models' },
-			models.length && row(own, swap, knob),
-			...others.map((to) =>
-				row(
-					to,
-					h('span', { className: 'name', textContent: to.name ?? to.model, title: to.model }),
-				),
-			),
-		),
-	)
-}
-
-/** The runner list's button: a dot per runner, and how many are online */
-export function RunnerCount() {
-	const online = runners.filter((r) => r.online).length
-	return [
-		...runners.map((r) => h('span', { className: dotClass(r.online ? 'on' : '') })),
-		h('span', { textContent: `${online} runner${online === 1 ? '' : 's'} online` }),
+export function Runner(props) {
+	const runner = () => props.runner
+	const choice = () => choiceFor(runner())
+	const agents = () => props.agents.filter((a) => a.to.runner === runner().name)
+	const models = () => [
+		...new Set([choice().model, runner().model, ...(runner().offers ?? [])].filter(Boolean)),
 	]
+	const others = () =>
+		[...new Map(agents().map((a) => [agentKey(a.to), a.to])).values()].filter(
+			(to) => agentKey(to) !== agentKey(choice()),
+		)
+	const stop = (e) => e.stopPropagation()
+	const pick = (e) => choose(choice(), e.shiftKey || e.metaKey || e.ctrlKey)
+	return html`
+		<div
+			class=${() => [
+				'node',
+				'card',
+				{
+					off: !runner().online,
+					routed: recipients().some((p) => p.runner === runner().name),
+				},
+			]}
+			data-runner=${() => runner().name}
+			role="button"
+			tabindex="0"
+			aria-label=${() => runner().name}
+			title="Click to ask it; shift-click to ask it too"
+			onClick=${pick}
+			onKeyDown=${(e) => {
+				if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+					e.preventDefault()
+					pick(e)
+				}
+			}}
+		>
+			<b
+				><${Dot}
+					state=${() => (runner().online ? busiest(agents()) || 'on' : '')}
+				/>${() => runner().name}</b
+			>
+			<small>${() => runner().dir}</small>
+			<${Show} when=${() => !models().length}
+				><small>No models here yet: run pi there and /login.</small><//
+			>
+			<ul class="models">
+				<${Show} when=${() => models().length}>
+					<${AgentRow} to=${() => choice()} agents=${() => agents()}>
+						<select
+							class="swap"
+							aria-label="Model"
+							title="model"
+							value=${() => choice().model ?? ''}
+							onClick=${stop}
+							onChange=${(e) => configure({ ...choice(), model: e.currentTarget.value })}
+						>
+							<${For} each=${() => models()}
+								>${(model) => html`<option value=${() => model}>${() => model}</option>`}<//
+							>
+						</select>
+						<input
+							type="range"
+							min="0"
+							max=${() => THINKING_LEVELS.length}
+							aria-label="Thinking"
+							value=${() => THINKING_LEVELS.indexOf(choice().thinkingLevel) + 1}
+							title=${() => choice().thinkingLevel || 'default thinking'}
+							onClick=${stop}
+							onInput=${(e) =>
+								configure({
+									...choice(),
+									thinkingLevel: THINKING_LEVELS[e.currentTarget.value - 1],
+								})}
+						/>
+					<//>
+				<//>
+				<${For} each=${() => others()}
+					>${(to) => html`
+						<${AgentRow} to=${() => to} agents=${() => agents()}>
+							<span class="name" title=${() => to.model}>${() => to.name ?? to.model}</span>
+						<//>
+					`}<//
+				>
+			</ul>
+		</div>
+	`
 }
-/** The runners connected to this server: who's there, where, and what they're doing */
+
+function AgentRow(props) {
+	const agents = () => props.agents.filter((a) => agentKey(a.to) === agentKey(props.to))
+	const call = () =>
+		agents()
+			.map((a) => lastToolCall(doing[a.thread]?.[a.name]))
+			.find(Boolean)
+	return html`
+		<li data-agent=${() => agentKey(props.to)}>
+			${() => props.children}
+			<${Show} when=${() => agents().length}
+				><${Dot} state=${() => busiest(agents())} title=${() => busiest(agents()) || 'idle'}
+			/><//>
+			<${Show} when=${() => call()}
+				><span class="hands" title=${() => call()}>${() => call()}</span><//
+			>
+		</li>
+	`
+}
+
+/** The chat's runner list is also where you find the command for lending another machine. */
 export function RunnerList() {
-	const busy = (r) =>
+	let button, panel
+	const online = () => runners.filter((r) => r.online).length
+	return html`
+		<button
+			class="runner-toggle"
+			type="button"
+			ref=${(el) => (button = el)}
+			onClick=${() => panel.togglePopover()}
+		>
+			<${For} each=${() => runners}
+				>${(r) => html`<${Dot} state=${() => (r.online ? 'on' : '')} />`}<//
+			>
+			<span>${() => `${online()} runner${online() === 1 ? '' : 's'} online`}</span>
+		</button>
+		<div
+			class="runner-list"
+			popover
+			ref=${(el) => (panel = el)}
+			onToggle=${(e) => {
+				if (e.newState === 'open') placePopover(panel, button)
+			}}
+		>
+			<ul>
+				<${For} each=${() => runners}>${(r) => html`<${RunnerItem} runner=${() => r} />`}<//>
+			</ul>
+			<p>To add a runner:</p>
+			<pre>${() => connectionLine()}</pre>
+		</div>
+	`
+}
+
+function RunnerItem(props) {
+	const work = () =>
 		threads.flatMap((t) =>
 			t.agents
-				.filter((a) => a.to.runner === r.name && a.status === 'working')
-				.map((a) => ({ t, a })),
+				.filter((a) => a.to.runner === props.runner.name && a.status === 'working')
+				.map((a) => ({ thread: t.id, title: t.title, name: a.name })),
 		)
-	return runners.map((r) => {
-		const work = busy(r)
-		const call = work.map(({ t, a }) => lastToolCall(doing.get(`${t.id} ${a.name}`))).find(Boolean)
-		return h(
-			'li',
-			{},
-			h('span', { className: dotClass(r.online ? (work.length ? 'working' : 'on') : '') }),
-			h(
-				'div',
-				{},
-				h('b', { textContent: r.name }),
-				h('small', { textContent: r.dir }),
-				(!r.online || work.length > 0) &&
-					h('small', {
-						className: r.online ? 'doing' : '',
-						textContent: !r.online
-							? 'offline'
-							: call || `working in ${work.map(({ t }) => t.title || 'untitled').join(', ')}`,
-					}),
-			),
-		)
-	})
+	const call = () =>
+		work()
+			.map((a) => lastToolCall(doing[a.thread]?.[a.name]))
+			.find(Boolean)
+	return html`
+		<li>
+			<${Dot} state=${() => (props.runner.online ? (work().length ? 'working' : 'on') : '')} />
+			<div>
+				<b>${() => props.runner.name}</b><small>${() => props.runner.dir}</small>
+				<${Show} when=${() => !props.runner.online || work().length}>
+					<small class=${() => ({ doing: props.runner.online })}
+						>${() =>
+							!props.runner.online
+								? 'offline'
+								: call() ||
+									`working in ${work()
+										.map((a) => a.title || 'untitled')
+										.join(', ')}`}</small
+					>
+				<//>
+			</div>
+		</li>
+	`
 }
-/** The runner list, and under it how to add a runner: the line the page shows in the story */
-const list = $('runner-list')
-export function drawRunnerList() {
-	if (!list.matches(':popover-open')) return
-	list.querySelector('ul').replaceChildren(...RunnerList())
-	list.querySelector('pre').textContent = $('lend').textContent
-}
-$('runner-count').onclick = () => list.togglePopover()
-list.addEventListener('toggle', (e) => {
-	if (e.newState === 'open') {
-		drawRunnerList()
-		placePopover(list, $('runner-count'))
-	}
-})
