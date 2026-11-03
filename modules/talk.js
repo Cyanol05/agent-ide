@@ -32,6 +32,8 @@ export function server(core) {
 		}),
 		replay: 'safe',
 		execute: async (args, api, context) => {
+			const saved = await core.receipt(`post ${api.taskId}`, 'post')
+			if (saved) return saved.result
 			const { thread: from, name } = await home(api.conversationId)
 			const thread = args.thread ?? (Number(args.to?.match(/^(\d+)\//)?.[1]) || undefined)
 			if (thread === from) throw new Error('That is your own thread; just answer')
@@ -62,8 +64,7 @@ export function server(core) {
 							: asker
 								? [asker]
 								: await core.lastAsked(thread)
-			await core.reach(to, `@${(await agentOf(api.conversationId)).runner}`)
-			const id = await core.once(`post ${api.taskId}`, 'post', async (tx) => {
+			return core.once(`post ${api.taskId}`, 'post', async (tx) => {
 				context.abortSignal?.throwIfAborted()
 				const id = thread ?? (await core.startThread(tx, name, title, from))
 				await core.post(
@@ -78,23 +79,22 @@ export function server(core) {
 					},
 					{ empty: thread === undefined },
 				)
-				return id
-			})
-			const who = to.map(agentName).join(', ') || 'nobody'
-			if (asked)
+				const who = to.map(agentName).join(', ') || 'nobody'
+				if (asked)
+					return {
+						output: [{ type: 'text', text: `Answered thread ${id}'s question, for ${who}.` }],
+						details: { thread: id },
+					}
 				return {
-					output: [{ type: 'text', text: `Answered thread ${id}'s question, for ${who}.` }],
+					output: [
+						{
+							type: 'text',
+							text: `Posted to thread ${id} for ${who}.${to.length ? ' The answer will come to you here on its own; carry on, or end your turn with no text: any text you end with is posted.' : ''}`,
+						},
+					],
 					details: { thread: id },
 				}
-			return {
-				output: [
-					{
-						type: 'text',
-						text: `Posted to thread ${id} for ${who}.${to.length ? ' The answer will come to you here on its own; carry on, or end your turn with no text: any text you end with is posted.' : ''}`,
-					},
-				],
-				details: { thread: id },
-			}
+			})
 		},
 	})
 

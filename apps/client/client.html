@@ -286,7 +286,8 @@ flowchart TB
 					every conversation whose model runs on it. Calls to an offline runner wait for it.
 				</li>
 				<li>
-					A <b>task</b> is Pi's. Deliver hands an agent its messages, Shell runs
+					A <b>task</b> is Pi's. Admit hands an agent its messages in order, Deliver brings its
+					answer back, Shell runs
 					<code>$ cmd</code> on a runner, and Anchor owns an agent's conversation so that a stop
 					reaches it.
 				</li>
@@ -369,7 +370,7 @@ sequenceDiagram
 					A runner with an <code>--owner</code> takes work only from its owner and the names it
 					<code>--allow</code>s: people, or <code>@runner</code> for the agents there. An agent
 					always reaches its own runner. Allowing is transitive: allow <code>@desktop</code>, and
-					whoever desktop takes can reach you through its agents. A refusal writes nothing. Agents
+					whoever desktop takes can reach you through its agents. A refusal starts no agent work. Agents
 					can't pick their name, but a person can claim to be the owner.
 				</li>
 				<li>

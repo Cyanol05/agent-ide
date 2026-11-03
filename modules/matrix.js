@@ -317,7 +317,14 @@ export function server(core) {
 					AbortSignal.timeout(40000),
 				)
 				const messages = since ? await readBatch(batch, since) : []
-				for (const message of messages) await relay(message)
+				for (const message of messages) {
+					try {
+						await relay(message)
+					} catch (error) {
+						if (error.status !== 403) throw error
+						console.error(`matrix refused: ${error.message}`)
+					}
+				}
 				if (!since || messages.length)
 					await core.commit(async (tx) => {
 						;(await tx.doc(MatrixBridge)).since = batch.next_batch

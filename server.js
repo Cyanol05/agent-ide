@@ -49,7 +49,7 @@ import {
  * @property {{ runner: string, code: number | null, stdout: string, stderr: string, error?: string }} [shell]  What `$ cmd` printed.
  * @typedef {{ id: number, kind: 'agent-ide.message', data: Message }} Entry
  * @typedef {{ name: string, conversation: number, to: To | null, status: string }} Agent
- * @typedef {{ agent: number, held: number[], steer: boolean }} Delivery  The thread messages one input to an agent holds.
+ * @typedef {{ agent: number, held: number[], admit: number }} Delivery  The thread messages one input to an agent holds.
  * @typedef {{ author: string, command: string, to: To }} Command
  */
 
@@ -133,9 +133,15 @@ const Receipts = defineDocFamily({
 const now = () => new Date().toISOString()
 const ownerless = { ownership: { kind: 'ownerless' } }
 const own = { ownership: { kind: 'conversation' } }
-const finished = (status = 'completed') => ({
+const finished = (status = 'completed', result = null) => ({
 	status: 'terminal',
-	outcome: { status, result: null },
+	outcome: { status, result },
+})
+const waiting = (on, phase) => ({
+	status: 'waiting',
+	on,
+	policy: 'allSettled',
+	checkpoint: { phase },
 })
 
 /** Owns an agent's conversation, so stopping the thread stops the agent */
@@ -147,13 +153,41 @@ const Anchor = defineTask({
 	abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),
 })
 
-/** Asks an agent once, under its own id as request id so a rerun finds the input, and posts the outcome as it ends */
-const Deliver = defineTask({
-	name: 'agent-ide.deliver',
+/** Admissions are ordered by Pi task dependencies, independently of how long the answers take. */
+const Admit = defineTask({
+	name: 'agent-ide.admit',
 	version: 1,
-	initial: () => ({ phase: 'ask' }),
+	initial: ({ after }) => ({ phase: after ? 'wait' : 'ask' }),
 	phases: {
-		async ask({ id, conversationId: threadId, input: { agent, held, steer } }, rt, ctx) {
+		wait: ({ input: { after } }, rt, ctx) =>
+			rt.commit(() => waiting([after.admit], 'previous'), ctx),
+		async previous({ input: { after } }, rt, ctx) {
+			const [outcome] = await rt.outcomes([after.admit], ctx)
+			await rt.commit(
+				() =>
+					outcome.status === 'completed'
+						? { status: 'running', checkpoint: { phase: 'ask' } }
+						: waiting([after.deliver], 'reclaim'),
+				ctx,
+			)
+		},
+		/** The predecessor failed: claim its returned messages before preparing this input. */
+		reclaim: ({ conversationId, input: { agent, held } }, rt, ctx) =>
+			rt.commit(async (tx) => {
+				const row = await tx.doc(Thread, conversationId)
+				const recipient = Object.values(row.agents).find((a) => a.conversation === agent)
+				held = [
+					...new Set([...held, ...recipient.unseen.filter((id) => id <= Math.max(...held))]),
+				].sort((a, b) => a - b)
+				recipient.unseen = recipient.unseen.filter((id) => !held.includes(id))
+				return { status: 'running', checkpoint: { phase: 'ask', held } }
+			}, ctx),
+		async ask(
+			{ id, conversationId: threadId, input: { agent, held, steer }, state: { checkpoint } },
+			rt,
+			ctx,
+		) {
+			held = checkpoint.held ?? held
 			const to = await agentOf(agent)
 			await runners.online(to.runner, rt.signal)
 			const all = await messages(threadId)
@@ -163,17 +197,43 @@ const Deliver = defineTask({
 				: mine.map(said).join('\n\n')
 			const handle = await rt.conversation(agent, ctx)
 			const entry = { kind: DELIVERY, data: { held } }
-			const submission = await handle.submit(
-				{
+			await rt.commit(async (tx) => {
+				const submission = await handle.submit(tx, {
 					type: 'input',
 					content,
 					entry,
 					requestId: String(id),
 					whenBusy: steer ? 'steer' : 'followUp',
-				},
-				ctx,
-			)
-			const settled = await submission.wait(ctx)
+				})
+				return finished('completed', { submission, held })
+			}, ctx)
+		},
+	},
+	abort: ({ conversationId, input: { agent }, state: { checkpoint } }, rt, ctx) =>
+		rt.commit(async (tx) => {
+			if (checkpoint.held) await restore(tx, conversationId, agent, checkpoint.held)
+			return finished('aborted')
+		}, ctx),
+})
+
+/** A durable wait observes admission faults too; onReport is only diagnostic. */
+const Deliver = defineTask({
+	name: 'agent-ide.deliver',
+	version: 1,
+	initial: () => ({ phase: 'wait' }),
+	phases: {
+		wait: ({ input: { admit } }, rt, ctx) => rt.commit(() => waiting([admit], 'tell'), ctx),
+		async tell({ conversationId: threadId, input: { admit, agent, held } }, rt, ctx) {
+			const [result] = await rt.outcomes([admit], ctx)
+			const settled =
+				result.status === 'completed'
+					? await (await harness.submission(result.result.submission, ctx)).wait(ctx)
+					: {
+							id: admit,
+							status: 'unanswered',
+							reason: result.error?.detail?.reason ?? result.status,
+						}
+			held = result.status === 'completed' ? result.result.held : held
 			const told = await outcome(threadId, agent, settled, held)
 			await rt.commit(
 				async (tx) => (await tell(tx, threadId, agent, settled, held, told), finished()),
@@ -181,11 +241,13 @@ const Deliver = defineTask({
 			)
 		},
 	},
-	/** Pi's abort of the thread withdrew its input if still queued */
-	abort: ({ id, conversationId: threadId, input: { agent, held } }, rt, ctx) =>
+	/** Pi's abort of the thread withdrew its input if still queued. */
+	abort: ({ conversationId: threadId, input: { admit, agent, held } }, rt, ctx) =>
 		rt.commit(async (tx) => {
-			if ((await tx.submissionByRequest(agent, String(id)))?.entry === undefined)
-				await restore(tx, threadId, agent, held)
+			if ((await tx.submissionByRequest(agent, String(admit)))?.entry === undefined) {
+				const result = (await tx.task(admit)).state.outcome?.result
+				await restore(tx, threadId, agent, result?.held ?? held)
+			}
 			return finished('aborted')
 		}, ctx),
 })
@@ -313,7 +375,7 @@ registry.install(
 		sandbox: new CodemodeSandbox({ memoryLimitBytes: 256 * 1024 * 1024 }),
 	}),
 )
-registry.install(defineExtension({ name: 'agent-ide', tasks: [Anchor, Deliver, Shell] }))
+registry.install(defineExtension({ name: 'agent-ide', tasks: [Anchor, Admit, Deliver, Shell] }))
 const storage = await openNodeSqliteStorage(file)
 const harness = await Harness.open(
 	storage,
@@ -421,9 +483,9 @@ async function modelOn(name, runner, asked, signal) {
 }
 
 /** A runner with an owner takes work from its owner and the names it allows */
-async function reach(to, by) {
+function reach(to, by, available) {
 	for (const { runner: name } of to) {
-		const { owner, allow = [] } = (await known())[name]
+		const { owner, allow = [] } = available[name]
 		if (owner && by !== owner && by !== `@${name}` && !allow.includes(by)) {
 			throw Object.assign(
 				new Error(`${name} takes work only from ${[owner, ...allow].join(', ')}`),
@@ -442,11 +504,11 @@ function folder(runner, to) {
 }
 
 /** `named`, the agent's name when the caller has it, saves looking it up */
-async function agentOf(id, named) {
-	const agent = await harness.snapshot(AgentDoc, id, context)
+async function agentOf(id, named, tx) {
+	const agent = tx ? await tx.doc(AgentDoc, id) : await harness.snapshot(AgentDoc, id, context)
 	const runnerName = agent?.model?.provider?.match(/^runner:(.+)$/)?.[1]
 	if (!runnerName) return null
-	const runner = (await known())[runnerName]
+	const runner = (tx ? await tx.doc(Runners) : await known())[runnerName]
 	const rel = runner && agent.cwd ? path.relative(runner.dir, agent.cwd) : ''
 	const dir = rel.startsWith('..') ? agent.cwd : rel
 	const name = named ?? (await home(id))?.name
@@ -521,7 +583,19 @@ const ownAnswer = ({ data: m }, name) =>
  * A new agent reads the thread, which a commit can't do after writing: post first, or pass `empty` for a new thread.
  * @param {Message} data
  */
-async function post(tx, threadId, { to, ...message }, { steer = false, empty = false } = {}) {
+async function post(tx, threadId, message, options = {}) {
+	let by = message.author
+	if (message.from) {
+		const source = (await tx.doc(Thread, message.from)).agents[message.author]
+		if (!source) throw new Error('Only an agent can post from another thread')
+		by = `@${(await agentOf(source.conversation, message.author, tx)).runner}`
+	}
+	await reach(message.to ?? [], by, await tx.doc(Runners))
+	return append(tx, threadId, message, options)
+}
+
+/** Already-authorized answers return to their askers; new requests enter through post. */
+async function append(tx, threadId, { to, ...message }, { steer = false, empty = false } = {}) {
 	const row = await tx.doc(Thread, threadId)
 	const names = (to ?? []).map(agentName)
 	const data = { ...message, ...(to ? { to: names } : {}) }
@@ -544,14 +618,22 @@ async function post(tx, threadId, { to, ...message }, { steer = false, empty = f
 			row.agents[name] = await newAgent(tx, threadId, [...prior, entry.id])
 			await setUp(tx, row.agents[name].conversation, threadId, to[i])
 		}
-		const { conversation, unseen: held } = row.agents[name]
-		row.agents[name].unseen = []
-		if (held.length)
-			await tx.createTask(
-				Deliver,
-				{ agent: conversation, held, steer },
+		const recipient = row.agents[name]
+		const { conversation: agent, unseen: held, admission: after } = recipient
+		recipient.unseen = []
+		if (held.length) {
+			const admit = await tx.createTask(
+				Admit,
+				{ agent, held, steer, ...(after ? { after } : {}) },
 				{ ...own, conversationId: threadId },
 			)
+			const deliver = await tx.createTask(
+				Deliver,
+				{ admit, agent, held },
+				{ ...own, conversationId: threadId },
+			)
+			recipient.admission = { admit, deliver }
+		}
 	}
 	return { entry: entry.id, to: names }
 }
@@ -629,7 +711,7 @@ async function outcome(threadId, agent, settled, mine) {
 
 /** Posts what a settled input told; messages no input took are unseen again */
 async function tell(tx, threadId, agent, settled, held, told) {
-	for (const { thread, data, steer } of told) await post(tx, thread, data, { steer })
+	for (const { thread, data, steer } of told) await append(tx, thread, data, { steer })
 	if (settled.entry === undefined) await restore(tx, threadId, agent, held)
 }
 
@@ -642,12 +724,14 @@ async function faulted({ task, reason }) {
 		shells.delete(task.id)
 		return commit((tx) => printed(tx, threadId, record.input, { ...run, error: reason }))
 	}
+	// Reporter faults remain best-effort; admission faults have the durable wait above.
 	if (task.kind !== Deliver.definition.name) return
-	const { agent, held } = record.input
-	const placed = await storage.submissionByRequest(agent, String(task.id), context)
-	const settled = { id: task.id, status: 'unanswered', reason, entry: placed?.entry }
-	const told = await outcome(threadId, agent, settled, held)
-	await commit((tx) => tell(tx, threadId, agent, settled, held, told))
+	const { admit, agent, held } = record.input
+	const placed = await storage.submissionByRequest(agent, String(admit), context)
+	const pending = (await harness.getTask(admit, context)).state.outcome?.result?.held ?? held
+	const settled = { id: admit, status: 'unanswered', reason, entry: placed?.entry }
+	const told = await outcome(threadId, agent, settled, pending)
+	await commit((tx) => tell(tx, threadId, agent, settled, pending, told))
 }
 
 /** With no reader, anyone's read counts */
@@ -714,6 +798,15 @@ async function home(conversationId) {
 	return name ? { thread: threadId, name } : null
 }
 
+/** A known request returns before anything tries to resolve its recipients. */
+async function receipt(requestId, command) {
+	if (requestId === undefined) return undefined
+	const saved = (await harness.snapshot(Receipts, requestId, context))?.receipt
+	if (saved && saved.command !== command)
+		throw new Error(`requestId ${requestId} was used for ${saved.command}`)
+	return saved
+}
+
 /** Does `work` once per request id, or every time without one; a retry gets the first result */
 const once = (requestId, command, work) =>
 	commit(async (tx) => {
@@ -733,6 +826,8 @@ const once = (requestId, command, work) =>
 
 /** No `to` asks whom the thread last asked, or with the director, whom the body @mentions */
 async function postEntry(id, author, input) {
+	const saved = await receipt(input.requestId, `post ${id}`)
+	if (saved) return saved.result
 	await conversation(id)
 	const body = field(input.body, 'body')
 	const command = body.match(/^\$\s+([\s\S]+)/)?.[1]
@@ -757,7 +852,7 @@ async function postEntry(id, author, input) {
 			id,
 		)
 	if (command && !to.length) throw new Error('Pick a runner to run the command on')
-	await reach(to, author)
+	if (command) await reach(to, author, await known())
 	return once(input.requestId, `post ${id}`, async (tx) =>
 		command
 			? (await tx.createTask(Shell, { author, command, to: to[0] }, { ...own, conversationId: id }),
@@ -906,7 +1001,6 @@ const core = {
 	known,
 	address,
 	whom,
-	reach,
 	agentOf,
 	conversation,
 	thread,
@@ -920,6 +1014,7 @@ const core = {
 	seenBy,
 	commit,
 	once,
+	receipt,
 }
 const defaults = {
 	director: false,
