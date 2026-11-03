@@ -1119,11 +1119,11 @@ async function handleRequest(req, res) {
 
 /** Finds bun or Node, then hands over to the updater, which keeps the runner up to date with this server */
 const runnerScript = (server) => `#!/bin/sh
-# Lends this machine to the agent-ide server at ${server}, with a key from \`bun cli.js key laptop\` there:
+# Lends this machine to the agent-ide server at ${server}, with a key from \`node cli.js key laptop\` there:
 #   curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --dir ~/code [--name laptop] [--read-only] [--no-update]
 set -e
 if command -v bun >/dev/null 2>&1; then run=bun; elif command -v node >/dev/null 2>&1; then run=node; else
-  echo "agent-ide's runner needs bun (curl -fsSL https://bun.sh/install | bash) or Node.js 24 or newer"; exit 1
+  echo "agent-ide's runner needs Node.js 24 or newer"; exit 1
 fi
 mkdir -p "$HOME/.agent-ide"
 if [ -n "$AGENT_IDE_KEY" ]; then
@@ -1324,8 +1324,8 @@ async function upgrade(req, raw, head) {
 		return socket.close(
 			4001,
 			given
-				? `${name}'s key is wrong or was revoked; on the server: bun cli.js key ${name}`
-				: `${name} needs a key; on the server: bun cli.js key ${name}`,
+				? `${name}'s key is wrong or was revoked; on the server: node cli.js key ${name}`
+				: `${name} needs a key; on the server: node cli.js key ${name}`,
 		)
 	}
 	if (sockets.has(name)) {

@@ -11,7 +11,7 @@ const home = process.env.AGENT_IDE_HOME || path.join(os.homedir(), '.agent-ide',
 const bun = Boolean(process.versions.bun)
 if (!server) throw new Error('usage: runner-updater.js <server> [runner options]')
 if (!bun && Number(process.versions.node.split('.')[0]) < 24)
-	throw new Error("agent-ide's runner needs bun or Node.js 24 or newer")
+	throw new Error("agent-ide's runner needs Node.js 24 or newer")
 
 const read = (file) =>
 	existsSync(path.join(home, file)) ? readFileSync(path.join(home, file), 'utf8') : ''

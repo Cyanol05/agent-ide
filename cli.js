@@ -3,7 +3,7 @@ import { parseArgs } from 'node:util'
 import { on, once } from 'node:events'
 import WebSocket from 'ws'
 
-const usage = `bun cli.js [--server url] [--as name] <command>
+const usage = `node cli.js [--server url] [--as name] <command>
 
   post <message>   post to a new thread, or --thread N, and print the answers as they land
                    --to agent    model@runner, a runner for its default model, or nobody; repeat for more
@@ -148,7 +148,7 @@ const commands = {
 	async key() {
 		const { key, connect } = await api('POST', '/api/runners', { name: rest[0] })
 		console.log(
-			`AGENT_IDE_KEY=${key}\n\nOn the runner's machine:\n  ${connect}\nor from a clone:\n  AGENT_IDE_KEY=${key} bun runner.js --server ${o.server} --name ${rest[0]} --dir .`,
+			`AGENT_IDE_KEY=${key}\n\nOn the runner's machine:\n  ${connect}\nor from a clone:\n  AGENT_IDE_KEY=${key} node runner.js --server ${o.server} --name ${rest[0]} --dir .`,
 		)
 	},
 	async revoke() {

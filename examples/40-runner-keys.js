@@ -19,7 +19,7 @@ const out = []
 nokey.stdout.on('data', (d) => out.push(String(d)))
 check((await exited(nokey)) === 1, 'a runner without a key is turned away, and stops')
 check(
-	out.join('').includes('bun cli.js key stray'),
+	out.join('').includes('node cli.js key stray'),
 	'and is told how to get one',
 	JSON.stringify(out),
 )

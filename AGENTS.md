@@ -4,7 +4,7 @@
 - Use the words client.html uses, one per concept. Fewer concepts beats fewer lines.
 - Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own.
 - A tool's cancellation comes from `execute`'s third Context argument: pass its `abortSignal` through runner calls, and settle cancellation locally without waiting for the runner's reply.
-- Use `pnpm install --frozen-lockfile` in a fresh worktree; `bun install` rewrites package.json and adds bun.lock.
+- Use `pnpm install --frozen-lockfile` in a fresh worktree; keep package.json and the lockfile unchanged.
 - New features are modules, off by default.
 - Keep client.html and the README saying what the code does high level.
 - Prove things in `examples/`, one file per idea. No unit tests, no TypeScript, no build step, no migrations or shims.
@@ -15,3 +15,4 @@
 - The Solid client's import map names every package Solid imports bare, so each one, `@solidjs/signals` too, is a direct dependency of apps/client-solidjs.
 - bb worktrees are plain git worktrees jj can't see: commit there with git, then move `main` and push with jj from the main checkout.
 - Don't assume the `hostname` command exists; use Node's `os.hostname()`.
+- For an example of a failed npm install, use a missing `.tgz` dependency: a missing `file:` directory can install successfully as a dangling symlink.

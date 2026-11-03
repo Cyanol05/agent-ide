@@ -305,7 +305,7 @@ sequenceDiagram
   A->>R: model request
   R->>M: with the laptop's login
   M-->>A: streamed back: call bash
-  A->>R: bash: bun test, in ~/code
+  A->>R: bash: pnpm test, in ~/code
   R-->>A: what it printed
   A->>R: model request, and so on
   A-->>T: only its final answer

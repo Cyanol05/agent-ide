@@ -1,6 +1,6 @@
 # agent-ide
 
-A small agent IDE on [Pi Durable](https://www.npmjs.com/package/@earendil-works/pi-durable), built to show how little it takes. One server keeps every thread. Runners on your machines lend it their model logins and a folder. Runs with bun or Node.js 24+, no build step.
+A small agent IDE on [Pi Durable](https://www.npmjs.com/package/@earendil-works/pi-durable), built to show how little it takes. One server keeps every thread. Runners on your machines lend it their model logins and a folder. Runs with Node.js 24+ and pnpm, no build step.
 
 The words it uses, how it fits together and its principles: [apps/client/client.html](apps/client/client.html), the page every server serves at `/`, beside the app itself. The code is the truth, and [examples/](examples) shows each idea working.
 
@@ -10,24 +10,24 @@ The words it uses, how it fits together and its principles: [apps/client/client.
 npx github:oskarrough/agent-ide
 ```
 
-It lends the folder it starts in to its agents, as a runner named after this machine. From a clone, `pnpm install && bun server.js` does the same. Open http://127.0.0.1:3000 and the page walks you through it.
+It lends the folder it starts in to its agents, as a runner named after this machine. From a clone, `pnpm install && node server.js` does the same. Open http://127.0.0.1:3000 and the page walks you through it.
 
-Read [examples/](examples): one file per idea, each starting its own server and runner. `bun run examples` runs them all, `bun examples/05-fork.js` one. The `real-model` ones use your pi login, so they only run on their own or with `REAL=1`.
+Read [examples/](examples): one file per idea, each starting its own server and runner. `pnpm examples` runs them all, `node examples/05-fork.js` one. The `real-model` ones use your pi login, so they only run on their own or with `REAL=1`.
 
 ## Running it
 
 ```sh
-HOST=0.0.0.0 PORT=3001 bun server.js   # reachable from other machines
-RUNNER=~/code bun server.js            # lend another folder; RUNNER=0 lends none
-MODULES=+memory,+bots bun server.js    # +name and -name change the defaults; each module's top says how it works
-DB_PATH=other.sqlite bun server.js     # another store
+HOST=0.0.0.0 PORT=3001 node server.js   # reachable from other machines
+RUNNER=~/code node server.js            # lend another folder; RUNNER=0 lends none
+MODULES=+memory,+bots node server.js    # +name and -name change the defaults; each module's top says how it works
+DB_PATH=other.sqlite node server.js     # another store
 
-bun cli.js key desk                    # on the server's machine, via localhost
-bun cli.js post "hello" --to sonnet@laptop
-bun cli.js threads | runners | read 3 | stop 3
+node cli.js key desk                    # on the server's machine, via localhost
+node cli.js post "hello" --to sonnet@laptop
+node cli.js threads | runners | read 3 | stop 3
 ```
 
-To lend another machine, start the server with `HOST=0.0.0.0`, open its page through localhost on the server's own machine, and click “Create connection line”. Paste that private line from the folder you want to lend on the runner's machine; it includes a new key, the server's network address and its actual port. Creating another line for the same name replaces its old key. A runner says “online” only after the server accepts it. `bun runner.js --help` lists the rest.
+To lend another machine, start the server with `HOST=0.0.0.0`, open its page through localhost on the server's own machine, and click “Create connection line”. Paste that private line from the folder you want to lend on the runner's machine; it includes a new key, the server's network address and its actual port. Creating another line for the same name replaces its old key. A runner says “online” only after the server accepts it. `node runner.js --help` lists the rest.
 
 Only localhost on the server's own machine can mint or revoke runner keys. Other websites cannot write to this server, even on loopback. People have no keys or accounts: anyone who can reach the server can read, post as anyone and ask its runners to work. Keep it on a trusted network.
 

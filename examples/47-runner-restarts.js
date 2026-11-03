@@ -63,7 +63,7 @@ const old = path.join(home, 'old-runner')
 mkdirSync(old)
 writeFileSync(path.join(old, 'version'), 'old')
 writeFileSync(path.join(old, 'runner.js'), "console.log('OLD RUNNER STARTED')\n")
-const dependencies = { missing: 'file:/definitely-not-a-runner-package' }
+const dependencies = { missing: 'file:/definitely-not-a-runner-package.tgz' }
 let bundle = { version: 'new', files: { 'runner.js': "throw Error('new runner')" }, dependencies }
 const fake = createServer((req, res) => res.end(JSON.stringify(bundle)))
 await new Promise((resolve) => fake.listen(0, '127.0.0.1', resolve))

@@ -4,7 +4,7 @@ set -euo pipefail
 [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] || exit 0
 
 cd "$CLAUDE_PROJECT_DIR"
-bun install
-command -v agent-browser >/dev/null || npm install -g agent-browser
+pnpm install --frozen-lockfile
+command -v agent-browser >/dev/null || pnpm add --global agent-browser
 [ -n "${CLAUDE_ENV_FILE:-}" ] && echo 'export AGENT_BROWSER_EXECUTABLE_PATH=/opt/pw-browsers/chromium' >> "$CLAUDE_ENV_FILE"
 exit 0

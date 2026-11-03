@@ -16,7 +16,7 @@ const {
 })
 if (!source) {
 	console.error(
-		'usage: bun scripts/replay-pi.js <session.jsonl | sessions folder> [--server URL] [--title T] [--limit N]',
+		'usage: node scripts/replay-pi.js <session.jsonl | sessions folder> [--server URL] [--title T] [--limit N]',
 	)
 	process.exit(1)
 }

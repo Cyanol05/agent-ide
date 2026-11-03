@@ -1,6 +1,8 @@
 /** The Matrix bridge, against a fake homeserver in this process */
 import { fauxAssistantMessage } from '@earendil-works/pi-ai/providers/faux'
-import { Database } from 'bun:sqlite'
+import { once } from 'node:events'
+import { createServer } from 'node:http'
+import { DatabaseSync } from 'node:sqlite'
 import {
 	api,
 	call,
@@ -45,66 +47,70 @@ const fromBot = (root) =>
 		.map((e) => e.content.body)
 
 /** /sync's position is how many events there were, and like Synapse it gives at most ten, `limited`, from `p<position>`, before which /messages pages back five at a time */
-const hs = Bun.serve({
-	port: 0,
-	idleTimeout: 255,
-	async fetch(req) {
-		const url = new URL(req.url)
-		const route = url.pathname.replace(/^\/_matrix\/client\/v[13]/, '')
-		if (req.headers.get('authorization') !== 'Bearer test-token')
-			return Response.json({ errcode: 'M_UNKNOWN_TOKEN' }, { status: 401 })
-		if (route === '/account/whoami') return Response.json({ user_id: BOT })
-		if (route.startsWith('/join/')) return Response.json({ room_id: ROOM })
-		if (route === '/sync') {
-			const since = url.searchParams.get('since')
-			if (!since) return Response.json({ next_batch: String(events.length) })
-			synced = true
-			await until(async () => events.length > Number(since), 500, 20)
-			const timeline = events.slice(Math.max(Number(since), events.length - 10))
-			const cut = {
-				limited: events.length - Number(since) > 10,
-				prev_batch: `p${events.length - timeline.length}`,
-			}
-			return Response.json({
-				next_batch: String(events.length),
-				rooms: timeline.length
-					? { join: { [ROOM]: { timeline: { events: timeline, ...cut } } } }
-					: {},
-			})
+const hs = createServer(async (req, res) => {
+	const send = (body, status = 200) => {
+		res.writeHead(status, { 'content-type': 'application/json' })
+		res.end(JSON.stringify(body))
+	}
+	const url = new URL(req.url, 'http://localhost')
+	const route = url.pathname.replace(/^\/_matrix\/client\/v[13]/, '')
+	if (req.headers.authorization !== 'Bearer test-token')
+		return send({ errcode: 'M_UNKNOWN_TOKEN' }, 401)
+	if (route === '/account/whoami') return send({ user_id: BOT })
+	if (route.startsWith('/join/')) return send({ room_id: ROOM })
+	if (route === '/sync') {
+		const since = url.searchParams.get('since')
+		if (!since) return send({ next_batch: String(events.length) })
+		synced = true
+		await until(async () => events.length > Number(since), 500, 20)
+		const timeline = events.slice(Math.max(Number(since), events.length - 10))
+		const cut = {
+			limited: events.length - Number(since) > 10,
+			prev_batch: `p${events.length - timeline.length}`,
 		}
-		const [, , , what, id] = route.split('/').map(decodeURIComponent)
-		if (what === 'event' && req.method === 'GET')
-			return Response.json(events.find((e) => e.event_id === id))
-		if (what === 'messages') {
-			const from = Number(url.searchParams.get('from').slice(1))
-			const start = Math.max(Number(url.searchParams.get('to')), from - 5)
-			return Response.json({
-				chunk: events.slice(start, from).reverse(),
-				...(start > 0 ? { end: `p${start}` } : {}),
-			})
+		return send({
+			next_batch: String(events.length),
+			rooms: timeline.length
+				? { join: { [ROOM]: { timeline: { events: timeline, ...cut } } } }
+				: {},
+		})
+	}
+	const [, , , what, id] = route.split('/').map(decodeURIComponent)
+	if (what === 'event' && req.method === 'GET')
+		return send(events.find((e) => e.event_id === id))
+	if (what === 'messages') {
+		const from = Number(url.searchParams.get('from').slice(1))
+		const start = Math.max(Number(url.searchParams.get('to')), from - 5)
+		return send({
+			chunk: events.slice(start, from).reverse(),
+			...(start > 0 ? { end: `p${start}` } : {}),
+		})
+	}
+	const match = /^\/rooms\/([^/]+)\/send\/m\.room\.message\/(.+)$/.exec(route)
+	if (match && req.method === 'PUT') {
+		const txn = decodeURIComponent(match[2])
+		const chunks = []
+		for await (const chunk of req) chunks.push(chunk)
+		const { body, ...content } = JSON.parse(Buffer.concat(chunks).toString())
+		sends.push({ txn, body })
+		if (!sent.has(txn)) {
+			sent.set(txn, said(BOT, body, content))
+			events.at(-1).unsigned = { transaction_id: txn }
 		}
-		const send = /^\/rooms\/([^/]+)\/send\/m\.room\.message\/(.+)$/.exec(route)
-		if (send && req.method === 'PUT') {
-			const txn = decodeURIComponent(send[2])
-			const { body, ...content } = await req.json()
-			sends.push({ txn, body })
-			if (!sent.has(txn)) {
-				sent.set(txn, said(BOT, body, content))
-				events.at(-1).unsigned = { transaction_id: txn }
-			}
-			if (body.includes('slow') && !held) {
-				held = true
-				return new Promise(() => {})
-			}
-			return Response.json({ event_id: sent.get(txn) })
+		if (body.includes('slow') && !held) {
+			held = true
+			return new Promise(() => {})
 		}
-		return Response.json({ errcode: 'M_UNRECOGNIZED' }, { status: 404 })
-	},
+		return send({ event_id: sent.get(txn) })
+	}
+	return send({ errcode: 'M_UNRECOGNIZED' }, 404)
 })
+hs.listen(0, '127.0.0.1')
+await once(hs, 'listening')
 
 const env = {
 	MODULES: '+matrix',
-	MATRIX_HOMESERVER: `http://127.0.0.1:${hs.port}`,
+	MATRIX_HOMESERVER: `http://127.0.0.1:${hs.address().port}`,
 	MATRIX_TOKEN: 'test-token',
 	MATRIX_ROOMS: '#room:fake',
 	MATRIX_USERS: `@oskar:fake,${BOT}`,
@@ -272,14 +278,16 @@ check(
 	'a fork sends nothing to the room',
 	JSON.stringify(fromBot()),
 )
-const docs = new Database(db, { readonly: true })
-	.query("select kind from documents where scope_kind = 'conversation' and kind like '%matrix%'")
+const store = new DatabaseSync(db, { readOnly: true })
+const docs = store
+	.prepare("select kind from documents where scope_kind = 'conversation' and kind like '%matrix%'")
 	.all()
 check(
 	docs.length === 0,
 	'and no thread, kept or not, carries a doc of the bridge',
 	JSON.stringify(docs),
 )
+store.close()
 
 // Nothing from Matrix asks in the room's thread until someone asks there from the client
 await api('POST', `/api/threads/${room}/entries`, {
@@ -368,5 +376,6 @@ check(
 	sends[0]?.txn,
 )
 
-hs.stop(true)
+hs.closeAllConnections()
+hs.close()
 done()

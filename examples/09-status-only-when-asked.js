@@ -1,31 +1,37 @@
 /** The runner reports status only to a terminal that answers the OSC 7501 query before device attributes (DA), which every terminal answers */
-import { base, check, dir, done, home, repo, server } from './lib.js'
+import { spawn } from 'node:child_process'
+import { once } from 'node:events'
+import { setTimeout as sleep } from 'node:timers/promises'
+import { base, check, dir, done, home, keyFor, repo, server } from './lib.js'
 
 async function terminal(answers7501, ms = 4000) {
 	let out = ''
 	let answered = false
 	/** A home of its own, as every example's runner has: no pi extensions to load first */
-	const env = { ...process.env, HOME: home }
+	const env = { ...process.env, HOME: home, AGENT_IDE_KEY: await keyFor('terminal') }
 	delete env.STATUS
-	const p = Bun.spawn(
-		[process.execPath, 'runner.js', '--server', base, '--name', 'pty', '--dir', dir],
-		{
-			cwd: repo,
-			env,
-			terminal: {
-				data(t, bytes) {
-					out += new TextDecoder().decode(bytes)
-					if (!answered && out.includes('\x1b[c')) {
-						answered = true
-						t.write((answers7501 ? '\x1b]7501;?\x1b\\' : '') + '\x1b[?62;22c')
-					}
-				},
-			},
-		},
-	)
-	await Bun.sleep(ms)
+	/** A terminal double over pipes: Node has no built-in PTY allocator. Only the query/reply matters here. */
+	const p = spawn(process.execPath, ['--input-type=module', '--eval', `
+		process.stdin.isTTY = process.stdout.isTTY = true
+		process.stdin.setRawMode = () => process.stdin
+		await import('./runner.js')
+	`, '--', '--server', base, '--name', 'terminal', '--dir', dir], {
+		cwd: repo,
+		env,
+		stdio: ['pipe', 'pipe', 'pipe'],
+	})
+	const closed = once(p, 'close')
+	p.stderr.on('data', (bytes) => { out += bytes })
+	p.stdout.setEncoding('utf8').on('data', (bytes) => {
+		out += bytes
+		if (!answered && out.includes('\x1b[c')) {
+			answered = true
+			p.stdin.write((answers7501 ? '\x1b]7501;?\x1b\\' : '') + '\x1b[?62;22c')
+		}
+	})
+	await sleep(ms)
 	p.kill('SIGKILL')
-	await p.exited
+	await closed
 	return out
 }
 
