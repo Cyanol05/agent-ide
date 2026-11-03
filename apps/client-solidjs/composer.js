@@ -9,7 +9,7 @@ import { Dot } from './dot.js'
 const [compose, setCompose] = createRoot(() => createStore({
 	draft: '', sending: false, to: null, typed: null, settings: {},
 }))
-export const choiceFor = (r) => compose.settings[r.name] ?? {
+export const choiceFor = (r) => compose.to?.find((p) => p.runner === r.name && !p.name) ?? compose.settings[r.name] ?? {
 	runner: r.name, model: r.model, thinkingLevel: 'low',
 }
 export const recipients = () => {
@@ -34,8 +34,15 @@ export function choose(to, also = false) {
 }
 /** Editing a runner's settings also changes its recipient, if it is selected. */
 export function configure(to) {
-	const next = recipients().map((p) => p.runner === to.runner && !p.name ? to : p)
-	setCompose((s) => { s.settings[to.runner] = to; s.to = next; s.typed = null })
+	const previous = recipients()
+	const selected = previous.find((p) => p.runner === to.runner && !p.name)
+	setCompose((s) => {
+		s.settings[to.runner] = to
+		if (selected) {
+			s.to = previous.map((p) => p === selected ? to : p)
+			s.typed = null
+		}
+	})
 }
 
 export function Composer(props) {

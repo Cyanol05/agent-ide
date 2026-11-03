@@ -3,6 +3,7 @@ import html from '@solidjs/html'
 import { For } from 'solid-js'
 import { current, openThread, threads } from './server.js'
 import { Dot } from './dot.js'
+import { RunnerList } from './runner.js'
 
 export const ThreadList = () => html`
 	<nav class="thread-list" aria-label="Threads">
@@ -34,5 +35,6 @@ export const ThreadList = () => html`
 				`}
 			<//>
 		</ul>
+		<${RunnerList} />
 	</nav>
 `

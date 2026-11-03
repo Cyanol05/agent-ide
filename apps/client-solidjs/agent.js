@@ -1,4 +1,10 @@
-/** How an agent is named and what it's doing, as plain functions */
+/** Agent names and live work, shared by a thread and its runner. */
+import { createRoot, createStore } from 'solid-js'
+
+export const [doing, setDoing] = createRoot(() => createStore({}))
+export const agentKey = ({ runner, model, name }) => `${name ?? model}@${runner}`
+export const busiest = (agents) => agents.some((a) => a.status === 'working') ? 'working'
+	: agents.some((a) => a.status === 'blocked') ? 'blocked' : ''
 
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
