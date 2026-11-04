@@ -48,7 +48,7 @@ export function watch(receive, opened = () => {}, closed = () => {}) {
 export const [connected, setConnected] = createSignal(false)
 export const [newThreadTools, setNewThreadTools] = createSignal(null)
 export const [connectionLine, setConnectionLine] = createSignal(
-	'Create a connection line, then paste it from the folder you want to lend.',
+	'Your connection line shows up here.',
 )
 export const [entries, setEntries] = createStore({})
 export const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)

@@ -66,19 +66,19 @@
 			<section data-focus="runners">
 				<h2>Lend it your laptop</h2>
 				<p>
-					Now an agent can work on the server's own machine. To have it work on your laptop instead,
-					lend the laptop. It dials the server, so it has to reach it: the same network, or
-					<a href="https://tailscale.com">Tailscale</a>, with the server started as
+					So far, agents work on the server's own machine. Lend your laptop and they can work there
+					too. The laptop dials the server, so it has to reach it: put both on the same network or on
+					<a href="https://tailscale.com">Tailscale</a>, and start the server with
 					<code>HOST=0.0.0.0</code>.
 				</p>
 				<p>
-					On the server's own machine, open this page through localhost and create a connection
-					line. Paste it on the laptop, in the folder you want to lend. It holds the laptop's key,
-					so keep it to yourself.
+					Then, on the server's machine, open this page at localhost and create a connection line.
+					Run it on the laptop, in the folder you want to lend. The line carries the laptop's key, so
+					treat it like a password.
 				</p>
 				<button id="connect" type="button">Create connection line</button>
 				<pre id="lend">
-Create a connection line, then paste it from the folder you want to lend.</pre>
+Your connection line shows up here.</pre>
 			</section>
 
 			<section data-focus="hands">
