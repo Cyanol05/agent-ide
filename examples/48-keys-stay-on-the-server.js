@@ -1,4 +1,4 @@
-/** Only the server's machine enrolls runners; a copied connection line really connects. People remain trusted peers. */
+/** Only the server's machine enrolls runners; a copied runner command really connects. People remain trusted peers. */
 import { execFile, spawn } from 'node:child_process'
 import { networkInterfaces } from 'node:os'
 import { promisify } from 'node:util'
@@ -24,7 +24,7 @@ check(!(await request(base, 'GET', '/api/threads')).headers.has('access-control-
 
 const minted = await request(base, 'POST', '/api/runners', { name: 'pasted' }, { origin: base })
 const { key, connect } = await minted.json()
-check(minted.status === 201 && connect.includes(`AGENT_IDE_KEY=${key}`), 'the local page mints a private connection line with a runner key')
+check(minted.status === 201 && connect.includes(`AGENT_IDE_KEY=${key}`), 'the local page mints a private runner command with a runner key')
 check(connect.includes(`${network}/connect-runner`), 'the line has a network address and the actual server port, not localhost or a placeholder')
 check((await request(network, 'POST', '/api/runners', { name: 'pasted' },
 	{ 'x-forwarded-for': '127.0.0.1', 'x-user': 'owner' })).status === 403, 'a network caller cannot replace a runner key or fake being local')

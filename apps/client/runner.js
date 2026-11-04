@@ -1,7 +1,7 @@
 /** Runners show their agents and choose whom the composer asks. */
 import html from '@solidjs/html'
 import { For, Show } from 'solid-js'
-import { connectionLine, runners, threads } from './server.js'
+import { runnerCommand, runners, threads } from './server.js'
 import { agentKey, busiest, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
 import { choiceFor, choose, configure, recipients } from './composer.js'
 import { placePopover } from './popover.js'
@@ -114,7 +114,7 @@ function AgentRow(props) {
 	`
 }
 
-/** The chat's runner list is also where you find the command for lending another machine. */
+/** The chat's runner list is also where you find the command for connecting another machine. */
 export function RunnerList() {
 	let button, panel
 	const online = () => runners.filter((r) => r.online).length
@@ -142,7 +142,7 @@ export function RunnerList() {
 				<${For} each=${() => runners}>${(r) => html`<${RunnerItem} runner=${() => r} />`}<//>
 			</ul>
 			<p>To add a runner:</p>
-			<pre>${() => connectionLine()}</pre>
+			<pre>${() => runnerCommand()}</pre>
 		</div>
 	`
 }

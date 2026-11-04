@@ -23,7 +23,7 @@ const tmp = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-example-'))
 export const db = path.join(tmp, 'store.sqlite')
 export const dir = path.join(tmp, 'folder')
 mkdirSync(dir)
-/** Runners get a home of their own, so no pi logins; 11-real-model lends them the real one */
+/** Runners get a home of their own, so no pi logins; 11-real-model gives them the real one */
 export const home = path.join(tmp, 'home')
 mkdirSync(home)
 

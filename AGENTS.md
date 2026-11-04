@@ -14,7 +14,7 @@
 - Thread views omit `dir` at the runner's root, so use a subfolder to prove CLI folder options.
 - Pi forks restore `pi.agent` at the fork entry, so apply the thread's current tools and new identity in the creating commit without replacing the inherited model, thinking or folder.
 - Check UI changes in a browser: `agent-browser open <url>` with `server.js` running.
-- Connection lines minted through localhost need a network address, preferably Tailscale rather than the first non-loopback interface.
+- Runner commands minted through localhost need a network address, preferably Tailscale rather than the first non-loopback interface.
 - Solid 2 is not Solid 1: read `CHEATSHEET.md` and `skills/solid-2.0/SKILL.md` in node_modules/solid-js before writing the Solid client, and fix any `[CODE]` warning in the browser console with `skills/reactivity-diagnostics/SKILL.md` there.
 - There is one web client: Solid, no build step, in apps/client; client.html is served at `/`. Its import map names every package Solid imports bare, so each one, `@solidjs/signals` too, is a root dependency. Mermaid is served locally too.
 - Resolve installed packages, never assume `<app>/node_modules`: npm/npx hoist dependencies. Use `import.meta.resolve` for browser assets. `runnerBundle` uses `createRequire(...).resolve.paths` for manifests that needn't be exported; runners call it too, and Bun lacks Node's `findPackageJSON`.

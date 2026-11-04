@@ -6,7 +6,7 @@ import { createRunners } from '../remote.js'
 import { check, done, repo } from './lib.js'
 
 const source = await readFile(`${repo}/server.js`, 'utf8')
-const upgrade = source.slice(source.indexOf('async function upgrade('), source.indexOf('/** The server lends this machine too'))
+const upgrade = source.slice(source.indexOf('async function upgrade('), source.indexOf('/** The server connects this machine too'))
 const deferred = () => {
 	let resolve
 	const promise = new Promise((r) => { resolve = r })

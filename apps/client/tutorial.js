@@ -10,7 +10,7 @@ import {
 	fork,
 	openThread,
 	runners,
-	setConnectionLine,
+	setRunnerCommand,
 	url,
 } from './server.js'
 import { choiceFor, selectRecipients } from './composer.js'
@@ -185,8 +185,8 @@ export function Tutorial() {
 			connect.disabled = true
 			try {
 				const line = (await api('/api/runners', { name })).connect
-				setConnectionLine(line)
-				document.getElementById('lend').textContent = line
+				setRunnerCommand(line)
+				document.getElementById('runner-command').textContent = line
 			} catch (error) {
 				alert(error.message)
 			} finally {

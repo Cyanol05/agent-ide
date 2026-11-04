@@ -17,7 +17,7 @@ const { values: args } = parseArgs({
 		server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://localhost:3000' },
 		name: { type: 'string', default: os.hostname() },
 		alias: { type: 'string', default: '' },
-		/** Each --dir is one more folder it lends */
+		/** Each --dir is one more folder agents work in */
 		dir: { type: 'string', multiple: true, default: [process.cwd()] },
 		'discover-dirs': { type: 'boolean', default: false },
 		owner: { type: 'string', default: '' },
@@ -34,7 +34,7 @@ if (args.help) {
   --server url      server to dial (AGENT_IDE_SERVER or http://localhost:3000)
   --name name       runner's name (this machine's hostname)
   --alias name      another name for this runner
-  --dir folder      folder to lend (current folder); repeat for more
+  --dir folder      folder agents work in (current folder); repeat for more
   --discover-dirs   offer git and jj checkouts beneath the folders
   --owner name      take work only from this person and those allowed
   --allow name      also take work from this person or @runner; repeat for more
@@ -161,7 +161,7 @@ async function connect() {
 	const from = args.owner ? `, to ${[args.owner, ...args.allow].join(', ')}` : ''
 	const online = () =>
 		console.log(
-			`${name} online at ${server}, lending pi's logins and ${roots.join(', ')}${args['read-only'] ? ' to read only' : ''}${from}`,
+			`${name} online at ${server}, offering pi's logins and ${roots.join(', ')}${args['read-only'] ? ' to read only' : ''}${from}`,
 		)
 	socket.onmessage = ({ data }) => JSON.parse(data).op === 'ready' ? online() : runner.receive(data)
 	socket.onclose = ({ code, reason }) => {

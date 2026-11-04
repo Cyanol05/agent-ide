@@ -1,4 +1,4 @@
-/** A runner started with --read-only lends its folder to read */
+/** A runner started with --read-only lets agents only read its folder */
 import { existsSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { answered, api, call, check, dir, done, say, scriptedRunner, server, text } from './lib.js'

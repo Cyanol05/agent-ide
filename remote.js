@@ -353,7 +353,7 @@ export function remoteEnv(runners, name, cwd) {
 	return env
 }
 
-/** Whether a path is one of `folders` or inside one: the folders a runner lends */
+/** Whether a path is one of `folders` or inside one: the folders a runner offers */
 export const within = (folders, p) => folders.some((f) => p === f || p.startsWith(f + path.sep))
 
 /** `resolve(pattern)` is pi's `--model pattern`: { model, thinkingLevel? */

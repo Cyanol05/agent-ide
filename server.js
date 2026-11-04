@@ -513,7 +513,7 @@ function reach(to, by, available) {
 	}
 }
 
-/** `dir` is relative to the runner's first folder, or a path in any folder it lends */
+/** `dir` is relative to the runner's first folder, or a path in any folder it offers */
 function folder(runner, to) {
 	const cwd = path.resolve(runner.dir, to.dir || '.')
 	if (!within(runner.folders ?? [runner.dir], cwd))
@@ -1229,7 +1229,7 @@ async function handleRequest(req, res) {
 
 /** Finds bun or Node, then hands over to the updater, which keeps the runner up to date with this server */
 const runnerScript = (server) => `#!/bin/sh
-# Lends this machine to the agent-ide server at ${server}, with a key from \`node cli.js key laptop\` there:
+# Connects this machine to the agent-ide server at ${server}, with a key from \`node cli.js key laptop\` there:
 #   curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --dir ~/code [--name laptop] [--read-only] [--no-update]
 set -e
 if command -v bun >/dev/null 2>&1; then run=bun; elif command -v node >/dev/null 2>&1; then run=node; else
@@ -1484,9 +1484,9 @@ async function upgrade(req, raw, head) {
 	)
 }
 
-/** The server lends this machine too, the folder it starts in or RUNNER=~/code */
+/** The server connects this machine too, the folder it starts in or RUNNER=~/code */
 let lent
-async function lend(url) {
+async function connectSelf(url) {
 	const dir = process.env.RUNNER ?? process.cwd()
 	if (dir === '0' || lent) return
 	lent = true
@@ -1524,7 +1524,7 @@ for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1'])
 			console.log(
 				`http://${address}:${server.address().port} on ${file}, modules: ${modules.map((m) => m.name).join(', ') || 'none'}${dropped.length ? ` (off, though on by default: ${dropped.join(', ')})` : ''}`,
 			)
-		lend(
+		connectSelf(
 			`http://${host === '0.0.0.0' ? '127.0.0.1' : addresses[0]}:${server.address().port}`,
 		).catch((error) => console.error(error))
 	})
