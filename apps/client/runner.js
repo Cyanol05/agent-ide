@@ -141,8 +141,10 @@ export function RunnerList() {
 			<ul>
 				<${For} each=${() => runners}>${(r) => html`<${RunnerItem} runner=${() => r} />`}<//>
 			</ul>
-			<p>To add a runner:</p>
-			<pre>${() => runnerCommand()}</pre>
+			<${Show} when=${runnerCommand}>
+				<p>To add a runner:</p>
+				<pre>${() => runnerCommand()}</pre>
+			<//>
 		</div>
 	`
 }

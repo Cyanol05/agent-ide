@@ -47,9 +47,7 @@ export function watch(receive, opened = () => {}, closed = () => {}) {
 /** Page lifetime; components own the messages of just the threads on screen. */
 export const [connected, setConnected] = createSignal(false)
 export const [newThreadTools, setNewThreadTools] = createSignal(null)
-export const [runnerCommand, setRunnerCommand] = createSignal(
-	'Your command shows up here.',
-)
+export const [runnerCommand, setRunnerCommand] = createSignal('')
 export const [entries, setEntries] = createStore({})
 export const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
 

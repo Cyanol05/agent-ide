@@ -179,26 +179,31 @@ export function Tutorial() {
 			}
 		}
 		const connect = document.getElementById('connect')
-		const create = async () => {
-			const name = prompt('Runner name (replaces its old key):', 'laptop')?.trim()
-			if (!name) return
-			connect.disabled = true
+		const command = document.getElementById('runner-command')
+		const failed = document.getElementById('connect-error')
+		const create = async (e) => {
+			e.preventDefault()
+			const submit = connect.querySelector('button')
+			submit.disabled = true
 			try {
-				const line = (await api('/api/runners', { name })).connect
+				const line = (await api('/api/runners', { name: connect.name.value.trim() })).connect
 				setRunnerCommand(line)
-				document.getElementById('runner-command').textContent = line
+				command.querySelector('pre').textContent = line
+				command.hidden = false
+				failed.hidden = true
 			} catch (error) {
-				alert(error.message)
+				failed.textContent = error.message
+				failed.hidden = false
 			} finally {
-				connect.disabled = false
+				submit.disabled = false
 			}
 		}
 		buttons.forEach((b) => b.addEventListener('click', run))
-		connect.addEventListener('click', create)
+		connect.addEventListener('submit', create)
 		return () => {
 			sections.disconnect()
 			buttons.forEach((b) => b.removeEventListener('click', run))
-			connect.removeEventListener('click', create)
+			connect.removeEventListener('submit', create)
 		}
 	})
 	return html`<${Portal} mount=${document.getElementById('memory')}><${Memory} /><//>`

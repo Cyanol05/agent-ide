@@ -1181,7 +1181,7 @@ async function handleRequest(req, res) {
 	if ((req.method === 'POST' && url.pathname === '/api/runners' ||
 		req.method === 'DELETE' && url.pathname.startsWith('/api/runners/')) &&
 		(!loopback(req.socket.remoteAddress) || !loopback(req.headers.host?.replace(/:\d+$/, ''))))
-		return send(res, 403, { error: 'Manage runner keys on the server’s machine through localhost' })
+		return send(res, 403, { error: 'Open this page on the server’s own machine to connect a runner' })
 	if (req.method === 'OPTIONS') {
 		res.writeHead(204)
 		return res.end()
