@@ -42,6 +42,7 @@ export function ThreadDetails() {
 	return html`
 		<div class="scrim" onClick=${() => drawer(null)}></div>
 		<section class="thread-details" aria-label="Thread details">
+			<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
 			<h3>In this thread</h3>
 			<p id="members">
 				<${For} each=${() => members()}>
@@ -69,6 +70,40 @@ export function ThreadDetails() {
 				${(bot) => html`<${BotSettings} bot=${() => bot} />`}
 			<//>
 		</section>
+	`
+}
+
+/** Rename on Enter or leaving the field; Escape puts the old title back. */
+function Title(props) {
+	const title = () => threads.find((t) => t.id === props.thread)?.title ?? ''
+	const [error, setError] = createSignal('')
+	const save = async (field) => {
+		const next = field.value.trim()
+		if (next === title()) return
+		setError('')
+		try {
+			await api(`/api/threads/${props.thread}/title`, { title: next })
+			refresh(threads)
+		} catch (e) {
+			setError(e.message)
+			field.value = title()
+		}
+	}
+	return html`
+		<input
+			class=${() => ['thread-title', { bad: !!error() }]}
+			aria-label="Thread title"
+			title=${() => error() || 'Rename this thread'}
+			value=${title}
+			onChange=${(e) => save(e.currentTarget)}
+			onKeyDown=${(e) => {
+				if (e.key === 'Enter') e.currentTarget.blur()
+				if (e.key === 'Escape') {
+					e.currentTarget.value = title()
+					e.currentTarget.blur()
+				}
+			}}
+		/>
 	`
 }
 

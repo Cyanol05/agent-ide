@@ -47,6 +47,7 @@ GET    /api/threads/:id                    the thread and its entries
 DELETE /api/threads/:id                    hides it
 POST   /api/threads/:id/entries {body, to?, steer?, requestId?}
 POST   /api/threads/:id/fork {at, title?}
+POST   /api/threads/:id/title {title}
 POST   /api/threads/:id/tools {tools}      as pi --tools takes them
 POST   /api/threads/:id/read
 POST   /api/threads/:id/stop

@@ -367,6 +367,29 @@ agent-memory {
 	margin: 1rem 0;
 }
 
+/* The title reads as a heading and edits in place. */
+.thread-details > .thread-title {
+	display: block;
+	width: calc(100% - 0.6rem);
+	margin: 0.4rem 0.3rem 0;
+	padding: 0.2rem 0.3rem;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--ink);
+	background: none;
+
+	&:hover,
+	&:focus {
+		border-color: var(--line);
+	}
+
+	&.bad {
+		color: var(--wait);
+	}
+}
+
 .thread-details > .hands {
 	display: flex;
 	gap: 0.4rem;
@@ -764,6 +787,7 @@ agent-memory {
 				top: -0.2rem;
 				font-size: 11px;
 				padding: 0 0.35rem;
+				white-space: nowrap;
 				opacity: 0;
 			}
 		}

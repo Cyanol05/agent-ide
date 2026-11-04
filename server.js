@@ -942,6 +942,15 @@ async function seenBy(id, cut) {
 }
 
 /** Changes the thread's tools and every agent's selection together */
+async function setTitle(id, { title }) {
+	await conversation(id)
+	title = field(title, 'title')
+	return commit(async (tx) => {
+		;(await tx.doc(Thread, id)).title = title
+		return { title }
+	})
+}
+
 async function setTools(id, { tools }) {
 	await conversation(id)
 	tools = toolList(tools)
@@ -1139,6 +1148,7 @@ const routes = [
 	['DELETE /api/threads/:id', (req, id) => hideThread(id)],
 	['POST /api/threads/:id/entries', async (req, id) => postEntry(id, user(req), await input(req))],
 	['POST /api/threads/:id/fork', async (req, id) => forkThread(id, await input(req))],
+	['POST /api/threads/:id/title', async (req, id) => setTitle(id, await input(req))],
 	['POST /api/threads/:id/tools', async (req, id) => setTools(id, await input(req))],
 	['POST /api/threads/:id/read', (req, id) => markRead(id, user(req))],
 	[

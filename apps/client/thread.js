@@ -245,9 +245,7 @@ function Message(props) {
 				class="fork"
 				title="A new thread from this message"
 				onClick=${() => fork(props.thread, props.entry.id).catch((e) => alert(e.message))}
-			>
-				fork
-			</button>
+			>fork</button>
 		</li>
 	`
 }
