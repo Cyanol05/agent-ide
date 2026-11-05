@@ -130,7 +130,7 @@ for (const status of ['1', '0']) {
 			x.json.some((y) => y.name === `laptop${status}` && y.online),
 		),
 	)
-	await sleep(1000)
+	if (status === '1') await until(async () => out.includes('\x1b]7501;'))
 	r.kill()
 	check(
 		out.includes('\x1b]7501;') === (status === '1'),

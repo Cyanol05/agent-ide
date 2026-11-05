@@ -1,5 +1,5 @@
 /** The runner tells its terminal over OSC 7501 how its threads stand */
-import { api, check, done, runner, server, sleep, until, view } from './lib.js'
+import { api, check, done, runner, server, until, view } from './lib.js'
 
 const reports = []
 const records = new Map()
@@ -93,7 +93,7 @@ check(
 
 // Another reader reading it changes nothing
 await api('POST', `/api/threads/${id}/read`, {}, 'ana')
-await sleep(500)
+await until(async () => (await view(id)).status === 'done')
 check(record(id)?.state === 'done', 'someone else reading leaves it done for the owner')
 await api('POST', `/api/threads/${id}/read`, {}, 'oskar')
 check(
@@ -111,7 +111,6 @@ await api('POST', `/api/threads/${other}/entries`, {
 	to: { runner: 'quiet', model: 'echo/echo' },
 })
 await until(async () => (await view(other)).status === 'done', 8000, 50)
-await sleep(500)
 check(
 	!reports.some((r) => r.id === String(other)),
 	'a thread answered on another runner is not reported',
@@ -119,7 +118,7 @@ check(
 
 const before = reports.length
 await api('POST', `/api/threads/${other}/read`, {}, 'oskar')
-await sleep(500)
+await until(async () => (await view(other)).status === 'done')
 check(
 	reports.length === before,
 	"nothing is re-sent when this runner's records did not change",
