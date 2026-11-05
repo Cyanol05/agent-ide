@@ -856,11 +856,14 @@ const threadList = async (reader) => {
 	}
 	return rows
 }
-const threadView = async (id, reader) => ({
-	...(await threadRow(id, reader, await work())),
-	people: await people(id),
-	entries: await messages(id),
-})
+async function threadView(id, reader) {
+	await conversation(id)
+	return {
+		...(await threadRow(id, reader, await work())),
+		people: await people(id),
+		entries: await messages(id),
+	}
+}
 
 /** An agent's thread owns its conversation, through its Anchor */
 async function home(conversationId) {
