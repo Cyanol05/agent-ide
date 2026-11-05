@@ -30,7 +30,7 @@ node cli.js threads | runners | read 3 | stop 3
 
 `MODULES=+bots,+search,+director` adds to the defaults; put `+` before each name. `MODULES=-talk,-status` removes them. Bare names replace the whole list: `MODULES=bots,search,director` loads only those three. To keep your choice, put `{"modules":["+bots","+search","+director"]}` in `agent-ide.json` in the folder you start from; `MODULES` applies after that.
 
-To connect another machine, start the server with `HOST=0.0.0.0`, open its page through localhost on the server's own machine, and click “Connect a runner”, here or in the chat's runner list. Run the command it gives you on the other machine, in the folder agents should work in. It holds the runner's key, so keep it private; a new command for the same name replaces the old key. `node runner.js --help` lists the runner's flags, like `--read-only` and `--owner`.
+To connect another machine, start the server with `HOST=0.0.0.0`, open its page through localhost on the server's own machine, and click “Add runner”, on the page or in the chat's runner list. Run the command it gives you on the other machine, in the folder agents should work in. It holds the runner's key, so keep it private; a new command for the same name replaces the old key. `node runner.js --help` lists the runner's flags, like `--read-only` and `--owner`.
 
 Only localhost on the server's own machine can mint or revoke runner keys. Other websites cannot write to this server, even on loopback. People have no keys or accounts: anyone who can reach the server can read, post as anyone and ask its runners to work. Keep it on a trusted network.
 

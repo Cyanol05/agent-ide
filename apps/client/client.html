@@ -403,7 +403,7 @@ sequenceDiagram
 				<pre class="mermaid">
 stateDiagram-v2
   direction LR
-  [*] --> Waiting: Connect a runner makes its key
+  [*] --> Waiting: Add runner makes its key
   Waiting --> Online: curl …/connect-runner | sh, with its key
   Online --> Offline: machine sleeps, network drops
   Offline --> Online: dials back by itself

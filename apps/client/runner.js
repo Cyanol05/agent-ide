@@ -238,7 +238,7 @@ export function ConnectRunner(props) {
 			<${Show}
 				when=${() => server().local}
 				fallback=${html`
-					<p class="mute">Connect and revoke runners from the server's own machine.</p>
+					<p class="mute">Add and revoke runners from the server's own machine.</p>
 				`}
 			>
 				<form onSubmit=${submit}>
@@ -252,7 +252,7 @@ export function ConnectRunner(props) {
 						onInput=${(e) => setName(e.currentTarget.value)}
 					/>
 					<button type="submit" disabled=${() => busy()}>
-						${() => (existing() ? 'New key' : 'Connect a runner')}
+						${() => (existing() ? 'New key' : 'Add runner')}
 					</button>
 				</form>
 				<${Show} when=${() => error()}><p class="bad">${() => error()}</p><//>
