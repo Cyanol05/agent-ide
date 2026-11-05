@@ -1,6 +1,7 @@
 /**
  * The draft stays with the composer as you move between threads; a pick belongs to the thread it was made in, since asking
- * a thread's agent with another model switches it. A thread has one agent, so a pick is one model, plus any bots.
+ * a thread's agent with another model switches it. A thread has one agent, so a pick is one model, plus any bots. In a
+ * bot's home, a pick is the bot's model, saved as it's made.
  */
 import html from '@solidjs/html'
 import {
@@ -9,6 +10,7 @@ import {
 	createStore,
 	For,
 	latest,
+	refresh,
 	Show,
 	snapshot,
 } from 'solid-js'
@@ -19,7 +21,6 @@ import {
 	colorOf,
 	createThread,
 	current,
-	drawer,
 	entries,
 	homeBot,
 	openThread,
@@ -78,8 +79,15 @@ export const selectRecipients = (to) =>
 		s.for = current()
 		s.typed = null
 	})
+/** In a bot's home, the model it runs as is the bot's own */
+const saveBot = (bot, to) =>
+	api('/api/bots', { name: bot.name, to: { ...to, name: undefined } })
+		.then(() => refresh(bots))
+		.catch(report)
 /** Choosing a model replaces the thread's agent's pick, and keeps any bots beside it */
 export function choose(to) {
+	const bot = homeBot(current())
+	if (bot) return saveBot(bot, to)
 	const next = [to, ...recipients().filter((p) => p.name)]
 	setCompose((s) => {
 		s.to = next
@@ -90,6 +98,8 @@ export function choose(to) {
 }
 /** Editing a runner's settings also changes its recipient, if it is selected. */
 export function configure(to) {
+	const bot = homeBot(current())
+	if (bot) return saveBot(bot, to)
 	const previous = recipients()
 	const selected = previous.find((p) => p.runner === to.runner && !p.name)
 	setCompose((s) => {
@@ -102,14 +112,24 @@ export function configure(to) {
 	})
 }
 
+/** The open thread's composer lends its model picker, so a bot's settings pick its model with the same one */
+let lend
+export const openPicker = (anchor) => lend?.(anchor)
+
 export function Composer(props) {
-	let input, picker, button, chooser
+	let input, picker, button, chooser, anchor
 	const active = () => current() === props.thread
 	const agents = () => threads.find((t) => t.id === current())?.agents ?? []
 	const busy = () =>
 		agents().some((a) => a.status === 'working' && recipients().some((p) => sameAgent(a.to, p)))
 	createEffect(active, (on) => {
-		if (on) input.focus()
+		if (!on) return
+		input.focus()
+		lend = (from) => {
+			if (picker.matches(':popover-open')) return picker.hidePopover()
+			anchor = from
+			picker.showPopover()
+		}
 	})
 	/** Pasted, dropped or picked: each image waits above the box until it's sent or taken off */
 	const add = async (files) => {
@@ -303,17 +323,12 @@ export function Composer(props) {
 					aria-expanded="false"
 					title=${() =>
 						homeBot(current())
-							? "Its home asks the bot: change its model in the bot's settings"
+							? `The model ${homeBot(current()).name} runs as`
 							: recipients().map(formatAgent).join(', ')}
 					onClick=${() => {
 						openThread(props.thread)
-						// A bot's model is the bot's: its settings are where it changes
-						if (homeBot(current())) {
-							drawer('side')
-							requestAnimationFrame(() =>
-								document.querySelector('.thread-details .bot input.model')?.focus(),
-							)
-						} else picker.togglePopover()
+						anchor = button
+						picker.togglePopover()
 					}}
 				>
 					<${Dot} state=${() => (recipients().length ? (busy() ? 'working' : 'on') : '')} />
@@ -326,7 +341,8 @@ export function Composer(props) {
 				ref=${(el) => (picker = el)}
 				onToggle=${(e) => {
 					button.setAttribute('aria-expanded', String(e.newState === 'open'))
-					if (e.newState === 'open') placePopover(picker, button)
+					if (e.newState === 'open') placePopover(picker, anchor ?? button)
+					else anchor = button
 				}}
 			>
 				<ul>
@@ -336,11 +352,14 @@ export function Composer(props) {
 					>
 						${(r) => PickerRunner(r, () => picker.hidePopover())}
 					<//>
-					<${Show} when=${() => bots.length}
-						><li><h4>Bots</h4></li><//
-					>
-					<${For} each=${() => bots}> ${(bot) => PickerBot(bot, () => picker.hidePopover())} <//>
+					<${Show} when=${() => !homeBot(current())}>
+						<${Show} when=${() => bots.length}
+							><li><h4>Bots</h4></li><//
+						>
+						<${For} each=${() => bots}> ${(bot) => PickerBot(bot, () => picker.hidePopover())} <//>
+					<//>
 				</ul>
+				<${Show} when=${() => !homeBot(current())}>
 				<input
 					class="recipients"
 					aria-label="Recipients"
@@ -353,6 +372,7 @@ export function Composer(props) {
 						if (e.key === 'Enter') e.preventDefault()
 					}}
 				/>
+				<//>
 			</div>
 		</form>
 	`
@@ -386,10 +406,9 @@ function PickerBot(bot, close) {
 
 function PickerRunner(runner, close) {
 	const choice = () => choiceFor(runner)
-	const selected = () =>
-		recipients().some(
-			(p) => p.runner === runner.name && (!p.name || p.name === homeBot(current())?.name),
-		)
+	// The thread's agent, or in a bot's home, the bot
+	const mine = (p) => !p.name || p.name === homeBot(current())?.name
+	const selected = () => recipients().some((p) => p.runner === runner.name && mine(p))
 	const models = () => [
 		...new Set([choice().model, runner.model, ...(runner.offers ?? [])].filter(Boolean)),
 	]
@@ -419,7 +438,7 @@ function PickerRunner(runner, close) {
 								'model',
 								{
 									on: recipients().some(
-										(p) => p.runner === runner.name && p.model === model && !p.name,
+										(p) => p.runner === runner.name && p.model === model && mine(p),
 									),
 								},
 							]}

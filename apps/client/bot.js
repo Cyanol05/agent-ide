@@ -3,7 +3,7 @@ import html from '@solidjs/html'
 import { createEffect, createSignal, For, onSettled, refresh, Show, snapshot } from 'solid-js'
 import { api, bots, colorOf, current, openThread, threads } from './server.js'
 import { busiest, formatAgent } from './agent.js'
-import { recipients } from './composer.js'
+import { openPicker, recipients } from './composer.js'
 import { Dot } from './dot.js'
 import { ThreadItem } from './thread-list.js'
 import { report } from './notice.js'
@@ -23,17 +23,14 @@ export const BotItem = (props) => html`
 `
 
 export function BotSettings(props) {
-	let instructionsField, modelField
+	let instructionsField
 	const [instructions, setInstructions] = createSignal('')
-	const [model, setModel] = createSignal('')
 	createEffect(
-		() => [props.bot.instructions, formatAgent(props.bot.to)],
-		([instructions, model]) => {
+		() => props.bot.instructions,
+		(instructions) => {
 			if (document.activeElement !== instructionsField) setInstructions(instructions)
-			if (document.activeElement !== modelField) setModel(model)
 		},
 	)
-	const [error, setError] = createSignal('')
 	const elsewhere = () =>
 		threads.filter(
 			(t) =>
@@ -58,29 +55,14 @@ export function BotSettings(props) {
 						.catch(report)}
 			></textarea>
 			<h3>Model</h3>
-			<input
-				class=${() => ['model', { bad: !!error() }]}
-				aria-label="Bot model"
-				ref=${(el) => {
-					modelField = el
-				}}
-				spellcheck="false"
-				title=${() => error() || 'The model it joins new threads with: model:thinking@runner'}
-				value=${() => model()}
-				onInput=${(e) => setModel(e.currentTarget.value)}
-				onKeyDown=${(e) => {
-					if (e.key === 'Enter') e.currentTarget.blur()
-				}}
-				onChange=${async () => {
-					try {
-						await api('/api/bots', { name: props.bot.name, to: model().trim() })
-						setError('')
-						refresh(bots)
-					} catch (e) {
-						setError(e.message)
-					}
-				}}
-			/>
+			<button
+				type="button"
+				class="model"
+				title="The model it joins new threads with"
+				onClick=${(e) => openPicker(e.currentTarget)}
+			>
+				${() => formatAgent(props.bot.to)}
+			</button>
 			<${Show} when=${() => elsewhere().length}>
 				<h3 class="also">Also in</h3>
 				<ul class="thread-family">
