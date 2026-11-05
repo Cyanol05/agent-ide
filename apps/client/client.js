@@ -38,9 +38,11 @@ function Client() {
 			class="mode-toggle"
 			type="button"
 			aria-pressed=${() => String(chat())}
+			title=${() => (chat() ? 'Back to the story' : '')}
+			aria-label=${() => (chat() ? 'Back to the story' : 'Just the chat')}
 			onClick=${() => setChat(!chat())}
 		>
-			${() => (chat() ? 'With the story' : 'Just the chat')}
+			${() => (chat() ? '↑' : 'Just the chat')}
 		</button>
 		<${Notice} />
 		<${Errored}

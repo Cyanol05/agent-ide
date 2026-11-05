@@ -1039,13 +1039,25 @@ body.chat {
 		overflow: hidden;
 	}
 
-	/* Centred in the thread's header, as far in from the right as the title is from the left. */
+	/* Out of the way: a small arrow at the end of the runners row, under the thread list. */
 	.mode-toggle {
 		position: absolute;
-		top: 0.35rem;
-		right: 0.9rem;
+		bottom: 0.4rem;
+		left: calc(var(--list-width, 15rem) - 2.4rem);
 		z-index: 2;
 		margin: 0;
+		width: 1.6rem;
+		height: 1.6rem;
+		padding: 0;
+		border-color: transparent;
+		background: none;
+		color: var(--mute);
+		font-size: 14px;
+
+		&:hover {
+			border-color: var(--line);
+			color: inherit;
+		}
 	}
 
 	.system {
@@ -1408,23 +1420,11 @@ body.chat .thread-list > ul > li:active {
 		overscroll-behavior: none;
 
 		.mode-toggle {
-			display: block;
 			position: fixed;
-			left: 0;
-			bottom: 0;
-			top: auto;
-			right: 0;
+			left: auto;
+			right: 0.6rem;
+			bottom: calc(0.45rem + env(safe-area-inset-bottom));
 			z-index: 4;
-			width: auto;
-			margin: 0;
-			border: 0;
-			border-top: 1px solid var(--line);
-			border-radius: 0;
-			background: Canvas;
-			color: var(--mute);
-			padding: 0.7rem 0.8rem calc(0.7rem + env(safe-area-inset-bottom));
-			text-align: left;
-			font-size: 13px;
 		}
 
 		.app-bar {
@@ -1515,8 +1515,7 @@ body.chat .thread-list > ul > li:active {
 			overscroll-behavior: contain;
 			border: 0;
 			background: Canvas;
-			padding: calc(0.6rem + env(safe-area-inset-top)) 0.6rem
-				calc(2.75rem + env(safe-area-inset-bottom));
+			padding: calc(0.6rem + env(safe-area-inset-top)) 0.6rem 0;
 		}
 
 		.threads {
