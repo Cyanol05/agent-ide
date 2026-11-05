@@ -72,6 +72,7 @@ export function System() {
 				<small><code>${() => url}</code></small>
 				<div class="body">
 					<${ThreadList} />
+					<${ListEdge} />
 					<div class="threads">
 						<${For} each=${() => family()}>${(id) => html`<${Thread} id=${() => id} />`}<//>
 					</div>
@@ -83,5 +84,57 @@ export function System() {
 				>
 			</div>
 		</div>
+	`
+}
+
+/** The chat's thread list is as wide as you drag it, here, on this device; a double-click puts it back. */
+const WIDTH = 'agent-ide.list-width'
+const setWidth = (px) => {
+	if (px) document.documentElement.style.setProperty('--list-width', `${px}px`)
+	else document.documentElement.style.removeProperty('--list-width')
+	try {
+		if (px) localStorage.setItem(WIDTH, String(px))
+		else localStorage.removeItem(WIDTH)
+	} catch {}
+}
+try {
+	const saved = Number(localStorage.getItem(WIDTH))
+	if (saved) document.documentElement.style.setProperty('--list-width', `${saved}px`)
+} catch {}
+
+function ListEdge() {
+	const fit = (px) => Math.round(Math.min(Math.max(px, 160), Math.min(640, innerWidth / 2)))
+	const list = (el) => el.parentElement.querySelector('.thread-list')
+	return html`
+		<div
+			class="list-edge"
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="Thread list width"
+			tabindex="0"
+			title="Drag to resize; double-click to reset"
+			onPointerDown=${(e) => {
+				const edge = e.currentTarget,
+					left = list(edge).getBoundingClientRect().left
+				edge.setPointerCapture(e.pointerId)
+				const move = (m) => setWidth(fit(m.clientX - left))
+				const up = () => {
+					edge.removeEventListener('pointermove', move)
+					edge.removeEventListener('pointerup', up)
+					document.body.classList.remove('resizing')
+				}
+				edge.addEventListener('pointermove', move)
+				edge.addEventListener('pointerup', up)
+				document.body.classList.add('resizing')
+				e.preventDefault()
+			}}
+			onDblClick=${() => setWidth(null)}
+			onKeyDown=${(e) => {
+				const step = { ArrowLeft: -16, ArrowRight: 16 }[e.key]
+				if (!step) return
+				e.preventDefault()
+				setWidth(fit(list(e.currentTarget).offsetWidth + step))
+			}}
+		></div>
 	`
 }

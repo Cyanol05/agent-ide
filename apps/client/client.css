@@ -1075,7 +1075,8 @@ body.chat {
 			height: 100%;
 			margin: 0;
 			gap: 0;
-			grid-template-columns: 15rem minmax(0, 1fr);
+			grid-template-columns: var(--list-width, 15rem) minmax(0, 1fr);
+			position: relative;
 			grid-template-rows: minmax(0, 1fr);
 		}
 	}
@@ -2066,4 +2067,40 @@ body:not(.chat).side .scrim {
 	inset: 0;
 	z-index: 9;
 	background: rgb(0 0 0 / 0.4);
+}
+
+/* The thread list's right edge drags; a line shows where while you hover or drag. */
+.list-edge {
+	display: none;
+}
+
+body.chat .list-edge {
+	display: block;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: calc(var(--list-width, 15rem) - 3px);
+	width: 7px;
+	z-index: 2;
+	cursor: col-resize;
+	touch-action: none;
+
+	&:hover,
+	&:focus-visible,
+	body.resizing & {
+		outline: none;
+		background: linear-gradient(to right, transparent 2px, var(--edge) 2px 4px, transparent 4px);
+	}
+}
+
+/* While dragging, nothing else selects or shows its own cursor. */
+body.resizing {
+	cursor: col-resize;
+	user-select: none;
+}
+
+@media (max-width: 700px) {
+	body.chat .list-edge {
+		display: none;
+	}
 }
