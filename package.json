@@ -24,8 +24,8 @@
 		"@solidjs/html": "2.0.0-rc.20",
 		"@solidjs/signals": "2.0.0-rc.20",
 		"@solidjs/web": "2.0.0-rc.20",
+		"mermaid": "^12.3.0",
 		"solid-js": "2.0.0-rc.20",
-		"mermaid": "^12.2.0",
-		"ws": "^8.21.0"
+		"ws": "^8.22.1"
 	}
 }
