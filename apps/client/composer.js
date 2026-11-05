@@ -8,6 +8,7 @@ import {
 	colorOf,
 	createThread,
 	current,
+	drawer,
 	entries,
 	homeBot,
 	openThread,
@@ -215,12 +216,19 @@ export function Composer(props) {
 					aria-label="Model"
 					ref=${(el) => (button = el)}
 					aria-expanded="false"
-					disabled=${() => !!homeBot(current())}
 					title=${() =>
-						homeBot(current()) ? 'Its home asks the bot' : recipients().map(formatAgent).join(', ')}
+						homeBot(current())
+							? "Its home asks the bot: change its model in the bot's settings"
+							: recipients().map(formatAgent).join(', ')}
 					onClick=${() => {
 						openThread(props.thread)
-						picker.togglePopover()
+						// A bot's model is the bot's: its settings are where it changes
+						if (homeBot(current())) {
+							drawer('side')
+							requestAnimationFrame(() =>
+								document.querySelector('.thread-details .bot input.model')?.focus(),
+							)
+						} else picker.togglePopover()
 					}}
 				>
 					<${Dot} state=${() => (recipients().length ? (busy() ? 'working' : 'on') : '')} />

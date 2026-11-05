@@ -1319,10 +1319,17 @@ body.chat {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+	/* Visible the moment it opens, so what's inside can take focus; hidden only once it has slid away. */
 	body.chat .thread-details {
 		transition:
 			transform 0.32s cubic-bezier(0.23, 1, 0.32, 1),
-			visibility 0.32s;
+			visibility 0s 0.32s;
+	}
+
+	body.chat.side .thread-details {
+		transition:
+			transform 0.32s cubic-bezier(0.23, 1, 0.32, 1),
+			visibility 0s;
 	}
 }
 
