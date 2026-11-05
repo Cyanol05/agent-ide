@@ -70,6 +70,11 @@ const setPick = (to, bots, typed = null) =>
 	})
 /** Choosing a model replaces the agent's pick and keeps the bots; in a bot's home, it is the bot's own model */
 export function choose(to, always = true) {
+	if (borrower && always) {
+		const pick = borrower
+		borrower = undefined
+		return pick(to)
+	}
 	const bot = homeBot(current())
 	if (bot)
 		return api('/api/bots', { name: bot.name, to: { ...to, name: undefined } })
@@ -81,9 +86,15 @@ export function choose(to, always = true) {
 /** A runner's settings change the agent's pick only when the agent is on that runner */
 export const configure = (to) => choose(to, false)
 
-/** The open thread's composer lends its model picker, so a bot's settings pick its model with the same one */
-let lend
-export const openPicker = (anchor) => lend?.(anchor)
+/**
+ * The open thread's composer lends its model picker, so a bot's settings pick its model with the same one; with
+ * `onPick`, the model picked goes there instead, as the settings' memory model does
+ */
+let lend, borrower
+export const openPicker = (anchor, onPick) => {
+	borrower = onPick
+	lend?.(anchor)
+}
 
 export function Composer(props) {
 	let input, picker, button, chooser, anchor
@@ -304,7 +315,7 @@ export function Composer(props) {
 				onToggle=${(event) => {
 					button.setAttribute('aria-expanded', String(event.newState === 'open'))
 					if (event.newState === 'open') placePopover(picker, anchor ?? button)
-					else anchor = button
+					else [anchor, borrower] = [button, undefined]
 				}}
 			>
 				<ul>

@@ -413,10 +413,11 @@ stateDiagram-v2
 
 				<h2 id="modules">Modules</h2>
 				<p>
-					Anything optional is a module: one file in <code>modules/</code>. They're picked the way
-					Pi picks tools, in <code>agent-ide.json</code> or <code>MODULES=+search,-talk</code>:
+					Anything optional is a module: one file in <code>modules/</code>. In the chat, settings beside
+					the runners switches them on and off, on the server's own machine, and saving restarts the
+					server. They live in <code>agent-ide.json</code>, picked the way Pi picks tools:
 					names replace the defaults, <code>+name</code> and <code>-name</code> change them, and a
-					path is a module of your own. In the chat, settings beside the runners shows which are on.
+					path is a module of your own. <code>MODULES=+search,-talk</code> overrides the file.
 				</p>
 				<dl class="words">
 					<dt>

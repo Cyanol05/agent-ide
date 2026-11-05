@@ -23,7 +23,7 @@ import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite
 import { CodingTools } from '@earendil-works/pi-durable/tools'
 import { createCodemodeExtension } from '@earendil-works/pi-durable/codemode'
 import { CodemodeSandbox } from '@earendil-works/pi-codemode'
-import { load } from './modules.js'
+import { load, readConfig } from './modules.js'
 import { WebSocketServer } from 'ws'
 import { AGENT, agentName, agentTo, collect, field, keyOf, said, speaker } from './util.js'
 import {
@@ -1134,7 +1134,10 @@ const defaults = {
 	search: false,
 	bots: false,
 }
-const modules = await load('server', defaults, core)
+/** agent-ide.json, as it started; the page changes it, and a restart takes it up */
+const settings = await readConfig()
+core.config = settings.config
+const modules = await load('server', defaults, core, settings)
 for (const module of modules) if (module.extension) registry.install(module.extension)
 /** One module answers each of these; two claiming one is a mistake, not an order */
 const hook = (name) => {
@@ -1202,8 +1205,15 @@ const routes = [
 			threads: (await threadIds()).length,
 			runners: Object.keys(await keys()).length,
 			work: await harness.inspect(context),
+			settings: {
+				memory: { model: settings.config.memory?.model ?? '' },
+				/** Set in the environment, these win over agent-ide.json */
+				overrides: ['MODULES', 'MEMORY_MODEL'].filter((name) => process.env[name]),
+				restarts: typeof process.execve === 'function',
+			},
 		}),
 	],
+	['POST /api/settings', async (req) => saveSettings(await input(req))],
 	[
 		'GET /api/runners',
 		async () => {
@@ -1283,6 +1293,8 @@ async function handleRequest(req, res) {
 		req.method === 'DELETE' && url.pathname.startsWith('/api/runners/')) &&
 		!local(req))
 		return send(res, 403, { error: 'Open this page on the server’s own machine to connect a runner' })
+	if (req.method === 'POST' && url.pathname === '/api/settings' && !local(req))
+		return send(res, 403, { error: 'Open this page on the server’s own machine to change its settings' })
 	if (req.method === 'OPTIONS') {
 		res.writeHead(204)
 		return res.end()
@@ -1600,6 +1612,45 @@ async function upgrade(req, raw, head) {
 	)
 }
 
+/**
+ * Writes agent-ide.json and restarts to take it up: in place where the runtime can (same terminal, same process),
+ * else it stops and says so. `modules` maps a name to on or off; memory's `model` empty means each thread's agent.
+ */
+async function saveSettings({ modules: wanted = {}, memory }) {
+	const loaded = modules.map((module) => module.name)
+	const own = (settings.config.modules ?? []).map((entry) => entry.replace(/^[+-]/, '')).filter((entry) => entry.includes('/'))
+	const known = [...Object.keys(defaults), ...own.map((entry) => path.basename(entry, '.js'))]
+	for (const name of Object.keys(wanted))
+		if (!known.includes(name)) throw new Error(`No module named ${name}`)
+	const on = (name) => wanted[name] ?? loaded.includes(name)
+	const next = { ...settings.config }
+	next.modules = [
+		...Object.keys(defaults)
+			.filter((name) => on(name) !== defaults[name])
+			.map((name) => `${on(name) ? '+' : '-'}${name}`),
+		...own.filter((entry) => on(path.basename(entry, '.js'))).map((entry) => `+${entry}`),
+	]
+	if (!next.modules.length) delete next.modules
+	if (memory !== undefined) {
+		const model = typeof memory.model === 'string' ? memory.model.trim() : ''
+		if (model && !model.includes('@')) throw new Error('A memory model is model@runner, or empty for each thread\'s agent')
+		if (model) next.memory = { ...next.memory, model }
+		else delete next.memory
+	}
+	writeFileSync(settings.file, `${JSON.stringify(next, null, '\t')}\n`)
+	const restarts = typeof process.execve === 'function'
+	setTimeout(() => restart(restarts).catch((error) => (console.error(error), process.exit(1))), 100)
+	return { saved: settings.file, restarts }
+}
+/** Closes the store, so nothing in flight is lost, then starts again with the same port and environment, or stops */
+async function restart(again) {
+	say('settings', again ? 'saved; restarting' : 'saved; stopped, start it again to take them up')
+	if (lent?.kill) lent.kill()
+	await (stopping ??= harness.close(context))
+	if (!again) process.exit(0)
+	process.execve(process.execPath, process.argv, { ...process.env, PORT: String(port) })
+}
+
 /** The server connects this machine too, the folder it starts in or RUNNER=~/code */
 let lent
 async function connectSelf(url) {
@@ -1633,6 +1684,8 @@ for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1'])
 		process.exit(1)
 	})
 	server.listen(port, host, () => {
+		// PORT=0 takes any free port: keep the one it got, for a restart and for runner commands
+		port ||= server.address().port
 		const addresses =
 			host === '0.0.0.0'
 				? Object.values(os.networkInterfaces())

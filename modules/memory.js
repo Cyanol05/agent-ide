@@ -2,8 +2,8 @@
  * Gives each thread a memory: one short line per message, pairs of lines merged going up, so an agent reads the lines
  * instead of every word and zooms back down with `zoom`. MODULES=+memory. The thread's own agent writes its lines, as
  * it runs now, so the runner that works for a thread pays for its memory; with no agent there yet, a bot there writes
- * them, and with neither, the lines wait for the first one asked. MEMORY_MODEL=model@runner has one agent write
- * every thread's lines instead.
+ * them, and with neither, the lines wait for the first one asked. A model in the settings, `memory.model` in
+ * agent-ide.json or MEMORY_MODEL=model@runner, has that one agent write every thread's lines instead.
  */
 import { retryAssistantCall } from '@earendil-works/pi-ai'
 import { num, obj, opt } from '@earendil-works/pi-schema'
@@ -87,8 +87,8 @@ Tools:
 The memory is yours. A person's latest word on a thing is the truth; an agent's word, yours included, is a claim, so before you rely on one, zoom or search to what a person said. Whenever you need any information, first find its latest mention in the memory and zoom until you have it whole, before any other source, and before you act, guess or ask. Zoom is your way into the tree; when you know words it used, a tool that searches this thread's messages, if you have one, finds them faster. Lines keep little of tool output, so say in your answer what you learned that will matter later.`
 
 export function server(core) {
-	const name = process.env.MEMORY_MODEL
-	if (name && !name.includes('@')) throw new Error('MEMORY_MODEL is model@runner, or leave it out')
+	const name = process.env.MEMORY_MODEL || core.config?.memory?.model
+	if (name && !name.includes('@')) throw new Error('memory\'s model is model@runner, or leave it out')
 	const override = name && agentTo(name)
 
 	/** Who writes a thread's lines: MEMORY_MODEL, else its agent as it runs now, else a bot there, else nobody yet */

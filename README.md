@@ -17,14 +17,22 @@ From a clone, `npm install && node server.js` does the same; for development, `p
 ## Running it
 
 ```sh
-HOST=0.0.0.0 PORT=3001 node server.js   # reachable from other machines
-RUNNER=~/code node server.js            # agents work in another folder; RUNNER=0 connects none
-MODULES=+search,+bots node server.js    # turn modules on (+name) or off (-name)
-MODULES=+memory node server.js          # each thread's agent writes its memory; MEMORY_MODEL=haiku@desk picks one for all
-DB_PATH=other.sqlite node server.js     # another store
+node server.js
 ```
 
-talk, status and context are on by default, the rest off; each module file's first lines say what it does. Bare names replace the whole list: `MODULES=bots,search` loads only those two. To keep your choice, put `{"modules":["+bots","+search"]}` in `agent-ide.json` in the folder you start from; `MODULES` applies on top.
+Its settings live in `agent-ide.json` in the folder you start it in, and the page changes them: open settings beside the runners, switch modules on or off, pick memory's model, and save. The server writes the file and restarts itself, losing nothing; where the runtime can't restart in place, the page says it stopped and you start it again. Only the server's own machine can change them; elsewhere the page shows them read-only.
+
+talk, status and context are on by default, the rest off; each module file's first lines say what it does. Memory has each thread's own agent write its lines, unless you pick one model for all. In the file that reads `{"modules": ["+memory", "-status"], "memory": {"model": "haiku@desk"}}`; bare names replace the whole list.
+
+Environment variables override the file:
+
+```sh
+HOST=0.0.0.0 PORT=3001 node server.js   # reachable from other machines
+RUNNER=~/code node server.js            # agents work in another folder; RUNNER=0 connects none
+MODULES=+search,-talk node server.js    # modules on (+name) or off (-name)
+MEMORY_MODEL=haiku@desk node server.js  # one model writes every thread's memory
+DB_PATH=other.sqlite node server.js     # another store
+```
 
 ## Another machine
 

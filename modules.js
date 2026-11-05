@@ -2,19 +2,23 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-/** A module exports `server(core)` and/or `runner(core)`, which return its hooks */
-export async function load(end, defaults, core) {
+/** agent-ide.json in the folder it starts in: its settings, which env vars override */
+export async function readConfig() {
 	const file = path.resolve('agent-ide.json')
 	const text = await readFile(file, 'utf8').catch((error) => {
 		if (error.code === 'ENOENT') return '{}'
 		throw error
 	})
-	let config
 	try {
-		config = JSON.parse(text)
+		return { file, config: JSON.parse(text) }
 	} catch (error) {
 		throw new Error(`${file}: ${error.message}`)
 	}
+}
+
+/** A module exports `server(core)` and/or `runner(core)`, which return its hooks */
+export async function load(end, defaults, core, settings) {
+	const { file, config } = settings ?? (await readConfig())
 	let on = Object.keys(defaults).filter((name) => defaults[name])
 	for (const [where, list] of [
 		[file, config.modules],
