@@ -922,11 +922,9 @@ async function postEntry(id, author, input) {
 		)
 	if (command && !to.length) throw new Error('Pick a runner to run the command on')
 	if (command) await reach(to, author, await known())
-	// A thread has one agent, so a second recipe asks in a fork, side by side
-	const others = command ? [] : to.filter((t) => !t.name).slice(1)
-	if (others.length) await reach(others, author, await known())
-	to = to.filter((t) => !others.includes(t))
-	const result = await once(input.requestId, `post ${id}`, async (tx) =>
+	if (!command && to.filter((t) => !t.name).length > 1)
+		throw new Error('A thread has one agent: ask one model here, plus any bots')
+	return once(input.requestId, `post ${id}`, async (tx) =>
 		command
 			? (await tx.createTask(Shell, { author, command, to: to[0] }, { ...own, conversationId: id }),
 				{ command, to: to[0] })
@@ -937,12 +935,6 @@ async function postEntry(id, author, input) {
 					{ steer: input.steer === true },
 				),
 	)
-	if (!others.length) return result
-	const { title } = await thread(id)
-	const forks = []
-	for (const t of others)
-		forks.push((await forkThread(id, { at: result.entry, title: `${title} (${agentName(t)})`, to: t }, author)).id)
-	return { ...result, forks }
 }
 
 /** Inside the caller's commit */
@@ -1024,11 +1016,8 @@ async function setTools(id, { tools }) {
 	})
 }
 
-/**
- * Forks history and agents at `at`, but keeps the source's current thread-wide tools. With `to`, the fork's agent, or that
- * bot, switches to it there and is asked everything it hasn't seen.
- */
-async function forkThread(id, { at, title, to }, author = 'anon') {
+/** Forks history and agents at `at`, but keeps the source's current thread-wide tools */
+async function forkThread(id, { at, title }) {
 	const shown = (await messages(id)).filter((e) => e.id <= Number(at))
 	const answers = {}
 	const asked = new Set()
@@ -1053,10 +1042,6 @@ async function forkThread(id, { at, title, to }, author = 'anon') {
 			}
 		}),
 	)
-	if (to !== undefined) {
-		to = await whom(undefined, to)
-		await reach([to], author, await known())
-	}
 	const named = title?.trim() || `${source.title} (fork)`
 	const fork = await (
 		await conversation(id)
@@ -1075,33 +1060,12 @@ async function forkThread(id, { at, title, to }, author = 'anon') {
 					})
 				}
 				for (const [key, t] of fresh) {
-					// One never asked before starts as `to` rather than being told it moved
-					if (to && key === (to.name ?? AGENT)) continue
 					row[key] = await newAgent(
 						tx,
 						forkId,
 						shown.filter((e) => !ownAnswer(e, key)).map((e) => e.id),
 					)
 					await setUp(tx, row[key].conversation, forkId, t)
-				}
-				if (to) {
-					const key = to.name ?? AGENT
-					if (row[key]) {
-						const was = await agentOf(row[key].conversation, key, tx)
-						await switchTo(tx, row[key], {
-							...to,
-							thinkingLevel: to.thinkingLevel ?? was.thinkingLevel,
-							dir: to.dir ?? (to.runner === was.runner ? was.dir : undefined),
-						})
-					} else {
-						row[key] = await newAgent(
-							tx,
-							forkId,
-							shown.filter((e) => !ownAnswer(e, key)).map((e) => e.id),
-						)
-						await setUp(tx, row[key].conversation, forkId, to)
-					}
-					await ask(tx, forkId, row[key])
 				}
 				Object.assign(await tx.doc(Thread, forkId), { title: named, createdAt: now(), agents: row })
 			},
@@ -1237,7 +1201,7 @@ const routes = [
 	['GET /api/threads/:id', (req, id) => threadView(id, user(req))],
 	['DELETE /api/threads/:id', (req, id) => hideThread(id)],
 	['POST /api/threads/:id/entries', async (req, id) => postEntry(id, user(req), await input(req))],
-	['POST /api/threads/:id/fork', async (req, id) => forkThread(id, await input(req), user(req))],
+	['POST /api/threads/:id/fork', async (req, id) => forkThread(id, await input(req))],
 	['POST /api/threads/:id/title', async (req, id) => setTitle(id, await input(req))],
 	['POST /api/threads/:id/tools', async (req, id) => setTools(id, await input(req))],
 	['POST /api/threads/:id/read', (req, id) => markRead(id, user(req))],

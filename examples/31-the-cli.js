@@ -1,4 +1,4 @@
-/** The CLI asks a thread's agent or a second model's fork, in a new thread or an old one, and prints the answers as they land */
+/** The CLI asks a thread's agent, in a new thread or an old one, and prints its answers as they land */
 import { execFile } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { promisify } from 'node:util'
@@ -41,26 +41,14 @@ check(
 )
 
 const both = await cli(
-	'post',
-	'--thread',
-	id,
-	'--to',
-	'echo/echo@laptop',
-	'--to',
-	'echo/echo@desk',
-	'both of you',
-)
-const fork = /thread (\d+), a fork/.exec(both)?.[1]
-check(
-	fork && both.includes('echo@laptop heard') && both.includes('echo@desk heard'),
-	'two models on two runners, one message: the second answers in a fork, and both answers print',
-	both,
-)
+	'post', '--thread', id, '--to', 'echo/echo@laptop', '--to', 'echo/echo@desk', 'both of you',
+).catch((error) => error.stderr)
+check(/one agent/.test(both), 'two models in one message are refused: a thread has one agent', both)
 
 const again = await cli('post', '--thread', id, 'and again')
 check(
-	/#\d+ echo\/echo@laptop\n/.test(again) && !again.includes('echo/echo@desk'),
-	"no --to asks whom the thread last asked: its one agent, and the fork's stays there",
+	/#\d+ echo\/echo@laptop\n/.test(again),
+	'no --to asks whom the thread last asked',
 	again,
 )
 
@@ -73,7 +61,7 @@ check(
 
 const threads = await cli('threads')
 check(
-	threads.includes(`#${id} hello`) && threads.includes('echo/echo@desk'),
+	threads.includes(`#${id} hello`) && threads.includes('echo/echo@laptop'),
 	'threads lists it with its agents',
 	threads,
 )

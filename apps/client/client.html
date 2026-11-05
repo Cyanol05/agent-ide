@@ -85,17 +85,6 @@
 				</div>
 			</section>
 
-			<section data-focus="runners">
-				<h2>Ask two at once</h2>
-				<p>
-					Shift-click a second runner or model, and one message starts two threads, one agent in
-					each, side by side. Same question, two machines or two models.
-				</p>
-				<div class="try">
-					<button data-try="two">Ask every runner what machine it's on</button>
-				</div>
-			</section>
-
 			<section data-focus="thread">
 				<h2>Agents talk to each other</h2>
 				<p>
@@ -108,8 +97,12 @@
 					what's said in a child stays in the child. And an agent's words reach others marked as an
 					agent's, so none can pass for yours.
 				</p>
+				<p>
+					A thread has one agent, so to hear from two machines or two models, have it ask them: two
+					child threads, side by side, and one answer that puts them together.
+				</p>
 				<div class="try">
-					<button data-try="talk">Have one agent ask another</button>
+					<button data-try="talk">Have the agent ask two others</button>
 				</div>
 			</section>
 
@@ -336,7 +329,7 @@ sequenceDiagram
 					<li>
 						A message asks whom its <code>to</code> names: the thread's agent, as it is or as a new
 						recipe, and any bots. With no <code>to</code>, it asks whoever the thread asked last, as
-						they are now, and <code>to: null</code> asks nobody. A second recipe asks in a fork.
+						they are now, and <code>to: null</code> asks nobody.
 					</li>
 					<li>
 						Threads talk like email. An agent asks with <code>post</code>. With no thread, it starts
@@ -478,7 +471,7 @@ stateDiagram-v2
 						One name in many threads: a name with a home thread, a recipe and instructions. Ask
 						<code>ada</code> in any thread and an agent named ada joins it from her recipe;
 						<code>ada=haiku@desk</code> switches her there, in place, as any agent switches. In her
-						home, the model picker sets her recipe. Every ada reads her
+						home, her model is in her settings, and her next message there switches her. Every ada reads her
 						instructions before each request and knows her other threads and the other bots, so
 						she's one person, not one conversation. At home she rewrites them herself, or makes
 						another bot. Forgetting her keeps every thread.

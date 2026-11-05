@@ -6,8 +6,8 @@ import WebSocket from 'ws'
 const usage = `node cli.js [--server url] [--as name] <command>
 
   post <message>   post to a new thread, or --thread N, and print the answers as they land
-                   --to agent    model@runner, a runner, a bot's name, or nobody; a second model@runner
-                                 asks it in a fork, side by side (left out: whom the thread last asked)
+                   --to agent    model@runner, a runner, a bot's name, or nobody; repeat for bots
+                                 (left out: whom the thread last asked)
                    --thinking t  how hard they think: off, minimal, low, medium, high, xhigh, max
                    --dir d       a folder inside the runner's
                                  --thinking and --dir require a model@runner recipe, not a bot's name
@@ -101,27 +101,19 @@ async function post() {
 			...(o.steer ? { steer: true } : {}),
 			requestId: crypto.randomUUID(),
 		})
-		for (const fork of posted.forks ?? []) console.error(`thread ${fork}, a fork for the next model`)
 		if (o['no-wait'] || !(posted.command || posted.to?.length)) return
-		/** A second model answers in its fork, so wait for each thread */
-		const last = Object.fromEntries(
-			[id, ...(posted.forks ?? [])].map((t) => [t, posted.entry ?? seen]),
-		)
+		let last = posted.entry ?? seen
 		let waiting = ''
 		for (;;) {
-			const views = await Promise.all(Object.keys(last).map((t) => api('GET', `/api/threads/${t}`)))
-			for (const view of views)
-				for (const e of view.entries.filter((e) => e.id > last[view.id])) {
-					if (e.id !== posted.entry) show(e)
-					last[view.id] = e.id
-				}
-			const blocked = views
-				.flatMap((v) => v.agents)
-				.filter((a) => a.status === 'blocked')
-				.map((a) => a.to?.runner)
+			const view = await api('GET', `/api/threads/${id}`)
+			for (const e of view.entries.filter((e) => e.id > last)) {
+				if (e.id !== posted.entry) show(e)
+				last = e.id
+			}
+			const blocked = view.agents.filter((a) => a.status === 'blocked').map((a) => a.to?.runner)
 			if (blocked.join() !== waiting && (waiting = blocked.join()))
 				console.error(`waiting for ${waiting}, offline…`)
-			if (!views.some((v) => ['working', 'blocked'].includes(v.status))) return
+			if (!['working', 'blocked'].includes(view.status)) return
 			if ((await changes.next()).done)
 				throw new Error('Server disconnected while waiting for the answer')
 		}

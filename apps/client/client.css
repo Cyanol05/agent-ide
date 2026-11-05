@@ -1613,18 +1613,6 @@ body.chat .thread-list > ul > li:active {
 		}
 	}
 
-	.also {
-		flex: none;
-		font-size: 12px;
-		padding: 0.1rem 0.5rem;
-		border-radius: 99px;
-		color: var(--mute);
-
-		&[aria-pressed='true'] {
-			color: var(--ink);
-		}
-	}
-
 	.models {
 		display: grid;
 	}

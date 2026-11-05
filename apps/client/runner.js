@@ -21,7 +21,7 @@ export function Runner(props) {
 			(to) => agentKey(to) !== agentKey(choice()),
 		)
 	const stop = (e) => e.stopPropagation()
-	const pick = (e) => choose(choice(), e.shiftKey || e.metaKey || e.ctrlKey)
+	const pick = () => choose(choice())
 	return html`
 		<div
 			class=${() => [
@@ -36,7 +36,7 @@ export function Runner(props) {
 			role="button"
 			tabindex="0"
 			aria-label=${() => runner().name}
-			title="Click to ask it; shift-click to ask it too"
+			title="Click to ask it"
 			onClick=${pick}
 			onKeyDown=${(e) => {
 				if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {

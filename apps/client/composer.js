@@ -1,7 +1,6 @@
 /**
  * The draft stays with the composer as you move between threads; a pick belongs to the thread it was made in, since asking
- * a thread's agent with another model switches it. Two models at once ask in two threads, and in a bot's home, picking
- * changes the bot.
+ * a thread's agent with another model switches it. A thread has one agent, so a pick is one model, plus any bots.
  */
 import html from '@solidjs/html'
 import {
@@ -77,16 +76,9 @@ export const selectRecipients = (to) =>
 		s.for = current()
 		s.typed = null
 	})
-/** Choosing replaces the recipients; shift-click adds or removes one, and each model past the first asks in a fork. */
-export function choose(to, also = false) {
-	const previous = recipients()
-	const selected = previous.find((p) => sameAgent(p, to))
-	let next = [to]
-	if (also) {
-		next = previous
-		if (!selected) next = [...previous, to]
-		else if (previous.length > 1) next = previous.filter((p) => p !== selected)
-	}
+/** Choosing a model replaces the thread's agent's pick, and keeps any bots beside it */
+export function choose(to) {
+	const next = [to, ...recipients().filter((p) => p.name)]
 	setCompose((s) => {
 		s.to = next
 		s.for = current()
@@ -286,7 +278,7 @@ export function Composer(props) {
 					aria-label="Recipients"
 					autocomplete="off"
 					spellcheck="false"
-					title="model:thinking@runner or a bot's name, comma between several; a second model asks in a thread of its own"
+					title="model:thinking@runner, and any bots' names, comma between them"
 					value=${() => compose.typed ?? recipients().map(formatAgent).join(', ')}
 					onInput=${typeRecipients}
 					onKeyDown=${(e) => {
@@ -349,18 +341,6 @@ function PickerRunner(runner, close) {
 							? `busy in ${runner.busy} thread${runner.busy > 1 ? 's' : ''}`
 							: runner.dir}</small
 				>
-				<${Show}
-					when=${() => !homeBot(current()) && runners.filter((r) => r.online).length > 1}
-				>
-					<button
-						type="button"
-						class="also"
-						aria-pressed=${() => String(selected())}
-						onClick=${() => choose(choice(), true)}
-					>
-						${() => (selected() ? 'asked' : 'ask too')}
-					</button>
-				<//>
 			</div>
 			<div class="models">
 				<${For} each=${() => models()}
@@ -375,12 +355,9 @@ function PickerRunner(runner, close) {
 									),
 								},
 							]}
-							onClick=${(e) => {
-								const to = { ...choice(), model }
-								if (e.shiftKey) choose(to, true)
-								else if (selected() && recipients().length > 1) configure(to)
-								else choose(to)
-								if (!e.shiftKey) close()
+							onClick=${() => {
+								choose({ ...choice(), model })
+								close()
 							}}
 						>
 							<span>${() => model.split('/').pop()}</span

@@ -84,22 +84,6 @@ const TRIES = {
 		link.searchParams.set('user', 'Ana')
 		open(link, '_blank')
 	},
-	two: () => {
-		fresh()
-		const [first, ...others] = defaults()
-		const other = runners
-			.find((r) => r.name === first?.runner)
-			?.offers?.find((m) => m !== first.model)
-		const to =
-			others.length || !first || !other
-				? [first, ...others].filter(Boolean)
-				: [first, { ...first, model: other }]
-		return ask(
-			'What machine are you on, in which folder, and which model are you? One line.',
-			to,
-			null,
-		)
-	},
 	slow: () => {
 		fresh()
 		return ask(
@@ -134,10 +118,19 @@ const TRIES = {
 	},
 	talk: () => {
 		fresh()
-		const [first, second = first] = defaults()
+		const [first, ...others] = defaults()
 		if (!first) throw new Error('Pick a model first.')
+		// Two runners, or two models on one runner, or the one model twice
+		const offer = runners
+			.find((r) => r.name === first.runner)
+			?.offers?.find((m) => m !== first.model)
+		const [a, b] = others.length
+			? others.length > 1
+				? others
+				: [first, others[0]]
+			: [first, { ...first, ...(offer && { model: offer }) }]
 		return ask(
-			`Use your post tool to start a thread asking ${formatAgent(second)} what is in its folder. Wait for its answer, then tell me in one line.`,
+			`With your post tool, start two threads at once: one asking ${formatAgent(a)}, one asking ${formatAgent(b)}, which machine and model each is, in one line. Wait for both answers, then tell me in two lines.`,
 			[first],
 			null,
 		)
