@@ -97,8 +97,8 @@ await api(
 const v3 = await answered(id, 3)
 const cy = v3?.entries.find((e) => e.data.author === 'cy')
 check(
-	cy?.data.to?.join() === 'echo/echo@laptop' && !v3.agents[0].to.thinkingLevel,
-	'pi resolves a pattern to the agent of that name, as it was made',
+	cy?.data.to?.join() === 'echo/echo@laptop' && v3.agents[0].to.thinkingLevel === 'high',
+	'pi resolves a pattern to the agent of that name, which thinks as hard as it now asks',
 	JSON.stringify([cy?.data.to, v3?.agents]),
 )
 check(v3?.agents.length === 1, 'the same model is the same agent', JSON.stringify(v3?.agents))

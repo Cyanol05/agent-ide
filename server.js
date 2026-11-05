@@ -478,9 +478,15 @@ async function whom(threadId, t, command = false, signal) {
 	if (typeof text === 'string' && agents?.[text]) return agentOf(agents[text].conversation, text)
 	const found = typeof text === 'string' && !/[@=]/.test(text) && (await named?.(text))
 	if (found) return address(found, command, signal)
-	const recipe = await address(typeof text === 'string' ? agentTo(text) : text, command, signal)
+	const asked = typeof text === 'string' ? agentTo(text) : text
+	const recipe = await address(asked, command, signal)
 	const name = !command && agentName(recipe)
-	return name && agents?.[name] ? agentOf(agents[name].conversation, name) : recipe
+	if (!name || !agents?.[name]) return recipe
+	// The agent is there already; the thinking this asks with applies from this message on.
+	const agent = await agentOf(agents[name].conversation, name)
+	// A runner alone resolves to pi's default thinking there, which no one asked for.
+	const named = asked?.thinkingLevel || (asked?.model && recipe.thinkingLevel)
+	return named ? { ...agent, thinkingLevel: recipe.thinkingLevel } : agent
 }
 
 /** What `pi --model asked` makes of it on the runner, kept with its models */
@@ -635,6 +641,10 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 		if (!row.agents[name]) {
 			row.agents[name] = await newAgent(tx, threadId, [...prior, entry.id])
 			await setUp(tx, row.agents[name].conversation, threadId, to[i])
+		} else if (to[i].thinkingLevel) {
+			const { conversation } = row.agents[name]
+			if ((await tx.doc(AgentDoc, conversation))?.thinkingLevel !== to[i].thinkingLevel)
+				await configure(tx, conversation, { thinkingLevel: to[i].thinkingLevel })
 		}
 		const recipient = row.agents[name]
 		const { conversation: agent, unseen: held, admission: after } = recipient

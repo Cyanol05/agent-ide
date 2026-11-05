@@ -8,6 +8,7 @@ import {
 	colorOf,
 	createThread,
 	current,
+	entries,
 	homeBot,
 	openThread,
 	runners,
@@ -33,11 +34,20 @@ export const choiceFor = (r) =>
 		model: r.model,
 		thinkingLevel: 'low',
 	}
+/** Whom the thread asked last, as they are now: a message without a pick asks them again, at the level they think at */
+const askedLast = () => {
+	const names = (entries[current()] ?? []).findLast((e) => e.data.to?.length)?.data.to ?? []
+	const agents = threads.find((t) => t.id === current())?.agents ?? []
+	return agents.filter((a) => names.includes(a.name)).map((a) => a.to)
+}
 export const recipients = () => {
 	const bot = homeBot(current())
 	if (bot) return [botAgent(bot)]
+	if (compose.to) return compose.to
+	const last = askedLast()
+	if (last.length) return last
 	const home = runners.find((r) => r.online) ?? runners[0]
-	return compose.to ?? (home?.model ? [choiceFor(home)] : [])
+	return home?.model ? [choiceFor(home)] : []
 }
 export const selectRecipients = (to) =>
 	setCompose((s) => {
