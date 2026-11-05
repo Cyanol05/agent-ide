@@ -1,4 +1,4 @@
-/** Forking at any entry */
+/** Forking at any entry, before an agent's first answer included */
 import {
 	answered,
 	answers,
@@ -8,6 +8,8 @@ import {
 	conversationOf,
 	done,
 	runner,
+	say,
+	scriptedRunner,
 	server,
 	sleep,
 	text,
@@ -119,6 +121,37 @@ check(
 	JSON.stringify({ status: f3v.status, agents: f3v.agents }),
 )
 
+// Before an agent's first answer: forked while it streams
+const bot = await scriptedRunner('bot', (request) =>
+	say(
+		text(request.messages.findLast((m) => m.role === 'user')).includes('@bot')
+			? 'another way'
+			: 'still thinking '.repeat(500),
+	),
+)
+const q = (await api('POST', '/api/threads', { title: 'first question' })).json.id
+const ask = (
+	await api('POST', `/api/threads/${q}/entries`, {
+		body: 'try this',
+		to: { runner: 'bot', model: 'echo/echo' },
+	})
+).json.entry
+await until(async () =>
+	(await api('GET', '/api/runners')).json.some((r) => r.calls.some((c) => c.op === 'stream')),
+)
+const asking = await view(q)
+const early = await view((await api('POST', `/api/threads/${q}/fork`, { at: ask })).json.id)
+const earlyHome = (await api('GET', `/api/conversations/${early.agents[0]?.conversation}`)).json
+check(
+	early.agents.length === 1 &&
+		early.agents[0].name === asking.agents[0]?.name &&
+		early.agents[0].conversation !== asking.agents[0]?.conversation &&
+		!earlyHome.entries?.some((e) => e.kind === 'agent-ide.delivery'),
+	'forked before its first answer, the agent comes along in a conversation of its own that has seen nothing',
+	JSON.stringify([early.agents, earlyHome.entries]),
+)
+await api('POST', `/api/threads/${q}/stop`, {})
+
 // Restart with the director
 srv.kill()
 await sleep(500)
@@ -144,7 +177,27 @@ check(
 	brief(f2after),
 )
 
+check(
+	(await view(early.id)).agents[0]?.status === 'idle',
+	'the agent forked before its answer stays idle after restart',
+)
+const routed = await api('POST', `/api/threads/${early.id}/entries`, {
+	body: '@echo/echo@bot try another way',
+})
+const settled = await answered(early.id)
+const earlyInputs = (await conversationOf(settled ?? (await view(early.id)), 'echo/echo@bot')).entries
+	.filter((e) => e.kind === 'agent-ide.delivery')
+	.map((e) => text(e.model[0]))
+check(
+	routed.json.to?.[0] === 'echo/echo@bot' &&
+		JSON.stringify(earlyInputs) ===
+			JSON.stringify(['oskar: try this\n\noskar: @echo/echo@bot try another way']),
+	'the director reaches it, and its first input carries the inherited question exactly once',
+	JSON.stringify([routed.json, earlyInputs]),
+)
+
 const bad = await api('POST', `/api/threads/${a}/fork`, { at: 999999 })
 check(bad.status >= 400, 'fork at an unknown entry fails', JSON.stringify(bad))
 
+bot.close()
 done()
