@@ -88,7 +88,7 @@ export const openPicker = (anchor) => lend?.(anchor)
 export function Composer(props) {
 	let input, picker, button, chooser, anchor
 	const active = () => current() === props.thread
-	const busy = () => here().some((a) => a.status === 'working')
+	const busy = () => threads.find((t) => t.id === current())?.status === 'working'
 	createEffect(active, (on) => {
 		if (!on) return
 		input.focus()
@@ -376,7 +376,7 @@ function PickerRunner(runner, close) {
 	return html`
 		<li class=${() => ({ on: selected() })}>
 			<div class="who">
-				<${Dot} state=${() => (runner.busy ? 'working' : 'on')} /><b>${() => runner.name}</b>
+				<${Dot} state=${() => (runner.status === 'idle' ? 'on' : runner.status)} /><b>${() => runner.name}</b>
 				<small title=${() => runner.dir}
 					>${() =>
 						runner.busy

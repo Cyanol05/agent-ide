@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { createEffect, createSignal, For, onSettled, refresh, Show, snapshot } from 'solid-js'
 import { api, bots, colorOf, current, openThread, threads } from './server.js'
-import { busiest, formatAgent } from './agent.js'
+import { formatAgent } from './agent.js'
 import { agent, openPicker } from './composer.js'
 import { Dot } from './dot.js'
 import { ThreadItem } from './thread-list.js'
@@ -16,7 +16,7 @@ export const BotItem = (props) => html`
 		onClick=${() => openThread(props.bot.home)}
 	>
 		<${Dot}
-			state=${() => busiest(threads.flatMap((t) => t.agents.filter((a) => a.name === props.bot.name)))}
+			state=${() => props.bot.status}
 		/>
 		<span style=${() => colorOf(props.bot.name)}>${() => props.bot.name}</span>
 	</li>

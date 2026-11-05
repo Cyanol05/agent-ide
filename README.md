@@ -56,6 +56,8 @@ POST   /api/threads/:id/stop
 GET    /api/conversations/:id              an agent's own conversation, tool calls and all
 ```
 
+Threads, their agents, runners and bots each carry one `status`: `working`, `blocked` while its runner is offline, or `idle`. An idle thread says `done` or `error` instead until you read its answer.
+
 A module can add `/api/<module>` and `/api/threads/:id/<module>`. Send the same `requestId` again after a dropped response and you get the first result back.
 
 A message's `to` is a list, or one: a recipe like `sonnet:high@laptop` or `{runner, model, thinkingLevel?, dir?}` for the thread's one agent, a bot's name, or `null` for nobody. A recipe starts the agent, or switches the one there in place, keeping its conversation; it's told when it moves runner or folder. One recipe per message: a thread has one agent, plus any bots. `ada=sonnet@laptop` switches the bot ada the same way; only bots have names. From another thread, `12` is thread 12's agent and `12/ada` a bot there. Left out, it asks whom the thread asked last, as they are now. A body starting with `$ ` runs a command on the one runner it's sent to.

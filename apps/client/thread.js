@@ -163,20 +163,10 @@ export function Thread(props) {
 	`
 }
 
-/** The socket says a run ended before the thread list says the agent is idle: trust the socket until the list agrees. */
+/** While the server says the agent works or waits for its runner, what it's writing so far */
 function Writing(props) {
-	let running = false,
-		ended = false
-	const shown = createMemo(() => {
-		const run = props.live?.run,
-			busy = ['working', 'blocked'].includes(props.agent.status)
-		if (run) [running, ended] = [true, false]
-		else if (running) [running, ended] = [false, true]
-		if (!busy) ended = false
-		return run || (busy && !ended)
-	})
 	return html`
-		<${Show} when=${shown}>
+		<${Show} when=${() => props.agent.status !== 'idle'}>
 			<li class="writing">
 				<small title=${() => lastToolCall(props.live)}>
 					<${Dot} state=${() => props.agent.status} />

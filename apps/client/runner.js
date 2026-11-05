@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { createSignal, For, Show } from 'solid-js'
 import { api, minted, runners, server, setMinted, threads } from './server.js'
-import { agentName, busiest, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
+import { agentName, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
 import { choose, configure, recipients, toFor } from './composer.js'
 import { placePopover } from './popover.js'
 import { report } from './notice.js'
@@ -47,7 +47,7 @@ export function Runner(props) {
 		>
 			<b
 				><${Dot}
-					state=${() => (runner().online ? busiest(agents()) || 'on' : '')}
+					state=${() => dotOf(runner())}
 				/>${() => runner().name}</b
 			>
 			<small>${() => runner().dir}</small>
@@ -57,7 +57,7 @@ export function Runner(props) {
 			<${Show} when=${() => !runner().dir}><small>Waiting for it to dial in.</small><//>
 			<ul class="models">
 				<${Show} when=${() => models().length}>
-					<${AgentRow} to=${() => to()} agents=${() => agents()}>
+					<${AgentRow} to=${() => to()} runner=${() => runner()} agents=${() => agents()}>
 						<select
 							class="swap"
 							aria-label="Model"
@@ -88,7 +88,7 @@ export function Runner(props) {
 				<//>
 				<${For} each=${() => others()}
 					>${(to) => html`
-						<${AgentRow} to=${() => to} agents=${() => agents()}>
+						<${AgentRow} to=${() => to} runner=${() => runner()} agents=${() => agents()}>
 							<span class="name" title=${() => to.model}>${() => to.name ?? to.model}</span>
 						<//>
 					`}<//
@@ -98,7 +98,12 @@ export function Runner(props) {
 	`
 }
 
+/** A runner's dot: its status, or when idle, whether it's online */
+const dotOf = (runner) =>
+	runner.status && runner.status !== 'idle' ? runner.status : runner.online ? 'on' : ''
+
 function AgentRow(props) {
+	const status = () => props.runner.agents?.[agentName(props.to)] ?? 'idle'
 	const agents = () => props.agents.filter((a) => agentName(a.to) === agentName(props.to))
 	const call = () =>
 		agents()
@@ -108,7 +113,7 @@ function AgentRow(props) {
 		<li data-agent=${() => agentName(props.to)}>
 			${() => props.children}
 			<${Show} when=${() => agents().length}
-				><${Dot} state=${() => busiest(agents())} title=${() => busiest(agents()) || 'idle'}
+				><${Dot} state=${status} title=${status}
 			/><//>
 			<${Show} when=${() => call()}
 				><span class="hands" title=${() => call()}>${() => call()}</span><//
@@ -171,7 +176,7 @@ function RunnerItem(props) {
 	}
 	return html`
 		<li>
-			<${Dot} state=${() => (props.runner.online ? (work().length ? 'working' : 'on') : '')} />
+			<${Dot} state=${() => dotOf(props.runner)} />
 			<div>
 				<b>${() => props.runner.name}</b>
 				<small>${() => props.runner.dir ?? 'waiting for it to dial in'}</small>

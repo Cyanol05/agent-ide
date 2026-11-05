@@ -4,12 +4,6 @@ import { createRoot, createStore } from 'solid-js'
 export const [doing, setDoing] = createRoot(() => createStore({}))
 /** How a message names an agent, as util.js does: a bot's name, or the thread's agent as `model@runner` */
 export const agentName = (to) => to.name ?? `${to.model}@${to.runner}`
-export const busiest = (agents) =>
-	agents.some((a) => a.status === 'working')
-		? 'working'
-		: agents.some((a) => a.status === 'blocked')
-			? 'blocked'
-			: ''
 
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 

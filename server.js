@@ -540,39 +540,41 @@ async function agentOf(id, key, tx) {
 	}
 }
 
-// Working while a delivery to it is live
-/** @returns {Promise<Agent[]>} */
-async function agentsIn(row, live) {
+/** One status for an agent, a thread, a runner or a bot: `working`, `blocked` while its runner is offline, or `idle` */
+const STATUSES = ['idle', 'blocked', 'working']
+/** Of several, the busiest */
+const busiest = (statuses) => STATUSES[Math.max(0, ...statuses.map((s) => STATUSES.indexOf(s)))]
+/**
+ * Whatever works right now, from Pi's live tasks: each agent answering and each `$ cmd` running, once for every list
+ * @returns {Promise<{ thread: number, conversation?: number, runner: string, name?: string, status: string }[]>}
+ */
+async function work() {
+	const live = (await liveTasks()).filter((t) =>
+		[Deliver.definition.name, Shell.definition.name].includes(t.kind),
+	)
 	return Promise.all(
-		Object.entries(row.agents).map(async ([key, { conversation }]) => {
-			const to = await agentOf(conversation, key)
-			const mine = live.filter(
-				(t) => t.kind === Deliver.definition.name && t.input.agent === conversation,
-			)
-			const status = !mine.length
-				? 'idle'
-				: to && runners.isOnline(to.runner)
-					? 'working'
-					: 'blocked'
-			return { name: to ? agentName(to) : key, conversation, to, status }
+		live.map(async (t) => {
+			const shell = t.kind === Shell.definition.name
+			const to = shell ? t.input.to : await agentOf(t.input.agent)
+			return {
+				thread: t.conversationId,
+				...(shell ? {} : { conversation: t.input.agent, name: agentName(to) }),
+				runner: to?.runner,
+				status: to && runners.isOnline(to.runner) ? 'working' : 'blocked',
+			}
 		}),
 	)
 }
-/** The threads each runner is working for: an agent there answering, or a command running */
-async function busyThreads() {
-	const by = {}
-	for (const t of await liveTasks()) {
-		const runner =
-			t.kind === Shell.definition.name
-				? t.input.to?.runner
-				: t.kind === Deliver.definition.name
-					? (await harness.snapshot(AgentDoc, t.input.agent, context))?.model?.provider?.match(
-							/^runner:(.+)$/,
-						)?.[1]
-					: null
-		if (runner) (by[runner] ??= new Set()).add(t.conversationId)
-	}
-	return by
+
+/** @returns {Promise<Agent[]>} */
+async function agentsIn(row, busy) {
+	return Promise.all(
+		Object.entries(row.agents).map(async ([key, { conversation }]) => {
+			const to = await agentOf(conversation, key)
+			const status = busiest(busy.filter((w) => w.conversation === conversation).map((w) => w.status))
+			return { name: to ? agentName(to) : key, conversation, to, status }
+		}),
+	)
 }
 const liveTasks = async () => (await harness.inspect(context)).tasks.map(({ record }) => record)
 
@@ -787,10 +789,10 @@ async function faulted({ task, reason }) {
 	await commit((tx) => tell(tx, threadId, agent, settled, submitted, told))
 }
 
-/** With no reader, anyone's read counts */
-async function status(id, reads, agents, shell, reader) {
-	if (shell || agents.some((a) => a.status === 'working')) return 'working'
-	if (agents.some((a) => a.status === 'blocked')) return 'blocked'
+/** A thread's own status, or when idle, `done` or `error` for an answer its reader hasn't read; with no reader, anyone's read counts */
+async function status(id, reads, busy, reader) {
+	const now = busiest(busy.map((w) => w.status))
+	if (now !== 'idle') return now
 	const seen = new Set(reader ? [reads[reader]] : Object.values(reads))
 	const handle = await harness.conversation(id, context)
 	let cursor
@@ -807,30 +809,30 @@ async function status(id, reads, agents, shell, reader) {
 	return 'idle'
 }
 
-async function threadRow(id, reader, live) {
+async function threadRow(id, reader, all) {
 	const { reads, ...row } = await thread(id)
-	const agents = await agentsIn(row, live)
-	const shell = live.some((t) => t.kind === Shell.definition.name && t.conversationId === id)
+	const busy = all.filter((w) => w.thread === id)
+	const agents = await agentsIn(row, busy)
 	return {
 		id,
 		...row,
 		readers: Object.keys(reads),
 		agents,
 		shells: [...shells.values()].filter((run) => run.threadId === id),
-		status: await status(id, reads, agents, shell, reader),
+		status: await status(id, reads, busy, reader),
 		conversation: await storage.conversation(id, context),
 	}
 }
 const threadList = async (reader) => {
-	const live = await liveTasks()
-	return (await Promise.all((await threadIds()).map((id) => threadRow(id, reader, live)))).filter(
+	const busy = await work()
+	return (await Promise.all((await threadIds()).map((id) => threadRow(id, reader, busy)))).filter(
 		(row) => !row.hidden,
 	)
 }
 /** Who's in a thread needs no state of its own: whoever wrote there, or read */
 const threadView = async (id, reader) => {
 	const entries = await messages(id)
-	const row = await threadRow(id, reader, await liveTasks())
+	const row = await threadRow(id, reader, await work())
 	const wrote = entries.filter((e) => !e.data.answer && !e.data.error && !e.data.from)
 	return { ...row, people: [...new Set([...wrote.map((e) => e.data.author), ...row.readers])], entries }
 }
@@ -1070,6 +1072,8 @@ async function forkThread(id, { at, title }) {
 }
 
 const core = {
+	work,
+	busiest,
 	models,
 	runners,
 	known,
@@ -1173,9 +1177,13 @@ const routes = [
 	[
 		'GET /api/runners',
 		async () => {
-			const [busy, last] = [await busyThreads(), await known()]
+			const [all, last] = [await work(), await known()]
 			return Object.keys(await keys()).map((name) => {
 				const { models, offers, ...runner } = last[name] ?? {}
+				const here = all.filter((w) => w.runner === name)
+				/** Its agents' statuses, by name, as a message names them */
+				const agents = {}
+				for (const w of here) if (w.name) agents[w.name] = busiest([agents[w.name], w.status].filter(Boolean))
 				return {
 					name,
 					...runner,
@@ -1184,7 +1192,9 @@ const routes = [
 					models: Object.keys(models ?? {}),
 					online: runners.isOnline(name),
 					calls: runners.working(name),
-					busy: runners.isOnline(name) ? (busy[name]?.size ?? 0) : 0,
+					status: busiest(here.map((w) => w.status)),
+					agents,
+					busy: new Set(here.filter((w) => w.status === 'working').map((w) => w.thread)).size,
 					outdated: Boolean(runner.version) && runner.version !== bundle.version,
 				}
 			})
