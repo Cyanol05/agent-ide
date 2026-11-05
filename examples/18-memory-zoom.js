@@ -1,4 +1,5 @@
 /** With memory, an agent zooms a line into the two it was made from, and down to a message whole, a long one in pages that say where to go on */
+// MEMORY_MODEL is set because these threads never ask an agent, so without it their lines would wait for one.
 import { rmSync } from 'node:fs'
 import { getCurrentTools } from '@earendil-works/pi-ai/utils/transcript'
 import {

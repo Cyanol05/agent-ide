@@ -1,4 +1,5 @@
 /** A detail the memory lost is still found word for word */
+// MEMORY_MODEL is set because these threads never ask an agent, so without it their lines would wait for one.
 import {
 	api,
 	call,

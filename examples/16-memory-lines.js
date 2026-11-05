@@ -1,4 +1,5 @@
 /** With memory, every message gets a line and neighbouring lines merge in pairs, once each, through a SIGKILL */
+// MEMORY_MODEL is set because these threads never ask an agent, so without it their lines would wait for one.
 import {
 	api,
 	check,

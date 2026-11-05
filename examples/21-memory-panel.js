@@ -1,4 +1,5 @@
 /** With memory, GET /api/threads/:id/memory gives the thread's memory as lines, and `?zoom=id,n` opens one, as the zoom tool does, down to the message whole */
+// MEMORY_MODEL is set because these threads never ask an agent, so without it their lines would wait for one.
 import { rmSync } from 'node:fs'
 import {
 	api,

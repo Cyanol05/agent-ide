@@ -1,4 +1,5 @@
 /** With memory, an agent asked late in a long thread gets one input that stays bounded by its budget, as many bytes as its model has tokens of context (64 Ki here) */
+// MEMORY_MODEL is set because these threads never ask an agent, so without it their lines would wait for one.
 import {
 	api,
 	check,
