@@ -164,16 +164,16 @@ export function server(core) {
 	async function work(threadId, { agent, query, last = 20 }) {
 		const { agents } = await core.thread(threadId)
 		/** The thread's agent goes by its key and by the model it runs as now */
-		const named = await Promise.all(
+		const candidates = await Promise.all(
 			Object.entries(agents).map(async ([key, { conversation }]) => [
 				key === AGENT ? agentName(await agentOf(conversation, key)) : key,
 				key,
 				conversation,
 			]),
 		)
-		const names = named.map(([name]) => name)
-		const exact = named.filter(([name, key]) => name === agent || key === agent)
-		const found = exact.length ? exact : named.filter(([name]) => name.includes(agent))
+		const names = candidates.map(([name]) => name)
+		const exact = candidates.filter(([name, key]) => name === agent || key === agent)
+		const found = exact.length ? exact : candidates.filter(([name]) => name.includes(agent))
 		if (found.length !== 1)
 			throw new Error(
 				`${found.length ? 'Several' : 'No'} agents in thread ${threadId} match ${agent}: ${(found.length ? found.map(([n]) => n) : names).join(', ') || 'none'}`,

@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { createSignal, For, Show } from 'solid-js'
 import { api, minted, runners, server, setMinted, threads } from './server.js'
-import { agentKey, busiest, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
+import { agentName, busiest, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
 import { choose, configure, recipients, toFor } from './composer.js'
 import { placePopover } from './popover.js'
 import { report } from './notice.js'
@@ -17,8 +17,8 @@ export function Runner(props) {
 		...new Set([to().model, runner().model, ...(runner().offers ?? [])].filter(Boolean)),
 	]
 	const others = () =>
-		[...new Map(agents().map((a) => [agentKey(a.to), a.to])).values()].filter(
-			(other) => agentKey(other) !== agentKey(to()),
+		[...new Map(agents().map((a) => [agentName(a.to), a.to])).values()].filter(
+			(other) => agentName(other) !== agentName(to()),
 		)
 	const stop = (e) => e.stopPropagation()
 	const pick = () => choose(to())
@@ -99,13 +99,13 @@ export function Runner(props) {
 }
 
 function AgentRow(props) {
-	const agents = () => props.agents.filter((a) => agentKey(a.to) === agentKey(props.to))
+	const agents = () => props.agents.filter((a) => agentName(a.to) === agentName(props.to))
 	const call = () =>
 		agents()
 			.map((a) => lastToolCall(doing[a.thread]?.[a.conversation]))
 			.find(Boolean)
 	return html`
-		<li data-agent=${() => agentKey(props.to)}>
+		<li data-agent=${() => agentName(props.to)}>
 			${() => props.children}
 			<${Show} when=${() => agents().length}
 				><${Dot} state=${() => busiest(agents())} title=${() => busiest(agents()) || 'idle'}

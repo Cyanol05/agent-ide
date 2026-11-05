@@ -1036,7 +1036,7 @@ async function forkThread(id, { at, title }) {
 			}
 		}),
 	)
-	const named = title?.trim() || `${source.title} (fork)`
+	const forkTitle = title?.trim() || `${source.title} (fork)`
 	const fork = await (
 		await conversation(id)
 	).fork(
@@ -1061,7 +1061,7 @@ async function forkThread(id, { at, title }) {
 					)
 					await setUp(tx, row[key].conversation, forkId, to)
 				}
-				Object.assign(await tx.doc(Thread, forkId), { title: named, createdAt: now(), agents: row })
+				Object.assign(await tx.doc(Thread, forkId), { title: forkTitle, createdAt: now(), agents: row })
 			},
 		},
 		context,

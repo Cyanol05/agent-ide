@@ -26,17 +26,17 @@ import {
 	runners,
 	threads,
 } from './server.js'
-import { agentLabel, formatAgent, parseAgent, THINKING_LEVELS } from './agent.js'
+import { agentLabel, agentTo, formatAgent, THINKING_LEVELS } from './agent.js'
 import { placePopover } from './popover.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageContent, imageUrl } from './images.js'
 
 const [compose, setCompose] = createRoot(() =>
-	createStore({ draft: '', images: [], sending: false, pick: null, typed: null, settings: {} }),
+	createStore({ draft: '', images: [], sending: false, picks: {}, settings: {} }),
 )
-/** A pick, `{thread, agent, bots}`, belongs to the thread it was made in */
-const pick = () => (compose.pick?.thread === current() ? compose.pick : null)
+/** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
+const pick = () => compose.picks[current() ?? 'new'] ?? null
 const here = () => threads.find((t) => t.id === current())?.agents ?? []
 /** The names the thread asked last */
 const lastTo = () => (entries[current()] ?? []).findLast((e) => e.data.to?.length)?.data.to
@@ -65,8 +65,7 @@ export const recipients = () => [agent(), ...askedBots()].filter(Boolean)
 export const toFor = (runner) => (agent()?.runner === runner.name ? agent() : fallback(runner))
 const setPick = (to, bots, typed = null) =>
 	setCompose((s) => {
-		s.pick = { thread: current(), agent: to, bots }
-		s.typed = typed
+		s.picks[current() ?? 'new'] = { agent: to, bots, typed }
 		if (to && !to.name) s.settings[to.runner] = to
 	})
 /** Choosing a model replaces the agent's pick and keeps the bots; in a bot's home, it is the bot's own model */
@@ -158,7 +157,7 @@ export function Composer(props) {
 			.filter(Boolean)
 			.map((s) => {
 				const bot = bots.find((b) => b.name === s)
-				return here().find((a) => a.name === s)?.to ?? (bot ? botAgent(bot) : parseAgent(s))
+				return here().find((a) => a.name === s)?.to ?? (bot ? botAgent(bot) : agentTo(s))
 			})
 		setPick(next.find((to) => !to.name) ?? null, next.filter((to) => to.name), text)
 	}
@@ -329,7 +328,7 @@ export function Composer(props) {
 					autocomplete="off"
 					spellcheck="false"
 					title="model:thinking@runner, and any bots' names, comma between them"
-					value=${() => compose.typed ?? recipients().map(formatAgent).join(', ')}
+					value=${() => pick()?.typed ?? recipients().map(formatAgent).join(', ')}
 					onInput=${typeRecipients}
 					onKeyDown=${(e) => {
 						if (e.key === 'Enter') e.preventDefault()

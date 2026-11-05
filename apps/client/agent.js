@@ -2,7 +2,8 @@
 import { createRoot, createStore } from 'solid-js'
 
 export const [doing, setDoing] = createRoot(() => createStore({}))
-export const agentKey = ({ runner, model, name }) => `${name ?? model}@${runner}`
+/** How a message names an agent, as util.js does: a bot's name, or the thread's agent as `model@runner` */
+export const agentName = (to) => to.name ?? `${to.model}@${to.runner}`
 export const busiest = (agents) =>
 	agents.some((a) => a.status === 'working')
 		? 'working'
@@ -12,8 +13,8 @@ export const busiest = (agents) =>
 
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
-/** model:thinking@runner, as pi names a model */
-export function parseAgent(text) {
+/** `model:thinking@runner`, as pi names a model, or `ada=model@runner` for a bot: util.js's agentTo, with the thinking split off */
+export function agentTo(text) {
 	const eq = text.indexOf('='),
 		rest = text.slice(eq + 1)
 	const at = rest.lastIndexOf('@')
@@ -31,8 +32,6 @@ export function parseAgent(text) {
 }
 export const formatAgent = ({ model, thinkingLevel, runner, name }) =>
 	`${name ? `${name}=` : ''}${model ?? ''}${thinkingLevel ? `:${thinkingLevel}` : ''}@${runner}`
-export const sameAgent = (a, b) =>
-	a?.runner === b?.runner && a?.model === b?.model && a?.name === b?.name
 
 /** In the composer: its name or its model's own name, how hard it thinks, where it runs */
 export const agentLabel = (to) =>
