@@ -13,8 +13,8 @@ export function server(core) {
 	const answered = async (thread, by) =>
 		new Set(
 			(await core.messages(thread))
-				.filter((e) => e.data.from === by)
-				.flatMap((e) => e.data.re ?? []),
+				.filter((entry) => entry.data.from === by)
+				.flatMap((entry) => entry.data.re ?? []),
 		)
 
 	const post = defineTool({
@@ -52,7 +52,7 @@ export function server(core) {
 				thread === undefined
 					? undefined
 					: (await core.messages(from)).findLast(
-							(e) => e.data.from === thread && !e.data.re && !done.has(e.id),
+							(entry) => entry.data.from === thread && !entry.data.re && !done.has(entry.id),
 						)
 			const askerKey = asked && keyOf(asked.data.author)
 			const asker =
@@ -133,7 +133,7 @@ export function server(core) {
 					const parts = [
 						`#${row.id} ${row.title}`,
 						row.parent && `child of #${row.parent}`,
-						row.agents.map((a) => a.name).join(' '),
+						row.agents.map((agent) => agent.name).join(' '),
 						row.status,
 						row.id === mine && '(yours)',
 					]
@@ -142,11 +142,11 @@ export function server(core) {
 			} else {
 				const query = args.query?.toLowerCase()
 				const found = (await core.messages(args.thread ?? mine)).filter(
-					(e) => !query || said(e).toLowerCase().includes(query),
+					(entry) => !query || said(entry).toLowerCase().includes(query),
 				)
-				for (const { id, data: m } of found.slice(-(args.last ?? 20))) {
+				for (const { id, data: message } of found.slice(-(args.last ?? 20))) {
 					lines.push(
-						`#${id} ${m.author}${m.from ? ` from thread ${m.from}` : ''}${m.to ? ` to ${m.to.join(', ')}` : ''}: ${m.body.slice(0, 2000)}`,
+						`#${id} ${message.author}${message.from ? ` from thread ${message.from}` : ''}${message.to ? ` to ${message.to.join(', ')}` : ''}: ${message.body.slice(0, 2000)}`,
 					)
 				}
 			}
@@ -176,17 +176,17 @@ export function server(core) {
 		const found = exact.length ? exact : candidates.filter(([name]) => name.includes(agent))
 		if (found.length !== 1)
 			throw new Error(
-				`${found.length ? 'Several' : 'No'} agents in thread ${threadId} match ${agent}: ${(found.length ? found.map(([n]) => n) : names).join(', ') || 'none'}`,
+				`${found.length ? 'Several' : 'No'} agents in thread ${threadId} match ${agent}: ${(found.length ? found.map(([name]) => name) : names).join(', ') || 'none'}`,
 			)
 		const [[shownName, , conversation]] = found
 		const lines = []
 		for (const { id, model = [] } of await core.entries(conversation)) {
-			for (const m of model) {
-				if (m.role === 'user') lines.push(`#${id} handed: ${messageText(m)}`)
-				if (m.role === 'toolResult')
-					lines.push(`#${id} ${m.toolName}${m.isError ? ' failed' : ''}: ${messageText(m)}`)
-				if (m.role === 'assistant')
-					for (const part of m.content) {
+			for (const message of model) {
+				if (message.role === 'user') lines.push(`#${id} handed: ${messageText(message)}`)
+				if (message.role === 'toolResult')
+					lines.push(`#${id} ${message.toolName}${message.isError ? ' failed' : ''}: ${messageText(message)}`)
+				if (message.role === 'assistant')
+					for (const part of message.content) {
 						if (part.type === 'text' && part.text) lines.push(`#${id} said: ${part.text}`)
 						if (part.type === 'toolCall')
 							lines.push(`#${id} called ${part.name} ${JSON.stringify(part.arguments)}`)
@@ -194,12 +194,12 @@ export function server(core) {
 			}
 		}
 		const shown = lines
-			.filter((l) => !query || l.toLowerCase().includes(query.toLowerCase()))
+			.filter((line) => !query || line.toLowerCase().includes(query.toLowerCase()))
 			.slice(-last)
-			.map((l) =>
-				l.length > 4000
-					? `${l.slice(0, 4000)}… (${l.length - 4000} more characters; narrow it with query)`
-					: l,
+			.map((line) =>
+				line.length > 4000
+					? `${line.slice(0, 4000)}… (${line.length - 4000} more characters; narrow it with query)`
+					: line,
 			)
 		return (
 			shown.join('\n') ||
@@ -216,14 +216,14 @@ export function server(core) {
 
 	async function reply(posts, answeredIn, agent, body) {
 		const replies = []
-		for (const from of new Set(posts.map((p) => p.data.from))) {
+		for (const from of new Set(posts.map((post) => post.data.from))) {
 			const done = await answered(from, answeredIn)
-			const mine = posts.filter((p) => p.data.from === from && !done.has(p.id))
+			const mine = posts.filter((post) => post.data.from === from && !done.has(post.id))
 			if (!mine.length) continue
 			const { agents } = await core.thread(from)
 			const askers = (
 				await Promise.all(
-					[...new Set(mine.map((p) => keyOf(p.data.author)))]
+					[...new Set(mine.map((post) => keyOf(post.data.author)))]
 						.filter((key) => agents[key])
 						.map((key) => agentOf(agents[key].conversation, key)),
 				)
@@ -235,7 +235,7 @@ export function server(core) {
 					body: body.slice(0, 8000),
 					...(askers.length ? { to: askers } : {}),
 					from: answeredIn,
-					re: mine.map((p) => p.id),
+					re: mine.map((post) => post.id),
 				},
 			})
 		}

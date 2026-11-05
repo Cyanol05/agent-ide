@@ -29,15 +29,15 @@ const key = (l, i) => `${l}:${i}`
 const RULER = '-'.repeat(LINE)
 /** The first LINE bytes, whole characters only */
 const cut = (text) => {
-	let s = Buffer.from(text).subarray(0, LINE).toString()
-	while (bytes(s) > LINE) s = s.slice(0, -1)
-	return s
+	let head = Buffer.from(text).subarray(0, LINE).toString()
+	while (bytes(head) > LINE) head = head.slice(0, -1)
+	return head
 }
 const NOT_YET = '(not summarized yet: zoom it)'
 const unwritten = (l, i) => ({ l, i, text: NOT_YET })
-const span = (x) => ({ id: x.i * 2 ** x.l, n: 2 ** x.l, text: x.text })
-const rendered = (x) => {
-	const { id, n, text } = span(x)
+const span = (line) => ({ id: line.i * 2 ** line.l, n: 2 ** line.l, text: line.text })
+const rendered = (line) => {
+	const { id, n, text } = span(line)
 	return `${id}+${n}|${text}`
 }
 const finished = (status = 'completed') => ({
@@ -105,9 +105,9 @@ export function server(core) {
 				cursor,
 			),
 		)
-		const P = upTo.filter((e) => e.kind === 'agent-ide.message').length
-		for (const [k, line] of await lines(tx, parent.conversationId))
-			if ((line.i + 1) * 2 ** line.l <= P && !map.has(k)) map.set(k, line)
+		const shown = upTo.filter((entry) => entry.kind === 'agent-ide.message').length
+		for (const [coordinates, line] of await lines(tx, parent.conversationId))
+			if ((line.i + 1) * 2 ** line.l <= shown && !map.has(coordinates)) map.set(coordinates, line)
 		return map
 	}
 
@@ -121,7 +121,7 @@ export function server(core) {
 			{ role: 'user', content: task, timestamp: Date.now() },
 		]
 		let best
-		for (let n = 0; n < RETRIES; n++) {
+		for (let attempt = 0; attempt < RETRIES; attempt++) {
 			const reply = await retryAssistantCall(
 				() => core.models.completeSimple(model, { messages }, { signal }),
 				RETRY,
@@ -153,7 +153,7 @@ export function server(core) {
 				const have = await core.commit((tx) => lines(tx, threadId))
 				const [l, i] =
 					input.entry !== undefined
-						? [0, all.findIndex((e) => e.id === input.entry)]
+						? [0, all.findIndex((entry) => entry.id === input.entry)]
 						: [input.l, input.i]
 				if (have.has(key(l, i))) return rt.commit(() => finished(), ctx)
 				let text = await rt.memo('text', ctx)
@@ -165,13 +165,13 @@ export function server(core) {
 						source = said(all[i])
 						task = `${render(memory(have, i, CONTEXT))}\n\n${ask} ${limit}\n<input>\n${source}\n</input>`
 					} else {
-						const [a, b] = [have.get(key(l - 1, 2 * i)), have.get(key(l - 1, 2 * i + 1))]
+						const [left, right] = [have.get(key(l - 1, 2 * i)), have.get(key(l - 1, 2 * i + 1))]
 						const half = 2 ** (l - 1)
 						const id = i * 2 ** l
-						source = `${a.text} ${b.text}`
+						source = `${left.text} ${right.text}`
 						task =
 							`${render(memory(have, (i + 1) * 2 ** l, CONTEXT))}\n\n${ask} ${id}+${half} and ${id + half}+${half}, adjacent, ${limit}\n` +
-							`<chat> may hold their messages, ${id} to ${id + 2 * half - 1}, in more detail: take details of them from there too.\n<input>\n${a.text}\n${b.text}\n</input>`
+							`<chat> may hold their messages, ${id} to ${id + 2 * half - 1}, in more detail: take details of them from there too.\n<input>\n${left.text}\n${right.text}\n</input>`
 					}
 					text = await rt.memo('text', await lineOf(source, task, rt.signal), ctx)
 				}
@@ -190,7 +190,7 @@ export function server(core) {
 
 	async function cutPosition(agent, firstKept, threadId) {
 		const newest = Math.max(-1, ...(await core.seenBy(agent, firstKept - 1)))
-		return (await core.messages(threadId)).findIndex((e) => e.id === newest)
+		return (await core.messages(threadId)).findIndex((entry) => entry.id === newest)
 	}
 
 	async function budget(agent) {
@@ -217,15 +217,15 @@ export function server(core) {
 
 	async function catchUp(threadId, held, all, agent) {
 		const most = await budget(agent)
-		let k = held.length - 1,
-			size = bytes(said(held[k]))
-		while (k > 0 && size + bytes(said(held[k - 1])) + 2 <= most) size += bytes(said(held[--k])) + 2
-		const whole = held.slice(k).map(said).join('\n\n')
-		if (!k) return whole
-		const at = (e) => all.findIndex((x) => x.id === e.id)
+		let first = held.length - 1,
+			size = bytes(said(held[first]))
+		while (first > 0 && size + bytes(said(held[first - 1])) + 2 <= most) size += bytes(said(held[--first])) + 2
+		const whole = held.slice(first).map(said).join('\n\n')
+		if (!first) return whole
+		const at = (entry) => all.findIndex((message) => message.id === entry.id)
 		const older = memory(
 			await core.commit((tx) => lines(tx, threadId)),
-			at(held[k - 1]) + 1,
+			at(held[first - 1]) + 1,
 			most,
 			at(held[0]),
 		)
@@ -239,8 +239,8 @@ export function server(core) {
 			throw new Error(`No line ${id}+${n}; zoom one from your memory`)
 		if (n === 1) return said(all[id])
 		const have = await core.commit((tx) => lines(tx, thread))
-		const half = (j) => have.get(key(l - 1, j)) ?? unwritten(l - 1, j)
-		return [half(2 * (id / n)), half(2 * (id / n) + 1)].filter((x) => (x.i * n) / 2 < all.length)
+		const half = (index) => have.get(key(l - 1, index)) ?? unwritten(l - 1, index)
+		return [half(2 * (id / n)), half(2 * (id / n) + 1)].filter((line) => (line.i * n) / 2 < all.length)
 	}
 
 	const zoom = defineTool({
@@ -296,27 +296,27 @@ export function server(core) {
 export function memory(lines, T, budget, from = 0) {
 	const list = Array.from(
 		{ length: T - from },
-		(_, k) => lines.get(key(0, from + k)) ?? unwritten(0, from + k),
+		(_, offset) => lines.get(key(0, from + offset)) ?? unwritten(0, from + offset),
 	)
-	const cost = (x) => bytes(rendered(x)) + 1
-	let size = list.reduce((s, x) => s + cost(x), 0)
+	const cost = (line) => bytes(rendered(line)) + 1
+	let size = list.reduce((sum, line) => sum + cost(line), 0)
 	while (size > budget) {
 		let best, unbuilt
-		for (let k = 0; k + 1 < list.length; k++) {
-			const [a, b] = [list[k], list[k + 1]]
-			if (a.l !== b.l || a.i % 2 || b.i !== a.i + 1) continue
-			const last = (b.i + 1) * 2 ** b.l - 1
+		for (let index = 0; index + 1 < list.length; index++) {
+			const [left, right] = [list[index], list[index + 1]]
+			if (left.l !== right.l || left.i % 2 || right.i !== left.i + 1) continue
+			const last = (right.i + 1) * 2 ** right.l - 1
 			if (last >= T) continue
-			const parent = lines.get(key(a.l + 1, a.i >> 1)),
-				due = (T - last) / 2 ** a.l
-			if (parent && (!best || due > best.due)) best = { k, parent, due }
+			const parent = lines.get(key(left.l + 1, left.i >> 1)),
+				due = (T - last) / 2 ** left.l
+			if (parent && (!best || due > best.due)) best = { index, parent, due }
 			if (!parent && (!unbuilt || due > unbuilt.due))
-				unbuilt = { k, parent: unwritten(a.l + 1, a.i >> 1), due }
+				unbuilt = { index, parent: unwritten(left.l + 1, left.i >> 1), due }
 		}
 		best ??= unbuilt
 		if (!best) break
-		size += cost(best.parent) - cost(list[best.k]) - cost(list[best.k + 1])
-		list.splice(best.k, 2, best.parent)
+		size += cost(best.parent) - cost(list[best.index]) - cost(list[best.index + 1])
+		list.splice(best.index, 2, best.parent)
 	}
 	return list
 }

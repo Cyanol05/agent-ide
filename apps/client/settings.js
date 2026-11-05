@@ -38,21 +38,21 @@ export function Settings() {
 			class="settings"
 			popover
 			ref=${(el) => (panel = el)}
-			onToggle=${(e) => {
-				if (e.newState === 'open') placePopover(panel, button)
+			onToggle=${(event) => {
+				if (event.newState === 'open') placePopover(panel, button)
 			}}
 		>
 			<h3>Modules</h3>
 			<ul>
 				<${For} each=${all}
-					>${(m) => html`
-						<li class=${() => ({ off: !m.on })}>
-							<${Dot} state=${() => (m.on ? 'on' : '')} />
+					>${(module) => html`
+						<li class=${() => ({ off: !module.on })}>
+							<${Dot} state=${() => (module.on ? 'on' : '')} />
 							<div>
-								<b>${() => m.name}</b>
-								<small>${() => about(m.name) ?? 'Your own module.'}</small>
+								<b>${() => module.name}</b>
+								<small>${() => about(module.name) ?? 'Your own module.'}</small>
 							</div>
-							<span class="state">${() => (m.on ? 'on' : 'off')}</span>
+							<span class="state">${() => (module.on ? 'on' : 'off')}</span>
 						</li>
 					`}<//
 				>

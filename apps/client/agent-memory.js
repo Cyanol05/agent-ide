@@ -15,9 +15,9 @@ import {
 import { api, connected, current, server } from './server.js'
 
 const bytes = (text) => new TextEncoder().encode(text).length
-const sizeOf = (lines) => lines.reduce((sum, x) => sum + bytes(`${x.id}+${x.n}|${x.text}`) + 1, 0)
-const inside = (x, id, n) => x.id >= id && x.id + x.n <= id + n
-const key = (x) => `${x.id}+${x.n}`
+const sizeOf = (lines) => lines.reduce((sum, line) => sum + bytes(`${line.id}+${line.n}|${line.text}`) + 1, 0)
+const inside = (line, id, n) => line.id >= id && line.id + line.n <= id + n
+const key = (line) => `${line.id}+${line.n}`
 
 export function Memory() {
 	const [room, setRoom] = createSignal(30)
@@ -61,7 +61,7 @@ function ThreadMemory(props) {
 	// The keyed owner fixes the thread until this entire view is disposed.
 	const path = untrack(() => `/api/threads/${props.thread}/memory`)
 	const read = (query = '') => api(path + query)
-	const lines = createProjection(() => read().then((r) => r.lines), [], { key: 'id' })
+	const lines = createProjection(() => read().then((memory) => memory.lines), [], { key: 'id' })
 	const bounds = createMemo(async () => {
 		const total = lines.length ? lines.at(-1).id + lines.at(-1).n : 0
 		const full = sizeOf(lines)
@@ -105,8 +105,8 @@ function ThreadMemory(props) {
 					props.line.n > 1
 						? `messages ${props.line.id} to ${props.line.id + props.line.n - 1}`
 						: `message ${props.line.id}`}
-				onClick=${(e) => {
-					e.stopPropagation()
+				onClick=${(event) => {
+					event.stopPropagation()
 					if (props.line.kind !== 'above') setExpanded((on) => !on)
 				}}
 			>
@@ -128,7 +128,7 @@ function ThreadMemory(props) {
 							when=${() => opened()?.message !== undefined}
 							fallback=${() => html`
 								<${Lines}
-									nodes=${() => (opened()?.lines ?? []).map((x) => ({ ...x, kind: 'below' }))}
+									nodes=${() => (opened()?.lines ?? []).map((line) => ({ ...line, kind: 'below' }))}
 								/>
 							`}
 						>
@@ -152,7 +152,7 @@ function ThreadMemory(props) {
 						max="100"
 						aria-label="Memory room"
 						value=${() => props.room}
-						onInput=${(e) => props.onRoom(Number(e.currentTarget.value))}
+						onInput=${(event) => props.onRoom(Number(event.currentTarget.value))}
 					/>
 					<span
 						>${() => {
@@ -206,15 +206,15 @@ function ThreadMemory(props) {
 async function openTree(read, id, n, cut) {
 	const halves = n > 1 ? (await read(`?zoom=${id},${n}`)).lines : null
 	if (!halves?.length)
-		return cut.filter((x) => inside(x, id, n)).map((x) => ({ ...x, kind: 'cut' }))
-	if (halves.length === 1 && !cut.some((x) => key(x) === key(halves[0])))
+		return cut.filter((line) => inside(line, id, n)).map((line) => ({ ...line, kind: 'cut' }))
+	if (halves.length === 1 && !cut.some((line) => key(line) === key(halves[0])))
 		return openTree(read, halves[0].id, halves[0].n, cut)
 	return Promise.all(
-		halves.map(async (h) => {
-			const mine = cut.filter((x) => inside(x, h.id, h.n))
-			return mine.some((x) => key(x) === key(h))
-				? { ...h, kind: 'cut' }
-				: { ...h, kind: 'above', children: await openTree(read, h.id, h.n, mine) }
+		halves.map(async (half) => {
+			const mine = cut.filter((line) => inside(line, half.id, half.n))
+			return mine.some((line) => key(line) === key(half))
+				? { ...half, kind: 'cut' }
+				: { ...half, kind: 'above', children: await openTree(read, half.id, half.n, mine) }
 		}),
 	)
 }

@@ -16,9 +16,9 @@ export function ThreadItem(props) {
 			class=${() => ({ current: props.thread.id === current() })}
 			tabindex="0"
 			onClick=${() => openThread(props.thread.id)}
-			onKeyDown=${(e) => {
-				if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-					e.preventDefault()
+			onKeyDown=${(event) => {
+				if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+					event.preventDefault()
 					openThread(props.thread.id)
 				}
 			}}
@@ -28,8 +28,8 @@ export function ThreadItem(props) {
 			<${Show} when=${() => !homeBot(props.thread.id)}>
 				<button
 					title="Delete this thread"
-					onClick=${(e) => {
-						e.stopPropagation()
+					onClick=${(event) => {
+						event.stopPropagation()
 						deleteThread(props.thread.id).catch(report)
 					}}
 				>
@@ -54,7 +54,7 @@ export function ThreadList() {
 				</h3>
 				<ul class="bots">
 					<${Show} when=${() => creating()}><${NewBot} onDone=${(_e) => setCreating(false)} /><//>
-					<${For} each=${() => bots}>${(b) => html`<${BotItem} bot=${() => b} />`}<//>
+					<${For} each=${() => bots}>${(bot) => html`<${BotItem} bot=${() => bot} />`}<//>
 				</ul>
 				<h3>Threads</h3>
 			<//>
@@ -62,10 +62,10 @@ export function ThreadList() {
 				<${For}
 					each=${() =>
 						threads.filter(
-							(t) => !t.hidden && !homeBot(t.id) && !threads.some((p) => p.id === t.parent),
+							(thread) => !thread.hidden && !homeBot(thread.id) && !threads.some((other) => other.id === thread.parent),
 						)}
 				>
-					${(t) => html`<${ThreadItem} thread=${() => t} />`}
+					${(thread) => html`<${ThreadItem} thread=${() => thread} />`}
 				<//>
 			</ul>
 			<footer class="list-foot">

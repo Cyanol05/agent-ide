@@ -54,14 +54,14 @@ function saved(file) {
 	}
 }
 args.key ||= saved(args['key-file'])
-const roots = [...new Set(args.dir.map((d) => path.resolve(d)))]
+const roots = [...new Set(args.dir.map((dir) => path.resolve(dir)))]
 const dir = roots[0]
 const server = new URL(args.server).origin
 const name = args.name
 
 /** pi's own models and logins, as pi reads them, with the providers its extensions add, such as claude-code */
 const { modelRuntime: models, diagnostics } = await createAgentSessionServices({ cwd: dir })
-for (const d of diagnostics) if (d.type === 'error') console.log(`pi: ${d.message}`)
+for (const diagnostic of diagnostics) if (diagnostic.type === 'error') console.log(`pi: ${diagnostic.message}`)
 const echo = fauxProvider({ provider: 'echo', models: [{ id: 'echo' }] })
 models.registerNativeProvider(echo.provider)
 
@@ -115,7 +115,7 @@ function folders() {
 		for (const item of list(at)) {
 			if (!item.isDirectory() || item.name.startsWith('.') || item.name === 'node_modules') continue
 			const sub = path.join(at, item.name)
-			if (list(sub).some((i) => i.name === '.git' || i.name === '.jj')) found.push(sub)
+			if (list(sub).some((entry) => entry.name === '.git' || entry.name === '.jj')) found.push(sub)
 			else if (depth > 1) scan(sub, depth - 1)
 		}
 	}
@@ -150,13 +150,13 @@ async function connect() {
 		models,
 		resolve,
 		echo,
-		ops: Object.fromEntries(modules.filter((m) => m.call).map((m) => [m.name, m.call])),
+		ops: Object.fromEntries(modules.filter((module) => module.call).map((module) => [module.name, module.call])),
 		readOnly: args['read-only'],
 		send: (text) => socket.readyState === WebSocket.OPEN && socket.send(text),
 		onTell: (message) =>
 			message.op === 'update'
 				? update()
-				: modules.find((m) => m.name === message.op)?.told?.(message),
+				: modules.find((module) => module.name === message.op)?.told?.(message),
 	})
 	const from = args.owner ? `, to ${[args.owner, ...args.allow].join(', ')}` : ''
 	const online = () =>
@@ -168,7 +168,7 @@ async function connect() {
 	socket.onmessage = ({ data }) => JSON.parse(data).op === 'ready' ? online() : runner.receive(data)
 	socket.onclose = ({ code, reason }) => {
 		runner.stopAll()
-		for (const m of modules) m.disconnected?.()
+		for (const module of modules) module.disconnected?.()
 		if (code === 4001) {
 			console.log(reason)
 			process.exit(1)

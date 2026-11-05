@@ -13,14 +13,14 @@ export function server({ runners, known, threadList }) {
 			const all = await known()
 			for (const name of Object.keys(all).filter(runners.isOnline)) {
 				const threads = (await threadList(all[name].owner))
-					.map((t) => ({
-						...t,
-						agents: t.agents
-							.filter((a) => a.to?.runner === name)
-							.map((a) => a.name)
+					.map((thread) => ({
+						...thread,
+						agents: thread.agents
+							.filter((agent) => agent.to?.runner === name)
+							.map((agent) => agent.name)
 							.join(' '),
 					}))
-					.filter((t) => t.agents && t.status !== 'idle')
+					.filter((thread) => thread.agents && thread.status !== 'idle')
 					.map(({ id, title, agents, status }) => ({ id, title, agents, status }))
 				runners.tell(name, { op: 'status', threads })
 			}
@@ -83,10 +83,10 @@ export async function runner({ name, server }) {
 		const next = new Map([
 			['', programStatus({ state: root.state, app: 'agent-ide', msg: root.msg })],
 		])
-		for (const t of threads)
+		for (const thread of threads)
 			next.set(
-				String(t.id),
-				programStatus({ state: t.status, id: t.id, title: `#${t.id} ${t.title}`, msg: t.agents }),
+				String(thread.id),
+				programStatus({ state: thread.status, id: thread.id, title: `#${thread.id} ${thread.title}`, msg: thread.agents }),
 			)
 		for (const id of reported.keys())
 			if (!next.has(id)) process.stdout.write(programStatus({ state: 'clear', id }))
@@ -96,7 +96,7 @@ export async function runner({ name, server }) {
 	}
 	return {
 		told({ threads }) {
-			const working = threads.filter((t) => t.status === 'working').length
+			const working = threads.filter((thread) => thread.status === 'working').length
 			report(
 				{
 					state: working ? 'working' : 'idle',

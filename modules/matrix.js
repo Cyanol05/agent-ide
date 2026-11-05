@@ -35,12 +35,12 @@ const background = (threadId) => ({
 const list = (name) =>
 	(process.env[name] ?? '')
 		.split(',')
-		.map((s) => s.trim())
+		.map((item) => item.trim())
 		.filter(Boolean)
 const sleep = (ms, signal) =>
-	new Promise((r) => {
-		const t = setTimeout(r, ms)
-		signal?.addEventListener('abort', () => (clearTimeout(t), r()))
+	new Promise((resolve) => {
+		const timer = setTimeout(resolve, ms)
+		signal?.addEventListener('abort', () => (clearTimeout(timer), resolve()))
 	})
 /** A no that asking again won't change */
 const refused = (error) => error.status >= 400 && error.status < 500 && error.status !== 429
@@ -151,7 +151,7 @@ export function server(core) {
 	async function posted(tx, threadId, { id, data }) {
 		if (!data.answer && (!data.error || data.author === 'matrix')) return
 		const bridge = await tx.doc(MatrixBridge)
-		const { room, root } = Object.values(bridge.threads).find((t) => t.thread === threadId) ?? {}
+		const { room, root } = Object.values(bridge.threads).find((bridged) => bridged.thread === threadId) ?? {}
 		if (!room) return
 		bridge.salt ||= crypto.randomUUID()
 		bridge.last[room] = await tx.createTask(
@@ -177,24 +177,24 @@ export function server(core) {
 		core.commit(async (tx) => JSON.parse(JSON.stringify(await tx.doc(MatrixBridge))))
 
 	/** @returns {MatrixMessage | null} */
-	function messageOf(room, e) {
-		const relation = e.content?.['m.relates_to']
+	function messageOf(room, event) {
+		const relation = event.content?.['m.relates_to']
 		if (
-			e.type !== 'm.room.message' ||
-			typeof e.content.body !== 'string' ||
+			event.type !== 'm.room.message' ||
+			typeof event.content.body !== 'string' ||
 			relation?.rel_type === 'm.replace' ||
-			e.unsigned?.transaction_id
+			event.unsigned?.transaction_id
 		)
 			return null
 		const mentions =
-			e.content['m.mentions']?.user_ids?.includes(me) || mentioned.test(e.content.body)
+			event.content['m.mentions']?.user_ids?.includes(me) || mentioned.test(event.content.body)
 		return {
-			id: e.event_id,
+			id: event.event_id,
 			room,
-			author: speaker(e.sender),
-			body: clean(e.content.body),
-			root: relation?.rel_type === 'm.thread' ? relation.event_id : e.event_id,
-			asks: Boolean(agent && mentions && users.has(speaker(e.sender))),
+			author: speaker(event.sender),
+			body: clean(event.content.body),
+			root: relation?.rel_type === 'm.thread' ? relation.event_id : event.event_id,
+			asks: Boolean(agent && mentions && users.has(speaker(event.sender))),
 		}
 	}
 
@@ -213,14 +213,14 @@ export function server(core) {
 				events.unshift(...page.chunk.reverse())
 				from = page.chunk.length && page.end
 			}
-			messages.push(...events.map((e) => messageOf(room, e)).filter(Boolean))
+			messages.push(...events.map((event) => messageOf(room, event)).filter(Boolean))
 		}
 		return messages
 	}
 
 	const firstOf = ({ room, root }) =>
 		request('GET', `${roomPath(room)}/event/${encodeURIComponent(root)}`).then(
-			(e) => messageOf(room, e),
+			(event) => messageOf(room, event),
 			(error) => {
 				if (refused(error)) return null
 				throw error

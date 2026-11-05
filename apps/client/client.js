@@ -21,8 +21,8 @@ function Client() {
 		dispatchEvent(new Event('resize'))
 	})
 	onSettled(() => {
-		const close = (e) => {
-			if (e.key === 'Escape') drawer(null)
+		const close = (event) => {
+			if (event.key === 'Escape') drawer(null)
 		}
 		const resize = () => drawer(null)
 		const phone = matchMedia('(max-width: 700px)')
@@ -65,14 +65,14 @@ function Client() {
 							'thread-pill',
 							{
 								'hands-off': !!(current()
-									? threads.find((t) => t.id === current())?.tools
+									? threads.find((thread) => thread.id === current())?.tools
 									: newThreadTools()),
 							},
 						]}
 						type="button"
 						onClick=${() => drawer('side')}
 					>
-						<${Dot} state=${() => threads.find((t) => t.id === current())?.status} />
+						<${Dot} state=${() => threads.find((thread) => thread.id === current())?.status} />
 						<span>${() => (current() ? titleOf(current()) : 'New thread')}</span>
 					</button>
 				</header>

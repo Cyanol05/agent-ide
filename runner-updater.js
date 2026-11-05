@@ -6,7 +6,7 @@ import path from 'node:path'
 
 const [server, ...given] = process.argv.slice(2)
 const updates = !given.includes('--no-update')
-const args = given.filter((a) => a !== '--no-update')
+const args = given.filter((arg) => arg !== '--no-update')
 const home = process.env.AGENT_IDE_HOME || path.join(os.homedir(), '.agent-ide', 'runner')
 const bun = Boolean(process.versions.bun)
 if (!server) throw new Error('usage: runner-updater.js <server> [runner options]')
@@ -15,7 +15,7 @@ if (!bun && Number(process.versions.node.split('.')[0]) < 24)
 
 const read = (file) =>
 	existsSync(path.join(home, file)) ? readFileSync(path.join(home, file), 'utf8') : ''
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** The server's runner, installed here; true when that changed anything */
 async function install() {

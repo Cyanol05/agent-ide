@@ -9,7 +9,7 @@ import { ConnectRunner } from './runner.js'
 import { report } from './notice.js'
 import { Memory } from './agent-memory.js'
 
-const defaults = () => runners.filter((r) => r.online && toFor(r).model).map(toFor)
+const defaults = () => runners.filter((runner) => runner.online && toFor(runner).model).map(toFor)
 async function ask(body, to, was = current()) {
 	if (!to) throw new Error('Pick a model first.')
 	choose(to)
@@ -93,17 +93,17 @@ const TRIES = {
 		)
 	},
 	fork: () => {
-		const first = (entries[current()] ?? []).find((e) => e.data.answer)
+		const first = (entries[current()] ?? []).find((entry) => entry.data.answer)
 		if (!first) throw new Error('Ask something first: a fork starts from a message.')
 		return fork(current(), first.id)
 	},
 	shed: async () => {
 		const { id } = await api('/api/threads', { title: 'The shed', requestId: crypto.randomUUID() })
-		for (const [i, [author, body]] of SHED.entries()) {
+		for (const [index, [author, body]] of SHED.entries()) {
 			const response = await fetch(`${url}/api/threads/${id}/entries`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', 'x-user': author },
-				body: JSON.stringify({ body, to: null, requestId: `shed-${id}-${i}` }),
+				body: JSON.stringify({ body, to: null, requestId: `shed-${id}-${index}` }),
 			})
 			if (!response.ok) throw new Error((await response.json()).error)
 		}
@@ -122,15 +122,15 @@ const TRIES = {
 		if (!first) throw new Error('Pick a model first.')
 		// Two runners, or two models on one runner, or the one model twice
 		const offer = runners
-			.find((r) => r.name === first.runner)
-			?.offers?.find((m) => m !== first.model)
-		const [a, b] = others.length
+			.find((runner) => runner.name === first.runner)
+			?.offers?.find((model) => model !== first.model)
+		const [one, two] = others.length
 			? others.length > 1
 				? others
 				: [first, others[0]]
 			: [first, { ...first, ...(offer && { model: offer }) }]
 		return ask(
-			`With your post tool, start two threads at once: one asking ${formatAgent(a)}, one asking ${formatAgent(b)}, which machine and model each is, in one line. Wait for both answers, then tell me in two lines.`,
+			`With your post tool, start two threads at once: one asking ${formatAgent(one)}, one asking ${formatAgent(two)}, which machine and model each is, in one line. Wait for both answers, then tell me in two lines.`,
 			first,
 			null,
 		)
@@ -142,14 +142,14 @@ export function Tutorial() {
 		const stage = document.getElementById('stage')
 		const sections = new IntersectionObserver(
 			(list) => {
-				for (const e of list) if (e.isIntersecting) stage.dataset.focus = e.target.dataset.focus
+				for (const entry of list) if (entry.isIntersecting) stage.dataset.focus = entry.target.dataset.focus
 			},
 			{ rootMargin: '-45% 0px -45% 0px' },
 		)
-		document.querySelectorAll('.page > section').forEach((s) => sections.observe(s))
+		document.querySelectorAll('.page > section').forEach((section) => sections.observe(section))
 		const buttons = [...document.querySelectorAll('[data-try]')]
-		const run = async (e) => {
-			const button = e.currentTarget
+		const run = async (event) => {
+			const button = event.currentTarget
 			if (matchMedia('(max-width: 1000px)').matches) stage.scrollIntoView({ behavior: 'smooth' })
 			button.disabled = true
 			try {
@@ -160,10 +160,10 @@ export function Tutorial() {
 				button.disabled = false
 			}
 		}
-		buttons.forEach((b) => b.addEventListener('click', run))
+		buttons.forEach((button) => button.addEventListener('click', run))
 		return () => {
 			sections.disconnect()
-			buttons.forEach((b) => b.removeEventListener('click', run))
+			buttons.forEach((button) => button.removeEventListener('click', run))
 		}
 	})
 	return html`

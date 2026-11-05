@@ -47,13 +47,13 @@ export function field(value, name) {
 }
 
 /** A message as an agent reads it */
-export function said({ data: m }) {
-	const agent = Boolean(m.answer || m.error || m.from)
+export function said({ data: message }) {
+	const agent = Boolean(message.answer || message.error || message.from)
 	const who = agent
-		? `${m.author} (agent${m.from ? `, ${m.re ? 'answering' : 'writing'} from thread ${m.from}` : ''})`
-		: m.author
-	const output = m.shell
-		? `\n${[`exit ${m.shell.code ?? m.shell.error}`, m.shell.stdout, m.shell.stderr].filter(Boolean).join('\n')}`
+		? `${message.author} (agent${message.from ? `, ${message.re ? 'answering' : 'writing'} from thread ${message.from}` : ''})`
+		: message.author
+	const output = message.shell
+		? `\n${[`exit ${message.shell.code ?? message.shell.error}`, message.shell.stdout, message.shell.stderr].filter(Boolean).join('\n')}`
 		: ''
-	return `${who}: ${`${m.body}${output}`.replace(/\n/g, '\n  ')}`
+	return `${who}: ${`${message.body}${output}`.replace(/\n/g, '\n  ')}`
 }

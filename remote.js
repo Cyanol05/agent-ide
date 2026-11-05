@@ -27,18 +27,18 @@ const RUNNER_PACKAGES = [
 export async function runnerBundle(dir) {
 	const read = (file) => readFile(path.join(dir, file), 'utf8')
 	const files = Object.fromEntries(
-		await Promise.all(RUNNER_FILES.map(async (f) => [f, await read(f)])),
+		await Promise.all(RUNNER_FILES.map(async (file) => [file, await read(file)])),
 	)
 	const require = createRequire(path.join(dir, 'package.json'))
 	const dependencies = Object.fromEntries(
 		await Promise.all(
-			RUNNER_PACKAGES.map(async (p) => {
+			RUNNER_PACKAGES.map(async (packageName) => {
 				// These manifests needn't be exported. Node's search paths also work in Bun runners.
 				const file = require.resolve
-					.paths(p)
-					.map((root) => path.join(root, p, 'package.json'))
+					.paths(packageName)
+					.map((root) => path.join(root, packageName, 'package.json'))
 					.find(existsSync)
-				return [p, JSON.parse(await readFile(file, 'utf8')).version]
+				return [packageName, JSON.parse(await readFile(file, 'utf8')).version]
 			}),
 		),
 	)
@@ -53,29 +53,29 @@ export async function runnerBundle(dir) {
 }
 
 function encode(value) {
-	return JSON.stringify(value, (key, v) => {
-		if (v instanceof Uint8Array) return { $bytes: Buffer.from(v).toString('base64') }
-		if (v instanceof FileError || v instanceof ExecutionError)
+	return JSON.stringify(value, (key, item) => {
+		if (item instanceof Uint8Array) return { $bytes: Buffer.from(item).toString('base64') }
+		if (item instanceof FileError || item instanceof ExecutionError)
 			return {
-				$error: v.constructor.name,
-				code: v.code,
-				message: v.message,
-				path: v.path,
-				spillPath: v.spillPath,
+				$error: item.constructor.name,
+				code: item.code,
+				message: item.message,
+				path: item.path,
+				spillPath: item.spillPath,
 			}
-		return v
+		return item
 	})
 }
 function decode(text) {
-	return JSON.parse(text, (key, v) => {
-		if (v?.$bytes !== undefined) return new Uint8Array(Buffer.from(v.$bytes, 'base64'))
-		if (v?.$error === 'FileError') return new FileError(v.code, v.message, v.path)
-		if (v?.$error === 'ExecutionError')
+	return JSON.parse(text, (key, item) => {
+		if (item?.$bytes !== undefined) return new Uint8Array(Buffer.from(item.$bytes, 'base64'))
+		if (item?.$error === 'FileError') return new FileError(item.code, item.message, item.path)
+		if (item?.$error === 'ExecutionError')
 			return Object.assign(
-				new ExecutionError(v.code, v.message),
-				v.spillPath ? { spillPath: v.spillPath } : {},
+				new ExecutionError(item.code, item.message),
+				item.spillPath ? { spillPath: item.spillPath } : {},
 			)
-		return v
+		return item
 	})
 }
 
@@ -178,7 +178,7 @@ export function createRunners({ onChange }) {
 		isOnline: (name) => sockets.has(name),
 		tell: (name, message) => sockets.get(name)?.send(message),
 		working: (name) =>
-			[...calls.values()].filter((c) => c.runner === name).map(({ op, what }) => ({ op, what })),
+			[...calls.values()].filter((call) => call.runner === name).map(({ op, what }) => ({ op, what })),
 		connect(name, send) {
 			sockets.set(name, { send: (value) => send(encode(value)), held: new Map() })
 			for (const resolve of waiting.get(name) ?? []) resolve()
@@ -230,16 +230,16 @@ function keep(kept, key, messages) {
 }
 /** Pi hands over the same message objects turn after turn, so each is encoded once */
 const encoded = new WeakMap()
-const encodeOnce = (m) => encoded.get(m) ?? encoded.set(m, encode(m)).get(m)
+const encodeOnce = (message) => encoded.get(message) ?? encoded.set(message, encode(message)).get(message)
 
 /** The models pi on the runner resolved, by `provider/id` */
 export function runnerProvider(runners, name, resolved = {}) {
 	const id = `runner:${name}`
-	const models = Object.entries(resolved).map(([ref, m]) => ({
-		...m,
+	const models = Object.entries(resolved).map(([ref, model]) => ({
+		...model,
 		provider: id,
 		id: ref,
-		name: `${m.name} on ${name}`,
+		name: `${model.name} on ${name}`,
 	}))
 	const stream = (model, context, options = {}) => {
 		const events = createAssistantMessageEventStream()
@@ -261,7 +261,7 @@ export function runnerProvider(runners, name, resolved = {}) {
 			const sent = context.messages.map(encodeOnce)
 			const last = held.get(key)
 			const since =
-				last?.length <= sent.length && last.every((m, i) => m === sent[i]) ? last.length : 0
+				last?.length <= sent.length && last.every((message, index) => message === sent[index]) ? last.length : 0
 			if (key) keep(held, key, sent)
 			const messages = context.messages.slice(since)
 			return { op: 'stream', model: model.id, context: { messages, since }, options: rest }
@@ -354,7 +354,7 @@ export function remoteEnv(runners, name, cwd) {
 }
 
 /** Whether a path is one of `folders` or inside one: the folders a runner offers */
-export const within = (folders, p) => folders.some((f) => p === f || p.startsWith(f + path.sep))
+export const within = (folders, target) => folders.some((folder) => target === folder || target.startsWith(folder + path.sep))
 
 /** `resolve(pattern)` is pi's `--model pattern`: { model, thinkingLevel? */
 export function serveRunner({
@@ -384,13 +384,13 @@ export function serveRunner({
 		handle,
 	}
 
-	function inside(p, cwd = dir) {
-		const full = path.resolve(cwd, p ?? '.')
+	function inside(target, cwd = dir) {
+		const full = path.resolve(cwd, target ?? '.')
 		if (!within(roots, full))
 			throw new FileError(
 				'permission_denied',
-				`${p} is outside ${name}'s folders ${roots.join(', ')}`,
-				p,
+				`${target} is outside ${name}'s folders ${roots.join(', ')}`,
+				target,
 			)
 		return full
 	}
@@ -413,7 +413,7 @@ export function serveRunner({
 			echo.appendResponses([
 				(ctx) =>
 					fauxAssistantMessage(
-						`echo@${name} heard: ${messageText(ctx.messages.findLast((m) => m.role === 'user'))}`,
+						`echo@${name} heard: ${messageText(ctx.messages.findLast((message) => message.role === 'user'))}`,
 					),
 			])
 			model = echo.getModel()
@@ -514,6 +514,6 @@ export const messageText = (message) =>
 	typeof message?.content === 'string'
 		? message.content
 		: (message?.content ?? [])
-				.filter((p) => p.type === 'text')
-				.map((p) => p.text)
+				.filter((part) => part.type === 'text')
+				.map((part) => part.text)
 				.join('')

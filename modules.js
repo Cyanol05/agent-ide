@@ -31,7 +31,7 @@ export async function load(end, defaults, core) {
 			await import(own ? pathToFileURL(path.resolve(name)).href : `./modules/${name}.js`)
 		)[end]
 		const named = own ? path.basename(name, '.js') : name
-		if (modules.some((m) => m.name === named))
+		if (modules.some((module) => module.name === named))
 			throw new Error(`${file}: two modules are named ${named}; rename one`)
 		if (make) modules.push({ name: named, ...(await make(core)) })
 	}

@@ -20,26 +20,26 @@ import { ThreadItem } from './thread-list.js'
 
 const HANDS_OFF = ['-write', '-edit', '-bash']
 export function ThreadDetails() {
-	const here = () => threads.find((t) => t.id === current())
+	const here = () => threads.find((thread) => thread.id === current())
 	// A bot's home is named for it already, so only who else is there
 	const members = () =>
 		[
 			...new Set([
 				...(entries[current()] ?? [])
-					.filter((e) => !e.data.answer && !e.data.error && !e.data.from)
-					.map((e) => e.data.author),
+					.filter((entry) => !entry.data.answer && !entry.data.error && !entry.data.from)
+					.map((entry) => entry.data.author),
 				...(here()?.readers ?? []),
 			]),
-			...(here()?.agents ?? []).map((a) => a.name),
+			...(here()?.agents ?? []).map((agent) => agent.name),
 		].filter((name) => name !== homeBot(current())?.name)
 	const depth = (id) => {
-		let d = 0
-		for (let t = threads.find((t) => t.id === id); d < 20; d++) {
-			const parent = t?.parent ?? forkedFrom(t)
+		let hops = 0
+		for (let thread = threads.find((thread) => thread.id === id); hops < 20; hops++) {
+			const parent = thread?.parent ?? forkedFrom(thread)
 			if (!family().includes(parent)) break
-			t = threads.find((t) => t.id === parent)
+			thread = threads.find((thread) => thread.id === parent)
 		}
-		return d
+		return hops
 	}
 	return html`
 		<div class="scrim" onClick=${() => drawer(null)}></div>
@@ -49,8 +49,8 @@ export function ThreadDetails() {
 				<h3>In this thread</h3>
 				<p id="members">
 					<${For} each=${() => members()}>
-						${(name, i) => [
-							() => (i() ? ', ' : ''),
+						${(name, index) => [
+							() => (index() ? ', ' : ''),
 							html`<span title=${() => name} style=${() => colorOf(name)}
 								>${() => authorLabel(name)}</span
 							>`,
@@ -63,10 +63,10 @@ export function ThreadDetails() {
 					<${For}
 						each=${() =>
 							family()
-								.map((id) => threads.find((t) => t.id === id))
+								.map((id) => threads.find((thread) => thread.id === id))
 								.filter(Boolean)}
 					>
-						${(t) => html`<${ThreadItem} thread=${() => t} depth=${() => depth(t.id)} />`}
+						${(thread) => html`<${ThreadItem} thread=${() => thread} depth=${() => depth(thread.id)} />`}
 					<//>
 				</ul>
 			<//>
@@ -81,7 +81,7 @@ export function ThreadDetails() {
 
 /** Rename on Enter or leaving the field; Escape puts the old title back. */
 function Title(props) {
-	const title = () => threads.find((t) => t.id === props.thread)?.title ?? ''
+	const title = () => threads.find((thread) => thread.id === props.thread)?.title ?? ''
 	const [error, setError] = createSignal('')
 	const save = async (field) => {
 		const next = field.value.trim()
@@ -90,8 +90,8 @@ function Title(props) {
 		try {
 			await api(`/api/threads/${props.thread}/title`, { title: next })
 			refresh(threads)
-		} catch (e) {
-			setError(e.message)
+		} catch (failure) {
+			setError(failure.message)
 			field.value = title()
 		}
 	}
@@ -101,12 +101,12 @@ function Title(props) {
 			aria-label="Thread title"
 			title=${() => error() || 'Rename this thread'}
 			value=${title}
-			onChange=${(e) => save(e.currentTarget)}
-			onKeyDown=${(e) => {
-				if (e.key === 'Enter') e.currentTarget.blur()
-				if (e.key === 'Escape') {
-					e.currentTarget.value = title()
-					e.currentTarget.blur()
+			onChange=${(event) => save(event.currentTarget)}
+			onKeyDown=${(event) => {
+				if (event.key === 'Enter') event.currentTarget.blur()
+				if (event.key === 'Escape') {
+					event.currentTarget.value = title()
+					event.currentTarget.blur()
 				}
 			}}
 		/>
@@ -115,7 +115,7 @@ function Title(props) {
 
 function Tools(props) {
 	const tools = () =>
-		props.thread ? threads.find((t) => t.id === props.thread)?.tools : newThreadTools()
+		props.thread ? threads.find((thread) => thread.id === props.thread)?.tools : newThreadTools()
 	let field
 	const [text, setText] = createSignal('')
 	createEffect(
@@ -132,8 +132,8 @@ function Tools(props) {
 				await api(`/api/threads/${props.thread}/tools`, { tools: list?.length ? list : null })
 				refresh(threads)
 			} else setNewThreadTools(list?.length ? list : null)
-		} catch (e) {
-			setError(e.message)
+		} catch (failure) {
+			setError(failure.message)
 		}
 	}
 	return html`
@@ -142,7 +142,7 @@ function Tools(props) {
 				<input
 					type="checkbox"
 					checked=${() => !!tools()}
-					onChange=${(e) => apply(e.currentTarget.checked ? HANDS_OFF : null)}
+					onChange=${(event) => apply(event.currentTarget.checked ? HANDS_OFF : null)}
 				/>
 				Hands off
 			</label>
@@ -156,15 +156,15 @@ function Tools(props) {
 				class=${() => ['tools', { bad: !!error() }]}
 				title=${() => error() || 'tools, as pi --tools takes them: read,post or -write,-edit,-bash'}
 				value=${() => text()}
-				onInput=${(e) => setText(e.currentTarget.value)}
+				onInput=${(event) => setText(event.currentTarget.value)}
 				onChange=${() =>
 					apply(
 						text()
 							.split(/[\s,]+/)
 							.filter(Boolean),
 					)}
-				onKeyDown=${(e) => {
-					if (e.key === 'Enter') e.currentTarget.blur()
+				onKeyDown=${(event) => {
+					if (event.key === 'Enter') event.currentTarget.blur()
 				}}
 			/>
 		</div>

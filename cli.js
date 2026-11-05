@@ -31,7 +31,7 @@ const parse = (options) => {
 	}
 }
 const {
-	values: o,
+	values: flags,
 	positionals: [command, ...rest],
 } = parse({
 	server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://127.0.0.1:3000' },
@@ -48,9 +48,9 @@ const {
 })
 
 async function api(method, route, body) {
-	const res = await fetch(o.server + route, {
+	const res = await fetch(flags.server + route, {
 		method,
-		headers: { 'content-type': 'application/json', 'x-user': o.as },
+		headers: { 'content-type': 'application/json', 'x-user': flags.as },
 		body: body && JSON.stringify(body),
 	})
 	const json = await res.json()
@@ -60,57 +60,57 @@ async function api(method, route, body) {
 
 /** Names belong to the API; only explicit recipe options need an object. */
 function agent(name) {
-	if (!o.thinking && !o.dir) return name
+	if (!flags.thinking && !flags.dir) return name
 	const at = name.lastIndexOf('@')
 	return {
 		runner: name.slice(at + 1),
 		model: at < 0 ? '' : name.slice(0, at),
-		...(o.thinking ? { thinkingLevel: o.thinking } : {}),
-		...(o.dir ? { dir: o.dir } : {}),
+		...(flags.thinking ? { thinkingLevel: flags.thinking } : {}),
+		...(flags.dir ? { dir: flags.dir } : {}),
 	}
 }
 
-function show({ id, data: m }) {
+function show({ id, data: message }) {
 	const shell =
-		m.shell &&
-		[m.shell.stdout, m.shell.stderr, m.shell.error, m.shell.code ? `exit ${m.shell.code}` : '']
+		message.shell &&
+		[message.shell.stdout, message.shell.stderr, message.shell.error, message.shell.code ? `exit ${message.shell.code}` : '']
 			.filter(Boolean)
 			.join('\n')
 	console.log(
-		`#${id} ${m.author}${m.to ? ` → ${m.to.join(', ')}` : ''}${m.from ? ` (from thread ${m.from})` : ''}\n${m.body}${shell ? `\n${shell}` : ''}\n`,
+		`#${id} ${message.author}${message.to ? ` → ${message.to.join(', ')}` : ''}${message.from ? ` (from thread ${message.from})` : ''}\n${message.body}${shell ? `\n${shell}` : ''}\n`,
 	)
 }
 
 async function post() {
 	const body = rest.join(' ')
 	if (!body) throw new Error('post what?')
-	const id = o.thread
-		? Number(o.thread)
-		: (await api('POST', '/api/threads', { title: o.title ?? body.slice(0, 60) })).id
-	if (!o.thread) console.error(`thread ${id}`)
+	const id = flags.thread
+		? Number(flags.thread)
+		: (await api('POST', '/api/threads', { title: flags.title ?? body.slice(0, 60) })).id
+	if (!flags.thread) console.error(`thread ${id}`)
 	const seen = (await api('GET', `/api/threads/${id}`)).entries.at(-1)?.id ?? 0
-	const to = o.to && (o.to.includes('nobody') ? null : o.to.map(agent))
+	const to = flags.to && (flags.to.includes('nobody') ? null : flags.to.map(agent))
 	/** Listen before posting so even an immediate answer can't slip between the read and the wait */
-	const socket = o['no-wait'] ? null : new WebSocket(o.server.replace(/^http/, 'ws') + '/ws')
+	const socket = flags['no-wait'] ? null : new WebSocket(flags.server.replace(/^http/, 'ws') + '/ws')
 	const changes = socket && on(socket, 'message', { close: ['close'] })
 	try {
 		if (socket) await once(socket, 'open')
 		const posted = await api('POST', `/api/threads/${id}/entries`, {
 			body,
-			...(o.to ? { to } : {}),
-			...(o.steer ? { steer: true } : {}),
+			...(flags.to ? { to } : {}),
+			...(flags.steer ? { steer: true } : {}),
 			requestId: crypto.randomUUID(),
 		})
-		if (o['no-wait'] || !(posted.command || posted.to?.length)) return
+		if (flags['no-wait'] || !(posted.command || posted.to?.length)) return
 		let last = posted.entry ?? seen
 		let waiting = ''
 		for (;;) {
 			const view = await api('GET', `/api/threads/${id}`)
-			for (const e of view.entries.filter((e) => e.id > last)) {
-				if (e.id !== posted.entry) show(e)
-				last = e.id
+			for (const entry of view.entries.filter((entry) => entry.id > last)) {
+				if (entry.id !== posted.entry) show(entry)
+				last = entry.id
 			}
-			const blocked = view.agents.filter((a) => a.status === 'blocked').map((a) => a.to?.runner)
+			const blocked = view.agents.filter((agent) => agent.status === 'blocked').map((agent) => agent.to?.runner)
 			if (blocked.join() !== waiting && (waiting = blocked.join()))
 				console.error(`waiting for ${waiting}, offline…`)
 			if (!['working', 'blocked'].includes(view.status)) return
@@ -126,30 +126,30 @@ async function post() {
 const commands = {
 	post,
 	async threads() {
-		for (const t of await api('GET', '/api/threads'))
+		for (const thread of await api('GET', '/api/threads'))
 			console.log(
-				`#${t.id} ${t.title}  ${t.status}${t.agents.length ? `  ${t.agents.map((a) => a.name).join(', ')}` : ''}${t.parent ? `  child of #${t.parent}` : ''}`,
+				`#${thread.id} ${thread.title}  ${thread.status}${thread.agents.length ? `  ${thread.agents.map((agent) => agent.name).join(', ')}` : ''}${thread.parent ? `  child of #${thread.parent}` : ''}`,
 			)
 	},
 	async read() {
 		const { entries } = await api('GET', `/api/threads/${Number(rest[0])}`)
-		for (const e of entries.slice(-(Number(o.last) || entries.length))) show(e)
+		for (const entry of entries.slice(-(Number(flags.last) || entries.length))) show(entry)
 	},
 	async runners() {
-		for (const r of await api('GET', '/api/runners')) {
+		for (const runner of await api('GET', '/api/runners')) {
 			console.log(
-				!r.dir
-					? `${r.name} waiting for it to dial in`
-					: `${r.name} ${r.online ? 'online' : 'offline'}${r.busy ? `, busy in ${r.busy}` : ''}  ${r.dir}${r.readOnly ? ' (read-only)' : ''}  default ${r.model || `none${r.modelError ? `: ${r.modelError}` : ''}`}`,
+				!runner.dir
+					? `${runner.name} waiting for it to dial in`
+					: `${runner.name} ${runner.online ? 'online' : 'offline'}${runner.busy ? `, busy in ${runner.busy}` : ''}  ${runner.dir}${runner.readOnly ? ' (read-only)' : ''}  default ${runner.model || `none${runner.modelError ? `: ${runner.modelError}` : ''}`}`,
 			)
-			for (const f of (r.folders ?? []).slice(1)) console.log(`  folder ${f}`)
-			for (const m of r.offers) console.log(`  ${m}@${r.name}`)
+			for (const folder of (runner.folders ?? []).slice(1)) console.log(`  folder ${folder}`)
+			for (const model of runner.offers) console.log(`  ${model}@${runner.name}`)
 		}
 	},
 	async key() {
 		const { key, connect } = await api('POST', '/api/runners', { name: rest[0] })
 		console.log(
-			`AGENT_IDE_KEY=${key}\n\nOn the runner's machine:\n  ${connect}\nor from a clone:\n  AGENT_IDE_KEY=${key} node runner.js --server ${o.server} --name ${rest[0]} --dir .`,
+			`AGENT_IDE_KEY=${key}\n\nOn the runner's machine:\n  ${connect}\nor from a clone:\n  AGENT_IDE_KEY=${key} node runner.js --server ${flags.server} --name ${rest[0]} --dir .`,
 		)
 	},
 	async revoke() {
@@ -159,9 +159,9 @@ const commands = {
 	stop: () => api('POST', `/api/threads/${Number(rest[0])}/stop`),
 }
 
-if (o.help || !commands[command]) {
+if (flags.help || !commands[command]) {
 	console.log(usage)
-	process.exit(o.help ? 0 : 1)
+	process.exit(flags.help ? 0 : 1)
 }
 await commands[command]().catch((error) => {
 	console.error(error.message)

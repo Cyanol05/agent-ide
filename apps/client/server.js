@@ -18,9 +18,9 @@ export const api = (path, body, method = body === undefined ? 'GET' : 'POST') =>
 		headers: { 'Content-Type': 'application/json', 'x-user': me },
 		method,
 		...(body === undefined ? {} : { body: JSON.stringify(body) }),
-	}).then(async (r) => {
-		const json = await r.json()
-		if (!r.ok) throw new Error(json.error)
+	}).then(async (response) => {
+		const json = await response.json()
+		if (!response.ok) throw new Error(json.error)
 		return json
 	})
 
@@ -30,7 +30,7 @@ export function watch(receive, opened = () => {}, closed = () => {}) {
 	const connect = () => {
 		socket = new WebSocket(`${url.replace(/^http/, 'ws')}/ws`)
 		socket.onopen = () => opened(socket)
-		socket.onmessage = (m) => receive(JSON.parse(m.data))
+		socket.onmessage = (event) => receive(JSON.parse(event.data))
 		socket.onclose = () => {
 			closed()
 			timer = setTimeout(connect, 1000)
@@ -88,14 +88,14 @@ export const { threads, runners, server, bots, family } = createRoot(() => {
 	)
 	const family = createMemo(() => {
 		if (!current()) return [null]
-		const byId = new Map(threads.map((t) => [t.id, t]))
+		const byId = new Map(threads.map((thread) => [thread.id, thread]))
 		const parent = (id) => byId.get(id)?.parent ?? forkedFrom(byId.get(id))
 		let root = current()
-		for (let n = 0; parent(root) && byId.has(parent(root)) && n < 20; n++) root = parent(root)
+		for (let hops = 0; parent(root) && byId.has(parent(root)) && hops < 20; hops++) root = parent(root)
 		const ids = [root]
-		for (let i = 0; i < ids.length; i++)
-			for (const t of threads)
-				if (parent(t.id) === ids[i] && !ids.includes(t.id) && !t.hidden) ids.push(t.id)
+		for (let index = 0; index < ids.length; index++)
+			for (const thread of threads)
+				if (parent(thread.id) === ids[index] && !ids.includes(thread.id) && !thread.hidden) ids.push(thread.id)
 		return ids
 	})
 	return { threads, runners, server, bots, family }
@@ -117,12 +117,12 @@ export async function deleteThread(id) {
 	if (family().includes(id)) openThread(null)
 	refresh(threads)
 }
-export const homeBot = (id) => bots.find((b) => b.home === id)
-export const botAgent = (b) => ({ ...b.to, name: b.name })
+export const homeBot = (id) => bots.find((bot) => bot.home === id)
+export const botAgent = (bot) => ({ ...bot.to, name: bot.name })
 export const colorOf = (name) => {
-	const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
-	return bots.some((b) => b.name === name) ? `color: oklch(0.6 0.14 ${hue})` : ''
+	const hue = [...name].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 360, 7)
+	return bots.some((bot) => bot.name === name) ? `color: oklch(0.6 0.14 ${hue})` : ''
 }
-export const forkedFrom = (t) => t?.conversation?.parent?.conversationId
-export const titleOf = (id) => threads.find((t) => t.id === id)?.title || `thread ${id}`
+export const forkedFrom = (thread) => thread?.conversation?.parent?.conversationId
+export const titleOf = (id) => threads.find((thread) => thread.id === id)?.title || `thread ${id}`
 export const fork = async (id, at) => openThread((await api(`/api/threads/${id}/fork`, { at })).id)

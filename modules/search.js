@@ -38,7 +38,7 @@ export function server() {
 				raw.includes('data:')
 					? raw
 							.split('\n')
-							.findLast((l) => l.startsWith('data:'))
+							.findLast((line) => line.startsWith('data:'))
 							.slice(5)
 					: raw,
 			)
