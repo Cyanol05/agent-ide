@@ -485,8 +485,8 @@ async function whom(threadId, t, command = false, signal) {
 	// The agent is there already; the thinking this asks with applies from this message on.
 	const agent = await agentOf(agents[name].conversation, name)
 	// A runner alone resolves to pi's default thinking there, which no one asked for.
-	const named = asked?.thinkingLevel || (asked?.model && recipe.thinkingLevel)
-	return named ? { ...agent, thinkingLevel: recipe.thinkingLevel } : agent
+	const level = asked?.thinkingLevel || (asked?.model && recipe.thinkingLevel)
+	return level ? { ...agent, thinkingLevel: level } : agent
 }
 
 /** What `pi --model asked` makes of it on the runner, kept with its models */
