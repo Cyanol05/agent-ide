@@ -809,19 +809,23 @@ async function status(id, reads, busy, reader) {
 	return 'idle'
 }
 
-/** Who's in a thread needs no state of its own: the people who wrote there, or read */
+/** Who's in a thread needs no state of its own: the people who wrote there, or read. Only an open thread needs it. */
+async function people(id) {
+	const wrote = (await messages(id)).filter(
+		(entry) => !entry.data.answer && !entry.data.error && !entry.data.from,
+	)
+	const { reads } = await thread(id)
+	return [...new Set([...wrote.map((entry) => entry.data.author), ...Object.keys(reads)])]
+}
+
 async function threadRow(id, reader, all) {
 	const { reads, ...row } = await thread(id)
 	const busy = all.filter((job) => job.thread === id)
 	const agents = await agentsIn(row, busy)
-	const wrote = (await messages(id)).filter(
-		(entry) => !entry.data.answer && !entry.data.error && !entry.data.from,
-	)
 	return {
 		id,
 		...row,
 		readers: Object.keys(reads),
-		people: [...new Set([...wrote.map((entry) => entry.data.author), ...Object.keys(reads)])],
 		agents,
 		shells: [...shells.values()].filter((run) => run.threadId === id),
 		status: await status(id, reads, busy, reader),
@@ -854,6 +858,7 @@ const threadList = async (reader) => {
 }
 const threadView = async (id, reader) => ({
 	...(await threadRow(id, reader, await work())),
+	people: await people(id),
 	entries: await messages(id),
 })
 
@@ -1390,7 +1395,9 @@ async function rewatch(socket, id) {
 	const handle = await harness.conversation(id, context)
 	const messages = await handle.watch(context)
 	if (!keep(messages)) return
-	await told(handle, messages, send)
+	/** Who's there changes with a message, or a read */
+	const present = async () => ({ people: await people(id) })
+	await told(handle, messages, send, present)
 	const followed = new Set()
 	/** By conversation, which stays as an agent switches model or runner */
 	const follow = async (agents) => {
@@ -1404,10 +1411,10 @@ async function rewatch(socket, id) {
 		}
 	}
 	await follow(row.value.agents)
-	row.start(async ({ value }) => follow(value.agents))
+	row.start(async ({ value }) => (await follow(value.agents), send(await present())))
 }
-/** The thread's messages through Pi's transcript, which keeps them whole */
-async function told(handle, watch, send) {
+/** The thread's messages through Pi's transcript, which keeps them whole, each new batch with `also` */
+async function told(handle, watch, send, also) {
 	const transcript = new ConversationTranscript(
 		(query, limit, ctx) => handle.entries(query, limit, undefined, ctx),
 		{ pageSize: 500 },
@@ -1425,7 +1432,7 @@ async function told(handle, watch, send) {
 		if (!fresh.length && !first) return
 		first = false
 		newest = fresh.at(-1)?.id ?? newest
-		send({ entries: fresh.filter((entry) => entry.kind === KIND) })
+		send({ entries: fresh.filter((entry) => entry.kind === KIND), ...(await also()) })
 	}
 	await tell(watch.value)
 	watch.start(async ({ value }) => tell(value))

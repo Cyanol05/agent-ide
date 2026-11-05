@@ -13,6 +13,7 @@ import {
 	newThreadTools,
 	openThread,
 	setEntries,
+	setPeople,
 	threads,
 	titleOf,
 	watch,
@@ -63,6 +64,10 @@ export function Thread(props) {
 							else all[id].push(...message.entries)
 						})
 					}
+					if (message.people)
+						setPeople((all) => {
+							all[id] = message.people
+						})
 					if (message.live)
 						setDoing((work) => {
 							work[id] ??= {}

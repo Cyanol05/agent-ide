@@ -50,6 +50,8 @@ export const [newThreadTools, setNewThreadTools] = createSignal(null)
 /** The last key this page made, {name, connect}: the key is shown once, so it outlives the form that asked */
 export const [minted, setMinted] = createSignal(null)
 export const [entries, setEntries] = createStore({})
+/** Who's in each thread on screen, as its socket says */
+export const [people, setPeople] = createStore({})
 export const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
 
 export function openThread(id) {

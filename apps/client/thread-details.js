@@ -9,6 +9,7 @@ import {
 	family,
 	homeBot,
 	newThreadTools,
+	people,
 	setNewThreadTools,
 	threads,
 } from './server.js'
@@ -21,7 +22,7 @@ export function ThreadDetails() {
 	const here = () => threads.find((thread) => thread.id === current())
 	// A bot's home is named for it already, so only who else is there
 	const members = () =>
-		[...(here()?.people ?? []), ...(here()?.agents ?? []).map((agent) => agent.name)].filter(
+		[...(people[current()] ?? []), ...(here()?.agents ?? []).map((agent) => agent.name)].filter(
 			(name) => name !== homeBot(current())?.name,
 		)
 	const depth = (id) => here()?.family.find((member) => member.id === id)?.depth ?? 0

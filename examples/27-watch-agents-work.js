@@ -47,8 +47,8 @@ const text = (message) =>
 const first = watch(id)
 await until(async () => first.heard.length)
 check(
-	JSON.stringify(first.heard) === JSON.stringify([{ thread: id, entries: [] }]),
-	'a new thread says first that it has no messages, and no agents',
+	JSON.stringify(first.heard) === JSON.stringify([{ thread: id, entries: [], people: [] }]),
+	'a new thread says first that it has no messages, no people and no agents',
 	JSON.stringify(first.heard),
 )
 await api('POST', `/api/threads/${id}/entries`, {
