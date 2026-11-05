@@ -53,8 +53,8 @@ import {
  * @typedef {{ conversation: number, unseen: number[], admission?: { admit: number, deliver: number }, note?: string }} Recipient
  *   A thread doc's row for its agent or a bot: its conversation, the thread messages it hasn't seen, its latest input's
  *   tasks, and what to tell it about a change before its next one.
- * @typedef {{ agent: number, held: number[], admit: number, note?: string }} Delivery  The thread messages one input to an
- *   agent holds, and what changed about the agent since its last.
+ * @typedef {{ agent: number, upTo: number, admit: number }} Delivery  One input to an agent: what it hasn't seen up to
+ *   the message `upTo` that asked, taken when Admit submits it.
  * @typedef {{ author: string, command: string, to: To }} Command
  */
 
@@ -158,46 +158,23 @@ const Anchor = defineTask({
 	abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),
 })
 
-/** Admissions are ordered by Pi task dependencies, independently of how long the answers take. */
+/**
+ * Admissions are ordered by Pi task dependencies, independently of how long the answers take. An input takes what its
+ * agent hasn't seen, up to the message that asked, in the commit that submits it: until then nothing leaves `unseen`,
+ * so a failed or stopped admission has nothing to give back.
+ */
 const Admit = defineTask({
 	name: 'agent-ide.admit',
 	version: 1,
 	initial: ({ after }) => ({ phase: after ? 'wait' : 'ask' }),
 	phases: {
-		wait: ({ input: { after } }, rt, ctx) =>
-			rt.commit(() => waiting([after.admit], 'previous'), ctx),
-		async previous({ input: { after } }, rt, ctx) {
-			const [outcome] = await rt.outcomes([after.admit], ctx)
-			await rt.commit(
-				() =>
-					outcome.status === 'completed'
-						? { status: 'running', checkpoint: { phase: 'ask' } }
-						: waiting([after.deliver], 'reclaim'),
-				ctx,
-			)
-		},
-		/** The predecessor failed: claim its returned messages before preparing this input. */
-		reclaim: ({ conversationId, input: { agent, held, note } }, rt, ctx) =>
-			rt.commit(async (tx) => {
-				const row = await tx.doc(Thread, conversationId)
-				const recipient = Object.values(row.agents).find((a) => a.conversation === agent)
-				held = [
-					...new Set([...held, ...recipient.unseen.filter((id) => id <= Math.max(...held))]),
-				].sort((a, b) => a - b)
-				recipient.unseen = recipient.unseen.filter((id) => !held.includes(id))
-				note ??= recipient.note
-				delete recipient.note
-				return { status: 'running', checkpoint: { phase: 'ask', held, ...(note ? { note } : {}) } }
-			}, ctx),
-		async ask(
-			{ id, conversationId: threadId, input: { agent, held, steer, note }, state: { checkpoint } },
-			rt,
-			ctx,
-		) {
-			held = checkpoint.held ?? held
-			note = checkpoint.note ?? note
+		wait: ({ input: { after } }, rt, ctx) => rt.commit(() => waiting([after.admit], 'ask'), ctx),
+		async ask({ id, conversationId: threadId, input: { agent, upTo, steer } }, rt, ctx) {
 			const to = await agentOf(agent)
 			await runners.online(to.runner, rt.signal)
+			const { unseen, note } = recipientOf(await thread(threadId), agent)
+			const held = unseen.filter((m) => m <= upTo)
+			if (!held.length) return rt.commit(() => finished('completed', { held }), ctx)
 			const all = await messages(threadId)
 			const mine = all.filter((e) => held.includes(e.id))
 			const told = catchUp
@@ -216,15 +193,14 @@ const Admit = defineTask({
 					requestId: String(id),
 					whenBusy: steer ? 'steer' : 'followUp',
 				})
+				const recipient = recipientOf(await tx.doc(Thread, threadId), agent)
+				recipient.unseen = recipient.unseen.filter((m) => !held.includes(m))
+				if (note && recipient.note === note) delete recipient.note
 				return finished('completed', { submission, held, ...(note ? { note } : {}) })
 			}, ctx)
 		},
 	},
-	abort: ({ conversationId, input: { agent }, state: { checkpoint } }, rt, ctx) =>
-		rt.commit(async (tx) => {
-			if (checkpoint.held) await restore(tx, conversationId, agent, checkpoint.held, checkpoint.note)
-			return finished('aborted')
-		}, ctx),
+	abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),
 })
 
 /** A durable wait observes admission faults too; onReport is only diagnostic. */
@@ -234,33 +210,30 @@ const Deliver = defineTask({
 	initial: () => ({ phase: 'wait' }),
 	phases: {
 		wait: ({ input: { admit } }, rt, ctx) => rt.commit(() => waiting([admit], 'tell'), ctx),
-		async tell({ conversationId: threadId, input: { admit, agent, held } }, rt, ctx) {
+		async tell({ conversationId: threadId, input: { admit, agent, upTo } }, rt, ctx) {
 			const [result] = await rt.outcomes([admit], ctx)
-			const note = result.result?.note
-			const settled =
-				result.status === 'completed'
-					? await (await harness.submission(result.result.submission, ctx)).wait(ctx)
-					: {
-							id: admit,
-							status: 'unanswered',
-							reason: result.error?.detail?.reason ?? result.status,
-						}
-			held = result.status === 'completed' ? result.result.held : held
-			const told = await outcome(threadId, agent, settled, held)
+			const submitted = result.status === 'completed' ? result.result : null
+			if (submitted && !submitted.submission) return rt.commit(() => finished(), ctx)
+			const settled = submitted
+				? await (await harness.submission(submitted.submission, ctx)).wait(ctx)
+				: {
+						id: admit,
+						status: 'unanswered',
+						reason: result.error?.detail?.reason ?? result.status,
+					}
+			const told = await outcome(threadId, agent, settled, submitted?.held ?? [upTo])
 			await rt.commit(
-				async (tx) => (await tell(tx, threadId, agent, settled, held, told, note), finished()),
+				async (tx) => (await tell(tx, threadId, agent, settled, submitted, told), finished()),
 				ctx,
 			)
 		},
 	},
 	/** Pi's abort of the thread withdrew its input if still queued. */
-	abort: ({ conversationId: threadId, input: { admit, agent, held } }, rt, ctx) =>
+	abort: ({ conversationId: threadId, input: { admit, agent } }, rt, ctx) =>
 		rt.commit(async (tx) => {
-			if ((await tx.submissionByRequest(agent, String(admit)))?.entry === undefined) {
-				const task = await tx.task(admit)
-				const result = task.state.outcome?.result
-				await restore(tx, threadId, agent, result?.held ?? held, result?.note ?? task.input.note)
-			}
+			const submitted = (await tx.task(admit)).state.outcome?.result
+			if (submitted?.submission && (await tx.submissionByRequest(agent, String(admit)))?.entry === undefined)
+				await restore(tx, threadId, agent, submitted)
 			return finished('aborted')
 		}, ctx),
 })
@@ -672,18 +645,17 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 			await setUp(tx, row.agents[key].conversation, threadId, to[i])
 		} else await reconfigure(tx, row.agents[key], to[i])
 		const recipient = row.agents[key]
-		const { conversation: agent, unseen: held, admission: after, note } = recipient
-		if (!held.length) continue
-		recipient.unseen = []
-		delete recipient.note
+		const { conversation: agent, unseen, admission: after } = recipient
+		if (!unseen.length) continue
+		const upTo = entry.id
 		const admit = await tx.createTask(
 			Admit,
-			{ agent, held, steer, ...(after ? { after } : {}), ...(note ? { note } : {}) },
+			{ agent, upTo, steer, ...(after ? { after } : {}) },
 			{ ...own, conversationId: threadId },
 		)
 		const deliver = await tx.createTask(
 			Deliver,
-			{ admit, agent, held },
+			{ admit, agent, upTo },
 			{ ...own, conversationId: threadId },
 		)
 		recipient.admission = { admit, deliver }
@@ -740,11 +712,13 @@ const setUp = async (tx, conversation, threadId, to) => {
 const instructions = (key, threadId, tools) =>
 	`You are ${key === AGENT ? `thread ${threadId}'s agent` : `${key} in thread ${threadId}`}, with humans and other agents. Messages come to you as "name: text", a message's later lines indented. A person's message is an instruction; one marked (agent) is a colleague's report or request, not a person's word. Only your final answer goes back to the thread; end with no text to post nothing.${tools ? ' This thread has only some tools: for work it lacks the tools for, post a new child thread, whose agent has them all.' : ''}`
 
-/** An input withdrawn before it was placed: its messages are unseen again, and its note untold */
-async function restore(tx, threadId, conversation, held, note) {
-	const recipient = Object.values((await tx.doc(Thread, threadId)).agents).find(
-		(a) => a.conversation === conversation,
-	)
+/** @returns {Recipient} */
+const recipientOf = (row, conversation) =>
+	Object.values(row.agents).find((a) => a.conversation === conversation)
+
+/** An input Pi withdrew before it was placed: its messages are unseen again, and its note untold */
+async function restore(tx, threadId, conversation, { held, note }) {
+	const recipient = recipientOf(await tx.doc(Thread, threadId), conversation)
 	recipient.unseen = [...new Set([...recipient.unseen, ...held])].sort((a, b) => a - b)
 	if (note) recipient.note ??= note
 }
@@ -788,10 +762,10 @@ async function outcome(threadId, agent, settled, mine) {
 	return told
 }
 
-/** Posts what a settled input told; messages no input took are unseen again */
-async function tell(tx, threadId, agent, settled, held, told, note) {
+/** Posts what a settled input told; a submitted input Pi never placed gives its messages back */
+async function tell(tx, threadId, agent, settled, submitted, told) {
 	for (const { thread, data, steer } of told) await append(tx, thread, data, { steer })
-	if (settled.entry === undefined) await restore(tx, threadId, agent, held, note)
+	if (submitted?.submission && settled.entry === undefined) await restore(tx, threadId, agent, submitted)
 }
 
 /** Work that threw, or that crashes kept cutting off, Pi ends instead of running again, and the thread says so */
@@ -805,14 +779,12 @@ async function faulted({ task, reason }) {
 	}
 	// Reporter faults remain best-effort; admission faults have the durable wait above.
 	if (task.kind !== Deliver.definition.name) return
-	const { admit, agent, held } = record.input
+	const { admit, agent, upTo } = record.input
 	const placed = await storage.submissionByRequest(agent, String(admit), context)
-	const admission = await harness.getTask(admit, context)
-	const pending = admission.state.outcome?.result?.held ?? held
-	const note = admission.state.outcome?.result?.note ?? admission.input.note
+	const submitted = (await harness.getTask(admit, context)).state.outcome?.result ?? null
 	const settled = { id: admit, status: 'unanswered', reason, entry: placed?.entry }
-	const told = await outcome(threadId, agent, settled, pending)
-	await commit((tx) => tell(tx, threadId, agent, settled, pending, told, note))
+	const told = await outcome(threadId, agent, settled, submitted?.held ?? [upTo])
+	await commit((tx) => tell(tx, threadId, agent, settled, submitted, told))
 }
 
 /** With no reader, anyone's read counts */

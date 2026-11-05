@@ -1,4 +1,4 @@
-/** A failed admission's returned messages are claimed before slow preparation, once across restart. */
+/** A failed admission's messages wait for the next one, once across restart, and two failures in a row lose none. */
 import { existsSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
@@ -25,6 +25,11 @@ writeFileSync(
 export const server = () => ({ catchUp: async (_thread, held) => {
 	if (held.length === 1 && held[0].data.body === 'first') {
 		await new Promise(r => setTimeout(r, 200))
+		throw new Error('injected admission failure')
+	}
+	const bodies = held.map(e => e.data.body)
+	if (bodies.includes('one') && !bodies.includes('three')) {
+		await new Promise(r => setTimeout(r, 300))
 		throw new Error('injected admission failure')
 	}
 	if (held.some(e => e.data.body === 'second')) {
@@ -59,5 +64,19 @@ check(
 	JSON.stringify(inputs) === JSON.stringify(['first | second', 'third']),
 	'the returned message reaches the agent once, never in the third delivery',
 	JSON.stringify(inputs),
+)
+
+const {
+	json: { id: twice },
+} = await api('POST', '/api/threads', { title: 'two failures' })
+for (const body of ['one', 'two', 'three'])
+	await api('POST', `/api/threads/${twice}/entries`, { body, to: 'echo/echo@bot' })
+check(Boolean(await answered(twice)), 'the third delivery answers after two failed admissions')
+const failed = await conversationOf(await view(twice), 'echo/echo@bot')
+const given = failed.entries.filter((e) => e.kind === 'agent-ide.delivery').map((e) => text(e.model[0]))
+check(
+	JSON.stringify(given) === JSON.stringify(['one | two | three']),
+	'both failed admissions hand their messages on: none is lost',
+	JSON.stringify(given),
 )
 done()
