@@ -2174,26 +2174,10 @@ body.chat {
 	}
 }
 
-/* What it's made of: the reference half of the page, under the walk-through. */
+/* Under it all: the page's last section, after the walk-through. */
 .reference {
-	h3 {
-		font-size: 1rem;
-		margin: 1.6rem 0 0.3rem;
-	}
-
-	h2:not(:first-child) {
-		margin-top: 3rem;
-		padding-top: 1rem;
-		border-top: 1px solid var(--line);
-	}
-
 	pre.mermaid {
 		display: none;
-	}
-
-	.contents {
-		font-size: 0.92rem;
-		color: var(--mute);
 	}
 
 	.diagram {
@@ -2203,59 +2187,6 @@ body.chat {
 		border: 1px solid var(--line);
 		border-radius: 10px;
 		overflow-x: auto;
-	}
-
-	.caption {
-		color: var(--mute);
-		font-size: 0.92rem;
-		margin: 0.4rem 0 0;
-	}
-
-	dl.words {
-		margin: 1.2rem 0;
-
-		dt {
-			font-weight: 700;
-			margin-top: 1rem;
-		}
-
-		dd {
-			margin: 0.2rem 0 0;
-		}
-
-		small {
-			display: block;
-			color: var(--mute);
-			font-size: 0.9rem;
-			margin-top: 0.15rem;
-		}
-	}
-
-	.tag {
-		font:
-			600 0.7rem system-ui,
-			sans-serif;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		padding: 0.15em 0.5em;
-		border-radius: 99px;
-		color: #fff;
-		margin-left: 0.4em;
-		vertical-align: 0.15em;
-		background: var(--mute);
-
-		&[data-c='server'] {
-			background: #205ea6;
-		}
-		&[data-c='runner'] {
-			background: #66800b;
-		}
-		&[data-c='client'] {
-			background: #ad8301;
-		}
-		&[data-c='agent'] {
-			background: #a02f6f;
-		}
 	}
 
 	.name {

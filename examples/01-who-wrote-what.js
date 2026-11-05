@@ -144,8 +144,8 @@ check(
 
 const page = await (await fetch(`${base}/`)).text()
 check(
-	page.includes("What it's made of"),
-	'the server serves its promises, words and principles on its one page',
+	page.includes('Under it all'),
+	'the server serves its walkthrough on its one page',
 )
 
 done()

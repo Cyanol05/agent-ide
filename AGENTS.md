@@ -5,7 +5,7 @@
 - Check UI changes in a browser with `agent-browser open <url>`, on a scratch server with its own port and store: `PORT=3917 DB_PATH=<scratch>/s.sqlite node server.js`. The server reads the client's files once at startup, so restart it after each edit; stop it by its port when done.
 - An example proves a fix only if it fails without it: run it on the old code first and say so. Server errors print in example output; `VERBOSE=1` adds the server's own log.
 - A change serves one of the promises in [apps/client/client.html](apps/client/client.html), or it requires a chat with Oskar. When a better design breaks a principle, or an idea looks wrong, Oskar's included, argue before building.
-- Use the words client.html uses, one per concept. Fewer concepts beats fewer lines.
+- Use the words the README uses, one per concept. Fewer concepts beats fewer lines.
 - A name says what it holds and stays the same in every layer, so `rg` finds the whole path: the API's word in the server, the modules and the client (a `To` is `to`). No one-letter names, but `_` and stored notation such as memory's `l`, `i` and `n`.
 - Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own.
 - In a Pi commit, read before you write: one `submit(tx, ...)` comes before table writes, and after the first write a commit can't scan entries or take a snapshot. A snapshot inside a commit deadlocks without an error. Copy document values before they leave the commit.
@@ -30,5 +30,5 @@
 - Pi's `openTextLineReader` and `openBinaryReader` take an options object before Context; `openDirReader` takes Context directly.
 - In no-build Solid templates, wrap live values in `() =>`, give component callbacks an argument (zero-argument functions become getters even for `on…` props), and keep the phone header's async reads inside `Loading`.
 - Look up wire endpoints after Solid places the DOM, and ignore the wires' own SVG mutations when observing layout changes.
-- client.html's glossary says what each thing is; don't restate it here. In short: a thread has one agent whose model, thinking and runner change in place, and only bots have names.
+- The README's words say what each thing is; don't restate it here. In short: a thread has one agent whose model, thinking and runner change in place, and only bots have names.
 - Solid batches navigation, so walkthrough actions pass their new-thread target explicitly, and post-await navigation checks use `latest(current)`.
