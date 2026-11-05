@@ -21,15 +21,17 @@ import { ThreadItem } from './thread-list.js'
 const HANDS_OFF = ['-write', '-edit', '-bash']
 export function ThreadDetails() {
 	const here = () => threads.find((t) => t.id === current())
-	const members = () => [
-		...new Set([
-			...(entries[current()] ?? [])
-				.filter((e) => !e.data.answer && !e.data.error && !e.data.from)
-				.map((e) => e.data.author),
-			...(here()?.readers ?? []),
-		]),
-		...(here()?.agents ?? []).map((a) => a.name),
-	]
+	// A bot's home is named for it already, so only who else is there
+	const members = () =>
+		[
+			...new Set([
+				...(entries[current()] ?? [])
+					.filter((e) => !e.data.answer && !e.data.error && !e.data.from)
+					.map((e) => e.data.author),
+				...(here()?.readers ?? []),
+			]),
+			...(here()?.agents ?? []).map((a) => a.name),
+		].filter((name) => name !== homeBot(current())?.name)
 	const depth = (id) => {
 		let d = 0
 		for (let t = threads.find((t) => t.id === id); d < 20; d++) {
@@ -43,27 +45,31 @@ export function ThreadDetails() {
 		<div class="scrim" onClick=${() => drawer(null)}></div>
 		<section class="thread-details" aria-label="Thread details">
 			<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
-			<h3>In this thread</h3>
-			<p id="members">
-				<${For} each=${() => members()}>
-					${(name, i) => [
-						() => (i() ? ', ' : ''),
-						html`<span title=${() => name} style=${() => colorOf(name)}
-							>${() => authorLabel(name)}</span
-						>`,
-					]}
-				<//>
-			</p>
-			<ul class="thread-family">
-				<${For}
-					each=${() =>
-						family()
-							.map((id) => threads.find((t) => t.id === id))
-							.filter(Boolean)}
-				>
-					${(t) => html`<${ThreadItem} thread=${() => t} depth=${() => depth(t.id)} />`}
-				<//>
-			</ul>
+			<${Show} when=${() => members().length > 1}>
+				<h3>In this thread</h3>
+				<p id="members">
+					<${For} each=${() => members()}>
+						${(name, i) => [
+							() => (i() ? ', ' : ''),
+							html`<span title=${() => name} style=${() => colorOf(name)}
+								>${() => authorLabel(name)}</span
+							>`,
+						]}
+					<//>
+				</p>
+			<//>
+			<${Show} when=${() => family().length > 1}>
+				<ul class="thread-family">
+					<${For}
+						each=${() =>
+							family()
+								.map((id) => threads.find((t) => t.id === id))
+								.filter(Boolean)}
+					>
+						${(t) => html`<${ThreadItem} thread=${() => t} depth=${() => depth(t.id)} />`}
+					<//>
+				</ul>
+			<//>
 			<h3>Tools</h3>
 			<${For} each=${() => [current()]}> ${(id) => html`<${Tools} thread=${id} />`} <//>
 			<${Show} when=${() => homeBot(current())} keyed>
@@ -132,14 +138,14 @@ function Tools(props) {
 	}
 	return html`
 		<div class="hands">
-			<button
-				type="button"
-				aria-pressed=${() => String(!!tools())}
-				title="Its agents read and ask others, and change nothing themselves"
-				onClick=${() => apply(tools() ? null : HANDS_OFF)}
-			>
-				hands off
-			</button>
+			<label title="Its agents read and ask others, and change nothing themselves">
+				<input
+					type="checkbox"
+					checked=${() => !!tools()}
+					onChange=${(e) => apply(e.currentTarget.checked ? HANDS_OFF : null)}
+				/>
+				Hands off
+			</label>
 			<input
 				placeholder="every tool"
 				aria-label="Thread tools"
@@ -147,7 +153,7 @@ function Tools(props) {
 					field = el
 				}}
 				spellcheck="false"
-				class=${() => ({ bad: !!error() })}
+				class=${() => ['tools', { bad: !!error() }]}
 				title=${() => error() || 'tools, as pi --tools takes them: read,post or -write,-edit,-bash'}
 				value=${() => text()}
 				onInput=${(e) => setText(e.currentTarget.value)}
