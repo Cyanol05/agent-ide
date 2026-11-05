@@ -160,6 +160,8 @@ async function connect() {
 	})
 	const from = args.owner ? `, to ${[args.owner, ...args.allow].join(', ')}` : ''
 	const online = () =>
+		// The server's own runner: the server already printed its row
+		process.env.AGENT_IDE_LENT ||
 		console.log(
 			`${name} online at ${server}, offering pi's logins and ${roots.join(', ')}${args['read-only'] ? ' to read only' : ''}${from}`,
 		)

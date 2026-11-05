@@ -27,7 +27,7 @@ for (const stage of ['key', 'known', 'commit']) {
 			await resume.promise
 		}
 		const context = vm.createContext({
-			URL, console: { log() {} }, sockets, clients: new Set(), watch() {},
+			URL, console: { log() {} }, say() {}, tilde: (dir) => dir, sockets, clients: new Set(), watch() {},
 			wss: { handleUpgrade(req, raw, head, accept) { accept(socket) } },
 			origin: () => 'http://localhost',
 			keys: async () => { await pause('key'); return { laptop: 'hashed' } },

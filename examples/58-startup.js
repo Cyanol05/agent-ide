@@ -28,8 +28,12 @@ for (const [modules, host, expected] of [
 		const url = output.match(/http:\/\/\S+/)?.[0]
 		const state = url && await until(async () => (await fetch(`${url}/api/server`)).json())
 		check(state?.modules.join() === expected, `${modules}: loads ${expected}`, output)
-		check(output.match(/^http:\/\//gm)?.length === 1, 'one server URL', output)
-		check(output.includes('MODULES=talk,search loads only those'), 'startup explains replacement', output)
+		check(output.match(/http:\/\//g)?.length === 1, 'one server URL', output)
+		check(
+			!expected.includes('talk') === /defaults left out: .*\btalk\b/.test(output),
+			'a default that a list of names left out says so',
+			output,
+		)
 		if (host) check(url?.includes('[::1]'), 'explicit IPv6 address is still printed', output)
 	} finally {
 		child.kill()

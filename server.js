@@ -1387,6 +1387,9 @@ function doing({ entries, docs }) {
 const origin = (req) =>
 	`${req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'}://${String(req.headers.host).replace(/[^\w.:\[\]-]/g, '')}`
 const sha256 = (text) => createHash('sha256').update(text).digest('hex')
+/** The start-up table and every runner event after it share one column */
+const say = (label, text) => console.log(`  ${label.padEnd(8)} ${text}`)
+const tilde = (dir) => (dir?.startsWith(os.homedir()) ? `~${dir.slice(os.homedir().length)}` : dir)
 const loopback = (address) => /^(127\.|::ffff:127\.)/.test(address) || ['::1', '[::1]', 'localhost'].includes(address)
 /** Opened on the server's own machine: only such a page connects and revokes runners */
 const local = (req) =>
@@ -1445,7 +1448,7 @@ async function upgrade(req, raw, head) {
 		if (!name || sockets.get(name) !== socket) return
 		sockets.delete(name)
 		runners.disconnect(name)
-		console.log(`runner ${name} offline`)
+		say('runner', `${name} offline`)
 	}
 	socket.on('close', close)
 	socket.on('error', close)
@@ -1467,7 +1470,7 @@ async function upgrade(req, raw, head) {
 	const held = (await keys())[name]
 	if (closed) return
 	if (!given || held !== sha256(given)) {
-		console.log(`runner ${name} turned away: ${given ? 'wrong or revoked key' : 'no key'}`)
+		say('runner', `${name} turned away: ${given ? 'wrong or revoked key' : 'no key'}`)
 		return socket.close(
 			4001,
 			given
@@ -1513,8 +1516,14 @@ async function upgrade(req, raw, head) {
 		outdated.set(name, socket)
 		notify()
 	}
-	console.log(
-		`runner ${name} online: ${runner.dir}${runner.readOnly ? ' (read-only)' : ''}, default model ${runner.model || `none (${runner.modelError || 'not set'})`}${runner.owner ? `, work from ${[runner.owner, ...runner.allow].join(', ')}` : ''}`,
+	say(
+		'runner',
+		[
+			name,
+			tilde(runner.dir) + (runner.readOnly ? ' (read-only)' : ''),
+			runner.model || `no default model: ${runner.modelError || 'none set'}`,
+			...(runner.owner ? [`work from ${[runner.owner, ...runner.allow].join(', ')}`] : []),
+		].join(' · '),
 	)
 }
 
@@ -1528,20 +1537,15 @@ async function connectSelf(url) {
 	lent = spawn(
 		process.execPath,
 		[new URL('./runner.js', import.meta.url).pathname, '--server', url, '--dir', dir],
-		{ stdio: 'inherit', env: { ...process.env, AGENT_IDE_KEY: key } },
+		// Its online line would repeat the server's runner row
+		{ stdio: 'inherit', env: { ...process.env, AGENT_IDE_KEY: key, AGENT_IDE_LENT: '1' } },
 	)
 	for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => lent.kill(signal))
 }
 
-// A list of names alone replaces the defaults, so say which of them it turned off.
-const off = Object.keys(defaults)
-	.filter((n) => !modules.some((m) => m.name === n))
-	.map((n) => (defaults[n] ? `${n} (on by default)` : n))
-console.log(
-	`Modules on: ${modules.map((m) => m.name).join(', ') || 'none'}.` +
-		(off.length ? ` Off: ${off.join(', ')}.` : '') +
-		'\nModules: MODULES=+search,+bots adds; MODULES=-talk removes; MODULES=talk,search loads only those.',
-)
+// A list of names alone replaces the defaults, so say which of them it left out.
+const off = (on) =>
+	Object.keys(defaults).filter((n) => defaults[n] === on && !modules.some((m) => m.name === n))
 for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1']) {
 	const server = http.createServer(handleRequest)
 	server.on('upgrade', (req, socket, head) =>
@@ -1564,9 +1568,19 @@ for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1'])
 						.map((a) => a.address)
 				: [host === '::1' ? '[::1]' : host]
 		// Keep listening on IPv6 localhost without printing a second local URL.
-		if (process.env.HOST || host !== '::1')
-			for (const address of addresses)
-				console.log(`http://${address}:${server.address().port} on ${file}`)
+		if (process.env.HOST || host !== '::1') {
+			const urls = addresses.map((address) => `http://${address}:${server.address().port}`)
+			console.log(`agent-ide  ${urls.join('\n           ')}`)
+			say('data', tilde(file))
+			say(
+				'modules',
+				[
+					modules.map((m) => m.name).join(' ') || 'none',
+					...(off(false).length ? [`off: ${off(false).join(' ')}`] : []),
+					...(off(true).length ? [`defaults left out: ${off(true).join(' ')}`] : []),
+				].join(' · '),
+			)
+		}
 		connectSelf(
 			`http://${host === '0.0.0.0' ? '127.0.0.1' : addresses[0]}:${server.address().port}`,
 		).catch((error) => console.error(error))
