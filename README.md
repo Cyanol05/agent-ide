@@ -47,7 +47,7 @@ GET    /api/threads
 POST   /api/threads {title, parent?, tools?, requestId?}
 GET    /api/threads/:id                    the thread and its entries
 DELETE /api/threads/:id                    hides it
-POST   /api/threads/:id/entries {body, to?, steer?, requestId?}
+POST   /api/threads/:id/entries {body, to?, images?, steer?, requestId?}   images as pi's ImageContent: [{type: 'image', mimeType, data}], base64
 POST   /api/threads/:id/fork {at, title?}
 POST   /api/threads/:id/title {title}
 POST   /api/threads/:id/tools {tools}      as pi --tools takes them

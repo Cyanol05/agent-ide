@@ -30,10 +30,12 @@ import { agentLabel, formatAgent, parseAgent, sameAgent, THINKING_LEVELS } from 
 import { placePopover } from './popover.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
+import { imageContent, imageUrl } from './images.js'
 
 const [compose, setCompose] = createRoot(() =>
 	createStore({
 		draft: '',
+		images: [],
 		sending: false,
 		to: null,
 		/** The thread `to` was picked in */
@@ -101,7 +103,7 @@ export function configure(to) {
 }
 
 export function Composer(props) {
-	let input, picker, button
+	let input, picker, button, chooser
 	const active = () => current() === props.thread
 	const agents = () => threads.find((t) => t.id === current())?.agents ?? []
 	const busy = () =>
@@ -109,22 +111,49 @@ export function Composer(props) {
 	createEffect(active, (on) => {
 		if (on) input.focus()
 	})
+	/** Pasted, dropped or picked: each image waits above the box until it's sent or taken off */
+	const add = async (files) => {
+		for (const file of files)
+			try {
+				const image = await imageContent(file)
+				setCompose((s) => {
+					s.images.push(image)
+				})
+			} catch (error) {
+				report(error)
+			}
+		input.focus()
+	}
+	const imagesIn = (list) =>
+		[...(list ?? [])]
+			.filter((f) => f.kind !== 'string')
+			.map((f) => f.getAsFile?.() ?? f)
+			.filter((f) => f?.type.startsWith('image/'))
 	const submit = async (e) => {
 		e.preventDefault()
-		if (compose.sending || !recipients().length || !compose.draft.trim()) return
+		if (compose.sending || !recipients().length) return
+		if (!compose.draft.trim() && !compose.images.length) return
 		const body = compose.draft,
+			images = snapshot(compose.images),
 			to = snapshot(recipients())
 		let id = current()
 		setCompose((s) => {
 			s.sending = true
 			s.draft = ''
+			s.images = []
 		})
 		try {
-			id ??= await createThread(body.slice(0, 60))
-			await api(`/api/threads/${id}/entries`, { body, to })
+			id ??= await createThread(body.slice(0, 60) || 'An image')
+			await api(`/api/threads/${id}/entries`, {
+				body,
+				to,
+				...(images.length && { images }),
+			})
 		} catch (error) {
 			setCompose((s) => {
-				if (latest(current) === id && !s.draft) s.draft = body
+				if (latest(current) !== id || s.draft || s.images.length) return
+				s.draft = body
+				s.images = images
 			})
 			report(error)
 		} finally {
@@ -151,12 +180,45 @@ export function Composer(props) {
 		})
 	}
 	return html`
-		<form class=${() => ({ compose: active(), elsewhere: !active() })} onSubmit=${submit}>
+		<form
+			class=${() => ({ compose: active(), elsewhere: !active() })}
+			onSubmit=${submit}
+			onDragOver=${(e) => {
+				if ([...e.dataTransfer.types].includes('Files')) e.preventDefault()
+			}}
+			onDrop=${(e) => {
+				const files = imagesIn(e.dataTransfer.files)
+				if (!files.length) return
+				e.preventDefault()
+				openThread(props.thread)
+				add(files)
+			}}
+		>
+			<${Show} when=${() => active() && compose.images.length}>
+				<ul class="images" aria-label="Images to send">
+					<${For} each=${() => compose.images}
+						>${(image, i) => html`
+							<li>
+								<img src=${() => imageUrl(image)} alt="" />
+								<button
+									type="button"
+									aria-label="Take this image off"
+									onClick=${(_e) =>
+										setCompose((s) => {
+											s.images.splice(i(), 1)
+										})}
+								>
+									×
+								</button>
+							</li>
+						`}<//
+					>
+				</ul>
+			<//>
 			<div class="box">
 				<input
 					ref=${(el) => (input = el)}
 					autocomplete="off"
-					required
 					enterkeyhint="send"
 					aria-label="Message"
 					placeholder=${() =>
@@ -168,6 +230,12 @@ export function Composer(props) {
 					value=${() => (active() ? compose.draft : '')}
 					onFocus=${() => {
 						if (!active()) openThread(props.thread)
+					}}
+					onPaste=${(e) => {
+						const files = imagesIn(e.clipboardData?.items)
+						if (!files.length) return
+						e.preventDefault()
+						add(files)
 					}}
 					onInput=${(e) => {
 						const to = !picked() && !homeBot(current()) ? snapshot(recipients()) : null
@@ -192,26 +260,26 @@ export function Composer(props) {
 				<button
 					type="button"
 					class="icon add"
-					disabled
-					title="Attach (not yet)"
-					aria-label="Attach"
+					title="Add images; you can also paste or drop them"
+					aria-label="Add images"
+					onClick=${(_e) => {
+						openThread(props.thread)
+						chooser.click()
+					}}
 				>
 					+
 				</button>
-				<button type="button" class="icon mic" disabled title="Voice (not yet)" aria-label="Voice">
-					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-					>
-						<rect x="9" y="3" width="6" height="11" rx="3" />
-						<path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-					</svg>
-				</button>
+				<input
+					type="file"
+					accept="image/*"
+					multiple
+					hidden
+					ref=${(el) => (chooser = el)}
+					onChange=${(e) => {
+						add(imagesIn(e.currentTarget.files))
+						e.currentTarget.value = ''
+					}}
+				/>
 				<${Show}
 					when=${() =>
 						active() &&

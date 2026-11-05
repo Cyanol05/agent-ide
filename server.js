@@ -41,6 +41,7 @@ import {
  * @typedef {object} Message  The data of every thread entry.
  * @property {string} author  A human's name, a bot's, or the thread's agent as `provider/id@runner` when it wrote.
  * @property {string} body
+ * @property {{ type: 'image', mimeType: string, data: string }[]} [images]  As pi's ImageContent, base64; the agent sees them with the words.
  * @property {string[]} [to]  Whom it asks, named as `author` names them.
  * @property {number} [from]  The thread it came from.
  * @property {number[]} [re]  What it answers: messages here, or with `from`, posts there.
@@ -199,7 +200,9 @@ const Admit = defineTask({
 			const told = catchUp
 				? await catchUp(threadId, mine, all, agent)
 				: mine.map(said).join('\n\n')
-			const content = note ? `${note}\n\n${told}` : told
+			const text = note ? `${note}\n\n${told}` : told
+			const images = mine.flatMap((e) => e.data.images ?? [])
+			const content = images.length ? [{ type: 'text', text }, ...images] : text
 			const handle = await rt.conversation(agent, ctx)
 			const entry = { kind: DELIVERY, data: { held } }
 			await rt.commit(async (tx) => {
@@ -898,8 +901,9 @@ async function postEntry(id, author, input) {
 	const saved = await receipt(input.requestId, `post ${id}`)
 	if (saved) return saved.result
 	await conversation(id)
-	const body = field(input.body, 'body')
-	const command = body.match(/^\$\s+([\s\S]+)/)?.[1]
+	const images = imageList(input.images)
+	const body = images ? (input.body ?? '').trim() : field(input.body, 'body')
+	const command = !images && body.match(/^\$\s+([\s\S]+)/)?.[1]
 	const routed = route && !command
 	let to =
 		'to' in input
@@ -931,10 +935,24 @@ async function postEntry(id, author, input) {
 			: post(
 					tx,
 					id,
-					{ author, body, ...(to.length ? { to } : {}) },
+					{ author, body, ...(images ? { images } : {}), ...(to.length ? { to } : {}) },
 					{ steer: input.steer === true },
 				),
 	)
+}
+
+/** Images as pi's ImageContent, which models take inline; the composer shrinks them to fit */
+function imageList(images) {
+	if (images === undefined || images === null) return null
+	const fits = (i) =>
+		i?.type === 'image' &&
+		/^image\/[\w.+-]+$/.test(i.mimeType) &&
+		typeof i.data === 'string' &&
+		i.data.length <= IMAGE_BYTES &&
+		/^[A-Za-z0-9+/]+={0,2}$/.test(i.data)
+	if (!Array.isArray(images) || images.length > 8 || !images.every(fits))
+		throw new Error("images is a list of up to 8 of pi's ImageContent, base64, 4.5 MB each")
+	return images.length ? images.map(({ mimeType, data }) => ({ type: 'image', mimeType, data })) : null
 }
 
 /** Inside the caller's commit */
@@ -1123,11 +1141,13 @@ for (const [name, runner] of Object.entries(await known()))
 	models.setProvider(runnerProvider(runners, name, runner.models))
 harness.resume()
 
+/** Pi's own cap on an image, in base64 */
+const IMAGE_BYTES = 4.5 * 1024 * 1024
 async function input(req) {
 	let body = ''
 	for await (const chunk of req) {
 		body += chunk
-		if (body.length > 200000) throw new Error('Request too large')
+		if (body.length > 8 * IMAGE_BYTES + 200000) throw new Error('Request too large')
 	}
 	return JSON.parse(body || '{}')
 }

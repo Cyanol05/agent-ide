@@ -21,6 +21,7 @@ import { authorLabel, doing, lastToolCall, messageText, setDoing } from './agent
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
+import { imageUrl } from './images.js'
 
 export const ThreadLink = (props) => html`
 	<a
@@ -225,6 +226,7 @@ function Message(props) {
 						>${() => authorLabel(data().author)}</small
 					>
 					<span class="body">${() => data().body}</span>
+					<${Images} images=${() => data().images} />
 				`}
 			>
 				<details>
@@ -245,6 +247,7 @@ function Message(props) {
 						<//>
 					</summary>
 					<span class="body">${() => data().body}</span>
+					<${Images} images=${() => data().images} />
 				</details>
 			<//>
 			<${For} each=${() => forks()}
@@ -264,3 +267,14 @@ function Message(props) {
 		</li>
 	`
 }
+
+/** A message's images, as it sent them */
+const Images = (props) => html`
+	<${Show} when=${() => props.images?.length}>
+		<div class="images">
+			<${For} each=${() => props.images}
+				>${(image) => html`<img src=${() => imageUrl(image)} alt="" loading="lazy" />`}<//
+			>
+		</div>
+	<//>
+`
