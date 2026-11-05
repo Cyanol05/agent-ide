@@ -451,8 +451,8 @@ stateDiagram-v2
 					</dt>
 					<dd>
 						Gives each thread a memory of short lines that agents read within their context and zoom
-						back down to the words. It needs <code>MEMORY_MODEL=model@runner</code>, the agent that
-						writes the lines.
+						back down to the words. A thread's own agent writes its lines, on the runner that already
+						works for it; <code>MEMORY_MODEL=model@runner</code> has one agent write them all.
 					</dd>
 					<dt>
 						search.js

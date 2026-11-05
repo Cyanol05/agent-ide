@@ -1097,6 +1097,8 @@ async function forkThread(id, { at, title }) {
 }
 
 const core = {
+	/** A thread's doc inside a commit, where a snapshot would wait for the commit itself */
+	threadIn: (tx, id) => tx.doc(Thread, id),
 	work,
 	busiest,
 	models,

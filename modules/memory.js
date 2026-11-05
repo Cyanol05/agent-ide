@@ -1,7 +1,9 @@
 /**
  * Gives each thread a memory: one short line per message, pairs of lines merged going up, so an agent reads the lines
- * instead of every word and zooms back down with `zoom`. MODULES=+memory MEMORY_MODEL=model@runner, the agent that
- * writes the lines; the server won't start without it.
+ * instead of every word and zooms back down with `zoom`. MODULES=+memory. The thread's own agent writes its lines, as
+ * it runs now, so the runner that works for a thread pays for its memory; with no agent there yet, a bot there writes
+ * them, and with neither, the lines wait for the first one asked. MEMORY_MODEL=model@runner has one agent write
+ * every thread's lines instead.
  */
 import { retryAssistantCall } from '@earendil-works/pi-ai'
 import { num, obj, opt } from '@earendil-works/pi-schema'
@@ -13,7 +15,7 @@ import {
 	hook,
 } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
-import { agentTo, collect, said } from '../util.js'
+import { AGENT, agentTo, collect, said } from '../util.js'
 
 const KIND = 'agent-ide.line'
 const RETRY = { enabled: true, maxRetries: 10, baseDelayMs: 2000 }
@@ -86,8 +88,21 @@ The memory is yours. A person's latest word on a thing is the truth; an agent's 
 
 export function server(core) {
 	const name = process.env.MEMORY_MODEL
-	if (!name?.includes('@')) throw new Error('memory needs MEMORY_MODEL=model@runner')
-	const writer = agentTo(name)
+	if (name && !name.includes('@')) throw new Error('MEMORY_MODEL is model@runner, or leave it out')
+	const override = name && agentTo(name)
+
+	/** Who writes a thread's lines: MEMORY_MODEL, else its agent as it runs now, else a bot there, else nobody yet */
+	async function writerOf(threadId, signal) {
+		if (override) {
+			await core.runners.online(override.runner, signal)
+			return core.address(override)
+		}
+		const { agents } = await core.thread(threadId)
+		const [slot, recipient] = agents[AGENT] ? [AGENT, agents[AGENT]] : (Object.entries(agents)[0] ?? [])
+		const to = recipient && (await core.agentOf(recipient.conversation, slot))
+		if (to) await core.runners.online(to.runner, signal)
+		return to
+	}
 
 	async function lines(tx, threadId) {
 		const map = new Map()
@@ -111,10 +126,11 @@ export function server(core) {
 		return map
 	}
 
-	async function lineOf(source, task, signal) {
+	/** The line, or undefined while the thread has no one to write it */
+	async function lineOf(source, task, threadId, signal) {
 		if (bytes(source) <= LINE) return source
-		await core.runners.online(writer.runner, signal)
-		const to = await core.address(writer)
+		const to = await writerOf(threadId, signal)
+		if (!to) return undefined
 		const model = core.models.getModel(`runner:${to.runner}`, to.model)
 		const messages = [
 			{ role: 'system', content: WRITER, timestamp: Date.now() },
@@ -146,8 +162,24 @@ export function server(core) {
 	const Line = defineTask({
 		name: 'agent-ide.line',
 		version: 1,
-		initial: () => ({ phase: 'write' }),
+		initial: ({ backfill }) => ({ phase: backfill ? 'backfill' : 'write' }),
 		phases: {
+			/** The thread's first agent is here: each message without its line, and each pair not merged, gets its task */
+			backfill: ({ conversationId: threadId, input }, rt, ctx) =>
+				rt.commit(async (tx) => {
+					const have = await lines(tx, threadId)
+					const earlier = (
+						await collect((cursor) =>
+							tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
+						)
+					).filter((message) => message.kind === 'agent-ide.message' && message.id < input.entry)
+					for (const [i, message] of earlier.entries())
+						if (!have.has(key(0, i))) await tx.createTask(Line, { entry: message.id }, background(threadId))
+					for (const { l, i } of have.values())
+						if (!(i & 1) && have.has(key(l, i + 1)) && !have.has(key(l + 1, i >> 1)))
+							await tx.createTask(Line, { l: l + 1, i: i >> 1 }, background(threadId))
+					return { status: 'running', checkpoint: { phase: 'write' } }
+				}, ctx),
 			async write({ conversationId: threadId, input }, rt, ctx) {
 				const all = await core.messages(threadId)
 				const have = await core.commit((tx) => lines(tx, threadId))
@@ -173,7 +205,10 @@ export function server(core) {
 							`${render(memory(have, (i + 1) * 2 ** l, CONTEXT))}\n\n${ask} ${id}+${half} and ${id + half}+${half}, adjacent, ${limit}\n` +
 							`<chat> may hold their messages, ${id} to ${id + 2 * half - 1}, in more detail: take details of them from there too.\n<input>\n${left.text}\n${right.text}\n</input>`
 					}
-					text = await rt.memo('text', await lineOf(source, task, rt.signal), ctx)
+					const written = await lineOf(source, task, threadId, rt.signal)
+					// No agent here yet: the first one asked brings this line back
+					if (written === undefined) return rt.commit(() => finished(), ctx)
+					text = await rt.memo('text', written, ctx)
 				}
 				await rt.commit(async (tx) => {
 					const now = await lines(tx, threadId)
@@ -278,6 +313,15 @@ export function server(core) {
 		return { lines: memory(await core.commit((tx) => lines(tx, thread)), T, budget).map(span) }
 	}
 
+	/** Each message gets a line; the one that asks a thread's first agent also brings back the lines that waited */
+	async function posted(tx, threadId, entry) {
+		const first =
+			!override &&
+			entry.data.to?.length > 0 &&
+			!Object.keys((await core.threadIn(tx, threadId)).agents).length
+		await tx.createTask(Line, { entry: entry.id, ...(first ? { backfill: true } : {}) }, background(threadId))
+	}
+
 	return {
 		extension: defineExtension({
 			name: 'agent-ide.memory',
@@ -286,7 +330,7 @@ export function server(core) {
 			sections: [{ key: 'memory', tag: false, render: () => SECTION }],
 			hooks: [hook(CompactionTask, { beforeCompact })],
 		}),
-		posted: (tx, threadId, entry) => tx.createTask(Line, { entry: entry.id }, background(threadId)),
+		posted,
 		catchUp,
 		serve,
 	}

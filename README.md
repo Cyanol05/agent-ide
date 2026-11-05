@@ -20,7 +20,7 @@ Its agents work in the folder it starts in, as a runner named after this machine
 HOST=0.0.0.0 PORT=3001 node server.js   # reachable from other machines
 RUNNER=~/code node server.js            # work in another folder; RUNNER=0 connects none
 MODULES=+search,+bots node server.js    # +name and -name change the defaults; each module's top says how it works
-MODULES=+memory MEMORY_MODEL=haiku@desk node server.js   # memory needs an agent to write its lines
+MODULES=+memory node server.js          # each thread's agent writes its memory; MEMORY_MODEL=haiku@desk picks one agent for all
 DB_PATH=other.sqlite node server.js     # another store
 
 node cli.js key desk                    # on the server's machine, via localhost
