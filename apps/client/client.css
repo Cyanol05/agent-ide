@@ -533,6 +533,12 @@ agent-memory {
 	}
 }
 
+@keyframes appear {
+	from {
+		visibility: hidden;
+	}
+}
+
 @keyframes blink {
 	50% {
 		opacity: 0.3;
@@ -738,6 +744,11 @@ agent-memory {
 
 			&.writing {
 				color: var(--mute);
+			}
+
+			/* A quick snapshot shows nothing; a slow one says so. */
+			&.asking {
+				animation: appear 0s 0.4s both;
 			}
 
 			&.elsewhere {

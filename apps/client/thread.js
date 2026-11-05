@@ -72,11 +72,9 @@ export function Thread(props) {
 					socket.send(JSON.stringify({ watch: id }))
 				},
 			)
+			// Its messages stay, so coming back shows them at once while the snapshot catches up.
 			return () => {
 				close()
-				setEntries((all) => {
-					delete all[id]
-				})
 				setDoing((work) => {
 					delete work[id]
 				})
@@ -133,7 +131,7 @@ export function Thread(props) {
 					aria-label="Messages"
 				>
 					<${Show} when=${() => props.id && !entries[props.id]}
-						><li class="mute">Asking for messages…</li><//
+						><li class="mute asking">Asking for messages…</li><//
 					>
 					<${Show} when=${() => homeBot(props.id)?.instructions === ''}>
 						<li class="mute">
@@ -163,19 +161,33 @@ export function Thread(props) {
 	`
 }
 
-const Writing = (props) => html`
-	<${Show} when=${() => props.live?.run || ['working', 'blocked'].includes(props.agent.status)}>
-		<li class="writing">
-			<small title=${() => lastToolCall(props.live)}>
-				<${Dot} state=${() => props.agent.status} />
-				${() =>
-					`${authorLabel(props.agent.name)} · ` +
-					(lastToolCall(props.live) || (props.agent.status === 'blocked' ? 'blocked' : 'writing'))}
-			</small>
-			${() => messageText(props.live?.message)}
-		</li>
-	<//>
-`
+/** The socket says a run ended before the thread list says the agent is idle: trust the socket until the list agrees. */
+function Writing(props) {
+	let running = false,
+		ended = false
+	const shown = createMemo(() => {
+		const run = props.live?.run,
+			busy = ['working', 'blocked'].includes(props.agent.status)
+		if (run) [running, ended] = [true, false]
+		else if (running) [running, ended] = [false, true]
+		if (!busy) ended = false
+		return run || (busy && !ended)
+	})
+	return html`
+		<${Show} when=${shown}>
+			<li class="writing">
+				<small title=${() => lastToolCall(props.live)}>
+					<${Dot} state=${() => props.agent.status} />
+					${() =>
+						`${authorLabel(props.agent.name)} · ` +
+						(lastToolCall(props.live) ||
+							(props.agent.status === 'blocked' ? 'blocked' : 'writing'))}
+				</small>
+				${() => messageText(props.live?.message)}
+			</li>
+		<//>
+	`
+}
 
 function Message(props) {
 	const data = () => props.entry.data
@@ -245,7 +257,9 @@ function Message(props) {
 				class="fork"
 				title="A new thread from this message"
 				onClick=${() => fork(props.thread, props.entry.id).catch((e) => alert(e.message))}
-			>fork</button>
+			>
+				fork
+			</button>
 		</li>
 	`
 }
