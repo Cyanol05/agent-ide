@@ -54,13 +54,25 @@ export const [entries, setEntries] = createStore({})
 export const [people, setPeople] = createStore({})
 export const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
 
-export function openThread(id) {
-	setCurrent(id)
-	drawer(null)
+/** A thread's address: what a real link needs, so it can also be opened in a new tab or copied */
+export function hrefOf(id) {
 	const next = new URL(location.href)
 	if (id) next.searchParams.set('thread', id)
 	else next.searchParams.delete('thread')
-	history.replaceState(null, '', next)
+	return next.pathname + next.search
+}
+
+export function openThread(id) {
+	setCurrent(id)
+	drawer(null)
+	history.replaceState(null, '', hrefOf(id))
+}
+
+/** A link to a thread opens it here, and still opens in a new tab or window when the click asks for one */
+export function followThread(event, id) {
+	if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+	event.preventDefault()
+	openThread(id)
 }
 
 export const { threads, runners, server, bots, family } = createRoot(() => {

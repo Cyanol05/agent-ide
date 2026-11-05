@@ -7,8 +7,10 @@ import {
 	drawer,
 	entries,
 	fork,
+	followThread,
 	forkedFrom,
 	homeBot,
+	hrefOf,
 	me,
 	newThreadTools,
 	openThread,
@@ -27,15 +29,8 @@ import { imageUrl } from './images.js'
 export const ThreadLink = (props) => html`
 	<a
 		class="thread-link"
-		href=${() => {
-			const next = new URL(location.href)
-			next.searchParams.set('thread', props.id)
-			return next.pathname + next.search
-		}}
-		onClick=${(event) => {
-			event.preventDefault()
-			openThread(props.id)
-		}}
+		href=${() => hrefOf(props.id)}
+		onClick=${(event) => followThread(event, props.id)}
 		>${() => props.children}</a
 	>
 `
@@ -108,28 +103,21 @@ export function Thread(props) {
 				},
 			]}
 		>
-			<header
-				role="button"
-				tabindex="0"
-				title="Thread details and tools"
-				onClick=${titleClick}
-				onKeyDown=${(event) => {
-					if (event.key === 'Enter' || event.key === ' ') {
-						event.preventDefault()
-						titleClick()
-					}
-				}}
-			>
-				<span>${() => (props.id ? thread()?.title || 'untitled' : 'a new thread')}</span>
-				<${Dot} state=${() => thread()?.status} />
+			<header>
+				<h2 class="title">
+					<button type="button" title="Thread details and tools" onClick=${titleClick}>
+						<span>${() => (props.id ? thread()?.title || 'untitled' : 'a new thread')}</span>
+						<${Dot} state=${() => thread()?.status} />
+					</button>
+				</h2>
 			</header>
-			<nav class="from">
+			<p class="from">
 				<${Show} when=${() => forkedFrom(thread())}
 					>${(id) => html`
 						<${ThreadLink} id=${() => id()}>${() => `← forked from ${titleOf(id())}`}<//>
 					`}<//
 				>
-			</nav>
+			</p>
 			<${Show} when=${() => props.id}>
 				<ul
 					ref=${(el) => {

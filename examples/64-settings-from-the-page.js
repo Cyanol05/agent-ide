@@ -19,7 +19,10 @@ const rebound = await fetch(`${base}/api/settings`, {
 check(rebound.status === 403 && !existsSync(file), 'only the server’s own machine changes its settings')
 
 const pid = srv.pid
-const on = await api('POST', '/api/settings', { modules: { search: true, status: false } })
+const on = await api('POST', '/api/settings', {
+	modules: { search: true, status: false },
+	memory: { model: 'echo/echo:high@bot' },
+})
 check(on.status === 201 && on.json.restarts, 'saving says the server restarts itself', JSON.stringify(on.json))
 check(
 	JSON.stringify(JSON.parse(readFileSync(file, 'utf8')).modules) === '["-status","+search"]',
@@ -32,6 +35,11 @@ const back = await until(async () => {
 }, 15000)
 check(Boolean(back) && srv.exitCode === null && srv.pid === pid, 'it comes back with them, in the same process', JSON.stringify(back))
 check((await view(id)).entries.at(-1)?.data.body === 'still here?', 'and a restart loses nothing')
+check(
+	JSON.parse(readFileSync(file, 'utf8')).memory.model === 'echo/echo:high@bot' &&
+		(await api('GET', '/api/server')).json.settings.memory.model === 'echo/echo:high@bot',
+	'the memory model keeps its thinking level across the restart',
+)
 
 await api('POST', '/api/settings', { modules: { search: false, status: true }, memory: { model: '' } })
 const again = await until(async () => {

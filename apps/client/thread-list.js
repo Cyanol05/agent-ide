@@ -1,7 +1,17 @@
 /** The same thread row in the list, its family, and a bot's other threads. */
 import html from '@solidjs/html'
 import { createSignal, For, Show } from 'solid-js'
-import { bots, current, deleteThread, homeBot, openThread, server, threads } from './server.js'
+import {
+	bots,
+	current,
+	deleteThread,
+	followThread,
+	homeBot,
+	hrefOf,
+	openThread,
+	server,
+	threads,
+} from './server.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { RunnerList } from './runner.js'
@@ -14,24 +24,18 @@ export function ThreadItem(props) {
 			title=${() => props.thread.title}
 			style=${() => `--depth: ${props.depth ?? 0}`}
 			class=${() => ({ current: props.thread.id === current() })}
-			tabindex="0"
-			onClick=${() => openThread(props.thread.id)}
-			onKeyDown=${(event) => {
-				if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-					event.preventDefault()
-					openThread(props.thread.id)
-				}
-			}}
 		>
-			<${Dot} state=${() => props.thread.status} />
-			<span>${() => props.thread.title || 'untitled'}</span>
+			<a class="row" href=${() => hrefOf(props.thread.id)} onClick=${(event) => followThread(event, props.thread.id)}>
+				<${Dot} state=${() => props.thread.status} />
+				<span>${() => props.thread.title || 'untitled'}</span>
+			</a>
 			<${Show} when=${() => !homeBot(props.thread.id)}>
 				<button
+					type="button"
+					class="delete"
+					data-danger
 					title="Delete this thread"
-					onClick=${(event) => {
-						event.stopPropagation()
-						deleteThread(props.thread.id).catch(report)
-					}}
+					onClick=${() => deleteThread(props.thread.id).catch(report)}
 				>
 					delete
 				</button>
@@ -43,19 +47,11 @@ export function ThreadItem(props) {
 /** The first row of a list makes a new one of what it lists, in the place it will appear. */
 function NewRow(props) {
 	return html`
-		<li
-			class=${() => ['new', { current: props.current }]}
-			tabindex="0"
-			onClick=${() => props.onPick()}
-			onKeyDown=${(event) => {
-				if (event.key === 'Enter' || event.key === ' ') {
-					event.preventDefault()
-					props.onPick()
-				}
-			}}
-		>
-			<span class="plus" aria-hidden="true">+</span>
-			<span>${() => props.label}</span>
+		<li class=${() => ['new', { current: props.current }]}>
+			<button type="button" class="row" onClick=${() => props.onPick()}>
+				<span class="plus" aria-hidden="true">+</span>
+				<span>${() => props.label}</span>
+			</button>
 		</li>
 	`
 }
@@ -65,7 +61,7 @@ export function ThreadList() {
 	return html`
 		<nav class="thread-list" aria-label="Threads">
 			<${Show} when=${() => server().modules.includes('bots')}>
-				<h3>Bots</h3>
+				<h2>Bots</h2>
 				<ul class="bots">
 					<${Show}
 						when=${() => creating()}
@@ -74,7 +70,7 @@ export function ThreadList() {
 					>
 					<${For} each=${() => bots}>${(bot) => html`<${BotItem} bot=${() => bot} />`}<//>
 				</ul>
-				<h3>Threads</h3>
+				<h2>Threads</h2>
 			<//>
 			<ul>
 				<${NewRow} label="New thread" current=${() => !current()} onPick=${(_e) => openThread(null)} />

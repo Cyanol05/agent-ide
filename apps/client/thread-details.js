@@ -31,7 +31,7 @@ export function ThreadDetails() {
 		<section class="thread-details" aria-label="Thread details">
 			<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
 			<${Show} when=${() => members().length > 1}>
-				<h3>In this thread</h3>
+				<h2>In this thread</h2>
 				<p id="members">
 					<${For} each=${() => members()}>
 						${(name, index) => [
@@ -55,7 +55,7 @@ export function ThreadDetails() {
 					<//>
 				</ul>
 			<//>
-			<h3>Tools</h3>
+			<h2>Tools</h2>
 			<${For} each=${() => [current()]}> ${(id) => html`<${Tools} thread=${id} />`} <//>
 			<${Show} when=${() => homeBot(current())} keyed>
 				${(bot) => html`<${BotSettings} bot=${() => bot} />`}

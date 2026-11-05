@@ -1,6 +1,6 @@
 /** Runners show their agents and choose whom the composer asks. */
 import html from '@solidjs/html'
-import { createSignal, For, Show } from 'solid-js'
+import { createSignal, createUniqueId, For, Show } from 'solid-js'
 import { api, minted, runners, server, setMinted, threads } from './server.js'
 import { agentName, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
 import { choose, configure, recipients, toFor } from './composer.js'
@@ -22,6 +22,7 @@ export function Runner(props) {
 		)
 	const stop = (event) => event.stopPropagation()
 	const pick = () => choose(to())
+	// The card is the mouse's way to ask it; its name is the keyboard's, and a press bubbles up to the card.
 	return html`
 		<div
 			class=${() => [
@@ -33,23 +34,12 @@ export function Runner(props) {
 				},
 			]}
 			data-runner=${() => runner().name}
-			role="button"
-			tabindex="0"
-			aria-label=${() => runner().name}
 			title="Click to ask it"
 			onClick=${pick}
-			onKeyDown=${(event) => {
-				if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-					event.preventDefault()
-					pick(event)
-				}
-			}}
 		>
-			<b
-				><${Dot}
-					state=${() => dotOf(runner())}
-				/>${() => runner().name}</b
-			>
+			<button type="button" class="ask">
+				<${Dot} state=${() => dotOf(runner())} />${() => runner().name}
+			</button>
 			<small>${() => runner().dir}</small>
 			<${Show} when=${() => runner().dir && !models().length}
 				><small>No models here yet: run pi there and /login.</small><//
@@ -125,13 +115,14 @@ function AgentRow(props) {
 /** The chat's runner list: who's there, and where you connect another machine or revoke one. */
 export function RunnerList() {
 	let button, panel
+	const id = createUniqueId()
 	const online = () => runners.filter((runner) => runner.online).length
 	return html`
 		<button
 			class="runner-toggle"
 			type="button"
 			ref=${(el) => (button = el)}
-			onClick=${() => panel.togglePopover()}
+			popovertarget=${id}
 		>
 			<${For} each=${() => runners}
 				>${(runner) => html`<${Dot} state=${() => (runner.online ? 'on' : '')} />`}<//
@@ -140,6 +131,7 @@ export function RunnerList() {
 		</button>
 		<div
 			class="runner-list"
+			id=${id}
 			popover
 			ref=${(el) => (panel = el)}
 			onToggle=${(event) => {

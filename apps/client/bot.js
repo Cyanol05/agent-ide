@@ -1,7 +1,7 @@
 /** A bot's name, home, recipe and instructions. */
 import html from '@solidjs/html'
 import { createEffect, createSignal, For, onSettled, refresh, Show, snapshot } from 'solid-js'
-import { api, bots, colorOf, current, openThread, threads } from './server.js'
+import { api, bots, colorOf, current, followThread, hrefOf, openThread, threads } from './server.js'
 import { formatAgent } from './agent.js'
 import { agent, openPicker } from './composer.js'
 import { Dot } from './dot.js'
@@ -10,15 +10,16 @@ import { report } from './notice.js'
 import { Sure } from './sure.js'
 
 export const BotItem = (props) => html`
-	<li
-		class=${() => ({ current: props.bot.home === current() })}
-		title=${() => props.bot.instructions.split('\n')[0]}
-		onClick=${() => openThread(props.bot.home)}
-	>
-		<${Dot}
-			state=${() => props.bot.status}
-		/>
-		<span style=${() => colorOf(props.bot.name)}>${() => props.bot.name}</span>
+	<li class=${() => ({ current: props.bot.home === current() })}>
+		<a
+			class="row"
+			href=${() => hrefOf(props.bot.home)}
+			title=${() => props.bot.instructions.split('\n')[0]}
+			onClick=${(event) => followThread(event, props.bot.home)}
+		>
+			<${Dot} state=${() => props.bot.status} />
+			<span style=${() => colorOf(props.bot.name)}>${() => props.bot.name}</span>
+		</a>
 	</li>
 `
 
