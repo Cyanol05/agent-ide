@@ -40,25 +40,44 @@ export function ThreadItem(props) {
 	`
 }
 
+/** The first row of a list makes a new one of what it lists, in the place it will appear. */
+function NewRow(props) {
+	return html`
+		<li
+			class=${() => ['new', { current: props.current }]}
+			tabindex="0"
+			onClick=${() => props.onPick()}
+			onKeyDown=${(event) => {
+				if (event.key === 'Enter' || event.key === ' ') {
+					event.preventDefault()
+					props.onPick()
+				}
+			}}
+		>
+			<span class="plus" aria-hidden="true">+</span>
+			<span>${() => props.label}</span>
+		</li>
+	`
+}
+
 export function ThreadList() {
 	const [creating, setCreating] = createSignal(false)
 	return html`
 		<nav class="thread-list" aria-label="Threads">
-			<button class=${() => ['new', { current: !current() }]} onClick=${() => openThread(null)}>
-				+ New thread
-			</button>
 			<${Show} when=${() => server().modules.includes('bots')}>
-				<h3>
-					Bots
-					<button type="button" onClick=${() => setCreating(true)}>+ new</button>
-				</h3>
+				<h3>Bots</h3>
 				<ul class="bots">
-					<${Show} when=${() => creating()}><${NewBot} onDone=${(_e) => setCreating(false)} /><//>
+					<${Show}
+						when=${() => creating()}
+						fallback=${html`<${NewRow} label="New bot" onPick=${(_e) => setCreating(true)} />`}
+						><${NewBot} onDone=${(_e) => setCreating(false)} /><//
+					>
 					<${For} each=${() => bots}>${(bot) => html`<${BotItem} bot=${() => bot} />`}<//>
 				</ul>
 				<h3>Threads</h3>
 			<//>
 			<ul>
+				<${NewRow} label="New thread" current=${() => !current()} onPick=${(_e) => openThread(null)} />
 				<${For}
 					each=${() =>
 						threads.filter(

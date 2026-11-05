@@ -593,10 +593,21 @@ agent-memory {
 	position: relative;
 	z-index: 1;
 
-	.new {
-		width: 100%;
-		text-align: left;
-		margin-bottom: 0.4rem;
+	/* A new row reads like the rows it makes, its + where their dot sits. */
+	li.new {
+		color: var(--mute);
+
+		.plus {
+			flex: none;
+			width: 0.55rem;
+			text-align: center;
+			font-weight: 600;
+		}
+	}
+
+	li.new:hover,
+	li.new.current {
+		color: inherit;
 	}
 }
 
@@ -1279,7 +1290,7 @@ body.chat {
 	margin: 0 0.6rem;
 }
 
-:is(.thread-details .bot, .thread-list > h3) button {
+.thread-details .bot button {
 	padding: 0 0.4rem;
 	font-size: 12px;
 }
