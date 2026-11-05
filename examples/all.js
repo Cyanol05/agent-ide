@@ -1,4 +1,5 @@
-/** Every example, as many at once as there are cores, each with its own server, port and store */
+/** Every example, half as many at once as there are cores, each with its own server, port and store; the other half
+ * leaves room for another thread's run on the same machine, which made timing checks flaky */
 import { execFile } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { availableParallelism } from 'node:os'
@@ -22,7 +23,7 @@ const queue = [...files]
 const started = performance.now()
 const failed = (
 	await Promise.all(
-		Array.from({ length: availableParallelism() }, async () => {
+		Array.from({ length: Math.max(2, Math.floor(availableParallelism() / 2)) }, async () => {
 			const mine = []
 			for (let file; (file = queue.shift());) mine.push(...(await run(file)))
 			return mine

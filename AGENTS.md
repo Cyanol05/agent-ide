@@ -20,6 +20,9 @@
 - There is one web client: Solid, no build step, in apps/client; client.html is served at `/`. Its import map names every package Solid imports bare, so each one, `@solidjs/signals` too, is a root dependency. Mermaid is served locally too.
 - Resolve installed packages, never assume `<app>/node_modules`: npm/npx hoist dependencies. Use `import.meta.resolve` for browser assets. `runnerBundle` uses `createRequire(...).resolve.paths` for manifests that needn't be exported; runners call it too, and Bun lacks Node's `findPackageJSON`.
 - Work on `main` in the one checkout, `~/sites/agent-ide`, with jj: no branches, worktrees or copies of the repo elsewhere, `/tmp` included. Every thread shares it.
+- Other agents edit this checkout too: commit only your own paths (`jj commit <paths>`), and `jj git fetch` and rebase before you push.
+- For a browser check, start a scratch server on its own port and store: `PORT=3917 DB_PATH=<scratch>/s.sqlite node server.js`, and stop it by that port when done.
+- Examples go through the API, socket or CLI, the way a user would, not server internals; then a refactor doesn't break them. `examples/00-the-api.js` is the README's walkthrough: change both together.
 - Don't assume the `hostname` command exists; use Node's `os.hostname()`.
 - npm enforces Chord's optional `ws` peer too; the root range must admit it. Prove npm and npx installs after packaging changes.
 - For an example of a failed npm install, use a missing `.tgz` dependency: a missing `file:` directory can install successfully as a dangling symlink.
@@ -27,5 +30,5 @@
 - Pi's `openTextLineReader` and `openBinaryReader` take an options object before Context; `openDirReader` takes Context directly.
 - In no-build Solid templates, wrap live values in `() =>`, give component callbacks an argument (zero-argument functions become getters even for `on…` props), and keep the phone header's async reads inside `Loading`.
 - Look up wire endpoints after Solid places the DOM, and ignore the wires' own SVG mutations when observing layout changes.
-- A thread has one agent. Its model, thinking and runner are settings that change in place, as in pi. `model:thinking@runner` is how you start or switch one, not its identity. Only bots have names; more participants means bots or more threads.
+- client.html's glossary says what each thing is; don't restate it here. In short: a thread has one agent whose model, thinking and runner change in place, and only bots have names.
 - Solid batches navigation, so walkthrough actions pass their new-thread target explicitly, and post-await navigation checks use `latest(current)`.
