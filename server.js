@@ -49,7 +49,10 @@ import {
  * @property {true} [error]  The agent gave no answer.
  * @property {{ runner: string, code: number | null, stdout: string, stderr: string, error?: string }} [shell]  What `$ cmd` printed.
  * @typedef {{ id: number, kind: 'agent-ide.message', data: Message }} Entry
- * @typedef {{ name: string, conversation: number, to: To | null, status: string }} Agent
+ * @typedef {{ name: string, conversation: number, to: To | null, status: string }} Agent  An agent or bot, as a thread view shows it.
+ * @typedef {{ conversation: number, unseen: number[], admission?: { admit: number, deliver: number }, note?: string }} Recipient
+ *   A thread doc's row for its agent or a bot: its conversation, the thread messages it hasn't seen, its latest input's
+ *   tasks, and what to tell it about a change before its next one.
  * @typedef {{ agent: number, held: number[], admit: number, note?: string }} Delivery  The thread messages one input to an
  *   agent holds, and what changed about the agent since its last.
  * @typedef {{ author: string, command: string, to: To }} Command
@@ -105,7 +108,7 @@ const Keys = defineDoc({
 	checkpointWhen: base,
 	initial: () => ({}),
 })
-/** `agents` holds the thread's one agent, at `AGENT`, and its bots by name */
+/** `agents` holds a {@link Recipient} for the thread's one agent, at `AGENT`, and for each bot, by name */
 const Thread = defineDoc({
 	kind: 'agent-ide.thread',
 	version: 1,
@@ -474,7 +477,7 @@ async function address(to, command = false, signal) {
 	for (const key of ['thinkingLevel', 'dir'])
 		if (typeof to[key] === 'string' && to[key].trim()) clean[key] = to[key].trim()
 	if (to.name !== undefined) {
-		if (typeof to.name !== 'string' || !(await named?.(to.name)))
+		if (typeof to.name !== 'string' || !(await recipe?.(to.name)))
 			throw new Error(`${to.name} is no bot: only bots have names, and a thread's agent has none`)
 		clean.name = to.name
 	}
@@ -483,29 +486,29 @@ async function address(to, command = false, signal) {
 }
 /** Whom `to` asks in a thread */
 const addresses = (to, command, threadId) =>
-	Promise.all((to === null ? [] : [to].flat()).map((t) => whom(threadId, t, command)))
+	Promise.all((to === null ? [] : [to].flat()).map((to) => whom(threadId, to, command)))
 /** `12` is thread 12's agent and `12/ada` a bot there; a runner named only digits is `@12` */
-async function whom(threadId, t, command = false, signal) {
-	const [, at, rest] = (typeof t === 'string' && t.match(/^(\d+)(?:\/(.+))?$/)) || []
-	if (at && Number(at) !== threadId) throw new Error(`${t} is in thread ${at}, not ${threadId}`)
-	const text = at ? (rest ?? AGENT) : t
+async function whom(threadId, to, command = false, signal) {
+	const [, at, rest] = (typeof to === 'string' && to.match(/^(\d+)(?:\/(.+))?$/)) || []
+	if (at && Number(at) !== threadId) throw new Error(`${to} is in thread ${at}, not ${threadId}`)
+	const text = at ? (rest ?? AGENT) : to
 	const agents = threadId !== undefined ? (await thread(threadId))?.agents : undefined
 	if (typeof text === 'string' && agents?.[text]) return agentOf(agents[text].conversation, text)
 	if (text === AGENT) throw new Error(`Thread ${threadId} has no agent yet`)
-	const found = typeof text === 'string' && !/[@=]/.test(text) && (await named?.(text))
-	if (found) return address(found, command, signal)
+	const bot = typeof text === 'string' && !/[@=]/.test(text) && (await recipe?.(text))
+	if (bot) return address(bot, command, signal)
 	const asked = typeof text === 'string' ? agentTo(text) : text
-	const recipe = await address(asked, command, signal)
-	const key = !command && (recipe.name ?? AGENT)
-	if (!key || !agents?.[key]) return recipe
+	const resolved = await address(asked, command, signal)
+	const key = !command && (resolved.name ?? AGENT)
+	if (!key || !agents?.[key]) return resolved
 	// The agent is there already, so this switches it from this message on. What the ask leaves out stays as it was:
 	// its thinking, as a runner alone resolves to pi's default thinking there, which no one asked for, and on the same
 	// runner its folder.
 	const agent = await agentOf(agents[key].conversation, key)
-	const { thinkingLevel, dir, ...switched } = recipe
+	const { thinkingLevel, dir, ...model } = resolved
 	const level = asked?.thinkingLevel || (asked?.model && thinkingLevel) || agent.thinkingLevel
-	const into = dir ?? (recipe.runner === agent.runner ? agent.dir : undefined)
-	return { ...switched, ...(level ? { thinkingLevel: level } : {}), ...(into ? { dir: into } : {}) }
+	const into = dir ?? (resolved.runner === agent.runner ? agent.dir : undefined)
+	return { ...model, ...(level ? { thinkingLevel: level } : {}), ...(into ? { dir: into } : {}) }
 }
 
 /** What `pi --model asked` makes of it on the runner, kept with its models */
@@ -635,9 +638,9 @@ const ownAnswer = ({ data: m }, key) =>
 async function post(tx, threadId, message, options = {}) {
 	let by = message.author
 	if (message.from) {
-		const source = (await tx.doc(Thread, message.from)).agents[keyOf(message.author)]
-		if (!source) throw new Error('Only an agent can post from another thread')
-		by = `@${(await agentOf(source.conversation, message.author, tx)).runner}`
+		const recipient = (await tx.doc(Thread, message.from)).agents[keyOf(message.author)]
+		if (!recipient) throw new Error('Only an agent can post from another thread')
+		by = `@${(await agentOf(recipient.conversation, message.author, tx)).runner}`
 	}
 	await reach(message.to ?? [], by, await tx.doc(Runners))
 	return append(tx, threadId, message, options)
@@ -667,7 +670,7 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 		if (!row.agents[key]) {
 			row.agents[key] = await newAgent(tx, threadId, [...prior, entry.id])
 			await setUp(tx, row.agents[key].conversation, threadId, to[i])
-		} else await switchTo(tx, row.agents[key], to[i])
+		} else await reconfigure(tx, row.agents[key], to[i])
 		const recipient = row.agents[key]
 		const { conversation: agent, unseen: held, admission: after, note } = recipient
 		if (!held.length) continue
@@ -688,24 +691,31 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 	return { entry: entry.id, to: names }
 }
 
-/** An agent asked with another model, thinking, runner or folder changes in place, as in pi, and is told when it moves */
-async function switchTo(tx, recipient, t) {
+/**
+ * An agent asked with another model, thinking, runner or folder changes in place, as in pi, and is told when it moves
+ * @param {Recipient} recipient
+ * @param {To} to
+ */
+async function reconfigure(tx, recipient, to) {
 	const now = await tx.doc(AgentDoc, recipient.conversation)
-	const cwd = folder((await tx.doc(Runners))[t.runner], t)
-	const model = { provider: `runner:${t.runner}`, modelId: t.model }
+	const cwd = folder((await tx.doc(Runners))[to.runner], to)
+	const model = { provider: `runner:${to.runner}`, modelId: to.model }
 	const moved = now.model?.provider !== model.provider || now.cwd !== cwd
-	const switched = moved || now.model?.modelId !== model.modelId
-	const thinks = t.thinkingLevel && now.thinkingLevel !== t.thinkingLevel
-	if (!switched && !thinks) return
+	const remodelled = moved || now.model?.modelId !== model.modelId
+	const thinks = to.thinkingLevel && now.thinkingLevel !== to.thinkingLevel
+	if (!remodelled && !thinks) return
 	await configure(tx, recipient.conversation, {
-		...(switched ? { model, cwd } : {}),
-		...(thinks ? { thinkingLevel: t.thinkingLevel } : {}),
+		...(remodelled ? { model, cwd } : {}),
+		...(thinks ? { thinkingLevel: to.thinkingLevel } : {}),
 	})
-	if (switched)
-		recipient.note = `[You now run as ${t.model}${t.thinkingLevel ? `:${t.thinkingLevel}` : ''} on ${t.runner}, in ${cwd}.${moved ? " Files and paths from before may not be here; check them before you trust them." : ''}]`
+	if (remodelled)
+		recipient.note = `[You now run as ${to.model}${to.thinkingLevel ? `:${to.thinkingLevel}` : ''} on ${to.runner}, in ${cwd}.${moved ? ' Files and paths from before may not be here; check them before you trust them.' : ''}]`
 }
 
-/** Owned by an Anchor in the thread */
+/**
+ * Owned by an Anchor in the thread
+ * @returns {Promise<Recipient>}
+ */
 async function newAgent(tx, threadId, unseen, from) {
 	const anchor = await tx.createTask(Anchor, null, { ...own, conversationId: threadId })
 	const ownership = { ownership: { kind: 'task', taskId: anchor } }
@@ -715,14 +725,15 @@ async function newAgent(tx, threadId, unseen, from) {
 	return { conversation: id, unseen }
 }
 
-const setUp = async (tx, agent, threadId, t) => {
+/** @param {To} to */
+const setUp = async (tx, conversation, threadId, to) => {
 	const { tools } = await tx.doc(Thread, threadId)
-	return configure(tx, agent, {
-		model: { provider: `runner:${t.runner}`, modelId: t.model },
+	return configure(tx, conversation, {
+		model: { provider: `runner:${to.runner}`, modelId: to.model },
 		tools: toolsOf(tools),
-		thinkingLevel: t.thinkingLevel ?? null,
-		cwd: folder((await tx.doc(Runners))[t.runner], t),
-		instructions: instructions(t.name ?? AGENT, threadId, tools),
+		thinkingLevel: to.thinkingLevel ?? null,
+		cwd: folder((await tx.doc(Runners))[to.runner], to),
+		instructions: instructions(to.name ?? AGENT, threadId, tools),
 	})
 }
 
@@ -731,11 +742,11 @@ const instructions = (key, threadId, tools) =>
 
 /** An input withdrawn before it was placed: its messages are unseen again, and its note untold */
 async function restore(tx, threadId, conversation, held, note) {
-	const agent = Object.values((await tx.doc(Thread, threadId)).agents).find(
+	const recipient = Object.values((await tx.doc(Thread, threadId)).agents).find(
 		(a) => a.conversation === conversation,
 	)
-	agent.unseen = [...new Set([...agent.unseen, ...held])].sort((a, b) => a - b)
-	if (note) agent.note ??= note
+	recipient.unseen = [...new Set([...recipient.unseen, ...held])].sort((a, b) => a - b)
+	if (note) recipient.note ??= note
 }
 
 /** What a settled input posts, and where */
@@ -919,7 +930,7 @@ async function postEntry(id, author, input) {
 		)
 	if (command && !to.length) throw new Error('Pick a runner to run the command on')
 	if (command) await reach(to, author, await known())
-	if (!command && to.filter((t) => !t.name).length > 1)
+	if (!command && to.filter((to) => !to.name).length > 1)
 		throw new Error('A thread has one agent: ask one model here, plus any bots')
 	return once(input.requestId, `post ${id}`, async (tx) =>
 		command
@@ -1070,13 +1081,13 @@ async function forkThread(id, { at, title }) {
 						instructions: instructions(key, forkId, source.tools),
 					})
 				}
-				for (const [key, t] of fresh) {
+				for (const [key, to] of fresh) {
 					row[key] = await newAgent(
 						tx,
 						forkId,
 						shown.filter((e) => !ownAnswer(e, key)).map((e) => e.id),
 					)
-					await setUp(tx, row[key].conversation, forkId, t)
+					await setUp(tx, row[key].conversation, forkId, to)
 				}
 				Object.assign(await tx.doc(Thread, forkId), { title: named, createdAt: now(), agents: row })
 			},
@@ -1128,7 +1139,7 @@ const hook = (name) => {
 }
 const posted = modules.flatMap((m) => m.posted ?? [])
 const hiding = modules.flatMap((m) => m.hiding ?? [])
-const [route, reply, catchUp, named] = ['route', 'reply', 'catchUp', 'recipe'].map(hook)
+const [route, reply, catchUp, recipe] = ['route', 'reply', 'catchUp', 'recipe'].map(hook)
 
 for (const [name, runner] of Object.entries(await known()))
 	models.setProvider(runnerProvider(runners, name, runner.models))

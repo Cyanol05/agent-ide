@@ -31,7 +31,7 @@ export function System() {
 				state: connected() ? '' : 'off',
 			},
 		]
-		const reached = new Set([...asking.map((p) => p.runner), ...agents().map((a) => a.to.runner)])
+		const reached = new Set([...asking.map((to) => to.runner), ...agents().map((a) => a.to.runner)])
 		for (const r of runners)
 			if (!reached.has(r.name))
 				edges.push({
@@ -42,7 +42,7 @@ export function System() {
 					state: connected() && r.online ? '' : 'off',
 				})
 		for (const a of agents()) {
-			if (a.thread === current() && asking.some((p) => sameAgent(p, a.to))) continue
+			if (a.thread === current() && asking.some((to) => sameAgent(to, a.to))) continue
 			edges.push({
 				...down,
 				from: `[data-thread="${a.thread}"]`,

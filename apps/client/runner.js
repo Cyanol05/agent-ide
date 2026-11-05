@@ -3,7 +3,7 @@ import html from '@solidjs/html'
 import { createSignal, For, Show } from 'solid-js'
 import { api, minted, runners, server, setMinted, threads } from './server.js'
 import { agentKey, busiest, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
-import { choiceFor, choose, configure, recipients } from './composer.js'
+import { choose, configure, recipients, toFor } from './composer.js'
 import { placePopover } from './popover.js'
 import { report } from './notice.js'
 import { Sure } from './sure.js'
@@ -11,17 +11,17 @@ import { Dot } from './dot.js'
 
 export function Runner(props) {
 	const runner = () => props.runner
-	const choice = () => choiceFor(runner())
+	const to = () => toFor(runner())
 	const agents = () => props.agents.filter((a) => a.to.runner === runner().name)
 	const models = () => [
-		...new Set([choice().model, runner().model, ...(runner().offers ?? [])].filter(Boolean)),
+		...new Set([to().model, runner().model, ...(runner().offers ?? [])].filter(Boolean)),
 	]
 	const others = () =>
 		[...new Map(agents().map((a) => [agentKey(a.to), a.to])).values()].filter(
-			(to) => agentKey(to) !== agentKey(choice()),
+			(other) => agentKey(other) !== agentKey(to()),
 		)
 	const stop = (e) => e.stopPropagation()
-	const pick = () => choose(choice())
+	const pick = () => choose(to())
 	return html`
 		<div
 			class=${() => [
@@ -29,7 +29,7 @@ export function Runner(props) {
 				'card',
 				{
 					off: !runner().online,
-					routed: recipients().some((p) => p.runner === runner().name),
+					routed: recipients().some((to) => to.runner === runner().name),
 				},
 			]}
 			data-runner=${() => runner().name}
@@ -57,14 +57,14 @@ export function Runner(props) {
 			<${Show} when=${() => !runner().dir}><small>Waiting for it to dial in.</small><//>
 			<ul class="models">
 				<${Show} when=${() => models().length}>
-					<${AgentRow} to=${() => choice()} agents=${() => agents()}>
+					<${AgentRow} to=${() => to()} agents=${() => agents()}>
 						<select
 							class="swap"
 							aria-label="Model"
 							title="model"
-							value=${() => choice().model ?? ''}
+							value=${() => to().model ?? ''}
 							onClick=${stop}
-							onChange=${(e) => configure({ ...choice(), model: e.currentTarget.value })}
+							onChange=${(e) => configure({ ...to(), model: e.currentTarget.value })}
 						>
 							<${For} each=${() => models()}
 								>${(model) => html`<option value=${() => model}>${() => model}</option>`}<//
@@ -75,12 +75,12 @@ export function Runner(props) {
 							min="0"
 							max=${() => THINKING_LEVELS.length}
 							aria-label="Thinking"
-							value=${() => THINKING_LEVELS.indexOf(choice().thinkingLevel) + 1}
-							title=${() => choice().thinkingLevel || 'default thinking'}
+							value=${() => THINKING_LEVELS.indexOf(to().thinkingLevel) + 1}
+							title=${() => to().thinkingLevel || 'default thinking'}
 							onClick=${stop}
 							onInput=${(e) =>
 								configure({
-									...choice(),
+									...to(),
 									thinkingLevel: THINKING_LEVELS[e.currentTarget.value - 1],
 								})}
 						/>

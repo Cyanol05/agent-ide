@@ -35,9 +35,9 @@ export const sameAgent = (a, b) =>
 	a?.runner === b?.runner && a?.model === b?.model && a?.name === b?.name
 
 /** In the composer: its name or its model's own name, how hard it thinks, where it runs */
-export const agentLabel = (p) =>
-	`${p.name ?? (p.model ?? '').split('/').pop()}` +
-	`${p.thinkingLevel ? ` · ${p.thinkingLevel}` : ''} · ${p.runner}`
+export const agentLabel = (to) =>
+	`${to.name ?? (to.model ?? '').split('/').pop()}` +
+	`${to.thinkingLevel ? ` · ${to.thinkingLevel}` : ''} · ${to.runner}`
 /** An author as a message shows it */
 export const authorLabel = (author) =>
 	author?.replace(/^(?:[^@]*\/)?([^/@:]+)(?::[^@]*)?@(.+)$/, '$1 · $2') ?? ''

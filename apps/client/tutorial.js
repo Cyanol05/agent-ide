@@ -3,13 +3,13 @@ import html from '@solidjs/html'
 import { Portal } from '@solidjs/web'
 import { onSettled, snapshot } from 'solid-js'
 import { api, current, createThread, entries, fork, openThread, runners, url } from './server.js'
-import { choiceFor, choose } from './composer.js'
+import { choose, toFor } from './composer.js'
 import { formatAgent } from './agent.js'
 import { ConnectRunner } from './runner.js'
 import { report } from './notice.js'
 import { Memory } from './agent-memory.js'
 
-const defaults = () => runners.filter((r) => r.online && choiceFor(r).model).map(choiceFor)
+const defaults = () => runners.filter((r) => r.online && toFor(r).model).map(toFor)
 async function ask(body, to, was = current()) {
 	if (!to) throw new Error('Pick a model first.')
 	choose(to)

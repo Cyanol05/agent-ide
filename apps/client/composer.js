@@ -40,8 +40,8 @@ const pick = () => (compose.pick?.thread === current() ? compose.pick : null)
 const here = () => threads.find((t) => t.id === current())?.agents ?? []
 /** The names the thread asked last */
 const lastTo = () => (entries[current()] ?? []).findLast((e) => e.data.to?.length)?.data.to
-const fallback = (r) =>
-	compose.settings[r.name] ?? { runner: r.name, model: r.model, thinkingLevel: 'low' }
+const fallback = (runner) =>
+	compose.settings[runner.name] ?? { runner: runner.name, model: runner.model, thinkingLevel: 'low' }
 /** Whom the next message asks as the agent: in a bot's home the bot, else the pick, else the thread's agent as it runs */
 export const agent = () => {
 	const bot = homeBot(current())
@@ -53,20 +53,21 @@ export const agent = () => {
 	return own ?? (first?.model ? fallback(first) : null)
 }
 /** The bots it asks beside it: those picked, or those the thread asked last, as they run */
-const asked = () =>
+const askedBots = () =>
 	homeBot(current())
 		? []
 		: (pick()?.bots ??
 			here()
 				.map((a) => a.to)
 				.filter((to) => to?.name && lastTo()?.includes(to.name)))
-export const recipients = () => [agent(), ...asked()].filter(Boolean)
-export const choiceFor = (r) => (agent()?.runner === r.name ? agent() : fallback(r))
-const setPick = (agent, bots, typed = null) =>
+export const recipients = () => [agent(), ...askedBots()].filter(Boolean)
+/** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
+export const toFor = (runner) => (agent()?.runner === runner.name ? agent() : fallback(runner))
+const setPick = (to, bots, typed = null) =>
 	setCompose((s) => {
-		s.pick = { thread: current(), agent, bots }
+		s.pick = { thread: current(), agent: to, bots }
 		s.typed = typed
-		if (agent && !agent.name) s.settings[agent.runner] = agent
+		if (to && !to.name) s.settings[to.runner] = to
 	})
 /** Choosing a model replaces the agent's pick and keeps the bots; in a bot's home, it is the bot's own model */
 export function choose(to, always = true) {
@@ -75,7 +76,7 @@ export function choose(to, always = true) {
 		return api('/api/bots', { name: bot.name, to: { ...to, name: undefined } })
 			.then(() => refresh(bots))
 			.catch(report)
-	if (always || agent()?.runner === to.runner) setPick(to, snapshot(asked()))
+	if (always || agent()?.runner === to.runner) setPick(to, snapshot(askedBots()))
 	else setCompose((s) => void (s.settings[to.runner] = to))
 }
 /** A runner's settings change the agent's pick only when the agent is on that runner */
@@ -221,7 +222,7 @@ export function Composer(props) {
 					}}
 					onInput=${(e) => {
 						// What it asks stays as it was when the typing started
-						if (!pick() && !homeBot(current())) setPick(snapshot(agent()), snapshot(asked()))
+						if (!pick() && !homeBot(current())) setPick(snapshot(agent()), snapshot(askedBots()))
 						setCompose((s) => {
 							s.draft = e.currentTarget.value
 						})
@@ -342,7 +343,7 @@ export function Composer(props) {
 
 /** A click asks only the bot; shift-click adds it beside the agent, or takes it off */
 function PickerBot(bot, close) {
-	const selected = () => asked().some((p) => p.name === bot.name)
+	const selected = () => askedBots().some((to) => to.name === bot.name)
 	return html`
 		<li>
 			<button
@@ -350,7 +351,7 @@ function PickerBot(bot, close) {
 				class=${() => ['model', { on: selected() }]}
 				onClick=${(e) => {
 					if (!e.shiftKey) return (setPick(null, [botAgent(bot)]), close())
-					const others = asked().filter((p) => p.name !== bot.name)
+					const others = askedBots().filter((to) => to.name !== bot.name)
 					setPick(snapshot(agent()), selected() ? others : [...others, botAgent(bot)])
 				}}
 			>
@@ -362,10 +363,10 @@ function PickerBot(bot, close) {
 }
 
 function PickerRunner(runner, close) {
-	const choice = () => choiceFor(runner)
+	const to = () => toFor(runner)
 	const selected = () => agent()?.runner === runner.name
 	const models = () => [
-		...new Set([choice().model, runner.model, ...(runner.offers ?? [])].filter(Boolean)),
+		...new Set([to().model, runner.model, ...(runner.offers ?? [])].filter(Boolean)),
 	]
 	const folderValue = (folder) =>
 		folder === runner.dir
@@ -391,7 +392,7 @@ function PickerRunner(runner, close) {
 							type="button"
 							class=${() => ['model', { on: selected() && agent().model === model }]}
 							onClick=${() => {
-								choose({ ...choice(), model })
+								choose({ ...to(), model })
 								close()
 							}}
 						>
@@ -408,11 +409,11 @@ function PickerRunner(runner, close) {
 						<button
 							type="button"
 							title=${() => level}
-							aria-pressed=${() => String(choice().thinkingLevel === level)}
+							aria-pressed=${() => String(to().thinkingLevel === level)}
 							onClick=${() =>
 								configure({
-									...choice(),
-									thinkingLevel: choice().thinkingLevel === level ? undefined : level,
+									...to(),
+									thinkingLevel: to().thinkingLevel === level ? undefined : level,
 								})}
 						>
 							${() => ({ minimal: 'min', medium: 'med' })[level] ?? level}
@@ -424,8 +425,8 @@ function PickerRunner(runner, close) {
 				<h4>Folder</h4>
 				<select
 					aria-label="Folder"
-					value=${() => choice().dir ?? ''}
-					onChange=${(e) => configure({ ...choice(), dir: e.currentTarget.value || undefined })}
+					value=${() => to().dir ?? ''}
+					onChange=${(e) => configure({ ...to(), dir: e.currentTarget.value || undefined })}
 				>
 					<${For} each=${() => runner.folders}
 						>${(folder) => html`
