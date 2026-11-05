@@ -143,11 +143,11 @@ export function Composer(props) {
 					enterkeyhint="send"
 					aria-label="Message"
 					placeholder=${() =>
-						!active()
-							? 'Write here'
-							: recipients().length
-								? `Ask ${recipients().map(agentLabel).join(' and ')}`
-								: 'Pick whom to ask, below'}
+						homeBot(props.thread)
+							? `Write to ${homeBot(props.thread).name}`
+							: !active() || recipients().length
+								? 'Write a message'
+								: 'Pick a model below, then write'}
 					value=${() => (active() ? compose.draft : '')}
 					onFocus=${() => {
 						if (!active()) openThread(props.thread)
