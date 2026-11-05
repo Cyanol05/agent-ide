@@ -1,27 +1,27 @@
 # AGENTS.md
 
+- Work on `main` in the one checkout, `~/sites/agent-ide`, with jj: no branches, worktrees or copies of the repo elsewhere, `/tmp` included. Every thread shares it.
+- Other agents edit this checkout at the same time: commit only your own paths (`jj commit <paths>`), read your diff for anyone else's hunks first, and `jj git fetch` and rebase before you push.
+- Check UI changes in a browser with `agent-browser open <url>`, on a scratch server with its own port and store: `PORT=3917 DB_PATH=<scratch>/s.sqlite node server.js`. The server reads the client's files once at startup, so restart it after each edit; stop it by its port when done.
+- An example proves a fix only if it fails without it: run it on the old code first and say so. Server errors print in example output; `VERBOSE=1` adds the server's own log.
 - A change serves one of the promises in [apps/client/client.html](apps/client/client.html), or it requires a chat with Oskar. When a better design breaks a principle, or an idea looks wrong, Oskar's included, argue before building.
 - Use the words client.html uses, one per concept. Fewer concepts beats fewer lines.
 - A name says what it holds and stays the same in every layer, so `rg` finds the whole path: the API's word in the server, the modules and the client (a `To` is `to`). No one-letter names, but `_` and stored notation such as memory's `l`, `i` and `n`.
 - Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own.
+- In a Pi commit, read before you write: one `submit(tx, ...)` comes before table writes, and after the first write a commit can't scan entries or take a snapshot. A snapshot inside a commit deadlocks without an error. Copy document values before they leave the commit.
 - Don't over-fix. A rare failure that would need a new store, task layer or journal stays a known gap, written on its issue. Small and readable beats covering every crash.
 - A tool's cancellation comes from `execute`'s third Context argument: pass its `abortSignal` through runner calls, and settle cancellation locally without waiting for the runner's reply.
 - Use `pnpm install --frozen-lockfile` in a fresh checkout; keep package.json and the lockfile unchanged unless the task calls for dependency changes.
-- Pi permits one `submit(tx, ...)` before table writes per commit, and document values must be copied before they leave that commit.
 - New features are modules, off by default.
 - Keep client.html and the README saying what the code does high level.
 - Docs and UI copy read brief and human, like a person talking, never like SaaS marketing.
 - Prove things in `examples/`, one file per idea. No unit tests, no TypeScript, no build step, no migrations or shims.
 - Thread views omit `dir` at the runner's root, so use a subfolder to prove CLI folder options.
 - Pi forks restore `pi.agent` at the fork entry, so apply the thread's current tools and new identity in the creating commit without replacing the inherited model, thinking or folder.
-- Check UI changes in a browser: `agent-browser open <url>` with `server.js` running.
 - Runner commands minted through localhost need a network address, preferably Tailscale rather than the first non-loopback interface.
 - Solid 2 is not Solid 1: read `CHEATSHEET.md` and `skills/solid-2.0/SKILL.md` in node_modules/solid-js before writing the Solid client, and fix any `[CODE]` warning in the browser console with `skills/reactivity-diagnostics/SKILL.md` there.
 - There is one web client: Solid, no build step, in apps/client; client.html is served at `/`. Its import map names every package Solid imports bare, so each one, `@solidjs/signals` too, is a root dependency. Mermaid is served locally too.
 - Resolve installed packages, never assume `<app>/node_modules`: npm/npx hoist dependencies. Use `import.meta.resolve` for browser assets. `runnerBundle` uses `createRequire(...).resolve.paths` for manifests that needn't be exported; runners call it too, and Bun lacks Node's `findPackageJSON`.
-- Work on `main` in the one checkout, `~/sites/agent-ide`, with jj: no branches, worktrees or copies of the repo elsewhere, `/tmp` included. Every thread shares it.
-- Other agents edit this checkout too: commit only your own paths (`jj commit <paths>`), and `jj git fetch` and rebase before you push.
-- For a browser check, start a scratch server on its own port and store: `PORT=3917 DB_PATH=<scratch>/s.sqlite node server.js`, and stop it by that port when done.
 - Examples go through the API, socket or CLI, the way a user would, not server internals; then a refactor doesn't break them. `examples/00-the-api.js` is the README's walkthrough: change both together.
 - Don't assume the `hostname` command exists; use Node's `os.hostname()`.
 - npm enforces Chord's optional `ws` peer too; the root range must admit it. Prove npm and npx installs after packaging changes.
