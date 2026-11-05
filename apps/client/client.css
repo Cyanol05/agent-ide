@@ -1556,9 +1556,10 @@ body.chat .thread-list > ul > li:active {
 	}
 }
 
-/* The model picker and runner list: popovers on desktop, bottom sheets on phones. */
+/* The model picker, runner list and settings: popovers on desktop, bottom sheets on phones. */
 .model-picker,
-.runner-list {
+.runner-list,
+.settings {
 	position: fixed;
 	inset: auto;
 	margin: 0;
@@ -1733,6 +1734,66 @@ body.chat .thread-list > ul > li:active {
 	}
 }
 
+/* A module a row, as a runner is: its dot, its name, what it does, on or off at the end. */
+.settings {
+	padding: 0.7rem;
+
+	h3 {
+		margin: 0.1rem 0.4rem 0.5rem;
+		font-size: 12px;
+		font-weight: 500;
+		color: var(--mute);
+	}
+
+	> ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 0.25rem;
+	}
+
+	li {
+		display: flex;
+		align-items: start;
+		gap: 0.6rem;
+		padding: 0.45rem 0.4rem;
+
+		.dot {
+			margin-top: 0.45rem;
+		}
+
+		> div {
+			flex: 1;
+			min-width: 0;
+		}
+
+		small {
+			display: block;
+			color: var(--mute);
+			font-size: 12px;
+		}
+
+		.state {
+			flex: none;
+			font-size: 12px;
+			color: var(--mute);
+		}
+
+		&.off b {
+			color: var(--mute);
+			font-weight: 500;
+		}
+	}
+
+	> p {
+		margin: 0.5rem 0.4rem 0.2rem;
+		padding-top: 0.6rem;
+		border-top: 1px solid var(--line);
+		font-size: 12px;
+	}
+}
+
 /* Revoke waits at the row's end, like a thread's delete. */
 .runner-list > ul > li {
 	flex-wrap: wrap;
@@ -1819,24 +1880,33 @@ connect-runner {
 	}
 }
 
-.runner-toggle {
+.list-foot {
 	display: none;
 }
 
+/* The list's foot: runners, then settings, then the arrow back to the story that sits over its end. */
 body.chat {
-	.runner-toggle {
+	.list-foot {
 		position: sticky;
 		bottom: 0;
 		margin-top: auto;
 		flex: none;
 		display: flex;
 		align-items: center;
-		gap: 0.3rem;
-		width: 100%;
-		border: 0;
+		padding-right: 2.4rem;
 		border-top: 1px solid var(--line);
-		border-radius: 0;
 		background: Canvas;
+	}
+
+	.runner-toggle {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		border: 0;
+		border-radius: 0;
+		background: none;
 		color: var(--mute);
 		font-size: 13px;
 		padding: 0.7rem 0.8rem;
@@ -1844,6 +1914,23 @@ body.chat {
 
 		span:last-child {
 			margin-left: 0.3rem;
+		}
+	}
+
+	.settings-toggle {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 1.6rem;
+		height: 1.6rem;
+		padding: 0;
+		border-color: transparent;
+		background: none;
+		color: var(--mute);
+
+		&:hover {
+			border-color: var(--line);
+			color: var(--ink);
 		}
 	}
 
@@ -1859,7 +1946,8 @@ body.chat {
 
 @media (max-width: 700px) {
 	.model-picker,
-	.runner-list {
+	.runner-list,
+	.settings {
 		inset: auto 0 0 0;
 		width: 100%;
 		max-height: 75dvh;
@@ -1868,15 +1956,15 @@ body.chat {
 		padding-bottom: calc(0.7rem + env(safe-area-inset-bottom));
 	}
 
-	body.chat .runner-toggle {
+	body.chat .list-foot {
 		margin: auto -0.6rem 0;
-		width: calc(100% + 1.2rem);
 	}
 }
 
 @media (prefers-reduced-motion: no-preference) {
 	.model-picker,
-	.runner-list {
+	.runner-list,
+	.settings {
 		transition:
 			opacity 0.18s,
 			translate 0.25s cubic-bezier(0.23, 1, 0.32, 1),
@@ -1885,14 +1973,16 @@ body.chat {
 	}
 
 	.model-picker:not(:popover-open),
-	.runner-list:not(:popover-open) {
+	.runner-list:not(:popover-open),
+	.settings:not(:popover-open) {
 		opacity: 0;
 		translate: 0 8px;
 	}
 
 	@starting-style {
 		.model-picker:popover-open,
-		.runner-list:popover-open {
+		.runner-list:popover-open,
+		.settings:popover-open {
 			opacity: 0;
 			translate: 0 8px;
 		}

@@ -1188,6 +1188,7 @@ const routes = [
 			file,
 			local: local(req),
 			modules: modules.map((m) => m.name),
+			off: Object.keys(defaults).filter((n) => !modules.some((m) => m.name === n)),
 			threads: (await threadIds()).length,
 			runners: Object.keys(await keys()).length,
 			work: await harness.inspect(context),

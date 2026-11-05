@@ -39,7 +39,7 @@ Only localhost on the server's own machine can mint or revoke runner keys. Other
 Everything the client does goes through [server.js](server.js)'s `routes`, with `/ws` pushing changes. Send `x-user: name` to say who you are.
 
 ```
-GET    /api/server                         its modules, and local: whether you may connect runners
+GET    /api/server                         its modules, those off, and local: whether you may connect runners
 GET    /api/runners                        every runner holding a key, connected yet or not
 POST   /api/runners {name}                 a key and the command that connects it
 DELETE /api/runners/:name                  takes its key away, and it leaves the list

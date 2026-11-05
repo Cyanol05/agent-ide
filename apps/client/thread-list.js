@@ -5,6 +5,7 @@ import { bots, current, deleteThread, homeBot, openThread, server, threads } fro
 import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { RunnerList } from './runner.js'
+import { Settings } from './settings.js'
 import { BotItem, NewBot } from './bot.js'
 
 export function ThreadItem(props) {
@@ -67,7 +68,10 @@ export function ThreadList() {
 					${(t) => html`<${ThreadItem} thread=${() => t} />`}
 				<//>
 			</ul>
-			<${RunnerList} />
+			<footer class="list-foot">
+				<${RunnerList} />
+				<${Settings} />
+			</footer>
 		</nav>
 	`
 }
