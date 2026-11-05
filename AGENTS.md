@@ -2,6 +2,7 @@
 
 - A change serves one of the promises in [apps/client/client.html](apps/client/client.html), or it requires a chat with Oskar. When a better design breaks a principle, or an idea looks wrong, Oskar's included, argue before building.
 - Use the words client.html uses, one per concept. Fewer concepts beats fewer lines.
+- A name says what it holds and stays the same in every layer, so `rg` finds the whole path: the API's word in the server, the modules and the client (a `To` is `to`). No one-letter names, but `_` and stored notation such as memory's `l`, `i` and `n`.
 - Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own.
 - Don't over-fix. A rare failure that would need a new store, task layer or journal stays a known gap, written on its issue. Small and readable beats covering every crash.
 - A tool's cancellation comes from `execute`'s third Context argument: pass its `abortSignal` through runner calls, and settle cancellation locally without waiting for the runner's reply.
