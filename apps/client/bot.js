@@ -6,6 +6,8 @@ import { busiest, formatAgent } from './agent.js'
 import { recipients } from './composer.js'
 import { Dot } from './dot.js'
 import { ThreadItem } from './thread-list.js'
+import { report } from './notice.js'
+import { Sure } from './sure.js'
 
 export const BotItem = (props) => html`
 	<li
@@ -53,7 +55,7 @@ export function BotSettings(props) {
 				onChange=${() =>
 					api('/api/bots', { name: props.bot.name, instructions: instructions() })
 						.then(() => refresh(bots))
-						.catch((e) => alert(e.message))}
+						.catch(report)}
 			></textarea>
 			<h3>Model</h3>
 			<input
@@ -85,22 +87,21 @@ export function BotSettings(props) {
 					<${For} each=${() => elsewhere()}>${(t) => html`<${ThreadItem} thread=${() => t} />`}<//>
 				</ul>
 			<//>
-			<button
-				type="button"
+			<${Sure}
 				class="forget"
 				title="Every thread stays; agents of its name stop reading its instructions"
-				onClick=${async () => {
-					if (!confirm(`Forget ${props.bot.name}? Its instructions go; every thread stays.`)) return
+				ask=${() => `Forget ${props.bot.name}?`}
+				why="Its instructions go; every thread stays."
+				onConfirm=${async (_e) => {
 					try {
 						await api(`/api/bots/${encodeURIComponent(props.bot.name)}`, undefined, 'DELETE')
 						refresh(bots)
 					} catch (e) {
-						alert(e.message)
+						report(e)
 					}
 				}}
+				>Forget this bot<//
 			>
-				Forget this bot
-			</button>
 		</div>
 	`
 }

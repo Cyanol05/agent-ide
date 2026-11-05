@@ -3,6 +3,7 @@ import html from '@solidjs/html'
 import { createSignal, For, Show } from 'solid-js'
 import { bots, current, deleteThread, homeBot, openThread, server, threads } from './server.js'
 import { Dot } from './dot.js'
+import { report } from './notice.js'
 import { RunnerList } from './runner.js'
 import { BotItem, NewBot } from './bot.js'
 
@@ -28,7 +29,7 @@ export function ThreadItem(props) {
 					title="Delete this thread"
 					onClick=${(e) => {
 						e.stopPropagation()
-						deleteThread(props.thread.id).catch((error) => alert(error.message))
+						deleteThread(props.thread.id).catch(report)
 					}}
 				>
 					delete

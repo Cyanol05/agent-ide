@@ -1248,7 +1248,8 @@ body.chat {
 }
 
 /* A bot's part of the sheet, and its + new, sized like the hands toggle and its tools. */
-.thread-details .bot > :is(textarea, input, button) {
+.thread-details .bot > :is(textarea, input, button),
+.thread-details .bot > .sure > * {
 	margin: 0 0.6rem;
 }
 
@@ -1309,7 +1310,7 @@ body.chat {
 	margin-top: 1rem;
 }
 
-.thread-details .bot > .forget {
+.thread-details .bot > .sure > .forget {
 	margin-top: 1rem;
 }
 
@@ -1745,12 +1746,14 @@ body.chat .thread-list > ul > li:active {
 
 /* Revoke waits at the row's end, like a thread's delete. */
 .runner-list > ul > li {
+	flex-wrap: wrap;
+
 	> div {
 		flex: 1;
 		min-width: 0;
 	}
 
-	> .revoke {
+	.revoke {
 		flex: none;
 		padding: 0 0.35rem;
 		font-size: 11px;
@@ -1759,19 +1762,24 @@ body.chat .thread-list > ul > li:active {
 		visibility: hidden;
 	}
 
-	&:focus-within > .revoke {
+	&:focus-within .revoke,
+	.armed .revoke {
 		visibility: visible;
+	}
+
+	.sure small {
+		margin-left: 1.15rem;
 	}
 }
 
 @media (hover: hover) and (pointer: fine) {
-	.runner-list > ul > li:hover > .revoke {
+	.runner-list > ul > li:hover .revoke {
 		visibility: visible;
 	}
 }
 
 @media (hover: none) {
-	.runner-list > ul > li > .revoke {
+	.runner-list > ul > li .revoke {
 		visibility: visible;
 	}
 }
@@ -2102,5 +2110,62 @@ body.resizing {
 @media (max-width: 700px) {
 	body.chat .list-edge {
 		display: none;
+	}
+}
+
+/* A button that asks by changing its words; why it asks sits on its own line beneath. */
+.sure {
+	display: contents;
+
+	small {
+		display: block;
+		flex-basis: 100%;
+		margin-top: 0.3rem;
+		color: var(--mute);
+		font-size: 12px;
+		line-height: 1.4;
+	}
+}
+
+/* What went wrong: one line at the top, under the thread's name and clear of the composer, gone after a few seconds. */
+.notice {
+	position: fixed;
+	left: 50%;
+	top: calc(3.2rem + env(safe-area-inset-top));
+	z-index: 20;
+	translate: -50% 0;
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	max-width: min(32rem, calc(100vw - 2rem));
+	margin: 0;
+	padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+	border: 1px solid var(--line);
+	border-left: 3px solid var(--wait);
+	border-radius: 10px;
+	background: Canvas;
+	color: var(--ink);
+	font-size: 14px;
+	box-shadow: 0 8px 30px rgb(0 0 0 / 0.2);
+
+	button {
+		flex: none;
+		border: 0;
+		background: none;
+		color: var(--mute);
+		padding: 0 0.4rem;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.notice {
+		animation: rise 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+	}
+}
+
+@keyframes rise {
+	from {
+		opacity: 0;
+		translate: -50% -8px;
 	}
 }

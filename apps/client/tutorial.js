@@ -6,6 +6,7 @@ import { api, current, createThread, entries, fork, openThread, runners, url } f
 import { choiceFor, selectRecipients } from './composer.js'
 import { formatAgent } from './agent.js'
 import { ConnectRunner } from './runner.js'
+import { report } from './notice.js'
 import { Memory } from './agent-memory.js'
 
 const defaults = () => runners.filter((r) => r.online && choiceFor(r).model).map(choiceFor)
@@ -164,7 +165,7 @@ export function Tutorial() {
 			try {
 				await TRIES[button.dataset.try]()
 			} catch (error) {
-				alert(error.message)
+				report(error)
 			} finally {
 				button.disabled = false
 			}

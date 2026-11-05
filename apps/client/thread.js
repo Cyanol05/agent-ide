@@ -20,6 +20,7 @@ import {
 import { authorLabel, doing, lastToolCall, messageText, setDoing } from './agent.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
+import { report } from './notice.js'
 
 export const ThreadLink = (props) => html`
 	<a
@@ -256,7 +257,7 @@ function Message(props) {
 			<button
 				class="fork"
 				title="A new thread from this message"
-				onClick=${() => fork(props.thread, props.entry.id).catch((e) => alert(e.message))}
+				onClick=${() => fork(props.thread, props.entry.id).catch(report)}
 			>
 				fork
 			</button>

@@ -5,6 +5,8 @@ import { api, minted, runners, server, setMinted, threads } from './server.js'
 import { agentKey, busiest, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
 import { choiceFor, choose, configure, recipients } from './composer.js'
 import { placePopover } from './popover.js'
+import { report } from './notice.js'
+import { Sure } from './sure.js'
 import { Dot } from './dot.js'
 
 export function Runner(props) {
@@ -158,20 +160,13 @@ function RunnerItem(props) {
 		work()
 			.map((a) => lastToolCall(doing[a.thread]?.[a.name]))
 			.find(Boolean)
-	const revoke = async () => {
-		const { name, own } = props.runner
-		const warning =
-			`Revoke ${name}? It goes offline and can't dial back. ` +
-			'Threads that asked it wait for the name.' +
-			(own
-				? "\n\nIt's the server's own runner, so it's back when the server restarts, unless RUNNER=0."
-				: '')
-		if (!confirm(warning)) return
+	const revoke = async (_e) => {
+		const { name } = props.runner
 		try {
 			await api(`/api/runners/${encodeURIComponent(name)}`, undefined, 'DELETE')
 			if (minted()?.name === name) setMinted(null)
 		} catch (e) {
-			alert(e.message)
+			report(e)
 		}
 	}
 	return html`
@@ -193,9 +188,18 @@ function RunnerItem(props) {
 				<//>
 			</div>
 			<${Show} when=${() => server().local}>
-				<button type="button" class="revoke" title="Take its key away" onClick=${revoke}>
-					revoke
-				</button>
+				<${Sure}
+					class="revoke"
+					title="Take its key away"
+					ask="revoke?"
+					why=${() =>
+						"It goes offline and can't dial back; threads that asked it wait for the name." +
+						(props.runner.own
+							? " It's the server's own runner, so it's back when the server restarts, unless RUNNER=0."
+							: '')}
+					onConfirm=${revoke}
+					>revoke<//
+				>
 			<//>
 		</li>
 	`
@@ -207,15 +211,13 @@ export function ConnectRunner(props) {
 	const [error, setError] = createSignal('')
 	const [busy, setBusy] = createSignal(false)
 	const [copied, setCopied] = createSignal(false)
+	// A new key for an online runner cuts it off, so the button asks first, in its own words.
+	const [cutting, setCutting] = createSignal(false)
 	const existing = () => runners.find((r) => r.name === name().trim())
 	const submit = async (e) => {
 		e.preventDefault()
-		const r = existing()
-		if (
-			r?.online &&
-			!confirm(`${r.name} is online. A new key cuts it off until you run the new command there.`)
-		)
-			return
+		if (existing()?.online && !cutting()) return setCutting(true)
+		setCutting(false)
 		setBusy(true)
 		setError('')
 		try {
@@ -232,7 +234,7 @@ export function ConnectRunner(props) {
 		navigator.clipboard
 			.writeText(minted().connect)
 			.then(() => setCopied(true))
-			.catch((e) => alert(e.message))
+			.catch(report)
 	return html`
 		<div class="connect-runner">
 			<${Show}
@@ -249,12 +251,21 @@ export function ConnectRunner(props) {
 						autocomplete="off"
 						required
 						value=${() => name()}
-						onInput=${(e) => setName(e.currentTarget.value)}
+						onInput=${(e) => {
+							setName(e.currentTarget.value)
+							setCutting(false)
+						}}
 					/>
-					<button type="submit" disabled=${() => busy()}>
-						${() => (existing() ? 'New key' : 'Add runner')}
+					<button type="submit" disabled=${() => busy()} onBlur=${(_e) => setCutting(false)}>
+						${() => (cutting() ? 'Cut it off?' : existing() ? 'New key' : 'Add runner')}
 					</button>
 				</form>
+				<${Show} when=${cutting}>
+					<p class="mute">
+						${() =>
+							`${name().trim()} is online. A new key cuts it off until you run the new command there.`}
+					</p>
+				<//>
 				<${Show} when=${() => error()}><p class="bad">${() => error()}</p><//>
 				<${Show} when=${minted}>
 					<div class="command">

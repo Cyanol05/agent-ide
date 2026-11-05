@@ -18,6 +18,7 @@ import {
 import { agentLabel, formatAgent, parseAgent, sameAgent, THINKING_LEVELS } from './agent.js'
 import { placePopover } from './popover.js'
 import { Dot } from './dot.js'
+import { report } from './notice.js'
 
 const [compose, setCompose] = createRoot(() =>
 	createStore({
@@ -110,7 +111,7 @@ export function Composer(props) {
 			setCompose((s) => {
 				if (latest(current) === id && !s.draft) s.draft = body
 			})
-			alert(error.message)
+			report(error)
 		} finally {
 			setCompose((s) => {
 				s.sending = false
@@ -205,7 +206,7 @@ export function Composer(props) {
 						class="icon"
 						aria-label="Stop"
 						title="Stop this thread"
-						onClick=${() => api(`/api/threads/${current()}/stop`, {}).catch((e) => alert(e.message))}
+						onClick=${() => api(`/api/threads/${current()}/stop`, {}).catch(report)}
 					>
 						Stop
 					</button>

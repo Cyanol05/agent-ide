@@ -7,6 +7,7 @@ import { Dot } from './dot.js'
 import { System } from './system.js'
 import { ThreadDetails } from './thread-details.js'
 import { Tutorial } from './tutorial.js'
+import { Notice } from './notice.js'
 
 function Client() {
 	const [chat, setChat] = createSignal(params.has('chat'))
@@ -41,6 +42,7 @@ function Client() {
 		>
 			${() => (chat() ? 'With the story' : 'Just the chat')}
 		</button>
+		<${Notice} />
 		<${Errored}
 			fallback=${(error, retry) => html`
 				<p class="mute">${() => String(error())} <button onClick=${retry}>Retry</button></p>
