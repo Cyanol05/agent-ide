@@ -18,7 +18,7 @@
 - Solid 2 is not Solid 1: read `CHEATSHEET.md` and `skills/solid-2.0/SKILL.md` in node_modules/solid-js before writing the Solid client, and fix any `[CODE]` warning in the browser console with `skills/reactivity-diagnostics/SKILL.md` there.
 - There is one web client: Solid, no build step, in apps/client; client.html is served at `/`. Its import map names every package Solid imports bare, so each one, `@solidjs/signals` too, is a root dependency. Mermaid is served locally too.
 - Resolve installed packages, never assume `<app>/node_modules`: npm/npx hoist dependencies. Use `import.meta.resolve` for browser assets. `runnerBundle` uses `createRequire(...).resolve.paths` for manifests that needn't be exported; runners call it too, and Bun lacks Node's `findPackageJSON`.
-- Work on `main`, in the main checkout, with jj: no branches and no worktrees.
+- Work on `main` in the one checkout, `~/sites/agent-ide`, with jj: no branches, worktrees or copies of the repo elsewhere, `/tmp` included. Every thread shares it.
 - Don't assume the `hostname` command exists; use Node's `os.hostname()`.
 - npm enforces Chord's optional `ws` peer too; the root range must admit it. Prove npm and npx installs after packaging changes.
 - For an example of a failed npm install, use a missing `.tgz` dependency: a missing `file:` directory can install successfully as a dangling symlink.
