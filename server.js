@@ -809,33 +809,53 @@ async function status(id, reads, busy, reader) {
 	return 'idle'
 }
 
+/** Who's in a thread needs no state of its own: the people who wrote there, or read */
 async function threadRow(id, reader, all) {
 	const { reads, ...row } = await thread(id)
 	const busy = all.filter((job) => job.thread === id)
 	const agents = await agentsIn(row, busy)
+	const wrote = (await messages(id)).filter(
+		(entry) => !entry.data.answer && !entry.data.error && !entry.data.from,
+	)
 	return {
 		id,
 		...row,
 		readers: Object.keys(reads),
+		people: [...new Set([...wrote.map((entry) => entry.data.author), ...Object.keys(reads)])],
 		agents,
 		shells: [...shells.values()].filter((run) => run.threadId === id),
 		status: await status(id, reads, busy, reader),
 		conversation: await storage.conversation(id, context),
 	}
 }
+/** Each shown thread with its `family`: its root, through parents and forks, and all beneath, each with its depth */
 const threadList = async (reader) => {
 	const busy = await work()
-	return (await Promise.all((await threadIds()).map((id) => threadRow(id, reader, busy)))).filter(
-		(row) => !row.hidden,
-	)
+	const rows = (
+		await Promise.all((await threadIds()).map((id) => threadRow(id, reader, busy)))
+	).filter((row) => !row.hidden)
+	const byId = new Map(rows.map((row) => [row.id, row]))
+	const parentOf = (row) => row.parent ?? row.conversation?.parent?.conversationId
+	const families = new Map()
+	for (const row of rows) {
+		let root = row
+		for (let hops = 0; byId.has(parentOf(root)) && hops < 20; hops++) root = byId.get(parentOf(root))
+		if (!families.has(root.id)) {
+			const family = [{ id: root.id, depth: 0 }]
+			for (let index = 0; index < family.length; index++)
+				for (const child of rows)
+					if (parentOf(child) === family[index].id && !family.some((f) => f.id === child.id))
+						family.push({ id: child.id, depth: family[index].depth + 1 })
+			families.set(root.id, family)
+		}
+		row.family = families.get(root.id)
+	}
+	return rows
 }
-/** Who's in a thread needs no state of its own: whoever wrote there, or read */
-const threadView = async (id, reader) => {
-	const entries = await messages(id)
-	const row = await threadRow(id, reader, await work())
-	const wrote = entries.filter((entry) => !entry.data.answer && !entry.data.error && !entry.data.from)
-	return { ...row, people: [...new Set([...wrote.map((entry) => entry.data.author), ...row.readers])], entries }
-}
+const threadView = async (id, reader) => ({
+	...(await threadRow(id, reader, await work())),
+	entries: await messages(id),
+})
 
 /** An agent's thread owns its conversation, through its Anchor */
 async function home(conversationId) {

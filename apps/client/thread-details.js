@@ -6,9 +6,7 @@ import {
 	colorOf,
 	current,
 	drawer,
-	entries,
 	family,
-	forkedFrom,
 	homeBot,
 	newThreadTools,
 	setNewThreadTools,
@@ -23,24 +21,10 @@ export function ThreadDetails() {
 	const here = () => threads.find((thread) => thread.id === current())
 	// A bot's home is named for it already, so only who else is there
 	const members = () =>
-		[
-			...new Set([
-				...(entries[current()] ?? [])
-					.filter((entry) => !entry.data.answer && !entry.data.error && !entry.data.from)
-					.map((entry) => entry.data.author),
-				...(here()?.readers ?? []),
-			]),
-			...(here()?.agents ?? []).map((agent) => agent.name),
-		].filter((name) => name !== homeBot(current())?.name)
-	const depth = (id) => {
-		let hops = 0
-		for (let thread = threads.find((thread) => thread.id === id); hops < 20; hops++) {
-			const parent = thread?.parent ?? forkedFrom(thread)
-			if (!family().includes(parent)) break
-			thread = threads.find((thread) => thread.id === parent)
-		}
-		return hops
-	}
+		[...(here()?.people ?? []), ...(here()?.agents ?? []).map((agent) => agent.name)].filter(
+			(name) => name !== homeBot(current())?.name,
+		)
+	const depth = (id) => here()?.family.find((member) => member.id === id)?.depth ?? 0
 	return html`
 		<div class="scrim" onClick=${() => drawer(null)}></div>
 		<section class="thread-details" aria-label="Thread details">

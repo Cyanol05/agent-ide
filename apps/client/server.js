@@ -86,18 +86,12 @@ export const { threads, runners, server, bots, family } = createRoot(() => {
 			() => setConnected(false),
 		),
 	)
-	const family = createMemo(() => {
-		if (!current()) return [null]
-		const byId = new Map(threads.map((thread) => [thread.id, thread]))
-		const parent = (id) => byId.get(id)?.parent ?? forkedFrom(byId.get(id))
-		let root = current()
-		for (let hops = 0; parent(root) && byId.has(parent(root)) && hops < 20; hops++) root = parent(root)
-		const ids = [root]
-		for (let index = 0; index < ids.length; index++)
-			for (const thread of threads)
-				if (parent(thread.id) === ids[index] && !ids.includes(thread.id) && !thread.hidden) ids.push(thread.id)
-		return ids
-	})
+	/** The open thread's family, as the server sends it: one thread until the list has it, `[null]` for a new one */
+	const family = createMemo(() =>
+		current()
+			? (threads.find((thread) => thread.id === current())?.family.map((member) => member.id) ?? [current()])
+			: [null],
+	)
 	return { threads, runners, server, bots, family }
 })
 
