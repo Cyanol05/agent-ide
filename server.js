@@ -425,7 +425,10 @@ let stopping
 for (const signal of ['SIGINT', 'SIGTERM'])
 	process.on(signal, () => (stopping ??= harness.close(context).finally(() => process.exit(0))))
 
+/** What each runner said when it last connected; a runner whose key is gone stays here, so its agents can wait for its name */
 const known = async () => (await harness.snapshot(Runners, context)) ?? {}
+/** The runners that may connect: the list */
+const keys = async () => (await harness.snapshot(Keys, context)) ?? {}
 const thread = (id) => harness.snapshot(Thread, id, context)
 const commit = (fn) => harness.commit(async (tx) => fn(tx), context)
 const conversation = async (id) => {
@@ -449,8 +452,9 @@ const user = (req) => speaker(req.headers['x-user'])
 /** A command needs no model */
 async function address(to, command = false, signal) {
 	const name = field(to?.runner, 'to.runner')
+	if (!(await keys())[name]) throw new Error(`No runner named ${name}`)
 	const runner = (await known())[name]
-	if (!runner) throw new Error(`No runner ${name} has connected to this server`)
+	if (!runner) throw new Error(`${name} hasn't connected yet`)
 	const clean = {
 		runner: name,
 		...(command
@@ -1120,29 +1124,34 @@ async function conversationView(id) {
 const routes = [
 	[
 		'GET /api/server',
-		async () => ({
+		async (req) => ({
 			port,
 			file,
+			local: local(req),
 			modules: modules.map((m) => m.name),
 			threads: (await threadIds()).length,
-			runners: Object.keys(await known()).length,
+			runners: Object.keys(await keys()).length,
 			work: await harness.inspect(context),
 		}),
 	],
 	[
 		'GET /api/runners',
 		async () => {
-			const busy = await busyThreads()
-			return Object.entries(await known()).map(([name, { models, offers, ...runner }]) => ({
-				name,
-				...runner,
-				offers: offers ?? [],
-				models: Object.keys(models ?? {}),
-				online: runners.isOnline(name),
-				calls: runners.working(name),
-				busy: runners.isOnline(name) ? (busy[name]?.size ?? 0) : 0,
-				outdated: Boolean(runner.version) && runner.version !== bundle.version,
-			}))
+			const [busy, last] = [await busyThreads(), await known()]
+			return Object.keys(await keys()).map((name) => {
+				const { models, offers, ...runner } = last[name] ?? {}
+				return {
+					name,
+					...runner,
+					...(lent && name === os.hostname() && { own: true }),
+					offers: offers ?? [],
+					models: Object.keys(models ?? {}),
+					online: runners.isOnline(name),
+					calls: runners.working(name),
+					busy: runners.isOnline(name) ? (busy[name]?.size ?? 0) : 0,
+					outdated: Boolean(runner.version) && runner.version !== bundle.version,
+				}
+			})
 		},
 	],
 	['POST /api/runners', async (req) => mintKey(String((await input(req)).name ?? ''), origin(req))],
@@ -1196,7 +1205,7 @@ async function handleRequest(req, res) {
 		return send(res, 403, { error: 'Cross-origin writes are refused; use the server’s own page' })
 	if ((req.method === 'POST' && url.pathname === '/api/runners' ||
 		req.method === 'DELETE' && url.pathname.startsWith('/api/runners/')) &&
-		(!loopback(req.socket.remoteAddress) || !loopback(req.headers.host?.replace(/:\d+$/, ''))))
+		!local(req))
 		return send(res, 403, { error: 'Open this page on the server’s own machine to connect a runner' })
 	if (req.method === 'OPTIONS') {
 		res.writeHead(204)
@@ -1379,6 +1388,9 @@ const origin = (req) =>
 	`${req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'}://${String(req.headers.host).replace(/[^\w.:\[\]-]/g, '')}`
 const sha256 = (text) => createHash('sha256').update(text).digest('hex')
 const loopback = (address) => /^(127\.|::ffff:127\.)/.test(address) || ['::1', '[::1]', 'localhost'].includes(address)
+/** Opened on the server's own machine: only such a page connects and revokes runners */
+const local = (req) =>
+	loopback(req.socket.remoteAddress) && loopback(req.headers.host?.replace(/:\d+$/, ''))
 
 /** A new key for a runner, replacing its old one, whose runner is cut off */
 async function mintKey(name, server) {
@@ -1394,6 +1406,7 @@ async function mintKey(name, server) {
 		;(await tx.doc(Keys))[name] = sha256(key)
 	})
 	sockets.get(name)?.close(4001, `${name}'s key was replaced`)
+	notify()
 	return {
 		name,
 		key,
@@ -1402,10 +1415,15 @@ async function mintKey(name, server) {
 }
 /** Takes a runner's key away */
 async function revoke(name) {
-	await commit(async (tx) => {
-		delete (await tx.doc(Keys))[name]
+	const had = await commit(async (tx) => {
+		const all = await tx.doc(Keys)
+		if (!all[name]) return false
+		delete all[name]
+		return true
 	})
+	if (!had) throw Object.assign(new Error(`No runner named ${name}`), { status: 404 })
 	sockets.get(name)?.close(4001, `${name} was revoked`)
+	notify()
 	return { revoked: name }
 }
 
@@ -1446,7 +1464,7 @@ async function upgrade(req, raw, head) {
 	}
 	/** A runner shows its key before it counts, so nobody can take its name */
 	const given = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1]
-	const held = ((await harness.snapshot(Keys, context)) ?? {})[name]
+	const held = (await keys())[name]
 	if (closed) return
 	if (!given || held !== sha256(given)) {
 		console.log(`runner ${name} turned away: ${given ? 'wrong or revoked key' : 'no key'}`)

@@ -71,18 +71,7 @@
 					that machine's tools and logins. We call it a <em>runner</em>. It has to reach the server:
 					same network, or <a href="https://tailscale.com">Tailscale</a>.
 				</p>
-				<form id="connect">
-					<input name="name" value="laptop" aria-label="Runner name" required />
-					<button type="submit">Connect a runner</button>
-				</form>
-				<div id="runner-command" hidden>
-					<pre></pre>
-					<p>
-						Run it on that machine, in the folder agents should work in. It holds the runner's key, so
-						keep it private.
-					</p>
-				</div>
-				<p id="connect-error" hidden></p>
+				<connect-runner id="connect-runner"></connect-runner>
 			</section>
 
 			<section data-focus="hands">
@@ -404,7 +393,7 @@ sequenceDiagram
 					<li>
 						A runner shows its key when it dials in, so nobody can take its name. The server mints a
 						key per runner and keeps only its hash; a new key cuts off the old one. Revoking takes
-						the key away: the runner goes offline and stops dialling back. Only localhost on the
+						the key away: the runner goes offline, stops dialling back and leaves the list. Only localhost on the
 						server's own machine can mint or revoke keys, and other websites can't write to the
 						server, even on loopback.
 					</li>
@@ -414,17 +403,21 @@ sequenceDiagram
 				<pre class="mermaid">
 stateDiagram-v2
   direction LR
-  [*] --> Online: curl …/connect-runner | sh, with its key
+  [*] --> Waiting: Connect a runner makes its key
+  Waiting --> Online: curl …/connect-runner | sh, with its key
   Online --> Offline: machine sleeps, network drops
   Offline --> Online: dials back by itself
+  Offline --> Revoked: its key is taken away
   Online --> Revoked: its key is taken away
-  Revoked --> [*]
+  Revoked --> [*]: gone from the list
   Online --> Updating: new runner on the server, and it's idle
   Updating --> Online: fetched, installed, restarted
 </pre>
 				<p class="caption">
-					The server ships its own runner, so a runner always matches its server. It never updates
-					mid-answer: the server asks only when it has nothing open.
+					A runner is listed while it holds a key, so the list is the runners that may connect.
+					Revoking one leaves its threads waiting for the name: connect that name again and they
+					carry on. The server ships its own runner, so a runner always matches its server. It never
+					updates mid-answer: the server asks only when it has nothing open.
 				</p>
 
 				<h2 id="modules">Modules</h2>

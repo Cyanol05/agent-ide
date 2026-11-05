@@ -47,7 +47,8 @@ export function watch(receive, opened = () => {}, closed = () => {}) {
 /** Page lifetime; components own the messages of just the threads on screen. */
 export const [connected, setConnected] = createSignal(false)
 export const [newThreadTools, setNewThreadTools] = createSignal(null)
-export const [runnerCommand, setRunnerCommand] = createSignal('')
+/** The last key this page made, {name, connect}: the key is shown once, so it outlives the form that asked */
+export const [minted, setMinted] = createSignal(null)
 export const [entries, setEntries] = createStore({})
 export const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
 

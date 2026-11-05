@@ -17,9 +17,9 @@ const usage = `node cli.js [--server url] [--as name] <command>
                    A message starting with "$ " runs a command on the runner.
   threads          every thread, with its status and agents
   read <thread>    a thread's messages, or its --last N
-  runners          every runner, online or not, and its models
+  runners          every runner holding a key, online or not, and its models
   key <runner>     a new key for a runner, replacing its old one, and the line that connects it
-  revoke <runner>  take its key away: it goes offline and stays out
+  revoke <runner>  take its key away: it goes offline and leaves the list
   stop <thread>    stop its agents and commands`
 
 const parse = (options) => {
@@ -138,7 +138,9 @@ const commands = {
 	async runners() {
 		for (const r of await api('GET', '/api/runners')) {
 			console.log(
-				`${r.name} ${r.online ? 'online' : 'offline'}${r.busy ? `, busy in ${r.busy}` : ''}  ${r.dir}${r.readOnly ? ' (read-only)' : ''}  default ${r.model || `none${r.modelError ? `: ${r.modelError}` : ''}`}`,
+				!r.dir
+					? `${r.name} waiting for it to dial in`
+					: `${r.name} ${r.online ? 'online' : 'offline'}${r.busy ? `, busy in ${r.busy}` : ''}  ${r.dir}${r.readOnly ? ' (read-only)' : ''}  default ${r.model || `none${r.modelError ? `: ${r.modelError}` : ''}`}`,
 			)
 			for (const f of (r.folders ?? []).slice(1)) console.log(`  folder ${f}`)
 			for (const m of r.offers) console.log(`  ${m}@${r.name}`)

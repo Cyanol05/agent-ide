@@ -1,7 +1,7 @@
 /** Runners show their agents and choose whom the composer asks. */
 import html from '@solidjs/html'
-import { For, Show } from 'solid-js'
-import { runnerCommand, runners, threads } from './server.js'
+import { createSignal, For, Show } from 'solid-js'
+import { api, minted, runners, server, setMinted, threads } from './server.js'
 import { agentKey, busiest, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
 import { choiceFor, choose, configure, recipients } from './composer.js'
 import { placePopover } from './popover.js'
@@ -49,9 +49,10 @@ export function Runner(props) {
 				/>${() => runner().name}</b
 			>
 			<small>${() => runner().dir}</small>
-			<${Show} when=${() => !models().length}
+			<${Show} when=${() => runner().dir && !models().length}
 				><small>No models here yet: run pi there and /login.</small><//
 			>
+			<${Show} when=${() => !runner().dir}><small>Waiting for it to dial in.</small><//>
 			<ul class="models">
 				<${Show} when=${() => models().length}>
 					<${AgentRow} to=${() => choice()} agents=${() => agents()}>
@@ -114,7 +115,7 @@ function AgentRow(props) {
 	`
 }
 
-/** The chat's runner list is also where you find the command for connecting another machine. */
+/** The chat's runner list: who's there, and where you connect another machine or revoke one. */
 export function RunnerList() {
 	let button, panel
 	const online = () => runners.filter((r) => r.online).length
@@ -141,10 +142,7 @@ export function RunnerList() {
 			<ul>
 				<${For} each=${() => runners}>${(r) => html`<${RunnerItem} runner=${() => r} />`}<//>
 			</ul>
-			<${Show} when=${runnerCommand}>
-				<p>To add a runner:</p>
-				<pre>${() => runnerCommand()}</pre>
-			<//>
+			<${ConnectRunner} />
 		</div>
 	`
 }
@@ -160,12 +158,29 @@ function RunnerItem(props) {
 		work()
 			.map((a) => lastToolCall(doing[a.thread]?.[a.name]))
 			.find(Boolean)
+	const revoke = async () => {
+		const { name, own } = props.runner
+		const warning =
+			`Revoke ${name}? It goes offline and can't dial back. ` +
+			'Threads that asked it wait for the name.' +
+			(own
+				? "\n\nIt's the server's own runner, so it's back when the server restarts, unless RUNNER=0."
+				: '')
+		if (!confirm(warning)) return
+		try {
+			await api(`/api/runners/${encodeURIComponent(name)}`, undefined, 'DELETE')
+			if (minted()?.name === name) setMinted(null)
+		} catch (e) {
+			alert(e.message)
+		}
+	}
 	return html`
 		<li>
 			<${Dot} state=${() => (props.runner.online ? (work().length ? 'working' : 'on') : '')} />
 			<div>
-				<b>${() => props.runner.name}</b><small>${() => props.runner.dir}</small>
-				<${Show} when=${() => !props.runner.online || work().length}>
+				<b>${() => props.runner.name}</b>
+				<small>${() => props.runner.dir ?? 'waiting for it to dial in'}</small>
+				<${Show} when=${() => props.runner.dir && (!props.runner.online || work().length)}>
 					<small class=${() => ({ doing: props.runner.online })}
 						>${() =>
 							!props.runner.online
@@ -177,6 +192,82 @@ function RunnerItem(props) {
 					>
 				<//>
 			</div>
+			<${Show} when=${() => server().local}>
+				<button type="button" class="revoke" title="Take its key away" onClick=${revoke}>
+					revoke
+				</button>
+			<//>
 		</li>
+	`
+}
+
+/** A name makes a key and the command that connects it; a name already in the list gets a new one. */
+export function ConnectRunner(props) {
+	const [name, setName] = createSignal(props.name ?? '')
+	const [error, setError] = createSignal('')
+	const [busy, setBusy] = createSignal(false)
+	const [copied, setCopied] = createSignal(false)
+	const existing = () => runners.find((r) => r.name === name().trim())
+	const submit = async (e) => {
+		e.preventDefault()
+		const r = existing()
+		if (
+			r?.online &&
+			!confirm(`${r.name} is online. A new key cuts it off until you run the new command there.`)
+		)
+			return
+		setBusy(true)
+		setError('')
+		try {
+			setMinted(await api('/api/runners', { name: name().trim() }))
+			setName('')
+			setCopied(false)
+		} catch (e) {
+			setError(e.message)
+		} finally {
+			setBusy(false)
+		}
+	}
+	const copy = () =>
+		navigator.clipboard
+			.writeText(minted().connect)
+			.then(() => setCopied(true))
+			.catch((e) => alert(e.message))
+	return html`
+		<div class="connect-runner">
+			<${Show}
+				when=${() => server().local}
+				fallback=${html`
+					<p class="mute">Connect and revoke runners from the server's own machine.</p>
+				`}
+			>
+				<form onSubmit=${submit}>
+					<input
+						aria-label="Runner name"
+						placeholder="a name, like laptop"
+						spellcheck="false"
+						autocomplete="off"
+						required
+						value=${() => name()}
+						onInput=${(e) => setName(e.currentTarget.value)}
+					/>
+					<button type="submit" disabled=${() => busy()}>
+						${() => (existing() ? 'New key' : 'Connect a runner')}
+					</button>
+				</form>
+				<${Show} when=${() => error()}><p class="bad">${() => error()}</p><//>
+				<${Show} when=${minted}>
+					<div class="command">
+						<pre>${() => minted().connect}</pre>
+						<button type="button" onClick=${copy}>${() => (copied() ? 'Copied' : 'Copy')}</button>
+					</div>
+					<p class="mute">
+						${() =>
+							`Run it on ${minted().name}, in the folder agents should work in. ` +
+							'It holds the key, so keep it private.'}
+					</p>
+				<//>
+			<//>
+		</div>
 	`
 }

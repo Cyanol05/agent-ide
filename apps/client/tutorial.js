@@ -2,19 +2,10 @@
 import html from '@solidjs/html'
 import { Portal } from '@solidjs/web'
 import { onSettled, snapshot } from 'solid-js'
-import {
-	api,
-	current,
-	createThread,
-	entries,
-	fork,
-	openThread,
-	runners,
-	setRunnerCommand,
-	url,
-} from './server.js'
+import { api, current, createThread, entries, fork, openThread, runners, url } from './server.js'
 import { choiceFor, selectRecipients } from './composer.js'
 import { formatAgent } from './agent.js'
+import { ConnectRunner } from './runner.js'
 import { Memory } from './agent-memory.js'
 
 const defaults = () => runners.filter((r) => r.online && choiceFor(r).model).map(choiceFor)
@@ -178,33 +169,16 @@ export function Tutorial() {
 				button.disabled = false
 			}
 		}
-		const connect = document.getElementById('connect')
-		const command = document.getElementById('runner-command')
-		const failed = document.getElementById('connect-error')
-		const create = async (e) => {
-			e.preventDefault()
-			const submit = connect.querySelector('button')
-			submit.disabled = true
-			try {
-				const line = (await api('/api/runners', { name: connect.name.value.trim() })).connect
-				setRunnerCommand(line)
-				command.querySelector('pre').textContent = line
-				command.hidden = false
-				failed.hidden = true
-			} catch (error) {
-				failed.textContent = error.message
-				failed.hidden = false
-			} finally {
-				submit.disabled = false
-			}
-		}
 		buttons.forEach((b) => b.addEventListener('click', run))
-		connect.addEventListener('submit', create)
 		return () => {
 			sections.disconnect()
 			buttons.forEach((b) => b.removeEventListener('click', run))
-			connect.removeEventListener('submit', create)
 		}
 	})
-	return html`<${Portal} mount=${document.getElementById('memory')}><${Memory} /><//>`
+	return html`
+		<${Portal} mount=${document.getElementById('memory')}><${Memory} /><//>
+		<${Portal} mount=${document.getElementById('connect-runner')}
+			><${ConnectRunner} name="laptop"
+		/><//>
+	`
 }

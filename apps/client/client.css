@@ -1712,17 +1712,94 @@ body.chat .thread-list > ul > li:active {
 		}
 	}
 
-	p {
-		margin: 0.8rem 0.4rem 0.4rem;
-		padding-top: 0.8rem;
+	.connect-runner {
+		margin: 0.5rem 0.2rem 0.2rem;
+		padding-top: 0.7rem;
 		border-top: 1px solid var(--line);
 		font-size: 13px;
-		color: var(--mute);
 	}
 
 	pre {
-		margin: 0 0.2rem;
 		font-size: 12px;
+	}
+}
+
+/* Revoke waits at the row's end, like a thread's delete. */
+.runner-list > ul > li {
+	> div {
+		flex: 1;
+		min-width: 0;
+	}
+
+	> .revoke {
+		flex: none;
+		padding: 0 0.35rem;
+		font-size: 11px;
+		line-height: 1.4;
+		color: var(--mute);
+		visibility: hidden;
+	}
+
+	&:focus-within > .revoke {
+		visibility: visible;
+	}
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.runner-list > ul > li:hover > .revoke {
+		visibility: visible;
+	}
+}
+
+@media (hover: none) {
+	.runner-list > ul > li > .revoke {
+		visibility: visible;
+	}
+}
+
+/* A name and a button; then the command, once, with its copy in the corner. */
+connect-runner {
+	display: block;
+}
+
+.connect-runner {
+	form {
+		display: flex;
+		gap: 0.5rem;
+
+		input {
+			flex: 1;
+		}
+
+		button {
+			flex: none;
+		}
+	}
+
+	.command {
+		position: relative;
+		margin-top: 0.75rem;
+
+		pre {
+			margin: 0;
+			padding-right: 4.5rem;
+		}
+
+		button {
+			position: absolute;
+			top: 0.4rem;
+			right: 0.4rem;
+			padding: 0 0.45rem;
+			font-size: 12px;
+		}
+	}
+
+	p {
+		margin: 0.5rem 0 0;
+	}
+
+	.bad {
+		color: var(--wait);
 	}
 }
 
