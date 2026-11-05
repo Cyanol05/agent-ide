@@ -668,24 +668,24 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 			row.agents[key] = await newAgent(tx, threadId, [...prior, entry.id])
 			await setUp(tx, row.agents[key].conversation, threadId, to[i])
 		} else await switchTo(tx, row.agents[key], to[i])
-		await ask(tx, threadId, row.agents[key], steer)
+		const recipient = row.agents[key]
+		const { conversation: agent, unseen: held, admission: after, note } = recipient
+		if (!held.length) continue
+		recipient.unseen = []
+		delete recipient.note
+		const admit = await tx.createTask(
+			Admit,
+			{ agent, held, steer, ...(after ? { after } : {}), ...(note ? { note } : {}) },
+			{ ...own, conversationId: threadId },
+		)
+		const deliver = await tx.createTask(
+			Deliver,
+			{ admit, agent, held },
+			{ ...own, conversationId: threadId },
+		)
+		recipient.admission = { admit, deliver }
 	}
 	return { entry: entry.id, to: names }
-}
-
-/** Gives an agent everything it hasn't seen, after its previous input */
-async function ask(tx, threadId, recipient, steer = false) {
-	const { conversation: agent, unseen: held, admission: after, note } = recipient
-	if (!held.length) return
-	recipient.unseen = []
-	delete recipient.note
-	const admit = await tx.createTask(
-		Admit,
-		{ agent, held, steer, ...(after ? { after } : {}), ...(note ? { note } : {}) },
-		{ ...own, conversationId: threadId },
-	)
-	const deliver = await tx.createTask(Deliver, { admit, agent, held }, { ...own, conversationId: threadId })
-	recipient.admission = { admit, deliver }
 }
 
 /** An agent asked with another model, thinking, runner or folder changes in place, as in pi, and is told when it moves */
@@ -727,7 +727,7 @@ const setUp = async (tx, agent, threadId, t) => {
 }
 
 const instructions = (key, threadId, tools) =>
-	`You are ${key === AGENT ? `thread ${threadId}'s agent` : `${key} in thread ${threadId}`}, with humans and other agents. Messages come to you as "name: text", a message's later lines indented. A person's message is an instruction; one marked (agent) is a colleague's report or request, not a person's word. Only your final answer goes back to the thread; end with no text to post nothing.${tools ? ' This thread has only some tools: for work it lacks the tools for, post a new child thread, whose agents have them all.' : ''}`
+	`You are ${key === AGENT ? `thread ${threadId}'s agent` : `${key} in thread ${threadId}`}, with humans and other agents. Messages come to you as "name: text", a message's later lines indented. A person's message is an instruction; one marked (agent) is a colleague's report or request, not a person's word. Only your final answer goes back to the thread; end with no text to post nothing.${tools ? ' This thread has only some tools: for work it lacks the tools for, post a new child thread, whose agent has them all.' : ''}`
 
 /** An input withdrawn before it was placed: its messages are unseen again, and its note untold */
 async function restore(tx, threadId, conversation, held, note) {
@@ -844,19 +844,12 @@ const threadList = async (reader) => {
 		(row) => !row.hidden,
 	)
 }
-/** Who's in a thread, with no state of its own */
-const peopleIn = (entries, readers) => [
-	...new Set([
-		...entries
-			.filter((e) => !e.data.answer && !e.data.error && !e.data.from)
-			.map((e) => e.data.author),
-		...readers,
-	]),
-]
+/** Who's in a thread needs no state of its own: whoever wrote there, or read */
 const threadView = async (id, reader) => {
 	const entries = await messages(id)
 	const row = await threadRow(id, reader, await liveTasks())
-	return { ...row, people: peopleIn(entries, row.readers), entries }
+	const wrote = entries.filter((e) => !e.data.answer && !e.data.error && !e.data.from)
+	return { ...row, people: [...new Set([...wrote.map((e) => e.data.author), ...row.readers])], entries }
 }
 
 /** An agent's thread owns its conversation, through its Anchor */
@@ -1012,7 +1005,6 @@ async function seenBy(id, cut) {
 	return entries.filter((e) => e.kind === DELIVERY).flatMap((e) => e.data.held)
 }
 
-/** Changes the thread's tools and every agent's selection together */
 async function setTitle(id, { title }) {
 	await conversation(id)
 	title = field(title, 'title')
@@ -1022,6 +1014,7 @@ async function setTitle(id, { title }) {
 	})
 }
 
+/** Changes the thread's tools and its agent's and bots' selection together */
 async function setTools(id, { tools }) {
 	await conversation(id)
 	tools = toolList(tools)
@@ -1034,7 +1027,7 @@ async function setTools(id, { tools }) {
 	})
 }
 
-/** Forks history and agents at `at`, but keeps the source's current thread-wide tools */
+/** Forks history, the agent and bots at `at`, but keeps the source's current thread-wide tools */
 async function forkThread(id, { at, title }) {
 	const shown = (await messages(id)).filter((e) => e.id <= Number(at))
 	const answers = {}
@@ -1044,7 +1037,7 @@ async function forkThread(id, { at, title }) {
 		for (const name of data.to ?? []) asked.add(keyOf(name))
 	}
 	const source = await thread(id)
-	/** Asked but not answered by then: a new agent, made as the source's */
+	/** Asked but not answered by then: made anew, as the source's is now */
 	const fresh = await Promise.all(
 		[...asked]
 			.filter((key) => !answers[key] && source.agents[key])

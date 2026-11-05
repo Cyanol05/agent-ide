@@ -3,7 +3,7 @@ import html from '@solidjs/html'
 import { createEffect, createSignal, For, onSettled, refresh, Show, snapshot } from 'solid-js'
 import { api, bots, colorOf, current, openThread, threads } from './server.js'
 import { busiest, formatAgent } from './agent.js'
-import { openPicker, recipients } from './composer.js'
+import { agent, openPicker } from './composer.js'
 import { Dot } from './dot.js'
 import { ThreadItem } from './thread-list.js'
 import { report } from './notice.js'
@@ -115,7 +115,7 @@ export function NewBot(props) {
 					e.preventDefault()
 					setSaving(true)
 					try {
-						const [pick] = snapshot(recipients())
+						const pick = snapshot(agent())
 						if (!pick) throw new Error('Pick a model first: a new bot starts on it')
 						const { home } = await api('/api/bots', {
 							name: name().trim(),

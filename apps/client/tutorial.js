@@ -1,9 +1,9 @@
-/** The story's buttons use the same server and recipients as the chat. */
+/** The story's buttons use the same server and picker as the chat. */
 import html from '@solidjs/html'
 import { Portal } from '@solidjs/web'
 import { onSettled, snapshot } from 'solid-js'
 import { api, current, createThread, entries, fork, openThread, runners, url } from './server.js'
-import { choiceFor, selectRecipients } from './composer.js'
+import { choiceFor, choose } from './composer.js'
 import { formatAgent } from './agent.js'
 import { ConnectRunner } from './runner.js'
 import { report } from './notice.js'
@@ -11,8 +11,8 @@ import { Memory } from './agent-memory.js'
 
 const defaults = () => runners.filter((r) => r.online && choiceFor(r).model).map(choiceFor)
 async function ask(body, to, was = current()) {
-	if (!to.length) throw new Error('Pick a model first.')
-	selectRecipients(to)
+	if (!to) throw new Error('Pick a model first.')
+	choose(to)
 	const id = was ?? (await createThread(body.slice(0, 60)))
 	await api(`/api/threads/${id}/entries`, { body, to: snapshot(to) })
 }
@@ -72,7 +72,7 @@ const TRIES = {
 		fresh()
 		return ask(
 			"Which file in this folder is biggest? Look, don't guess. One line.",
-			defaults().slice(0, 1),
+			defaults()[0],
 			null,
 		)
 	},
@@ -88,7 +88,7 @@ const TRIES = {
 		fresh()
 		return ask(
 			'Count from 1 to 20 in your shell, one number a second: run `for i in $(seq 1 20); do echo $i; sleep 1; done`. Then say how far you got, in one line.',
-			defaults().slice(0, 1),
+			defaults()[0],
 			null,
 		)
 	},
@@ -113,7 +113,7 @@ const TRIES = {
 		if (!current()) throw new Error('Load the example thread first.')
 		return ask(
 			'What is the gate code now, what colour is the shed, and how long are the rafters? Say which message you found each in.',
-			defaults().slice(0, 1),
+			defaults()[0],
 		)
 	},
 	talk: () => {
@@ -131,7 +131,7 @@ const TRIES = {
 			: [first, { ...first, ...(offer && { model: offer }) }]
 		return ask(
 			`With your post tool, start two threads at once: one asking ${formatAgent(a)}, one asking ${formatAgent(b)}, which machine and model each is, in one line. Wait for both answers, then tell me in two lines.`,
-			[first],
+			first,
 			null,
 		)
 	},

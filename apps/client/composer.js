@@ -1,7 +1,6 @@
 /**
- * The draft stays with the composer as you move between threads; a pick belongs to the thread it was made in, since asking
- * a thread's agent with another model switches it. A thread has one agent, so a pick is one model, plus any bots. In a
- * bot's home, a pick is the bot's model, saved as it's made.
+ * The draft stays with the composer as you move between threads; a pick stays with its thread, since asking a thread's
+ * agent as another model switches it. A pick is one model plus any bots; in a bot's home, it is the bot's model.
  */
 import html from '@solidjs/html'
 import {
@@ -27,90 +26,60 @@ import {
 	runners,
 	threads,
 } from './server.js'
-import { agentLabel, formatAgent, parseAgent, sameAgent, THINKING_LEVELS } from './agent.js'
+import { agentLabel, formatAgent, parseAgent, THINKING_LEVELS } from './agent.js'
 import { placePopover } from './popover.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageContent, imageUrl } from './images.js'
 
 const [compose, setCompose] = createRoot(() =>
-	createStore({
-		draft: '',
-		images: [],
-		sending: false,
-		to: null,
-		/** The thread `to` was picked in */
-		for: null,
-		typed: null,
-		settings: {},
-	}),
+	createStore({ draft: '', images: [], sending: false, pick: null, typed: null, settings: {} }),
 )
-const picked = () => (compose.to && compose.for === current() ? compose.to : null)
-const agentsHere = () => threads.find((t) => t.id === current())?.agents ?? []
-/** The thread's own agent, as it runs */
-const ownAgent = () => agentsHere().find((a) => a.to && !a.to.name)?.to
-export const choiceFor = (r) => {
+/** A pick, `{thread, agent, bots}`, belongs to the thread it was made in */
+const pick = () => (compose.pick?.thread === current() ? compose.pick : null)
+const here = () => threads.find((t) => t.id === current())?.agents ?? []
+/** The names the thread asked last */
+const lastTo = () => (entries[current()] ?? []).findLast((e) => e.data.to?.length)?.data.to
+const fallback = (r) =>
+	compose.settings[r.name] ?? { runner: r.name, model: r.model, thinkingLevel: 'low' }
+/** Whom the next message asks as the agent: in a bot's home the bot, else the pick, else the thread's agent as it runs */
+export const agent = () => {
 	const bot = homeBot(current())
-	const mine = bot ? [botAgent(bot)] : (picked() ?? (ownAgent() ? [ownAgent()] : []))
-	return (
-		mine.find((p) => p.runner === r.name && (bot || !p.name)) ??
-		compose.settings[r.name] ?? { runner: r.name, model: r.model, thinkingLevel: 'low' }
-	)
+	if (bot) return botAgent(bot)
+	if (pick()) return pick().agent
+	if (lastTo() && !lastTo().some((n) => n.includes('@'))) return null
+	const own = here().find((a) => a.to && !a.to.name)?.to
+	const first = runners.find((r) => r.online) ?? runners[0]
+	return own ?? (first?.model ? fallback(first) : null)
 }
-/** Whom the thread asked last, as they are now: a message without a pick asks them again, at the level they think at */
-const askedLast = () => {
-	const names = (entries[current()] ?? []).findLast((e) => e.data.to?.length)?.data.to ?? []
-	return agentsHere()
-		.filter((a) => a.to && names.some((n) => (n.includes('@') ? !a.to.name : a.to.name === n)))
-		.map((a) => a.to)
-}
-export const recipients = () => {
-	const bot = homeBot(current())
-	if (bot) return [botAgent(bot)]
-	if (picked()) return picked()
-	const last = askedLast()
-	if (last.length) return last
-	const home = runners.find((r) => r.online) ?? runners[0]
-	return home?.model ? [choiceFor(home)] : []
-}
-export const selectRecipients = (to) =>
+/** The bots it asks beside it: those picked, or those the thread asked last, as they run */
+const asked = () =>
+	homeBot(current())
+		? []
+		: (pick()?.bots ??
+			here()
+				.map((a) => a.to)
+				.filter((to) => to?.name && lastTo()?.includes(to.name)))
+export const recipients = () => [agent(), ...asked()].filter(Boolean)
+export const choiceFor = (r) => (agent()?.runner === r.name ? agent() : fallback(r))
+const setPick = (agent, bots, typed = null) =>
 	setCompose((s) => {
-		s.to = to
-		s.for = current()
-		s.typed = null
+		s.pick = { thread: current(), agent, bots }
+		s.typed = typed
+		if (agent && !agent.name) s.settings[agent.runner] = agent
 	})
-/** In a bot's home, the model it runs as is the bot's own */
-const saveBot = (bot, to) =>
-	api('/api/bots', { name: bot.name, to: { ...to, name: undefined } })
-		.then(() => refresh(bots))
-		.catch(report)
-/** Choosing a model replaces the thread's agent's pick, and keeps any bots beside it */
-export function choose(to) {
+/** Choosing a model replaces the agent's pick and keeps the bots; in a bot's home, it is the bot's own model */
+export function choose(to, always = true) {
 	const bot = homeBot(current())
-	if (bot) return saveBot(bot, to)
-	const next = [to, ...recipients().filter((p) => p.name)]
-	setCompose((s) => {
-		s.to = next
-		s.for = current()
-		s.typed = null
-		if (!to.name) s.settings[to.runner] = to
-	})
+	if (bot)
+		return api('/api/bots', { name: bot.name, to: { ...to, name: undefined } })
+			.then(() => refresh(bots))
+			.catch(report)
+	if (always || agent()?.runner === to.runner) setPick(to, snapshot(asked()))
+	else setCompose((s) => void (s.settings[to.runner] = to))
 }
-/** Editing a runner's settings also changes its recipient, if it is selected. */
-export function configure(to) {
-	const bot = homeBot(current())
-	if (bot) return saveBot(bot, to)
-	const previous = recipients()
-	const selected = previous.find((p) => p.runner === to.runner && !p.name)
-	setCompose((s) => {
-		s.settings[to.runner] = to
-		if (selected) {
-			s.to = previous.map((p) => (p === selected ? to : p))
-			s.for = current()
-			s.typed = null
-		}
-	})
-}
+/** A runner's settings change the agent's pick only when the agent is on that runner */
+export const configure = (to) => choose(to, false)
 
 /** The open thread's composer lends its model picker, so a bot's settings pick its model with the same one */
 let lend
@@ -119,9 +88,7 @@ export const openPicker = (anchor) => lend?.(anchor)
 export function Composer(props) {
 	let input, picker, button, chooser, anchor
 	const active = () => current() === props.thread
-	const agents = () => threads.find((t) => t.id === current())?.agents ?? []
-	const busy = () =>
-		agents().some((a) => a.status === 'working' && recipients().some((p) => sameAgent(a.to, p)))
+	const busy = () => here().some((a) => a.status === 'working')
 	createEffect(active, (on) => {
 		if (!on) return
 		input.focus()
@@ -190,14 +157,9 @@ export function Composer(props) {
 			.filter(Boolean)
 			.map((s) => {
 				const bot = bots.find((b) => b.name === s)
-				return agents().find((a) => a.name === s)?.to ?? (bot ? botAgent(bot) : parseAgent(s))
+				return here().find((a) => a.name === s)?.to ?? (bot ? botAgent(bot) : parseAgent(s))
 			})
-		setCompose((s) => {
-			s.to = next
-			s.for = current()
-			s.typed = text
-			for (const to of next) if (!to.name) s.settings[to.runner] = to
-		})
+		setPick(next.find((to) => !to.name) ?? null, next.filter((to) => to.name), text)
 	}
 	return html`
 		<form
@@ -258,10 +220,10 @@ export function Composer(props) {
 						add(files)
 					}}
 					onInput=${(e) => {
-						const to = !picked() && !homeBot(current()) ? snapshot(recipients()) : null
+						// What it asks stays as it was when the typing started
+						if (!pick() && !homeBot(current())) setPick(snapshot(agent()), snapshot(asked()))
 						setCompose((s) => {
 							s.draft = e.currentTarget.value
-							if (to?.length) [s.to, s.for] = [to, current()]
 						})
 					}}
 				/>
@@ -378,23 +340,18 @@ export function Composer(props) {
 	`
 }
 
+/** A click asks only the bot; shift-click adds it beside the agent, or takes it off */
 function PickerBot(bot, close) {
-	const selected = () => recipients().some((p) => p.name === bot.name)
+	const selected = () => asked().some((p) => p.name === bot.name)
 	return html`
 		<li>
 			<button
 				type="button"
 				class=${() => ['model', { on: selected() }]}
 				onClick=${(e) => {
-					const previous = recipients()
-					selectRecipients(
-						!e.shiftKey
-							? [botAgent(bot)]
-							: selected()
-								? previous.filter((p) => p.name !== bot.name)
-								: [...previous, botAgent(bot)],
-					)
-					if (!e.shiftKey) close()
+					if (!e.shiftKey) return (setPick(null, [botAgent(bot)]), close())
+					const others = asked().filter((p) => p.name !== bot.name)
+					setPick(snapshot(agent()), selected() ? others : [...others, botAgent(bot)])
 				}}
 			>
 				<span style=${() => colorOf(bot.name)}>${() => bot.name}</span>
@@ -406,9 +363,7 @@ function PickerBot(bot, close) {
 
 function PickerRunner(runner, close) {
 	const choice = () => choiceFor(runner)
-	// The thread's agent, or in a bot's home, the bot
-	const mine = (p) => !p.name || p.name === homeBot(current())?.name
-	const selected = () => recipients().some((p) => p.runner === runner.name && mine(p))
+	const selected = () => agent()?.runner === runner.name
 	const models = () => [
 		...new Set([choice().model, runner.model, ...(runner.offers ?? [])].filter(Boolean)),
 	]
@@ -434,14 +389,7 @@ function PickerRunner(runner, close) {
 					>${(model) => html`
 						<button
 							type="button"
-							class=${() => [
-								'model',
-								{
-									on: recipients().some(
-										(p) => p.runner === runner.name && p.model === model && mine(p),
-									),
-								},
-							]}
+							class=${() => ['model', { on: selected() && agent().model === model }]}
 							onClick=${() => {
 								choose({ ...choice(), model })
 								close()

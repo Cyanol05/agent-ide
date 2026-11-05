@@ -1,4 +1,4 @@
-/** Agent names and live work, shared by a thread and its runner. */
+/** Agents' labels and live work, shared by a thread and its runner. */
 import { createRoot, createStore } from 'solid-js'
 
 export const [doing, setDoing] = createRoot(() => createStore({}))
