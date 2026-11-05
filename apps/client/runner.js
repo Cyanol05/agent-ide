@@ -102,7 +102,7 @@ function AgentRow(props) {
 	const agents = () => props.agents.filter((a) => agentKey(a.to) === agentKey(props.to))
 	const call = () =>
 		agents()
-			.map((a) => lastToolCall(doing[a.thread]?.[a.name]))
+			.map((a) => lastToolCall(doing[a.thread]?.[a.conversation]))
 			.find(Boolean)
 	return html`
 		<li data-agent=${() => agentKey(props.to)}>
@@ -154,11 +154,11 @@ function RunnerItem(props) {
 		threads.flatMap((t) =>
 			t.agents
 				.filter((a) => a.to.runner === props.runner.name && a.status === 'working')
-				.map((a) => ({ thread: t.id, title: t.title, name: a.name })),
+				.map((a) => ({ thread: t.id, title: t.title, conversation: a.conversation })),
 		)
 	const call = () =>
 		work()
-			.map((a) => lastToolCall(doing[a.thread]?.[a.name]))
+			.map((a) => lastToolCall(doing[a.thread]?.[a.conversation]))
 			.find(Boolean)
 	const revoke = async (_e) => {
 		const { name } = props.runner

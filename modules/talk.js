@@ -6,7 +6,7 @@
 import { num, obj, opt, str } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
-import { agentName, field, said } from '../util.js'
+import { AGENT, agentName, field, keyOf, said } from '../util.js'
 
 export function server(core) {
 	const { agentOf, home } = core
@@ -30,7 +30,9 @@ export function server(core) {
 			to: opt(
 				str({
 					description:
-						'Who should answer. An agent already in the thread by its name, or thread/name from anywhere, which also picks the thread. Or a recipe for a new one: model@runner, where model is anything `pi --model` takes, a runner for its default model, name=model@runner to name it. Or "nobody". Leave out for whom the thread last asked; in a new thread, yourself.',
+						'Who should answer. A bot by its name. From anywhere, 12 is thread 12\'s agent and 12/ada a bot there, which also picks the thread. ' +
+						"Or model@runner, where model is anything `pi --model` takes, or a runner alone for its default model: it starts the thread's agent as that, or switches the one there, which keeps its conversation. " +
+						'Or "nobody". Leave out for whom the thread last asked; in a new thread, yourself.',
 				}),
 			),
 		}),
@@ -39,7 +41,7 @@ export function server(core) {
 			const saved = await core.receipt(`post ${api.taskId}`, 'post')
 			if (saved) return saved.result
 			const { thread: from, name } = await home(api.conversationId)
-			const thread = args.thread ?? (Number(args.to?.match(/^(\d+)\//)?.[1]) || undefined)
+			const thread = args.thread ?? (Number(args.to?.match(/^(\d+)(?:\/|$)/)?.[1]) || undefined)
 			if (thread === from) throw new Error('That is your own thread; just answer')
 			if (/^\$\s/.test(args.body))
 				throw new Error('Run commands with your own bash tool, not as a post')
@@ -52,12 +54,10 @@ export function server(core) {
 					: (await core.messages(from)).findLast(
 							(e) => e.data.from === thread && !e.data.re && !done.has(e.id),
 						)
+			const askerKey = asked && keyOf(asked.data.author)
 			const asker =
 				asked &&
-				(await agentOf(
-					(await core.thread(thread)).agents[asked.data.author]?.conversation,
-					asked.data.author,
-				))
+				(await agentOf((await core.thread(thread)).agents[askerKey]?.conversation, askerKey))
 			const to =
 				args.to === 'nobody'
 					? []
@@ -113,7 +113,7 @@ export function server(core) {
 			agent: opt(
 				str({
 					description:
-						'An agent in that thread, by its name or any unique part of it, or thread/name',
+						"An agent in that thread: a bot by its name, or the thread's agent as model@runner or `agent`, or any unique part of either; or thread/name",
 				}),
 			),
 			last: opt(num({ description: 'How many entries, 20 by default' })),
@@ -163,14 +163,24 @@ export function server(core) {
 
 	async function work(threadId, { agent, query, last = 20 }) {
 		const { agents } = await core.thread(threadId)
-		const names = Object.keys(agents)
-		const found = names.includes(agent) ? [agent] : names.filter((n) => n.includes(agent))
+		/** The thread's agent goes by its key and by the model it runs as now */
+		const named = await Promise.all(
+			Object.entries(agents).map(async ([key, { conversation }]) => [
+				key === AGENT ? agentName(await agentOf(conversation, key)) : key,
+				key,
+				conversation,
+			]),
+		)
+		const names = named.map(([name]) => name)
+		const exact = named.filter(([name, key]) => name === agent || key === agent)
+		const found = exact.length ? exact : named.filter(([name]) => name.includes(agent))
 		if (found.length !== 1)
 			throw new Error(
-				`${found.length ? 'Several' : 'No'} agents in thread ${threadId} match ${agent}: ${(found.length ? found : names).join(', ') || 'none'}`,
+				`${found.length ? 'Several' : 'No'} agents in thread ${threadId} match ${agent}: ${(found.length ? found.map(([n]) => n) : names).join(', ') || 'none'}`,
 			)
+		const [[shownName, , conversation]] = found
 		const lines = []
-		for (const { id, model = [] } of await core.entries(agents[found[0]].conversation)) {
+		for (const { id, model = [] } of await core.entries(conversation)) {
 			for (const m of model) {
 				if (m.role === 'user') lines.push(`#${id} handed: ${messageText(m)}`)
 				if (m.role === 'toolResult')
@@ -193,7 +203,7 @@ export function server(core) {
 			)
 		return (
 			shown.join('\n') ||
-			(query ? 'Nothing in its work contains it.' : `${found[0]} has done nothing here yet.`)
+			(query ? 'Nothing in its work contains it.' : `${shownName} has done nothing here yet.`)
 		)
 	}
 
@@ -213,9 +223,9 @@ export function server(core) {
 			const { agents } = await core.thread(from)
 			const askers = (
 				await Promise.all(
-					[...new Set(mine.map((p) => p.data.author))]
-						.filter((name) => agents[name])
-						.map((name) => agentOf(agents[name].conversation, name)),
+					[...new Set(mine.map((p) => keyOf(p.data.author)))]
+						.filter((key) => agents[key])
+						.map((key) => agentOf(agents[key].conversation, key)),
 				)
 			).filter(Boolean)
 			replies.push({

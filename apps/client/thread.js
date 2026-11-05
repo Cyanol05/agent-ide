@@ -152,7 +152,7 @@ export function Thread(props) {
 					>
 					<${For} each=${() => thread()?.agents ?? []}
 						>${(agent) => html`
-							<${Writing} agent=${() => agent} live=${() => doing[props.id]?.[agent.name]} />
+							<${Writing} agent=${() => agent} live=${() => doing[props.id]?.[agent.conversation]} />
 						`}<//
 					>
 				</ul>

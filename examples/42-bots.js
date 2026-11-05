@@ -113,6 +113,23 @@ check(
 	JSON.stringify([side, prompt.laptop]),
 )
 
+// In her home, the composer asks her with her settings: a new runner there moves her, in place, and she is told
+const atHome = (await api('GET', `/api/threads/${home}`)).json.agents[0]
+await post(home, 'where are you now?', { runner: 'desk', model: 'echo/echo', name: 'ada' })
+v = await answered(home, 6)
+const own = (await api('GET', `/api/conversations/${atHome.conversation}`)).json.entries
+const told = text(own.filter((e) => e.kind === 'agent-ide.delivery').at(-1)?.model[0])
+check(
+	atHome.to.runner === 'laptop' &&
+		v.agents.length === 1 &&
+		v.agents[0].conversation === atHome.conversation &&
+		v.agents[0].to.runner === 'desk' &&
+		answers(v).at(-1).data.author === 'ada' &&
+		told.startsWith('[You now run as echo/echo on desk,'),
+	'asked as her recipe says, a bot switches in place like any agent, keeps her name and is told',
+	JSON.stringify([atHome, v.agents, told]),
+)
+
 const hide = await api('DELETE', `/api/threads/${home}`)
 check(
 	hide.status === 400 &&
@@ -133,6 +150,27 @@ check(
 		JSON.parse(prompt.laptop).at(-1).sections?.bot === null,
 	'forgetting ada keeps every thread: her agents stay, without her instructions',
 	JSON.stringify([gone.json, answers(v)[2]?.data, prompt.laptop]),
+)
+
+// A thread's own agent works beside its bots, and reads them as agents
+await post(shed, 'what did ada say?', 'echo/echo@desk')
+v = await answered(shed, 4)
+const plain = v.agents.find((a) => !a.to.name)
+const handed = (await api('GET', `/api/conversations/${plain?.conversation}`)).json.entries
+	?.filter((e) => e.kind === 'agent-ide.delivery')
+	.map((e) => text(e.model[0]))
+check(
+	v.agents.map((a) => a.name).join() === 'ada,echo/echo@desk' &&
+		answers(v).at(-1).data.author === 'echo/echo@desk' &&
+		handed?.[0].includes('\n\nada (agent): laptop: oskar: build it?'),
+	"a thread holds one agent and any bots; the agent reads a bot's words marked as an agent's",
+	JSON.stringify([v.agents, handed]),
+)
+const nameless2 = await post(shed, 'hi', 'rex=echo/echo@desk')
+check(
+	nameless2.status === 400 && /only bots have names/.test(nameless2.json.error),
+	'a name that is no bot is refused',
+	JSON.stringify(nameless2.json),
 )
 const hidden = await api('DELETE', `/api/threads/${home}`)
 check(

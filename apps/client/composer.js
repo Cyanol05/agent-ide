@@ -1,6 +1,18 @@
-/** The draft and recipients stay with the composer as you move between threads. */
+/**
+ * The draft stays with the composer as you move between threads; a pick belongs to the thread it was made in, since asking
+ * a thread's agent with another model switches it. Two models at once ask in two threads, and in a bot's home, picking
+ * changes the bot.
+ */
 import html from '@solidjs/html'
-import { createEffect, createRoot, createStore, For, latest, Show, snapshot } from 'solid-js'
+import {
+	createEffect,
+	createRoot,
+	createStore,
+	For,
+	latest,
+	Show,
+	snapshot,
+} from 'solid-js'
 import {
 	api,
 	bots,
@@ -25,27 +37,35 @@ const [compose, setCompose] = createRoot(() =>
 		draft: '',
 		sending: false,
 		to: null,
+		/** The thread `to` was picked in */
+		for: null,
 		typed: null,
 		settings: {},
 	}),
 )
-export const choiceFor = (r) =>
-	compose.to?.find((p) => p.runner === r.name && !p.name) ??
-	compose.settings[r.name] ?? {
-		runner: r.name,
-		model: r.model,
-		thinkingLevel: 'low',
-	}
+const picked = () => (compose.to && compose.for === current() ? compose.to : null)
+const agentsHere = () => threads.find((t) => t.id === current())?.agents ?? []
+/** The thread's own agent, as it runs */
+const ownAgent = () => agentsHere().find((a) => a.to && !a.to.name)?.to
+export const choiceFor = (r) => {
+	const bot = homeBot(current())
+	const mine = bot ? [botAgent(bot)] : (picked() ?? (ownAgent() ? [ownAgent()] : []))
+	return (
+		mine.find((p) => p.runner === r.name && (bot || !p.name)) ??
+		compose.settings[r.name] ?? { runner: r.name, model: r.model, thinkingLevel: 'low' }
+	)
+}
 /** Whom the thread asked last, as they are now: a message without a pick asks them again, at the level they think at */
 const askedLast = () => {
 	const names = (entries[current()] ?? []).findLast((e) => e.data.to?.length)?.data.to ?? []
-	const agents = threads.find((t) => t.id === current())?.agents ?? []
-	return agents.filter((a) => names.includes(a.name)).map((a) => a.to)
+	return agentsHere()
+		.filter((a) => a.to && names.some((n) => (n.includes('@') ? !a.to.name : a.to.name === n)))
+		.map((a) => a.to)
 }
 export const recipients = () => {
 	const bot = homeBot(current())
 	if (bot) return [botAgent(bot)]
-	if (compose.to) return compose.to
+	if (picked()) return picked()
 	const last = askedLast()
 	if (last.length) return last
 	const home = runners.find((r) => r.online) ?? runners[0]
@@ -54,12 +74,13 @@ export const recipients = () => {
 export const selectRecipients = (to) =>
 	setCompose((s) => {
 		s.to = to
+		s.for = current()
 		s.typed = null
 	})
-/** Choosing replaces the recipients; shift-click adds or removes one runner. */
+/** Choosing replaces the recipients; shift-click adds or removes one, and each model past the first asks in a fork. */
 export function choose(to, also = false) {
 	const previous = recipients()
-	const selected = previous.find((p) => p.runner === to.runner && p.name === to.name)
+	const selected = previous.find((p) => sameAgent(p, to))
 	let next = [to]
 	if (also) {
 		next = previous
@@ -68,6 +89,7 @@ export function choose(to, also = false) {
 	}
 	setCompose((s) => {
 		s.to = next
+		s.for = current()
 		s.typed = null
 		if (!to.name) s.settings[to.runner] = to
 	})
@@ -80,6 +102,7 @@ export function configure(to) {
 		s.settings[to.runner] = to
 		if (selected) {
 			s.to = previous.map((p) => (p === selected ? to : p))
+			s.for = current()
 			s.typed = null
 		}
 	})
@@ -130,6 +153,7 @@ export function Composer(props) {
 			})
 		setCompose((s) => {
 			s.to = next
+			s.for = current()
 			s.typed = text
 			for (const to of next) if (!to.name) s.settings[to.runner] = to
 		})
@@ -154,10 +178,10 @@ export function Composer(props) {
 						if (!active()) openThread(props.thread)
 					}}
 					onInput=${(e) => {
-						const to = !compose.to && !homeBot(current()) ? snapshot(recipients()) : null
+						const to = !picked() && !homeBot(current()) ? snapshot(recipients()) : null
 						setCompose((s) => {
 							s.draft = e.currentTarget.value
-							if (to?.length) s.to = to
+							if (to?.length) [s.to, s.for] = [to, current()]
 						})
 					}}
 				/>
@@ -262,7 +286,7 @@ export function Composer(props) {
 					aria-label="Recipients"
 					autocomplete="off"
 					spellcheck="false"
-					title="model:thinking@runner, comma between several"
+					title="model:thinking@runner or a bot's name, comma between several; a second model asks in a thread of its own"
 					value=${() => compose.typed ?? recipients().map(formatAgent).join(', ')}
 					onInput=${typeRecipients}
 					onKeyDown=${(e) => {
@@ -302,7 +326,10 @@ function PickerBot(bot, close) {
 
 function PickerRunner(runner, close) {
 	const choice = () => choiceFor(runner)
-	const selected = () => recipients().some((p) => p.runner === runner.name && !p.name)
+	const selected = () =>
+		recipients().some(
+			(p) => p.runner === runner.name && (!p.name || p.name === homeBot(current())?.name),
+		)
 	const models = () => [
 		...new Set([choice().model, runner.model, ...(runner.offers ?? [])].filter(Boolean)),
 	]
@@ -322,7 +349,9 @@ function PickerRunner(runner, close) {
 							? `busy in ${runner.busy} thread${runner.busy > 1 ? 's' : ''}`
 							: runner.dir}</small
 				>
-				<${Show} when=${() => runners.filter((r) => r.online).length > 1}>
+				<${Show}
+					when=${() => !homeBot(current()) && runners.filter((r) => r.online).length > 1}
+				>
 					<button
 						type="button"
 						class="also"
@@ -338,11 +367,19 @@ function PickerRunner(runner, close) {
 					>${(model) => html`
 						<button
 							type="button"
-							class=${() => ['model', { on: selected() && model === choice().model }]}
+							class=${() => [
+								'model',
+								{
+									on: recipients().some(
+										(p) => p.runner === runner.name && p.model === model && !p.name,
+									),
+								},
+							]}
 							onClick=${(e) => {
 								const to = { ...choice(), model }
-								if (selected() && (e.shiftKey || recipients().length > 1)) configure(to)
-								else choose(to, e.shiftKey)
+								if (e.shiftKey) choose(to, true)
+								else if (selected() && recipients().length > 1) configure(to)
+								else choose(to)
 								if (!e.shiftKey) close()
 							}}
 						>

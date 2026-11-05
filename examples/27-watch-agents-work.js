@@ -35,8 +35,8 @@ function watch(thread) {
 	socket.onopen = () => socket.send(JSON.stringify({ watch: thread }))
 	return { heard, close: () => socket.close() }
 }
-const agent = 'echo/echo@bot'
-const lives = (heard) => heard.filter((m) => m.agent === agent).map((m) => m.live)
+// Live work is keyed by the agent's conversation, which stays as it switches model or runner
+const lives = (heard) => heard.filter((m) => m.live).map((m) => m.live)
 const said = (heard) => heard.flatMap((m) => m.entries ?? []).map((e) => e.data.body)
 const text = (message) =>
 	(message?.content ?? [])

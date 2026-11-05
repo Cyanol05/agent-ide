@@ -1,4 +1,4 @@
-/** The CLI sends to any agents, in a new thread or an old one, and prints their answers as they land */
+/** The CLI asks a thread's agent or a second model's fork, in a new thread or an old one, and prints the answers as they land */
 import { execFile } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { promisify } from 'node:util'
@@ -50,16 +50,17 @@ const both = await cli(
 	'echo/echo@desk',
 	'both of you',
 )
+const fork = /thread (\d+), a fork/.exec(both)?.[1]
 check(
-	both.includes('echo@laptop heard') && both.includes('echo@desk heard'),
-	'two agents on two runners, one message, both answers',
+	fork && both.includes('echo@laptop heard') && both.includes('echo@desk heard'),
+	'two models on two runners, one message: the second answers in a fork, and both answers print',
 	both,
 )
 
 const again = await cli('post', '--thread', id, 'and again')
 check(
-	/#\d+ echo\/echo@laptop\n/.test(again) && /#\d+ echo\/echo@desk\n/.test(again),
-	'no --to asks whom the thread last asked',
+	/#\d+ echo\/echo@laptop\n/.test(again) && !again.includes('echo/echo@desk'),
+	"no --to asks whom the thread last asked: its one agent, and the fork's stays there",
 	again,
 )
 
@@ -88,14 +89,13 @@ check(
 	'runners lists both',
 	runners,
 )
-const named = await cli('post', '--to', 'reviewer=echo/echo@desk', 'review this')
-const namedId = /thread (\d+)/.exec(named)?.[1]
-check(namedId && /#\d+ reviewer\n/.test(named), '--to can give an agent a name', named)
-for (const to of ['reviewer', `${namedId}/reviewer`]) {
-	const reply = await cli('post', '--thread', namedId, '--to', to, 'review again')
-	check(/#\d+ reviewer\n/.test(reply), `--to ${to} reaches the thread's agent`, reply)
-}
-const nobody = await cli('post', '--thread', namedId, '--to', 'nobody', 'just a note')
+const named = await cli('post', '--to', 'reviewer=echo/echo@desk', 'review this').catch(
+	(error) => error.stderr,
+)
+check(/only bots have names/.test(named), "--to can't name a thread's agent: only bots have names", named)
+const reply = await cli('post', '--thread', id, '--to', id, 'by number')
+check(/#\d+ echo\/echo@laptop\n/.test(reply), "--to with the thread's number reaches its agent", reply)
+const nobody = await cli('post', '--thread', id, '--to', 'nobody', 'just a note')
 check(!nobody, '--to nobody posts without waiting for an answer', nobody)
 
 mkdirSync(`${dir}/review`)

@@ -11,9 +11,13 @@ export async function collect(scan) {
 	return items
 }
 
-/** An agent's name in its thread: `model@runner`, unless `name` gives another */
+/** How a message names an agent: a bot's name, or the thread's agent as `model@runner` at the time */
 export const agentName = (to) => to && (to.name ?? `${to.model}@${to.runner}`)
-/** `model@runner`, or a bare runner for its default model */
+/** The thread's own agent's key among its agents; bots are keyed by name */
+export const AGENT = 'agent'
+/** Bot names have no `@`, so any name with one is the thread's agent, whatever model it had */
+export const keyOf = (name) => (name.includes('@') ? AGENT : name)
+/** `model@runner`, or a bare runner for its default model; `ada=model@runner` asks the bot ada as that */
 export const agentTo = (name) => {
 	const eq = name.indexOf('=')
 	const recipe = name.slice(eq + 1)

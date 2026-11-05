@@ -48,7 +48,7 @@ POST   /api/threads {title, parent?, tools?, requestId?}
 GET    /api/threads/:id                    the thread and its entries
 DELETE /api/threads/:id                    hides it
 POST   /api/threads/:id/entries {body, to?, steer?, requestId?}
-POST   /api/threads/:id/fork {at, title?}
+POST   /api/threads/:id/fork {at, title?, to?} with `to`, the fork's agent switches to it and is asked
 POST   /api/threads/:id/title {title}
 POST   /api/threads/:id/tools {tools}      as pi --tools takes them
 POST   /api/threads/:id/read
@@ -58,7 +58,7 @@ GET    /api/conversations/:id              an agent's own conversation, tool cal
 
 A module can add `/api/<module>` and `/api/threads/:id/<module>`. Send the same `requestId` again after a dropped response and you get the first result back.
 
-A message's `to` is a list, or one: an agent's name in the thread, a recipe like `sonnet:high@laptop` or `{runner, model, thinkingLevel?, dir?, name?}`, or `null` for nobody. Left out, it asks whom the thread asked last. A body starting with `$ ` runs a command on the one runner it's sent to.
+A message's `to` is a list, or one: a recipe like `sonnet:high@laptop` or `{runner, model, thinkingLevel?, dir?}` for the thread's one agent, a bot's name, or `null` for nobody. A recipe starts the agent, or switches the one there in place, keeping its conversation; it's told when it moves runner or folder. A second recipe asks in a fork of the thread, made at the message, and the reply lists those threads as `forks`. `ada=sonnet@laptop` switches the bot ada the same way; only bots have names. From another thread, `12` is thread 12's agent and `12/ada` a bot there. Left out, it asks whom the thread asked last, as they are now. A body starting with `$ ` runs a command on the one runner it's sent to.
 
 An entry is Pi's own, `{id, kind: "agent-ide.message", conversationId, byTaskId?, data}`, and `data` is a message:
 

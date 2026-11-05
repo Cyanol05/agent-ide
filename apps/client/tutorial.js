@@ -91,12 +91,9 @@ const TRIES = {
 			.find((r) => r.name === first?.runner)
 			?.offers?.find((m) => m !== first.model)
 		const to =
-			others.length || !first
+			others.length || !first || !other
 				? [first, ...others].filter(Boolean)
-				: [
-						{ ...first, name: 'first' },
-						{ ...first, ...(other && { model: other }), name: 'second' },
-					]
+				: [first, { ...first, model: other }]
 		return ask(
 			'What machine are you on, in which folder, and which model are you? One line.',
 			to,

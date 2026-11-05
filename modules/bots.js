@@ -5,7 +5,7 @@
 import { obj, opt, str } from '@earendil-works/pi-schema'
 import { defineDoc, defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
-import { agentTo } from '../util.js'
+import { AGENT, agentTo } from '../util.js'
 
 /** A bot's name → { home */
 const Bots = defineDoc({
@@ -25,6 +25,7 @@ export function server(core) {
 		if (typeof name !== 'string' || !/^[\w.-]{1,40}$/.test(name))
 			throw new Error('A name is 1 to 40 letters, digits, _ . or -')
 		if ((await core.known())[name]) throw new Error(`${name} is a runner; pick another name`)
+		if (name === AGENT) throw new Error(`${AGENT} is what every thread calls its own; pick another name`)
 		if (instructions !== undefined && typeof instructions !== 'string')
 			throw new Error('instructions is text')
 		if (to !== undefined) {

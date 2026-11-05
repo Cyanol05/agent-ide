@@ -23,12 +23,13 @@ await scriptedRunner('bot', (request) => {
 	}
 	return say(JSON.stringify({ tools: [...tools].sort(), instructions: sections.instructions }))
 })
-const to = { runner: 'bot', model: 'echo/echo', name: 'reviewer' }
+const to = { runner: 'bot', model: 'echo/echo' }
+const name = 'echo/echo@bot'
 const id = (await api('POST', '/api/threads', { title: 'fork settings' })).json.id
 await api('POST', `/api/threads/${id}/entries`, { body: 'which tools?', to })
 const first = await answered(id)
 const oldAnswer = answers(first)[0]
-const original = await conversationOf(first, to.name)
+const original = await conversationOf(first, name)
 const all = JSON.parse(oldAnswer.data.body).tools
 const forks = []
 
@@ -59,7 +60,7 @@ forks.push({
 await api('POST', `/api/threads/${id}/tools`, { tools: null })
 const full = (await api('POST', `/api/threads/${id}/fork`, { at: restrictedAnswer.id })).json.id
 forks.push({ id: full, tools: null, expected: all, inherited: 2 })
-const source = await conversationOf(await view(id), to.name)
+const source = await conversationOf(await view(id), name)
 
 // Fork settings and identity are stored in the same commit, not repaired at delivery.
 const exited = new Promise((resolve) => srv.once('exit', resolve))
@@ -68,10 +69,10 @@ await exited
 srv = await server({ MODULES: 'talk' })
 for (const fork of forks) {
 	let v = await view(fork.id)
-	const own = await conversationOf(v, to.name)
+	const own = await conversationOf(v, name)
 	check(
 		JSON.stringify(v.tools) === JSON.stringify(fork.tools) &&
-			own.docs['pi.agent'].instructions.includes(`You are reviewer in thread ${fork.id},`),
+			own.docs['pi.agent'].instructions.includes(`You are thread ${fork.id}'s agent,`),
 		`fork ${fork.id} stores its shown tools and its own identity across restart`,
 		JSON.stringify({ tools: v.tools, agent: own.docs['pi.agent'] }),
 	)
@@ -82,7 +83,8 @@ for (const fork of forks) {
 		),
 		`fork ${fork.id} keeps the same agent's model, thinking and folder`,
 	)
-	await api('POST', `/api/threads/${fork.id}/entries`, { body: 'which tools now?', to: 'reviewer' })
+	// A thread's number alone reaches its agent
+	await api('POST', `/api/threads/${fork.id}/entries`, { body: 'which tools now?', to: String(fork.id) })
 	v = await answered(fork.id, fork.inherited + 1)
 	const received = JSON.parse(answers(v).at(-1).data.body)
 	check(
@@ -91,15 +93,15 @@ for (const fork of forks) {
 		JSON.stringify(received.tools),
 	)
 	check(
-		received.instructions.includes(`You are reviewer in thread ${fork.id},`) &&
-			!received.instructions.includes(`in thread ${id},`) &&
+		received.instructions.includes(`You are thread ${fork.id}'s agent,`) &&
+			!received.instructions.includes(`thread ${id}'s`) &&
 			received.instructions.includes('only some tools') === Boolean(fork.tools),
 		`fork ${fork.id} tells the model its new thread and tool policy`,
 		received.instructions,
 	)
 }
 check(
-	JSON.stringify((await conversationOf(await view(id), to.name)).docs['pi.agent']) ===
+	JSON.stringify((await conversationOf(await view(id), name)).docs['pi.agent']) ===
 		JSON.stringify(source.docs['pi.agent']) &&
 		answers(await view(id)).length === 2,
 	'forking leaves the source agent and answers unchanged',

@@ -25,7 +25,7 @@ import { createCodemodeExtension } from '@earendil-works/pi-durable/codemode'
 import { CodemodeSandbox } from '@earendil-works/pi-codemode'
 import { load } from './modules.js'
 import { WebSocketServer } from 'ws'
-import { agentName, agentTo, collect, field, said, speaker } from './util.js'
+import { AGENT, agentName, agentTo, collect, field, keyOf, said, speaker } from './util.js'
 import {
 	createRunners,
 	messageText,
@@ -36,12 +36,12 @@ import {
 } from './remote.js'
 
 /**
- * @typedef {{ runner: string, model: string, thinkingLevel?: string, dir?: string, name?: string }} To  An agent: its name in
- *   the thread, `provider/id@runner` unless `name` gives another; the rest is the recipe it runs on.
+ * @typedef {{ runner: string, model: string, thinkingLevel?: string, dir?: string, name?: string }} To  An agent as it runs:
+ *   the thread's own, or with `name`, a bot. Asking one with another recipe changes it in place.
  * @typedef {object} Message  The data of every thread entry.
- * @property {string} author  A human's name, or an agent's.
+ * @property {string} author  A human's name, a bot's, or the thread's agent as `provider/id@runner` when it wrote.
  * @property {string} body
- * @property {string[]} [to]  The names of the agents it asks.
+ * @property {string[]} [to]  Whom it asks, named as `author` names them.
  * @property {number} [from]  The thread it came from.
  * @property {number[]} [re]  What it answers: messages here, or with `from`, posts there.
  * @property {{ conversation: number, entry: number }} [answer]  The agent's entry it copies.
@@ -49,7 +49,8 @@ import {
  * @property {{ runner: string, code: number | null, stdout: string, stderr: string, error?: string }} [shell]  What `$ cmd` printed.
  * @typedef {{ id: number, kind: 'agent-ide.message', data: Message }} Entry
  * @typedef {{ name: string, conversation: number, to: To | null, status: string }} Agent
- * @typedef {{ agent: number, held: number[], admit: number }} Delivery  The thread messages one input to an agent holds.
+ * @typedef {{ agent: number, held: number[], admit: number, note?: string }} Delivery  The thread messages one input to an
+ *   agent holds, and what changed about the agent since its last.
  * @typedef {{ author: string, command: string, to: To }} Command
  */
 
@@ -103,7 +104,7 @@ const Keys = defineDoc({
 	checkpointWhen: base,
 	initial: () => ({}),
 })
-/** `agents` */
+/** `agents` holds the thread's one agent, at `AGENT`, and its bots by name */
 const Thread = defineDoc({
 	kind: 'agent-ide.thread',
 	version: 1,
@@ -172,7 +173,7 @@ const Admit = defineTask({
 			)
 		},
 		/** The predecessor failed: claim its returned messages before preparing this input. */
-		reclaim: ({ conversationId, input: { agent, held } }, rt, ctx) =>
+		reclaim: ({ conversationId, input: { agent, held, note } }, rt, ctx) =>
 			rt.commit(async (tx) => {
 				const row = await tx.doc(Thread, conversationId)
 				const recipient = Object.values(row.agents).find((a) => a.conversation === agent)
@@ -180,21 +181,25 @@ const Admit = defineTask({
 					...new Set([...held, ...recipient.unseen.filter((id) => id <= Math.max(...held))]),
 				].sort((a, b) => a - b)
 				recipient.unseen = recipient.unseen.filter((id) => !held.includes(id))
-				return { status: 'running', checkpoint: { phase: 'ask', held } }
+				note ??= recipient.note
+				delete recipient.note
+				return { status: 'running', checkpoint: { phase: 'ask', held, ...(note ? { note } : {}) } }
 			}, ctx),
 		async ask(
-			{ id, conversationId: threadId, input: { agent, held, steer }, state: { checkpoint } },
+			{ id, conversationId: threadId, input: { agent, held, steer, note }, state: { checkpoint } },
 			rt,
 			ctx,
 		) {
 			held = checkpoint.held ?? held
+			note = checkpoint.note ?? note
 			const to = await agentOf(agent)
 			await runners.online(to.runner, rt.signal)
 			const all = await messages(threadId)
 			const mine = all.filter((e) => held.includes(e.id))
-			const content = catchUp
+			const told = catchUp
 				? await catchUp(threadId, mine, all, agent)
 				: mine.map(said).join('\n\n')
+			const content = note ? `${note}\n\n${told}` : told
 			const handle = await rt.conversation(agent, ctx)
 			const entry = { kind: DELIVERY, data: { held } }
 			await rt.commit(async (tx) => {
@@ -205,13 +210,13 @@ const Admit = defineTask({
 					requestId: String(id),
 					whenBusy: steer ? 'steer' : 'followUp',
 				})
-				return finished('completed', { submission, held })
+				return finished('completed', { submission, held, ...(note ? { note } : {}) })
 			}, ctx)
 		},
 	},
 	abort: ({ conversationId, input: { agent }, state: { checkpoint } }, rt, ctx) =>
 		rt.commit(async (tx) => {
-			if (checkpoint.held) await restore(tx, conversationId, agent, checkpoint.held)
+			if (checkpoint.held) await restore(tx, conversationId, agent, checkpoint.held, checkpoint.note)
 			return finished('aborted')
 		}, ctx),
 })
@@ -225,6 +230,7 @@ const Deliver = defineTask({
 		wait: ({ input: { admit } }, rt, ctx) => rt.commit(() => waiting([admit], 'tell'), ctx),
 		async tell({ conversationId: threadId, input: { admit, agent, held } }, rt, ctx) {
 			const [result] = await rt.outcomes([admit], ctx)
+			const note = result.result?.note
 			const settled =
 				result.status === 'completed'
 					? await (await harness.submission(result.result.submission, ctx)).wait(ctx)
@@ -236,7 +242,7 @@ const Deliver = defineTask({
 			held = result.status === 'completed' ? result.result.held : held
 			const told = await outcome(threadId, agent, settled, held)
 			await rt.commit(
-				async (tx) => (await tell(tx, threadId, agent, settled, held, told), finished()),
+				async (tx) => (await tell(tx, threadId, agent, settled, held, told, note), finished()),
 				ctx,
 			)
 		},
@@ -245,8 +251,9 @@ const Deliver = defineTask({
 	abort: ({ conversationId: threadId, input: { admit, agent, held } }, rt, ctx) =>
 		rt.commit(async (tx) => {
 			if ((await tx.submissionByRequest(agent, String(admit)))?.entry === undefined) {
-				const result = (await tx.task(admit)).state.outcome?.result
-				await restore(tx, threadId, agent, result?.held ?? held)
+				const task = await tx.task(admit)
+				const result = task.state.outcome?.result
+				await restore(tx, threadId, agent, result?.held ?? held, result?.note ?? task.input.note)
 			}
 			return finished('aborted')
 		}, ctx),
@@ -464,9 +471,8 @@ async function address(to, command = false, signal) {
 	for (const key of ['thinkingLevel', 'dir'])
 		if (typeof to[key] === 'string' && to[key].trim()) clean[key] = to[key].trim()
 	if (to.name !== undefined) {
-		if (typeof to.name !== 'string' || !/^[\w.-]{1,40}$/.test(to.name))
-			throw new Error('A name is 1 to 40 letters, digits, _ . or -')
-		if ((await known())[to.name]) throw new Error(`${to.name} is a runner; pick another name`)
+		if (typeof to.name !== 'string' || !(await named?.(to.name)))
+			throw new Error(`${to.name} is no bot: only bots have names, and a thread's agent has none`)
 		clean.name = to.name
 	}
 	folder(runner, clean)
@@ -475,22 +481,28 @@ async function address(to, command = false, signal) {
 /** Whom `to` asks in a thread */
 const addresses = (to, command, threadId) =>
 	Promise.all((to === null ? [] : [to].flat()).map((t) => whom(threadId, t, command)))
+/** `12` is thread 12's agent and `12/ada` a bot there; a runner named only digits is `@12` */
 async function whom(threadId, t, command = false, signal) {
-	const [, at, text = t] = (typeof t === 'string' && t.match(/^(\d+)\/(.+)$/)) || []
+	const [, at, rest] = (typeof t === 'string' && t.match(/^(\d+)(?:\/(.+))?$/)) || []
 	if (at && Number(at) !== threadId) throw new Error(`${t} is in thread ${at}, not ${threadId}`)
+	const text = at ? (rest ?? AGENT) : t
 	const agents = threadId !== undefined ? (await thread(threadId))?.agents : undefined
 	if (typeof text === 'string' && agents?.[text]) return agentOf(agents[text].conversation, text)
+	if (text === AGENT) throw new Error(`Thread ${threadId} has no agent yet`)
 	const found = typeof text === 'string' && !/[@=]/.test(text) && (await named?.(text))
 	if (found) return address(found, command, signal)
 	const asked = typeof text === 'string' ? agentTo(text) : text
 	const recipe = await address(asked, command, signal)
-	const name = !command && agentName(recipe)
-	if (!name || !agents?.[name]) return recipe
-	// The agent is there already; the thinking this asks with applies from this message on.
-	const agent = await agentOf(agents[name].conversation, name)
-	// A runner alone resolves to pi's default thinking there, which no one asked for.
-	const level = asked?.thinkingLevel || (asked?.model && recipe.thinkingLevel)
-	return level ? { ...agent, thinkingLevel: level } : agent
+	const key = !command && (recipe.name ?? AGENT)
+	if (!key || !agents?.[key]) return recipe
+	// The agent is there already, so this switches it from this message on. What the ask leaves out stays as it was:
+	// its thinking, as a runner alone resolves to pi's default thinking there, which no one asked for, and on the same
+	// runner its folder.
+	const agent = await agentOf(agents[key].conversation, key)
+	const { thinkingLevel, dir, ...switched } = recipe
+	const level = asked?.thinkingLevel || (asked?.model && thinkingLevel) || agent.thinkingLevel
+	const into = dir ?? (recipe.runner === agent.runner ? agent.dir : undefined)
+	return { ...switched, ...(level ? { thinkingLevel: level } : {}), ...(into ? { dir: into } : {}) }
 }
 
 /** What `pi --model asked` makes of it on the runner, kept with its models */
@@ -531,21 +543,21 @@ function folder(runner, to) {
 	return cwd
 }
 
-/** `named`, the agent's name when the caller has it, saves looking it up */
-async function agentOf(id, named, tx) {
+/** `key`, its key in the thread when the caller has it, saves looking it up */
+async function agentOf(id, key, tx) {
 	const agent = tx ? await tx.doc(AgentDoc, id) : await harness.snapshot(AgentDoc, id, context)
 	const runnerName = agent?.model?.provider?.match(/^runner:(.+)$/)?.[1]
 	if (!runnerName) return null
 	const runner = (tx ? await tx.doc(Runners) : await known())[runnerName]
 	const rel = runner && agent.cwd ? path.relative(runner.dir, agent.cwd) : ''
 	const dir = rel.startsWith('..') ? agent.cwd : rel
-	const name = named ?? (await home(id))?.name
+	const name = key ?? (await home(id))?.key
 	return {
 		runner: runnerName,
 		model: agent.model.modelId,
 		...(agent.thinkingLevel ? { thinkingLevel: agent.thinkingLevel } : {}),
 		...(dir ? { dir } : {}),
-		...(name && name !== `${agent.model.modelId}@${runnerName}` ? { name } : {}),
+		...(name && name !== AGENT ? { name } : {}),
 	}
 }
 
@@ -553,8 +565,8 @@ async function agentOf(id, named, tx) {
 /** @returns {Promise<Agent[]>} */
 async function agentsIn(row, live) {
 	return Promise.all(
-		Object.entries(row.agents).map(async ([name, { conversation }]) => {
-			const to = await agentOf(conversation, name)
+		Object.entries(row.agents).map(async ([key, { conversation }]) => {
+			const to = await agentOf(conversation, key)
 			const mine = live.filter(
 				(t) => t.kind === Deliver.definition.name && t.input.agent === conversation,
 			)
@@ -563,7 +575,7 @@ async function agentsIn(row, live) {
 				: to && runners.isOnline(to.runner)
 					? 'working'
 					: 'blocked'
-			return { name, conversation, to, status }
+			return { name: to ? agentName(to) : key, conversation, to, status }
 		}),
 	)
 }
@@ -597,14 +609,20 @@ async function messages(id) {
 	await conversation(id)
 	return (await entries(id)).filter((e) => e.kind === KIND)
 }
-const lastAsked = async (id) =>
-	Promise.all(
-		((await messages(id)).findLast((e) => e.data.to)?.data.to ?? []).map((n) => whom(id, n)),
+/** Whom the thread asked last, as they are now */
+async function lastAsked(id) {
+	const names = (await messages(id)).findLast((e) => e.data.to)?.data.to ?? []
+	const { agents } = await thread(id)
+	return Promise.all(
+		names.map((n) =>
+			agents[keyOf(n)] ? agentOf(agents[keyOf(n)].conversation, keyOf(n)) : whom(id, n),
+		),
 	)
+}
 
 /** An agent's own answer, which it never reads back */
-const ownAnswer = ({ data: m }, name) =>
-	m.author === name && !m.from && Boolean(m.answer || m.error)
+const ownAnswer = ({ data: m }, key) =>
+	keyOf(m.author) === key && !m.from && Boolean(m.answer || m.error)
 
 /**
  * Writes a message, inside the caller's commit, and gives each agent it asks a Deliver task with all it hasn't seen.
@@ -614,7 +632,7 @@ const ownAnswer = ({ data: m }, name) =>
 async function post(tx, threadId, message, options = {}) {
 	let by = message.author
 	if (message.from) {
-		const source = (await tx.doc(Thread, message.from)).agents[message.author]
+		const source = (await tx.doc(Thread, message.from)).agents[keyOf(message.author)]
 		if (!source) throw new Error('Only an agent can post from another thread')
 		by = `@${(await agentOf(source.conversation, message.author, tx)).runner}`
 	}
@@ -628,7 +646,7 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 	const names = (to ?? []).map(agentName)
 	const data = { ...message, ...(to ? { to: names } : {}) }
 	const prior =
-		!empty && names.some((name) => !row.agents[name])
+		!empty && names.some((name) => !row.agents[keyOf(name)])
 			? (
 					await collect((cursor) =>
 						tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
@@ -639,35 +657,49 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 			: []
 	const entry = await tx.appendEntry(threadId, { kind: KIND, data })
 	for (const m of posted) await m(tx, threadId, entry)
-	for (const [name, agent] of Object.entries(row.agents))
-		if (!ownAnswer({ data }, name)) agent.unseen.push(entry.id)
+	for (const [key, agent] of Object.entries(row.agents))
+		if (!ownAnswer({ data }, key)) agent.unseen.push(entry.id)
 	for (const [i, name] of names.entries()) {
-		if (!row.agents[name]) {
-			row.agents[name] = await newAgent(tx, threadId, [...prior, entry.id])
-			await setUp(tx, row.agents[name].conversation, threadId, to[i])
-		} else if (to[i].thinkingLevel) {
-			const { conversation } = row.agents[name]
-			if ((await tx.doc(AgentDoc, conversation))?.thinkingLevel !== to[i].thinkingLevel)
-				await configure(tx, conversation, { thinkingLevel: to[i].thinkingLevel })
-		}
-		const recipient = row.agents[name]
-		const { conversation: agent, unseen: held, admission: after } = recipient
-		recipient.unseen = []
-		if (held.length) {
-			const admit = await tx.createTask(
-				Admit,
-				{ agent, held, steer, ...(after ? { after } : {}) },
-				{ ...own, conversationId: threadId },
-			)
-			const deliver = await tx.createTask(
-				Deliver,
-				{ admit, agent, held },
-				{ ...own, conversationId: threadId },
-			)
-			recipient.admission = { admit, deliver }
-		}
+		const key = keyOf(name)
+		if (!row.agents[key]) {
+			row.agents[key] = await newAgent(tx, threadId, [...prior, entry.id])
+			await setUp(tx, row.agents[key].conversation, threadId, to[i])
+		} else await switchTo(tx, row.agents[key], to[i])
+		await ask(tx, threadId, row.agents[key], steer)
 	}
 	return { entry: entry.id, to: names }
+}
+
+/** Gives an agent everything it hasn't seen, after its previous input */
+async function ask(tx, threadId, recipient, steer = false) {
+	const { conversation: agent, unseen: held, admission: after, note } = recipient
+	if (!held.length) return
+	recipient.unseen = []
+	delete recipient.note
+	const admit = await tx.createTask(
+		Admit,
+		{ agent, held, steer, ...(after ? { after } : {}), ...(note ? { note } : {}) },
+		{ ...own, conversationId: threadId },
+	)
+	const deliver = await tx.createTask(Deliver, { admit, agent, held }, { ...own, conversationId: threadId })
+	recipient.admission = { admit, deliver }
+}
+
+/** An agent asked with another model, thinking, runner or folder changes in place, as in pi, and is told when it moves */
+async function switchTo(tx, recipient, t) {
+	const now = await tx.doc(AgentDoc, recipient.conversation)
+	const cwd = folder((await tx.doc(Runners))[t.runner], t)
+	const model = { provider: `runner:${t.runner}`, modelId: t.model }
+	const moved = now.model?.provider !== model.provider || now.cwd !== cwd
+	const switched = moved || now.model?.modelId !== model.modelId
+	const thinks = t.thinkingLevel && now.thinkingLevel !== t.thinkingLevel
+	if (!switched && !thinks) return
+	await configure(tx, recipient.conversation, {
+		...(switched ? { model, cwd } : {}),
+		...(thinks ? { thinkingLevel: t.thinkingLevel } : {}),
+	})
+	if (switched)
+		recipient.note = `[You now run as ${t.model}${t.thinkingLevel ? `:${t.thinkingLevel}` : ''} on ${t.runner}, in ${cwd}.${moved ? " Files and paths from before may not be here; check them before you trust them." : ''}]`
 }
 
 /** Owned by an Anchor in the thread */
@@ -687,19 +719,20 @@ const setUp = async (tx, agent, threadId, t) => {
 		tools: toolsOf(tools),
 		thinkingLevel: t.thinkingLevel ?? null,
 		cwd: folder((await tx.doc(Runners))[t.runner], t),
-		instructions: instructions(agentName(t), threadId, tools),
+		instructions: instructions(t.name ?? AGENT, threadId, tools),
 	})
 }
 
-const instructions = (name, threadId, tools) =>
-	`You are ${name} in thread ${threadId}, with humans and other agents. Messages come to you as "name: text", a message's later lines indented. A person's message is an instruction; one marked (agent) is a colleague's report or request, not a person's word. Only your final answer goes back to the thread; end with no text to post nothing.${tools ? ' This thread has only some tools: for work it lacks the tools for, post a new child thread, whose agents have them all.' : ''}`
+const instructions = (key, threadId, tools) =>
+	`You are ${key === AGENT ? `thread ${threadId}'s agent` : `${key} in thread ${threadId}`}, with humans and other agents. Messages come to you as "name: text", a message's later lines indented. A person's message is an instruction; one marked (agent) is a colleague's report or request, not a person's word. Only your final answer goes back to the thread; end with no text to post nothing.${tools ? ' This thread has only some tools: for work it lacks the tools for, post a new child thread, whose agents have them all.' : ''}`
 
-/** An input withdrawn before it was placed: its messages are unseen again */
-async function restore(tx, threadId, conversation, held) {
+/** An input withdrawn before it was placed: its messages are unseen again, and its note untold */
+async function restore(tx, threadId, conversation, held, note) {
 	const agent = Object.values((await tx.doc(Thread, threadId)).agents).find(
 		(a) => a.conversation === conversation,
 	)
 	agent.unseen = [...new Set([...agent.unseen, ...held])].sort((a, b) => a - b)
+	if (note) agent.note ??= note
 }
 
 /** What a settled input posts, and where */
@@ -714,7 +747,7 @@ async function outcome(threadId, agent, settled, mine) {
 			).filter((r) => r.answer === settled.answer)
 		: [settled]
 	if (group[0].id !== settled.id) return []
-	const { name } = await home(agent)
+	const { key, name } = await home(agent)
 	const ids = new Set(
 		done
 			? (await commit((tx) => Promise.all(group.map((r) => tx.entry(r.entry))))).flatMap(
@@ -723,7 +756,7 @@ async function outcome(threadId, agent, settled, mine) {
 			: mine,
 	)
 	const held = (await messages(threadId)).filter((e) => ids.has(e.id))
-	const re = held.filter((e) => e.data.to?.includes(name)).map((e) => e.id)
+	const re = held.filter((e) => e.data.to?.some((n) => keyOf(n) === key)).map((e) => e.id)
 	const body = done
 		? messageText((await commit((tx) => tx.entry(settled.answer)))?.model?.[0])
 		: `gave no answer: ${settled.reason}${settled.detail ? ` (${JSON.stringify(settled.detail)})` : ''}`
@@ -742,9 +775,9 @@ async function outcome(threadId, agent, settled, mine) {
 }
 
 /** Posts what a settled input told; messages no input took are unseen again */
-async function tell(tx, threadId, agent, settled, held, told) {
+async function tell(tx, threadId, agent, settled, held, told, note) {
 	for (const { thread, data, steer } of told) await append(tx, thread, data, { steer })
-	if (settled.entry === undefined) await restore(tx, threadId, agent, held)
+	if (settled.entry === undefined) await restore(tx, threadId, agent, held, note)
 }
 
 /** Work that threw, or that crashes kept cutting off, Pi ends instead of running again, and the thread says so */
@@ -760,10 +793,12 @@ async function faulted({ task, reason }) {
 	if (task.kind !== Deliver.definition.name) return
 	const { admit, agent, held } = record.input
 	const placed = await storage.submissionByRequest(agent, String(admit), context)
-	const pending = (await harness.getTask(admit, context)).state.outcome?.result?.held ?? held
+	const admission = await harness.getTask(admit, context)
+	const pending = admission.state.outcome?.result?.held ?? held
+	const note = admission.state.outcome?.result?.note ?? admission.input.note
 	const settled = { id: admit, status: 'unanswered', reason, entry: placed?.entry }
 	const told = await outcome(threadId, agent, settled, pending)
-	await commit((tx) => tell(tx, threadId, agent, settled, pending, told))
+	await commit((tx) => tell(tx, threadId, agent, settled, pending, told, note))
 }
 
 /** With no reader, anyone's read counts */
@@ -825,9 +860,11 @@ const threadView = async (id, reader) => {
 async function home(conversationId) {
 	const threadId = (await storage.conversation(conversationId, context))?.owner?.conversationId
 	const row = threadId && (await thread(threadId))
-	const name =
-		row && Object.keys(row.agents).find((n) => row.agents[n].conversation === conversationId)
-	return name ? { thread: threadId, name } : null
+	const key =
+		row && Object.keys(row.agents).find((k) => row.agents[k].conversation === conversationId)
+	if (!key) return null
+	const name = key === AGENT ? agentName(await agentOf(conversationId, key)) : key
+	return { thread: threadId, key, name }
 }
 
 /** A known request returns before anything tries to resolve its recipients. */
@@ -885,7 +922,11 @@ async function postEntry(id, author, input) {
 		)
 	if (command && !to.length) throw new Error('Pick a runner to run the command on')
 	if (command) await reach(to, author, await known())
-	return once(input.requestId, `post ${id}`, async (tx) =>
+	// A thread has one agent, so a second recipe asks in a fork, side by side
+	const others = command ? [] : to.filter((t) => !t.name).slice(1)
+	if (others.length) await reach(others, author, await known())
+	to = to.filter((t) => !others.includes(t))
+	const result = await once(input.requestId, `post ${id}`, async (tx) =>
 		command
 			? (await tx.createTask(Shell, { author, command, to: to[0] }, { ...own, conversationId: id }),
 				{ command, to: to[0] })
@@ -896,6 +937,12 @@ async function postEntry(id, author, input) {
 					{ steer: input.steer === true },
 				),
 	)
+	if (!others.length) return result
+	const { title } = await thread(id)
+	const forks = []
+	for (const t of others)
+		forks.push((await forkThread(id, { at: result.entry, title: `${title} (${agentName(t)})`, to: t }, author)).id)
+	return { ...result, forks }
 }
 
 /** Inside the caller's commit */
@@ -977,32 +1024,39 @@ async function setTools(id, { tools }) {
 	})
 }
 
-/** Forks history and agents at `at`, but keeps the source's current thread-wide tools */
-async function forkThread(id, { at, title }) {
+/**
+ * Forks history and agents at `at`, but keeps the source's current thread-wide tools. With `to`, the fork's agent, or that
+ * bot, switches to it there and is asked everything it hasn't seen.
+ */
+async function forkThread(id, { at, title, to }, author = 'anon') {
 	const shown = (await messages(id)).filter((e) => e.id <= Number(at))
 	const answers = {}
 	const asked = new Set()
 	for (const { data } of shown) {
-		if (data.answer) answers[data.author] = data.answer
-		for (const name of data.to ?? []) asked.add(name)
+		if (data.answer) answers[keyOf(data.author)] = data.answer
+		for (const name of data.to ?? []) asked.add(keyOf(name))
 	}
 	const source = await thread(id)
 	/** Asked but not answered by then: a new agent, made as the source's */
 	const fresh = await Promise.all(
 		[...asked]
-			.filter((name) => !answers[name])
-			.map(async (name) => [name, await agentOf(source.agents[name].conversation, name)]),
+			.filter((key) => !answers[key] && source.agents[key])
+			.map(async (key) => [key, await agentOf(source.agents[key].conversation, key)]),
 	)
 	const agents = await Promise.all(
-		Object.entries(answers).map(async ([name, answer]) => {
+		Object.entries(answers).map(async ([key, answer]) => {
 			const seen = new Set(await seenBy(answer.conversation, answer.entry))
 			return {
-				name,
+				key,
 				answer,
-				unseen: shown.filter((e) => !seen.has(e.id) && !ownAnswer(e, name)).map((e) => e.id),
+				unseen: shown.filter((e) => !seen.has(e.id) && !ownAnswer(e, key)).map((e) => e.id),
 			}
 		}),
 	)
+	if (to !== undefined) {
+		to = await whom(undefined, to)
+		await reach([to], author, await known())
+	}
 	const named = title?.trim() || `${source.title} (fork)`
 	const fork = await (
 		await conversation(id)
@@ -1013,20 +1067,41 @@ async function forkThread(id, { at, title }) {
 			init: async (tx, forkId) => {
 				;(await tx.doc(Thread, forkId)).tools = source.tools
 				const row = {}
-				for (const { name, answer, unseen } of agents) {
-					row[name] = await newAgent(tx, forkId, unseen, answer)
-					await configure(tx, row[name].conversation, {
+				for (const { key, answer, unseen } of agents) {
+					row[key] = await newAgent(tx, forkId, unseen, answer)
+					await configure(tx, row[key].conversation, {
 						tools: toolsOf(source.tools),
-						instructions: instructions(name, forkId, source.tools),
+						instructions: instructions(key, forkId, source.tools),
 					})
 				}
-				for (const [name, t] of fresh) {
-					row[name] = await newAgent(
+				for (const [key, t] of fresh) {
+					// One never asked before starts as `to` rather than being told it moved
+					if (to && key === (to.name ?? AGENT)) continue
+					row[key] = await newAgent(
 						tx,
 						forkId,
-						shown.filter((e) => !ownAnswer(e, name)).map((e) => e.id),
+						shown.filter((e) => !ownAnswer(e, key)).map((e) => e.id),
 					)
-					await setUp(tx, row[name].conversation, forkId, t)
+					await setUp(tx, row[key].conversation, forkId, t)
+				}
+				if (to) {
+					const key = to.name ?? AGENT
+					if (row[key]) {
+						const was = await agentOf(row[key].conversation, key, tx)
+						await switchTo(tx, row[key], {
+							...to,
+							thinkingLevel: to.thinkingLevel ?? was.thinkingLevel,
+							dir: to.dir ?? (to.runner === was.runner ? was.dir : undefined),
+						})
+					} else {
+						row[key] = await newAgent(
+							tx,
+							forkId,
+							shown.filter((e) => !ownAnswer(e, key)).map((e) => e.id),
+						)
+						await setUp(tx, row[key].conversation, forkId, to)
+					}
+					await ask(tx, forkId, row[key])
 				}
 				Object.assign(await tx.doc(Thread, forkId), { title: named, createdAt: now(), agents: row })
 			},
@@ -1162,7 +1237,7 @@ const routes = [
 	['GET /api/threads/:id', (req, id) => threadView(id, user(req))],
 	['DELETE /api/threads/:id', (req, id) => hideThread(id)],
 	['POST /api/threads/:id/entries', async (req, id) => postEntry(id, user(req), await input(req))],
-	['POST /api/threads/:id/fork', async (req, id) => forkThread(id, await input(req))],
+	['POST /api/threads/:id/fork', async (req, id) => forkThread(id, await input(req), user(req))],
 	['POST /api/threads/:id/title', async (req, id) => setTitle(id, await input(req))],
 	['POST /api/threads/:id/tools', async (req, id) => setTools(id, await input(req))],
 	['POST /api/threads/:id/read', (req, id) => markRead(id, user(req))],
@@ -1326,13 +1401,12 @@ async function rewatch(socket, id) {
 	if (!keep(messages)) return
 	await told(handle, messages, send)
 	const followed = new Set()
+	/** By conversation, which stays as an agent switches model or runner */
 	const follow = async (agents) => {
-		for (const [agent, { conversation }] of Object.entries(agents)) {
+		for (const { conversation: agent } of Object.values(agents)) {
 			if (followed.has(agent)) continue
 			followed.add(agent)
-			const w = await (
-				await harness.conversation(conversation, context)
-			).watch(context, { min: 20 })
+			const w = await (await harness.conversation(agent, context)).watch(context, { min: 20 })
 			if (!keep(w)) return
 			send({ agent, live: doing(w.value) })
 			w.start(async ({ value }) => send({ agent, live: doing(value) }))

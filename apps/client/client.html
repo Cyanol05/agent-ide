@@ -34,8 +34,8 @@
 				</p>
 				<ol class="promises">
 					<li>
-						<b>Threads with many authors.</b> You, friends and agents talk in one thread, and each
-						agent can be any model pi can name, named the way pi names it.
+						<b>Threads with many authors.</b> You, friends, a thread's agent and any bots talk in one
+						thread, and the agent can be any model pi can name, named the way pi names it.
 					</li>
 					<li>
 						<b>Runners.</b> Tools run on a machine and in a folder you choose, with that machine's
@@ -45,7 +45,7 @@
 						<b>Threads that talk.</b> An agent asks another thread, and the answer comes back once,
 						even across restarts and stops.
 					</li>
-					<li><b>Forks.</b> Start a new thread from any message, with the same agents.</li>
+					<li><b>Forks.</b> Start a new thread from any message, with the same agent and bots.</li>
 					<li><b>Stays on.</b> A restart or a stop loses nothing.</li>
 				</ol>
 				<p>
@@ -88,8 +88,8 @@
 			<section data-focus="runners">
 				<h2>Ask two at once</h2>
 				<p>
-					Click a runner to ask it. Shift-click another to ask it too. One message, two agents, each
-					answering from its own machine. With one runner, two of its models answer side by side.
+					Shift-click a second runner or model, and one message starts two threads, one agent in
+					each, side by side. Same question, two machines or two models.
 				</p>
 				<div class="try">
 					<button data-try="two">Ask every runner what machine it's on</button>
@@ -131,7 +131,7 @@
 				<h2>Fork</h2>
 				<p>
 					Wish you'd asked differently? Hover any message for its <b>fork</b>. A new thread starts
-					from there, with the same agents, each remembering only what came before it. The two sit
+					from there, with the same agent and bots, each remembering only what came before it. The two sit
 					side by side, linked both ways. The fork keeps the thread's tools as they are now.
 				</p>
 				<div class="try">
@@ -143,7 +143,7 @@
 				<h2>Bring a friend</h2>
 				<p>
 					A thread isn't yours alone. Send someone the link and they're in it, writing next to you
-					and your agents.
+					and your agent.
 				</p>
 				<div class="try">
 					<button data-try="friend">Open this thread as Ana</button>
@@ -220,29 +220,22 @@
 
 					<dt>Agent</dt>
 					<dd>
-						A model, how hard it thinks, and the runner it runs on:
-						<code>sonnet:high@laptop</code>. Ask it at another level, <code>sonnet:low@laptop</code>, and
-						the same agent thinks that hard from that message on. In each thread an agent has its own conversation, and
-						knows its folder the way pi does there: AGENTS.md and skills. Its name in the thread is
-						<code>sonnet@laptop</code>, unless you give it another, as
-						<code>reviewer=sonnet@laptop</code>, so two of one model can work side by side. In its
-						thread the name reaches it; from anywhere, <code>12/reviewer</code> does. A fork keeps
-						the names.
-						<small
-							>Not a bot. A name is not a character; the agent is "this model, this hard,
-							there".</small
-						>
+						A model, how hard it thinks, and the runner it works on: <code>sonnet:high@laptop</code>.
+						Each thread has one, with its own conversation, and it knows its folder the way pi does
+						there: AGENTS.md and skills. Change its model, thinking or runner whenever you like. It
+						keeps the conversation, as in pi, and is told when it moves.
+						<small>Not a bot. It has no name; it's "this model, this hard, there", for now.</small>
 					</dd>
 
 					<dt>Thread</dt>
 					<dd>
-						A conversation on the server, with any number of people and agents in it. Its tools are
-						its agents' tools, as <code>pi --tools</code> takes them: click its title to set them.
-						<b>Hands off</b> is <code>-write,-edit,-bash</code>, so they read and ask others but
-						change nothing.
+						A conversation on the server between you and one agent. Bots can join it too. Its tools
+						are its agent's tools, as <code>pi --tools</code> takes them: click its title to set them.
+						<b>Hands off</b> is <code>-write,-edit,-bash</code>, so it reads and asks others but
+						changes nothing.
 						<small
-							>Threads don't live on runners. A thread can ask an agent on the laptop and one on the
-							vps side by side.</small
+							>Threads don't live on runners. To work on the laptop and the vps at once, start a
+							thread on each, or let one agent post a child thread to the other.</small
 						>
 					</dd>
 
@@ -258,7 +251,7 @@
 					</dd>
 				</dl>
 
-				<h3>How an agent is named</h3>
+				<h3>How you ask an agent</h3>
 				<div class="name">
 					<span class="m">sonnet<i>model</i></span
 					><span class="sep">:</span><span class="t">high<i>thinking</i></span
@@ -267,7 +260,10 @@
 				<p class="caption" style="text-align: center">
 					Each part is optional and falls back to pi's defaults on that runner:
 					<code>laptop</code> alone is its default model. The model part is anything
-					<code>pi --model</code> takes, resolved by pi on the runner.
+					<code>pi --model</code> takes, resolved by pi on the runner. It starts a thread's agent,
+					or switches the one there; what you leave out stays as it was, and a new runner starts in
+					its own folder. From another thread, <code>12</code> reaches thread 12's agent and
+					<code>12/ada</code> a bot there.
 				</p>
 
 				<h2 id="machine">The machine</h2>
@@ -292,8 +288,8 @@ flowchart TB
 				<ul>
 					<li>
 						A <b>thread</b> is a Pi conversation that never runs a model. Every entry is a message
-						with an author and a body. What agent-ide adds, like a title, a parent, read markers and
-						the thread's agents, sits beside it as a Pi doc.
+						with an author and a body. What agent-ide adds, like a title, a parent, read markers, the
+						thread's agent and its bots, sits beside it as a Pi doc.
 					</li>
 					<li>
 						A <b>runner</b> is, to the server, a Pi model provider and the execution environment of
@@ -338,8 +334,9 @@ sequenceDiagram
 						characters, saying how much is left; <code>query</code> finds the part that matters.
 					</li>
 					<li>
-						A message asks the agents in its <code>to</code>. With no <code>to</code>, it asks
-						whoever the thread asked last, and <code>to: null</code> asks nobody.
+						A message asks whom its <code>to</code> names: the thread's agent, as it is or as a new
+						recipe, and any bots. With no <code>to</code>, it asks whoever the thread asked last, as
+						they are now, and <code>to: null</code> asks nobody. A second recipe asks in a fork.
 					</li>
 					<li>
 						Threads talk like email. An agent asks with <code>post</code>. With no thread, it starts
@@ -453,7 +450,7 @@ stateDiagram-v2
 						director.js
 						<span class="tag" data-c="later">off</span>
 					</dt>
-					<dd>Asks the agents a message @mentions by name.</dd>
+					<dd>Asks whom a message @mentions: a bot by name, or the thread's agent as <code>model@runner</code>.</dd>
 					<dt>
 						memory.js
 						<span class="tag" data-c="later">off</span>
@@ -480,7 +477,8 @@ stateDiagram-v2
 					<dd>
 						One name in many threads: a name with a home thread, a recipe and instructions. Ask
 						<code>ada</code> in any thread and an agent named ada joins it from her recipe;
-						<code>ada=haiku@desk</code> gives that thread another model. Every ada reads her
+						<code>ada=haiku@desk</code> switches her there, in place, as any agent switches. In her
+						home, the model picker sets her recipe. Every ada reads her
 						instructions before each request and knows her other threads and the other bots, so
 						she's one person, not one conversation. At home she rewrites them herself, or makes
 						another bot. Forgetting her keeps every thread.
@@ -526,8 +524,7 @@ flowchart LR
 				<p>
 					When work spans machines, an agent on each one does its part, and any agent can read
 					another's work with <code>threads {thread, agent}</code>, word for word. Every hop stays a
-					message you can read, and nobody works from a summary. So each agent keeps one runner; for
-					more reach, its bash has ssh.
+					message you can read, and nobody works from a summary.
 				</p>
 				<pre class="mermaid">
 sequenceDiagram
