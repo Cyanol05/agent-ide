@@ -52,7 +52,6 @@ export function Settings() {
 								<b>${() => module.name}</b>
 								<small>${() => about(module.name) ?? 'Your own module.'}</small>
 							</div>
-							<span class="state">${() => (module.on ? 'on' : 'off')}</span>
 						</li>
 					`}<//
 				>

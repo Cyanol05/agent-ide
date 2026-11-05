@@ -1059,17 +1059,18 @@ body.chat {
 	/* Out of the way: a small arrow at the end of the runners row, under the thread list. */
 	.mode-toggle {
 		position: absolute;
-		bottom: 0.4rem;
+		bottom: 0.55rem;
 		left: calc(var(--list-width, 15rem) - 2.4rem);
 		z-index: 2;
 		margin: 0;
+		display: grid;
+		place-items: center;
 		width: 1.6rem;
 		height: 1.6rem;
 		padding: 0;
 		border-color: transparent;
 		background: none;
 		color: var(--mute);
-		font-size: 14px;
 
 		&:hover {
 			border-color: var(--line);
@@ -1431,7 +1432,7 @@ body.chat .thread-list > ul > li:active {
 			position: fixed;
 			left: auto;
 			right: 0.6rem;
-			bottom: calc(0.45rem + env(safe-area-inset-bottom));
+			bottom: calc(0.55rem + env(safe-area-inset-bottom));
 			z-index: 4;
 		}
 
@@ -1778,12 +1779,6 @@ body.chat .thread-list > ul > li:active {
 			display: block;
 			color: var(--mute);
 			font-size: 12px;
-		}
-
-		.state {
-			flex: none;
-			font-size: 12px;
-			color: var(--mute);
 		}
 
 		&.off b {
