@@ -96,7 +96,8 @@ export function server(core) {
 					}),
 					ctx,
 				),
-			async send({ input: { room, root, txn, body, entry } }, rt, ctx) {
+			/** One try; a failure that may pass sleeps in Pi, twice as long each time up to a minute, and tries again */
+			async send({ input: { room, root, txn, body, entry }, state: { checkpoint } }, rt, ctx) {
 				const content = {
 					msgtype: 'm.text',
 					body: body.slice(0, 30000),
@@ -111,38 +112,40 @@ export function server(core) {
 							}
 						: {}),
 				}
-				for (let wait = 1000; !rt.signal.aborted; wait = Math.min(wait * 2, 60000)) {
-					try {
-						await request(
-							'PUT',
-							`${roomPath(room)}/send/m.room.message/${txn}`,
-							content,
-							AbortSignal.any([rt.signal, AbortSignal.timeout(60000)]),
+				const wait = checkpoint.wait ?? 1000
+				try {
+					await request(
+						'PUT',
+						`${roomPath(room)}/send/m.room.message/${txn}`,
+						content,
+						AbortSignal.any([rt.signal, AbortSignal.timeout(60000)]),
+					)
+				} catch (error) {
+					if (rt.signal.aborted) return
+					console.error(`matrix send: ${error.message}`)
+					if (refused(error))
+						return rt.commit(
+							async (tx) => {
+								await core.post(tx, rt.conversationId, {
+									author: 'matrix',
+									body: `Could not deliver to Matrix room ${room}: ${error.message}`,
+									re: [entry],
+									error: true,
+								})
+								return {
+									status: 'terminal',
+									outcome: { status: 'failed', error: { message: error.message } },
+								}
+							},
+							ctx,
 						)
-						break
-					} catch (error) {
-						if (rt.signal.aborted) return
-						console.error(`matrix send: ${error.message}`)
-						if (refused(error))
-							return rt.commit(
-								async (tx) => {
-									await core.post(tx, rt.conversationId, {
-										author: 'matrix',
-										body: `Could not deliver to Matrix room ${room}: ${error.message}`,
-										re: [entry],
-										error: true,
-									})
-									return {
-										status: 'terminal',
-										outcome: { status: 'failed', error: { message: error.message } },
-									}
-								},
-								ctx,
-							)
-						await sleep(error.retryAfter ?? wait, rt.signal)
-					}
+					return rt.sleepUntil(
+						Date.now() + (error.retryAfter ?? wait),
+						{ phase: 'send', wait: Math.min(wait * 2, 60000) },
+						ctx,
+					)
 				}
-				if (!rt.signal.aborted) await rt.commit(() => finished(), ctx)
+				await rt.commit(() => finished(), ctx)
 			},
 		},
 		abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),

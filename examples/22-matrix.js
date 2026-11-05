@@ -95,6 +95,8 @@ const hs = createServer(async (req, res) => {
 		sends.push({ txn, body })
 		if (body.endsWith('@bot forbidden'))
 			return send({ errcode: 'M_FORBIDDEN', error: 'not allowed to send' }, 403)
+		if (body.endsWith('@bot flaky') && !sends.some((s) => s.txn === txn && s !== sends.at(-1)))
+			return send({ errcode: 'M_UNKNOWN', error: 'try again' }, 503)
 		if (!sent.has(txn)) {
 			sent.set(txn, said(BOT, body, content))
 			events.at(-1).unsigned = { transaction_id: txn }
@@ -427,6 +429,16 @@ check(
 		!sends.some((s) => s.body.startsWith('Could not deliver to Matrix room')),
 	'a restart keeps the failure once, without retrying the refusal or relaying the failure to Matrix',
 	JSON.stringify(sends.map((s) => s.body.slice(-80))),
+)
+
+/** A send that may pass sleeps and tries again, from Pi's stored sleep */
+const flaky = said('@oskar:fake', '@bot flaky')
+await until(async () => fromBot(flaky).length, 15000)
+const tries = sends.filter((s) => s.body.endsWith('@bot flaky'))
+check(
+	tries.length === 2 && tries[0].txn === tries[1].txn && fromBot(flaky).length === 1,
+	'a send the homeserver turns away for now is tried again, and lands once',
+	JSON.stringify(tries),
 )
 
 hs.closeAllConnections()
