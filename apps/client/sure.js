@@ -17,10 +17,10 @@ export function Sure(props) {
 				title=${() => props.title}
 				disabled=${() => props.disabled}
 				onBlur=${disarm}
-				onClick=${(e) => {
+				onClick=${(event) => {
 					if (!props.ask || armed()) {
 						disarm()
-						return props.onConfirm(e)
+						return props.onConfirm(event)
 					}
 					setArmed(true)
 					timer = setTimeout(disarm, 5000)

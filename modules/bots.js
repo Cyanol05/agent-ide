@@ -25,7 +25,7 @@ export function server(core) {
 		return Object.entries(await bots()).map(([name, bot]) => ({
 			name,
 			...bot,
-			status: core.busiest(all.filter((w) => w.name === name).map((w) => w.status)),
+			status: core.busiest(all.filter((job) => job.name === name).map((job) => job.status)),
 		}))
 	}
 
@@ -71,7 +71,7 @@ export function server(core) {
 	}
 
 	async function hiding(tx, threadId) {
-		const [name] = Object.entries(await tx.doc(Bots)).find(([, b]) => b.home === threadId) ?? []
+		const [name] = Object.entries(await tx.doc(Bots)).find(([, bot]) => bot.home === threadId) ?? []
 		if (name) throw new Error(`Thread ${threadId} is ${name}'s home; forget ${name} first`)
 	}
 
@@ -133,11 +133,11 @@ export function server(core) {
 			const bot = all?.[at.name]
 			if (!bot) return undefined
 			const threads = (await core.threadList(at.name)).filter(
-				(t) => t.id !== at.thread && t.agents.some((a) => a.name === at.name),
+				(thread) => thread.id !== at.thread && thread.agents.some((agent) => agent.name === at.name),
 			)
-			const where = threads.map((t) => `${t.id} "${t.title}"${t.id === bot.home ? ' (home)' : ''}`)
+			const where = threads.map((thread) => `${thread.id} "${thread.title}"${thread.id === bot.home ? ' (home)' : ''}`)
 			const home = at.thread === bot.home
-			const others = Object.keys(all).filter((n) => n !== at.name)
+			const others = Object.keys(all).filter((name) => name !== at.name)
 			return [
 				bot.instructions ||
 					(home
@@ -145,7 +145,7 @@ export function server(core) {
 						: ''),
 				`You are the bot ${at.name}, one person in every thread you're in.${where.length ? ` You're also in thread${where.length > 1 ? 's' : ''} ${where.join(', ')}; read one when it matters.` : ''}`,
 				others.length &&
-					agent.tools.some((t) => t.name === 'post') &&
+					agent.tools.some((tool) => tool.name === 'post') &&
 					`The other bot${others.length > 1 ? 's are' : ' is'} ${others.join(', ')}: post with \`to\` set to a name to ask one.`,
 				home && 'This is your home. Ask before you change your model.',
 			]

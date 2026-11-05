@@ -31,8 +31,8 @@ export const ThreadLink = (props) => html`
 			next.searchParams.set('thread', props.id)
 			return next.pathname + next.search
 		}}
-		onClick=${(e) => {
-			e.preventDefault()
+		onClick=${(event) => {
+			event.preventDefault()
 			openThread(props.id)
 		}}
 		>${() => props.children}</a
@@ -40,7 +40,7 @@ export const ThreadLink = (props) => html`
 `
 
 export function Thread(props) {
-	const thread = createMemo(() => threads.find((t) => t.id === props.id))
+	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
 	const messages = () => entries[props.id] ?? []
 	const titleClick = () => (current() !== props.id ? openThread(props.id) : drawer('side'))
 	let list,
@@ -51,22 +51,22 @@ export function Thread(props) {
 			if (!id) return
 			let first = true
 			const close = watch(
-				(m) => {
-					if (m.thread !== id) return
+				(message) => {
+					if (message.thread !== id) return
 					stuck = !list || list.scrollTop + list.clientHeight >= list.scrollHeight - 4
-					if (m.entries) {
+					if (message.entries) {
 						const snapshot = first
 						first = false
 						setEntries((all) => {
 							all[id] ??= []
-							if (snapshot) reconcile(m.entries, 'id')(all[id])
-							else all[id].push(...m.entries)
+							if (snapshot) reconcile(message.entries, 'id')(all[id])
+							else all[id].push(...message.entries)
 						})
 					}
-					if (m.live)
+					if (message.live)
 						setDoing((work) => {
 							work[id] ??= {}
-							work[id][m.agent] = m.live
+							work[id][message.agent] = message.live
 						})
 				},
 				(socket) => {
@@ -86,7 +86,7 @@ export function Thread(props) {
 	createEffect(
 		() => [
 			messages().length,
-			Object.values(doing[props.id] ?? {}).map((d) => messageText(d.message)),
+			Object.values(doing[props.id] ?? {}).map((live) => messageText(live.message)),
 		],
 		() => {
 			if (list && stuck) list.scrollTop = list.scrollHeight
@@ -108,9 +108,9 @@ export function Thread(props) {
 				tabindex="0"
 				title="Thread details and tools"
 				onClick=${titleClick}
-				onKeyDown=${(e) => {
-					if (e.key === 'Enter' || e.key === ' ') {
-						e.preventDefault()
+				onKeyDown=${(event) => {
+					if (event.key === 'Enter' || event.key === ' ') {
+						event.preventDefault()
 						titleClick()
 					}
 				}}
@@ -186,8 +186,8 @@ function Message(props) {
 	const elsewhere = () => data().from && data().from !== props.thread
 	const forks = () =>
 		threads.filter(
-			(t) =>
-				!t.hidden && forkedFrom(t) === props.thread && t.conversation.parent.at === props.entry.id,
+			(thread) =>
+				!thread.hidden && forkedFrom(thread) === props.thread && thread.conversation.parent.at === props.entry.id,
 		)
 	return html`
 		<li
@@ -241,9 +241,9 @@ function Message(props) {
 				</details>
 			<//>
 			<${For} each=${() => forks()}
-				>${(f) => html`
+				>${(fork) => html`
 					<div class="links">
-						<${ThreadLink} id=${() => f.id}>${() => `forked → ${f.title}`}<//>
+						<${ThreadLink} id=${() => fork.id}>${() => `forked → ${fork.title}`}<//>
 					</div>
 				`}<//
 			>

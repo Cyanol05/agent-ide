@@ -37,9 +37,9 @@ const [compose, setCompose] = createRoot(() =>
 )
 /** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
 const pick = () => compose.picks[current() ?? 'new'] ?? null
-const here = () => threads.find((t) => t.id === current())?.agents ?? []
+const here = () => threads.find((thread) => thread.id === current())?.agents ?? []
 /** The names the thread asked last */
-const lastTo = () => (entries[current()] ?? []).findLast((e) => e.data.to?.length)?.data.to
+const lastTo = () => (entries[current()] ?? []).findLast((event) => event.data.to?.length)?.data.to
 const fallback = (runner) =>
 	compose.settings[runner.name] ?? { runner: runner.name, model: runner.model, thinkingLevel: 'low' }
 /** Whom the next message asks as the agent: in a bot's home the bot, else the pick, else the thread's agent as it runs */
@@ -47,9 +47,9 @@ export const agent = () => {
 	const bot = homeBot(current())
 	if (bot) return botAgent(bot)
 	if (pick()) return pick().agent
-	if (lastTo() && !lastTo().some((n) => n.includes('@'))) return null
-	const own = here().find((a) => a.to && !a.to.name)?.to
-	const first = runners.find((r) => r.online) ?? runners[0]
+	if (lastTo() && !lastTo().some((name) => name.includes('@'))) return null
+	const own = here().find((agent) => agent.to && !agent.to.name)?.to
+	const first = runners.find((runner) => runner.online) ?? runners[0]
 	return own ?? (first?.model ? fallback(first) : null)
 }
 /** The bots it asks beside it: those picked, or those the thread asked last, as they run */
@@ -58,15 +58,15 @@ const askedBots = () =>
 		? []
 		: (pick()?.bots ??
 			here()
-				.map((a) => a.to)
+				.map((agent) => agent.to)
 				.filter((to) => to?.name && lastTo()?.includes(to.name)))
 export const recipients = () => [agent(), ...askedBots()].filter(Boolean)
 /** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
 export const toFor = (runner) => (agent()?.runner === runner.name ? agent() : fallback(runner))
 const setPick = (to, bots, typed = null) =>
-	setCompose((s) => {
-		s.picks[current() ?? 'new'] = { agent: to, bots, typed }
-		if (to && !to.name) s.settings[to.runner] = to
+	setCompose((store) => {
+		store.picks[current() ?? 'new'] = { agent: to, bots, typed }
+		if (to && !to.name) store.settings[to.runner] = to
 	})
 /** Choosing a model replaces the agent's pick and keeps the bots; in a bot's home, it is the bot's own model */
 export function choose(to, always = true) {
@@ -76,7 +76,7 @@ export function choose(to, always = true) {
 			.then(() => refresh(bots))
 			.catch(report)
 	if (always || agent()?.runner === to.runner) setPick(to, snapshot(askedBots()))
-	else setCompose((s) => void (s.settings[to.runner] = to))
+	else setCompose((store) => void (store.settings[to.runner] = to))
 }
 /** A runner's settings change the agent's pick only when the agent is on that runner */
 export const configure = (to) => choose(to, false)
@@ -88,7 +88,7 @@ export const openPicker = (anchor) => lend?.(anchor)
 export function Composer(props) {
 	let input, picker, button, chooser, anchor
 	const active = () => current() === props.thread
-	const busy = () => threads.find((t) => t.id === current())?.status === 'working'
+	const busy = () => threads.find((thread) => thread.id === current())?.status === 'working'
 	createEffect(active, (on) => {
 		if (!on) return
 		input.focus()
@@ -103,8 +103,8 @@ export function Composer(props) {
 		for (const file of files)
 			try {
 				const image = await imageContent(file)
-				setCompose((s) => {
-					s.images.push(image)
+				setCompose((store) => {
+					store.images.push(image)
 				})
 			} catch (error) {
 				report(error)
@@ -113,21 +113,21 @@ export function Composer(props) {
 	}
 	const imagesIn = (list) =>
 		[...(list ?? [])]
-			.filter((f) => f.kind !== 'string')
-			.map((f) => f.getAsFile?.() ?? f)
-			.filter((f) => f?.type.startsWith('image/'))
-	const submit = async (e) => {
-		e.preventDefault()
+			.filter((file) => file.kind !== 'string')
+			.map((file) => file.getAsFile?.() ?? file)
+			.filter((file) => file?.type.startsWith('image/'))
+	const submit = async (event) => {
+		event.preventDefault()
 		if (compose.sending || !recipients().length) return
 		if (!compose.draft.trim() && !compose.images.length) return
 		const body = compose.draft,
 			images = snapshot(compose.images),
 			to = snapshot(recipients())
 		let id = current()
-		setCompose((s) => {
-			s.sending = true
-			s.draft = ''
-			s.images = []
+		setCompose((store) => {
+			store.sending = true
+			store.draft = ''
+			store.images = []
 		})
 		try {
 			id ??= await createThread(body.slice(0, 60) || 'An image')
@@ -137,27 +137,27 @@ export function Composer(props) {
 				...(images.length && { images }),
 			})
 		} catch (error) {
-			setCompose((s) => {
-				if (latest(current) !== id || s.draft || s.images.length) return
-				s.draft = body
-				s.images = images
+			setCompose((store) => {
+				if (latest(current) !== id || store.draft || store.images.length) return
+				store.draft = body
+				store.images = images
 			})
 			report(error)
 		} finally {
-			setCompose((s) => {
-				s.sending = false
+			setCompose((store) => {
+				store.sending = false
 			})
 		}
 	}
-	const typeRecipients = (e) => {
-		const text = e.currentTarget.value
+	const typeRecipients = (event) => {
+		const text = event.currentTarget.value
 		const next = text
 			.split(',')
-			.map((s) => s.trim())
+			.map((text) => text.trim())
 			.filter(Boolean)
-			.map((s) => {
-				const bot = bots.find((b) => b.name === s)
-				return here().find((a) => a.name === s)?.to ?? (bot ? botAgent(bot) : agentTo(s))
+			.map((text) => {
+				const bot = bots.find((bot) => bot.name === text)
+				return here().find((agent) => agent.name === text)?.to ?? (bot ? botAgent(bot) : agentTo(text))
 			})
 		setPick(next.find((to) => !to.name) ?? null, next.filter((to) => to.name), text)
 	}
@@ -165,13 +165,13 @@ export function Composer(props) {
 		<form
 			class=${() => ({ compose: active(), elsewhere: !active() })}
 			onSubmit=${submit}
-			onDragOver=${(e) => {
-				if ([...e.dataTransfer.types].includes('Files')) e.preventDefault()
+			onDragOver=${(event) => {
+				if ([...event.dataTransfer.types].includes('Files')) event.preventDefault()
 			}}
-			onDrop=${(e) => {
-				const files = imagesIn(e.dataTransfer.files)
+			onDrop=${(event) => {
+				const files = imagesIn(event.dataTransfer.files)
 				if (!files.length) return
-				e.preventDefault()
+				event.preventDefault()
 				openThread(props.thread)
 				add(files)
 			}}
@@ -179,15 +179,15 @@ export function Composer(props) {
 			<${Show} when=${() => active() && compose.images.length}>
 				<ul class="images" aria-label="Images to send">
 					<${For} each=${() => compose.images}
-						>${(image, i) => html`
+						>${(image, index) => html`
 							<li>
 								<img src=${() => imageUrl(image)} alt="" />
 								<button
 									type="button"
 									aria-label="Take this image off"
 									onClick=${(_e) =>
-										setCompose((s) => {
-											s.images.splice(i(), 1)
+										setCompose((store) => {
+											store.images.splice(index(), 1)
 										})}
 								>
 									×
@@ -213,17 +213,17 @@ export function Composer(props) {
 					onFocus=${() => {
 						if (!active()) openThread(props.thread)
 					}}
-					onPaste=${(e) => {
-						const files = imagesIn(e.clipboardData?.items)
+					onPaste=${(event) => {
+						const files = imagesIn(event.clipboardData?.items)
 						if (!files.length) return
-						e.preventDefault()
+						event.preventDefault()
 						add(files)
 					}}
-					onInput=${(e) => {
+					onInput=${(event) => {
 						// What it asks stays as it was when the typing started
 						if (!pick() && !homeBot(current())) setPick(snapshot(agent()), snapshot(askedBots()))
-						setCompose((s) => {
-							s.draft = e.currentTarget.value
+						setCompose((store) => {
+							store.draft = event.currentTarget.value
 						})
 					}}
 				/>
@@ -257,15 +257,15 @@ export function Composer(props) {
 					multiple
 					hidden
 					ref=${(el) => (chooser = el)}
-					onChange=${(e) => {
-						add(imagesIn(e.currentTarget.files))
-						e.currentTarget.value = ''
+					onChange=${(event) => {
+						add(imagesIn(event.currentTarget.files))
+						event.currentTarget.value = ''
 					}}
 				/>
 				<${Show}
 					when=${() =>
 						active() &&
-						threads.some((t) => t.id === current() && ['working', 'blocked'].includes(t.status))}
+						threads.some((thread) => thread.id === current() && ['working', 'blocked'].includes(thread.status))}
 				>
 					<button
 						type="button"
@@ -301,18 +301,18 @@ export function Composer(props) {
 				class="model-picker"
 				popover
 				ref=${(el) => (picker = el)}
-				onToggle=${(e) => {
-					button.setAttribute('aria-expanded', String(e.newState === 'open'))
-					if (e.newState === 'open') placePopover(picker, anchor ?? button)
+				onToggle=${(event) => {
+					button.setAttribute('aria-expanded', String(event.newState === 'open'))
+					if (event.newState === 'open') placePopover(picker, anchor ?? button)
 					else anchor = button
 				}}
 			>
 				<ul>
 					<${For}
-						each=${() => runners.filter((r) => r.online)}
+						each=${() => runners.filter((runner) => runner.online)}
 						fallback=${html`<li class="mute">No runner is online.</li>`}
 					>
-						${(r) => PickerRunner(r, () => picker.hidePopover())}
+						${(runner) => PickerRunner(runner, () => picker.hidePopover())}
 					<//>
 					<${Show} when=${() => !homeBot(current())}>
 						<${Show} when=${() => bots.length}
@@ -330,8 +330,8 @@ export function Composer(props) {
 					title="model:thinking@runner, and any bots' names, comma between them"
 					value=${() => pick()?.typed ?? recipients().map(formatAgent).join(', ')}
 					onInput=${typeRecipients}
-					onKeyDown=${(e) => {
-						if (e.key === 'Enter') e.preventDefault()
+					onKeyDown=${(event) => {
+						if (event.key === 'Enter') event.preventDefault()
 					}}
 				/>
 				<//>
@@ -348,8 +348,8 @@ function PickerBot(bot, close) {
 			<button
 				type="button"
 				class=${() => ['model', { on: selected() }]}
-				onClick=${(e) => {
-					if (!e.shiftKey) return (setPick(null, [botAgent(bot)]), close())
+				onClick=${(event) => {
+					if (!event.shiftKey) return (setPick(null, [botAgent(bot)]), close())
 					const others = askedBots().filter((to) => to.name !== bot.name)
 					setPick(snapshot(agent()), selected() ? others : [...others, botAgent(bot)])
 				}}
@@ -425,7 +425,7 @@ function PickerRunner(runner, close) {
 				<select
 					aria-label="Folder"
 					value=${() => to().dir ?? ''}
-					onChange=${(e) => configure({ ...to(), dir: e.currentTarget.value || undefined })}
+					onChange=${(event) => configure({ ...to(), dir: event.currentTarget.value || undefined })}
 				>
 					<${For} each=${() => runner.folders}
 						>${(folder) => html`

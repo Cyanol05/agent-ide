@@ -33,8 +33,8 @@ export function BotSettings(props) {
 	)
 	const elsewhere = () =>
 		threads.filter(
-			(t) =>
-				t.id !== props.bot.home && !t.hidden && t.agents.some((a) => a.name === props.bot.name),
+			(thread) =>
+				thread.id !== props.bot.home && !thread.hidden && thread.agents.some((agent) => agent.name === props.bot.name),
 		)
 	return html`
 		<div class="bot">
@@ -48,7 +48,7 @@ export function BotSettings(props) {
 				aria-label="Bot instructions"
 				placeholder="Who it is, in its words or yours"
 				value=${() => instructions()}
-				onInput=${(e) => setInstructions(e.currentTarget.value)}
+				onInput=${(event) => setInstructions(event.currentTarget.value)}
 				onChange=${() =>
 					api('/api/bots', { name: props.bot.name, instructions: instructions() })
 						.then(() => refresh(bots))
@@ -59,14 +59,14 @@ export function BotSettings(props) {
 				type="button"
 				class="model"
 				title="The model it joins new threads with"
-				onClick=${(e) => openPicker(e.currentTarget)}
+				onClick=${(event) => openPicker(event.currentTarget)}
 			>
 				${() => formatAgent(props.bot.to)}
 			</button>
 			<${Show} when=${() => elsewhere().length}>
 				<h3 class="also">Also in</h3>
 				<ul class="thread-family">
-					<${For} each=${() => elsewhere()}>${(t) => html`<${ThreadItem} thread=${() => t} />`}<//>
+					<${For} each=${() => elsewhere()}>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//>
 				</ul>
 			<//>
 			<${Sure}
@@ -78,8 +78,8 @@ export function BotSettings(props) {
 					try {
 						await api(`/api/bots/${encodeURIComponent(props.bot.name)}`, undefined, 'DELETE')
 						refresh(bots)
-					} catch (e) {
-						report(e)
+					} catch (failure) {
+						report(failure)
 					}
 				}}
 				>Forget this bot<//
@@ -105,14 +105,14 @@ export function NewBot(props) {
 				class=${() => ({ bad: !!error() })}
 				title=${() => error() || 'How anyone asks it, in any thread'}
 				value=${() => name()}
-				onInput=${(e) => setName(e.currentTarget.value)}
+				onInput=${(event) => setName(event.currentTarget.value)}
 				onBlur=${() => {
 					if (!saving()) props.onDone()
 				}}
-				onKeyDown=${async (e) => {
-					if (e.key === 'Escape') return props.onDone()
-					if (e.key !== 'Enter' || saving()) return
-					e.preventDefault()
+				onKeyDown=${async (event) => {
+					if (event.key === 'Escape') return props.onDone()
+					if (event.key !== 'Enter' || saving()) return
+					event.preventDefault()
 					setSaving(true)
 					try {
 						const pick = snapshot(agent())

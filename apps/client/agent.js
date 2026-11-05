@@ -38,12 +38,12 @@ export const authorLabel = (author) =>
 /** What an agent is doing, as the server sends it */
 export const messageText = (message) =>
 	(message?.content ?? [])
-		.filter((b) => b.type === 'text')
-		.map((b) => b.text)
+		.filter((block) => block.type === 'text')
+		.map((block) => block.text)
 		.join('')
 export const lastToolCall = (doing) => {
-	const t = doing?.run && doing.tools.at(-1)
-	if (!t) return ''
-	const a = t.args ?? {}
-	return `${t.name} ${a.command ?? a.path ?? a.pattern ?? a.query ?? a.body ?? ''}`.trim()
+	const tool = doing?.run && doing.tools.at(-1)
+	if (!tool) return ''
+	const args = tool.args ?? {}
+	return `${tool.name} ${args.command ?? args.path ?? args.pattern ?? args.query ?? args.body ?? ''}`.trim()
 }

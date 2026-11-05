@@ -79,10 +79,10 @@ writeFileSync(lock, String(process.pid))
 process.on('exit', () => Number(readFileSync(lock, 'utf8')) === process.pid && rmSync(lock))
 /** PORT, or 3000 and up to the first free one */
 let port = Number(process.env.PORT || 3000)
-const free = (p) =>
+const free = (candidate) =>
 	new Promise((resolve) => {
 		const probe = http.createServer().once('error', () => resolve(false))
-		probe.listen(p, '127.0.0.1', () => probe.close(() => resolve(true)))
+		probe.listen(candidate, '127.0.0.1', () => probe.close(() => resolve(true)))
 	})
 if (!process.env.PORT) while (!(await free(port))) port++
 const KIND = 'agent-ide.message'
@@ -173,15 +173,15 @@ const Admit = defineTask({
 			const to = await agentOf(agent)
 			await runners.online(to.runner, rt.signal)
 			const { unseen, note } = recipientOf(await thread(threadId), agent)
-			const held = unseen.filter((m) => m <= upTo)
+			const held = unseen.filter((id) => id <= upTo)
 			if (!held.length) return rt.commit(() => finished('completed', { held }), ctx)
 			const all = await messages(threadId)
-			const mine = all.filter((e) => held.includes(e.id))
+			const mine = all.filter((entry) => held.includes(entry.id))
 			const told = catchUp
 				? await catchUp(threadId, mine, all, agent)
 				: mine.map(said).join('\n\n')
 			const text = note ? `${note}\n\n${told}` : told
-			const images = mine.flatMap((e) => e.data.images ?? [])
+			const images = mine.flatMap((entry) => entry.data.images ?? [])
 			const content = images.length ? [{ type: 'text', text }, ...images] : text
 			const handle = await rt.conversation(agent, ctx)
 			const entry = { kind: DELIVERY, data: { held } }
@@ -194,7 +194,7 @@ const Admit = defineTask({
 					whenBusy: steer ? 'steer' : 'followUp',
 				})
 				const recipient = recipientOf(await tx.doc(Thread, threadId), agent)
-				recipient.unseen = recipient.unseen.filter((m) => !held.includes(m))
+				recipient.unseen = recipient.unseen.filter((id) => !held.includes(id))
 				if (note && recipient.note === note) delete recipient.note
 				return finished('completed', { submission, held, ...(note ? { note } : {}) })
 			}, ctx)
@@ -328,17 +328,17 @@ const types = {
 	'.woff2': 'font/woff2',
 }
 const files = (await readdir(new URL('./apps/client/', import.meta.url), { recursive: true })).map(
-	(f) => f.split(path.sep).join('/'),
+	(file) => file.split(path.sep).join('/'),
 )
 const clientFiles = new Map(
 	await Promise.all(
 		files
-			.filter((f) => types[path.extname(f)])
-			.map(async (f) => [
-				`/${f}`,
+			.filter((file) => types[path.extname(file)])
+			.map(async (file) => [
+				`/${file}`,
 				{
-					type: types[path.extname(f)],
-					body: await readFile(new URL(`./apps/client/${f}`, import.meta.url)),
+					type: types[path.extname(file)],
+					body: await readFile(new URL(`./apps/client/${file}`, import.meta.url)),
 				},
 			]),
 	),
@@ -430,8 +430,8 @@ const threadIds = async () =>
 			commit((tx) => tx.scanConversations({ order: 'descending' }, 500, cursor)),
 		)
 	)
-		.filter((c) => !c.owner)
-		.map((c) => c.id)
+		.filter((conversation) => !conversation.owner)
+		.map((conversation) => conversation.id)
 
 const user = (req) => speaker(req.headers['x-user'])
 
@@ -543,22 +543,22 @@ async function agentOf(id, key, tx) {
 /** One status for an agent, a thread, a runner or a bot: `working`, `blocked` while its runner is offline, or `idle` */
 const STATUSES = ['idle', 'blocked', 'working']
 /** Of several, the busiest */
-const busiest = (statuses) => STATUSES[Math.max(0, ...statuses.map((s) => STATUSES.indexOf(s)))]
+const busiest = (statuses) => STATUSES[Math.max(0, ...statuses.map((status) => STATUSES.indexOf(status)))]
 /**
  * Whatever works right now, from Pi's live tasks: each agent answering and each `$ cmd` running, once for every list
  * @returns {Promise<{ thread: number, conversation?: number, runner: string, name?: string, status: string }[]>}
  */
 async function work() {
-	const live = (await liveTasks()).filter((t) =>
-		[Deliver.definition.name, Shell.definition.name].includes(t.kind),
+	const live = (await liveTasks()).filter((task) =>
+		[Deliver.definition.name, Shell.definition.name].includes(task.kind),
 	)
 	return Promise.all(
-		live.map(async (t) => {
-			const shell = t.kind === Shell.definition.name
-			const to = shell ? t.input.to : await agentOf(t.input.agent)
+		live.map(async (task) => {
+			const shell = task.kind === Shell.definition.name
+			const to = shell ? task.input.to : await agentOf(task.input.agent)
 			return {
-				thread: t.conversationId,
-				...(shell ? {} : { conversation: t.input.agent, name: agentName(to) }),
+				thread: task.conversationId,
+				...(shell ? {} : { conversation: task.input.agent, name: agentName(to) }),
 				runner: to?.runner,
 				status: to && runners.isOnline(to.runner) ? 'working' : 'blocked',
 			}
@@ -571,7 +571,7 @@ async function agentsIn(row, busy) {
 	return Promise.all(
 		Object.entries(row.agents).map(async ([key, { conversation }]) => {
 			const to = await agentOf(conversation, key)
-			const status = busiest(busy.filter((w) => w.conversation === conversation).map((w) => w.status))
+			const status = busiest(busy.filter((job) => job.conversation === conversation).map((job) => job.status))
 			return { name: to ? agentName(to) : key, conversation, to, status }
 		}),
 	)
@@ -588,22 +588,22 @@ async function entries(id) {
 }
 async function messages(id) {
 	await conversation(id)
-	return (await entries(id)).filter((e) => e.kind === KIND)
+	return (await entries(id)).filter((entry) => entry.kind === KIND)
 }
 /** Whom the thread asked last, as they are now */
 async function lastAsked(id) {
-	const names = (await messages(id)).findLast((e) => e.data.to)?.data.to ?? []
+	const names = (await messages(id)).findLast((entry) => entry.data.to)?.data.to ?? []
 	const { agents } = await thread(id)
 	return Promise.all(
-		names.map((n) =>
-			agents[keyOf(n)] ? agentOf(agents[keyOf(n)].conversation, keyOf(n)) : whom(id, n),
+		names.map((name) =>
+			agents[keyOf(name)] ? agentOf(agents[keyOf(name)].conversation, keyOf(name)) : whom(id, name),
 		),
 	)
 }
 
 /** An agent's own answer, which it never reads back */
-const ownAnswer = ({ data: m }, key) =>
-	keyOf(m.author) === key && !m.from && Boolean(m.answer || m.error)
+const ownAnswer = ({ data: message }, key) =>
+	keyOf(message.author) === key && !message.from && Boolean(message.answer || message.error)
 
 /**
  * Writes a message, inside the caller's commit, and gives each agent it asks a Deliver task with all it hasn't seen.
@@ -633,19 +633,19 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 						tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
 					)
 				)
-					.filter((e) => e.kind === KIND)
-					.map((e) => e.id)
+					.filter((entry) => entry.kind === KIND)
+					.map((entry) => entry.id)
 			: []
 	const entry = await tx.appendEntry(threadId, { kind: KIND, data })
-	for (const m of posted) await m(tx, threadId, entry)
+	for (const hook of posted) await hook(tx, threadId, entry)
 	for (const [key, agent] of Object.entries(row.agents))
 		if (!ownAnswer({ data }, key)) agent.unseen.push(entry.id)
-	for (const [i, name] of names.entries()) {
+	for (const [index, name] of names.entries()) {
 		const key = keyOf(name)
 		if (!row.agents[key]) {
 			row.agents[key] = await newAgent(tx, threadId, [...prior, entry.id])
-			await setUp(tx, row.agents[key].conversation, threadId, to[i])
-		} else await reconfigure(tx, row.agents[key], to[i])
+			await setUp(tx, row.agents[key].conversation, threadId, to[index])
+		} else await reconfigure(tx, row.agents[key], to[index])
 		const recipient = row.agents[key]
 		const { conversation: agent, unseen, admission: after } = recipient
 		if (!unseen.length) continue
@@ -716,12 +716,12 @@ const instructions = (key, threadId, tools) =>
 
 /** @returns {Recipient} */
 const recipientOf = (row, conversation) =>
-	Object.values(row.agents).find((a) => a.conversation === conversation)
+	Object.values(row.agents).find((candidate) => candidate.conversation === conversation)
 
 /** An input Pi withdrew before it was placed: its messages are unseen again, and its note untold */
 async function restore(tx, threadId, conversation, { held, note }) {
 	const recipient = recipientOf(await tx.doc(Thread, threadId), conversation)
-	recipient.unseen = [...new Set([...recipient.unseen, ...held])].sort((a, b) => a - b)
+	recipient.unseen = [...new Set([...recipient.unseen, ...held])].sort((left, right) => left - right)
 	if (note) recipient.note ??= note
 }
 
@@ -734,19 +734,19 @@ async function outcome(threadId, agent, settled, mine) {
 				await collect((cursor) =>
 					storage.scanSubmissions({ conversationId: agent }, 500, cursor, context),
 				)
-			).filter((r) => r.answer === settled.answer)
+			).filter((submission) => submission.answer === settled.answer)
 		: [settled]
 	if (group[0].id !== settled.id) return []
 	const { key, name } = await home(agent)
 	const ids = new Set(
 		done
-			? (await commit((tx) => Promise.all(group.map((r) => tx.entry(r.entry))))).flatMap(
-					(e) => e.data.held,
+			? (await commit((tx) => Promise.all(group.map((submission) => tx.entry(submission.entry))))).flatMap(
+					(entry) => entry.data.held,
 				)
 			: mine,
 	)
-	const held = (await messages(threadId)).filter((e) => ids.has(e.id))
-	const re = held.filter((e) => e.data.to?.some((n) => keyOf(n) === key)).map((e) => e.id)
+	const held = (await messages(threadId)).filter((entry) => ids.has(entry.id))
+	const re = held.filter((entry) => entry.data.to?.some((name) => keyOf(name) === key)).map((entry) => entry.id)
 	const body = done
 		? messageText((await commit((tx) => tx.entry(settled.answer)))?.model?.[0])
 		: `gave no answer: ${settled.reason}${settled.detail ? ` (${JSON.stringify(settled.detail)})` : ''}`
@@ -755,11 +755,11 @@ async function outcome(threadId, agent, settled, mine) {
 	const told = [
 		{ thread: threadId, data: { author: name, body, ...(re.length ? { re } : {}), ...result } },
 	]
-	const posts = held.filter((e) => e.data.from && !e.data.re)
+	const posts = held.filter((entry) => entry.data.from && !entry.data.re)
 	if (posts.length && reply)
 		return [
 			...told,
-			...(await reply(posts, threadId, name, body)).map((r) => ({ ...r, steer: true })),
+			...(await reply(posts, threadId, name, body)).map((answer) => ({ ...answer, steer: true })),
 		]
 	return told
 }
@@ -791,7 +791,7 @@ async function faulted({ task, reason }) {
 
 /** A thread's own status, or when idle, `done` or `error` for an answer its reader hasn't read; with no reader, anyone's read counts */
 async function status(id, reads, busy, reader) {
-	const now = busiest(busy.map((w) => w.status))
+	const now = busiest(busy.map((job) => job.status))
 	if (now !== 'idle') return now
 	const seen = new Set(reader ? [reads[reader]] : Object.values(reads))
 	const handle = await harness.conversation(id, context)
@@ -811,7 +811,7 @@ async function status(id, reads, busy, reader) {
 
 async function threadRow(id, reader, all) {
 	const { reads, ...row } = await thread(id)
-	const busy = all.filter((w) => w.thread === id)
+	const busy = all.filter((job) => job.thread === id)
 	const agents = await agentsIn(row, busy)
 	return {
 		id,
@@ -833,8 +833,8 @@ const threadList = async (reader) => {
 const threadView = async (id, reader) => {
 	const entries = await messages(id)
 	const row = await threadRow(id, reader, await work())
-	const wrote = entries.filter((e) => !e.data.answer && !e.data.error && !e.data.from)
-	return { ...row, people: [...new Set([...wrote.map((e) => e.data.author), ...row.readers])], entries }
+	const wrote = entries.filter((entry) => !entry.data.answer && !entry.data.error && !entry.data.from)
+	return { ...row, people: [...new Set([...wrote.map((entry) => entry.data.author), ...row.readers])], entries }
 }
 
 /** An agent's thread owns its conversation, through its Anchor */
@@ -842,7 +842,7 @@ async function home(conversationId) {
 	const threadId = (await storage.conversation(conversationId, context))?.owner?.conversationId
 	const row = threadId && (await thread(threadId))
 	const key =
-		row && Object.keys(row.agents).find((k) => row.agents[k].conversation === conversationId)
+		row && Object.keys(row.agents).find((key) => row.agents[key].conversation === conversationId)
 	if (!key) return null
 	const name = key === AGENT ? agentName(await agentOf(conversationId, key)) : key
 	return { thread: threadId, key, name }
@@ -895,7 +895,7 @@ async function postEntry(id, author, input) {
 				{ body, to },
 				(
 					await Promise.all(
-						Object.entries((await thread(id)).agents).map(([n, a]) => agentOf(a.conversation, n)),
+						Object.entries((await thread(id)).agents).map(([key, recipient]) => agentOf(recipient.conversation, key)),
 					)
 				).filter(Boolean),
 			),
@@ -922,12 +922,12 @@ async function postEntry(id, author, input) {
 /** Images as pi's ImageContent, which models take inline; the composer shrinks them to fit */
 function imageList(images) {
 	if (images === undefined || images === null) return null
-	const fits = (i) =>
-		i?.type === 'image' &&
-		/^image\/[\w.+-]+$/.test(i.mimeType) &&
-		typeof i.data === 'string' &&
-		i.data.length <= IMAGE_BYTES &&
-		/^[A-Za-z0-9+/]+={0,2}$/.test(i.data)
+	const fits = (image) =>
+		image?.type === 'image' &&
+		/^image\/[\w.+-]+$/.test(image.mimeType) &&
+		typeof image.data === 'string' &&
+		image.data.length <= IMAGE_BYTES &&
+		/^[A-Za-z0-9+/]+={0,2}$/.test(image.data)
 	if (!Array.isArray(images) || images.length > 8 || !images.every(fits))
 		throw new Error("images is a list of up to 8 of pi's ImageContent, base64, 4.5 MB each")
 	return images.length ? images.map(({ mimeType, data }) => ({ type: 'image', mimeType, data })) : null
@@ -952,7 +952,7 @@ async function createThread(author, { title, parent = null, tools = null, reques
 /** A thread's tools, as `pi --tools` takes them */
 function toolList(tools) {
 	if (tools === null || tools === undefined) return null
-	if (!Array.isArray(tools) || !tools.length || tools.some((t) => typeof t !== 'string'))
+	if (!Array.isArray(tools) || !tools.length || tools.some((tool) => typeof tool !== 'string'))
 		throw new Error('tools is a list of tool names')
 	const names = new Set(
 		registry
@@ -960,10 +960,10 @@ function toolList(tools) {
 			.tools()
 			.map(({ tool }) => tool.name),
 	)
-	const changes = tools.filter((t) => /^[+-]/.test(t))
+	const changes = tools.filter((tool) => /^[+-]/.test(tool))
 	if (changes.length && changes.length < tools.length)
 		throw new Error('tool names cannot be mixed with +name or -name entries')
-	const unknown = tools.map((t) => t.replace(/^[+-]/, '')).filter((t) => !names.has(t))
+	const unknown = tools.map((tool) => tool.replace(/^[+-]/, '')).filter((tool) => !names.has(tool))
 	if (unknown.length)
 		throw new Error(`No tool ${unknown.join(', ')}; there are ${[...names].join(', ')}`)
 	return tools
@@ -976,8 +976,8 @@ function toolsOf(tools) {
 		.tools()
 		.map(({ tool }) => tool)
 	const named = (list) => all.filter((tool) => list.includes(tool.name))
-	return tools.every((t) => /^[+-]/.test(t))
-		? { remove: named(tools.filter((t) => t.startsWith('-')).map((t) => t.slice(1))) }
+	return tools.every((tool) => /^[+-]/.test(tool))
+		? { remove: named(tools.filter((tool) => tool.startsWith('-')).map((tool) => tool.slice(1))) }
 		: named(tools)
 }
 
@@ -987,7 +987,7 @@ async function seenBy(id, cut) {
 	const entries = await collect((cursor) =>
 		handle.entries({ maxEntryId: cut, order: 'ascending' }, 500, cursor, context),
 	)
-	return entries.filter((e) => e.kind === DELIVERY).flatMap((e) => e.data.held)
+	return entries.filter((entry) => entry.kind === DELIVERY).flatMap((entry) => entry.data.held)
 }
 
 async function setTitle(id, { title }) {
@@ -1014,7 +1014,7 @@ async function setTools(id, { tools }) {
 
 /** Forks history, the agent and bots at `at`, but keeps the source's current thread-wide tools */
 async function forkThread(id, { at, title }) {
-	const shown = (await messages(id)).filter((e) => e.id <= Number(at))
+	const shown = (await messages(id)).filter((entry) => entry.id <= Number(at))
 	const answers = {}
 	const asked = new Set()
 	for (const { data } of shown) {
@@ -1034,7 +1034,7 @@ async function forkThread(id, { at, title }) {
 			return {
 				key,
 				answer,
-				unseen: shown.filter((e) => !seen.has(e.id) && !ownAnswer(e, key)).map((e) => e.id),
+				unseen: shown.filter((entry) => !seen.has(entry.id) && !ownAnswer(entry, key)).map((entry) => entry.id),
 			}
 		}),
 	)
@@ -1059,7 +1059,7 @@ async function forkThread(id, { at, title }) {
 					row[key] = await newAgent(
 						tx,
 						forkId,
-						shown.filter((e) => !ownAnswer(e, key)).map((e) => e.id),
+						shown.filter((entry) => !ownAnswer(entry, key)).map((entry) => entry.id),
 					)
 					await setUp(tx, row[key].conversation, forkId, to)
 				}
@@ -1105,16 +1105,16 @@ const defaults = {
 	bots: false,
 }
 const modules = await load('server', defaults, core)
-for (const m of modules) if (m.extension) registry.install(m.extension)
+for (const module of modules) if (module.extension) registry.install(module.extension)
 /** One module answers each of these; two claiming one is a mistake, not an order */
 const hook = (name) => {
-	const [first, second] = modules.filter((m) => m[name])
+	const [first, second] = modules.filter((module) => module[name])
 	if (second)
 		throw new Error(`${name}: ${first.name} and ${second.name} both answer it; turn one off`)
 	return first?.[name]
 }
-const posted = modules.flatMap((m) => m.posted ?? [])
-const hiding = modules.flatMap((m) => m.hiding ?? [])
+const posted = modules.flatMap((module) => module.posted ?? [])
+const hiding = modules.flatMap((module) => module.hiding ?? [])
 const [route, reply, catchUp, recipe] = ['route', 'reply', 'catchUp', 'recipe'].map(hook)
 
 for (const [name, runner] of Object.entries(await known()))
@@ -1136,7 +1136,7 @@ async function hideThread(id) {
 	await conversation(id)
 	await commit(async (tx) => {
 		;(await tx.doc(Thread, id)).hidden = true
-		for (const m of hiding) await m(tx, id)
+		for (const hook of hiding) await hook(tx, id)
 	})
 	return { id }
 }
@@ -1167,8 +1167,8 @@ const routes = [
 			port,
 			file,
 			local: local(req),
-			modules: modules.map((m) => m.name),
-			off: Object.keys(defaults).filter((n) => !modules.some((m) => m.name === n)),
+			modules: modules.map((module) => module.name),
+			off: Object.keys(defaults).filter((name) => !modules.some((module) => module.name === name)),
 			threads: (await threadIds()).length,
 			runners: Object.keys(await keys()).length,
 			work: await harness.inspect(context),
@@ -1180,10 +1180,10 @@ const routes = [
 			const [all, last] = [await work(), await known()]
 			return Object.keys(await keys()).map((name) => {
 				const { models, offers, ...runner } = last[name] ?? {}
-				const here = all.filter((w) => w.runner === name)
+				const here = all.filter((job) => job.runner === name)
 				/** Its agents' statuses, by name, as a message names them */
 				const agents = {}
-				for (const w of here) if (w.name) agents[w.name] = busiest([agents[w.name], w.status].filter(Boolean))
+				for (const job of here) if (job.name) agents[job.name] = busiest([agents[job.name], job.status].filter(Boolean))
 				return {
 					name,
 					...runner,
@@ -1192,9 +1192,9 @@ const routes = [
 					models: Object.keys(models ?? {}),
 					online: runners.isOnline(name),
 					calls: runners.working(name),
-					status: busiest(here.map((w) => w.status)),
+					status: busiest(here.map((job) => job.status)),
 					agents,
-					busy: new Set(here.filter((w) => w.status === 'working').map((w) => w.thread)).size,
+					busy: new Set(here.filter((job) => job.status === 'working').map((job) => job.thread)).size,
 					outdated: Boolean(runner.version) && runner.version !== bundle.version,
 				}
 			})
@@ -1221,18 +1221,18 @@ const routes = [
 	],
 	['GET /api/conversations/:id', (req, id) => conversationView(id)],
 	...modules
-		.filter((m) => m.serve)
-		.flatMap((m) => [
-			[`GET /api/${m.name}`, (req, _, url) => m.serve(undefined, url.searchParams)],
+		.filter((module) => module.serve)
+		.flatMap((module) => [
+			[`GET /api/${module.name}`, (req, _, url) => module.serve(undefined, url.searchParams)],
 			[
-				`POST /api/${m.name}`,
-				async (req, _, url) => m.serve(undefined, url.searchParams, await input(req)),
+				`POST /api/${module.name}`,
+				async (req, _, url) => module.serve(undefined, url.searchParams, await input(req)),
 			],
-			...(m.remove ? [[`DELETE /api/${m.name}/:name`, (req, name) => m.remove(name)]] : []),
-			[`GET /api/threads/:id/${m.name}`, (req, id, url) => m.serve(id, url.searchParams)],
+			...(module.remove ? [[`DELETE /api/${module.name}/:name`, (req, name) => module.remove(name)]] : []),
+			[`GET /api/threads/:id/${module.name}`, (req, id, url) => module.serve(id, url.searchParams)],
 			[
-				`POST /api/threads/:id/${m.name}`,
-				async (req, id, url) => m.serve(id, url.searchParams, await input(req)),
+				`POST /api/threads/:id/${module.name}`,
+				async (req, id, url) => module.serve(id, url.searchParams, await input(req)),
 			],
 		]),
 ].map(([key, handle]) => [
@@ -1347,7 +1347,7 @@ function notify() {
 		flushing = undefined
 		nudge()
 		for (const socket of clients) socket.send('{}')
-		for (const m of modules) m.changed?.()
+		for (const module of modules) module.changed?.()
 	}, 100)
 }
 harness.observeCommits({ advance: notify, end: () => {} })
@@ -1360,12 +1360,12 @@ const watch = (socket, id) =>
 async function rewatch(socket, id) {
 	const old = socket.watching
 	socket.watching = undefined
-	for (const w of old ?? []) await w.stop()
+	for (const watch of old ?? []) await watch.stop()
 	const row = typeof id === 'number' && (await harness.watchDoc(Thread, id, context))
 	if (!row) return
 	const watches = (socket.watching = [row])
 	/** A watch that comes back after the socket moved on is stopped instead */
-	const keep = (w) => (socket.watching === watches ? (watches.push(w), true) : (w.stop(), false))
+	const keep = (watch) => (socket.watching === watches ? (watches.push(watch), true) : (watch.stop(), false))
 	const send = (message) => socket.send(JSON.stringify({ thread: id, ...message }))
 	const handle = await harness.conversation(id, context)
 	const messages = await handle.watch(context)
@@ -1377,10 +1377,10 @@ async function rewatch(socket, id) {
 		for (const { conversation: agent } of Object.values(agents)) {
 			if (followed.has(agent)) continue
 			followed.add(agent)
-			const w = await (await harness.conversation(agent, context)).watch(context, { min: 20 })
-			if (!keep(w)) return
-			send({ agent, live: doing(w.value) })
-			w.start(async ({ value }) => send({ agent, live: doing(value) }))
+			const watch = await (await harness.conversation(agent, context)).watch(context, { min: 20 })
+			if (!keep(watch)) return
+			send({ agent, live: doing(watch.value) })
+			watch.start(async ({ value }) => send({ agent, live: doing(value) }))
 		}
 	}
 	await follow(row.value.agents)
@@ -1397,15 +1397,15 @@ async function told(handle, watch, send) {
 	const tell = async (value) => {
 		let view = transcript.merge(value)
 		while (view.items[0]?.kind === 'earlier') view = await transcript.loadEarlier(context)
-		for (let gap; (gap = view.items.find((i) => i.kind === 'gap'));)
+		for (let gap; (gap = view.items.find((item) => item.kind === 'gap'));)
 			view = await transcript.fillGap(gap, context)
-		const fresh = view.items.flatMap((i) =>
-			i.kind === 'entry' && i.entry.id > newest ? [i.entry] : [],
+		const fresh = view.items.flatMap((item) =>
+			item.kind === 'entry' && item.entry.id > newest ? [item.entry] : [],
 		)
 		if (!fresh.length && !first) return
 		first = false
 		newest = fresh.at(-1)?.id ?? newest
-		send({ entries: fresh.filter((e) => e.kind === KIND) })
+		send({ entries: fresh.filter((entry) => entry.kind === KIND) })
 	}
 	await tell(watch.value)
 	watch.start(async ({ value }) => tell(value))
@@ -1414,8 +1414,8 @@ async function told(handle, watch, send) {
 function doing({ entries, docs }) {
 	const { run, generation, tools = [] } = docs['pi.live'] ?? {}
 	const calls = entries
-		.flatMap((e) => (e.model?.[0]?.role === 'assistant' ? e.model[0].content : []))
-		.filter((b) => b.type === 'toolCall')
+		.flatMap((entry) => (entry.model?.[0]?.role === 'assistant' ? entry.model[0].content : []))
+		.filter((block) => block.type === 'toolCall')
 	return {
 		run: Boolean(run),
 		message: generation?.message ?? null,
@@ -1423,7 +1423,7 @@ function doing({ entries, docs }) {
 			callId,
 			name,
 			status,
-			args: calls.find((c) => c.id === callId)?.arguments,
+			args: calls.find((call) => call.id === callId)?.arguments,
 		})),
 	}
 }
@@ -1446,7 +1446,7 @@ async function mintKey(name, server) {
 		throw new Error('name the runner: letters, digits, dot, dash or underscore')
 	if (process.env.HOST === '0.0.0.0' && loopback(new URL(server).hostname)) {
 		const interfaces = os.networkInterfaces()
-		const address = [...(interfaces.tailscale0 ?? []), ...Object.values(interfaces).flat()].find((a) => a.family === 'IPv4' && !a.internal)?.address
+		const address = [...(interfaces.tailscale0 ?? []), ...Object.values(interfaces).flat()].find((net) => net.family === 'IPv4' && !net.internal)?.address
 		if (address) server = server.replace(new URL(server).hostname, address)
 	}
 	const key = `air_${randomBytes(24).toString('base64url')}`
@@ -1528,22 +1528,22 @@ async function upgrade(req, raw, head) {
 		runners.disconnect(name)
 	}
 	sockets.set(name, socket)
-	const q = (param) => url.searchParams.get(param) || ''
+	const query = (param) => url.searchParams.get(param) || ''
 	const resolved = (await known())[name]?.models ?? {}
 	if (closed || sockets.get(name) !== socket) return
 	const runner = {
-		alias: q('alias'),
-		owner: q('owner') && speaker(q('owner')),
+		alias: query('alias'),
+		owner: query('owner') && speaker(query('owner')),
 		allow: url.searchParams.getAll('allow').map(speaker),
-		host: q('host'),
-		dir: q('dir') || '/',
+		host: query('host'),
+		dir: query('dir') || '/',
 		folders: url.searchParams.getAll('folder').length
 			? url.searchParams.getAll('folder')
-			: [q('dir') || '/'],
-		readOnly: q('readOnly') === '1',
-		version: q('version'),
-		model: q('model'),
-		modelError: q('modelError'),
+			: [query('dir') || '/'],
+		readOnly: query('readOnly') === '1',
+		version: query('version'),
+		model: query('model'),
+		modelError: query('modelError'),
 		offers: url.searchParams.getAll('offer'),
 		models: resolved,
 	}
@@ -1590,7 +1590,7 @@ async function connectSelf(url) {
 
 // A list of names alone replaces the defaults, so say which of them it left out.
 const off = (on) =>
-	Object.keys(defaults).filter((n) => defaults[n] === on && !modules.some((m) => m.name === n))
+	Object.keys(defaults).filter((name) => defaults[name] === on && !modules.some((module) => module.name === name))
 for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1']) {
 	const server = http.createServer(handleRequest)
 	server.on('upgrade', (req, socket, head) =>
@@ -1609,8 +1609,8 @@ for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1'])
 			host === '0.0.0.0'
 				? Object.values(os.networkInterfaces())
 						.flat()
-						.filter((a) => a.family === 'IPv4')
-						.map((a) => a.address)
+						.filter((net) => net.family === 'IPv4')
+						.map((net) => net.address)
 				: [host === '::1' ? '[::1]' : host]
 		// Keep listening on IPv6 localhost without printing a second local URL.
 		if (process.env.HOST || host !== '::1') {
@@ -1620,7 +1620,7 @@ for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1'])
 			say(
 				'modules',
 				[
-					modules.map((m) => m.name).join(' ') || 'none',
+					modules.map((module) => module.name).join(' ') || 'none',
 					...(off(false).length ? [`off: ${off(false).join(' ')}`] : []),
 					...(off(true).length ? [`defaults left out: ${off(true).join(' ')}`] : []),
 				].join(' · '),

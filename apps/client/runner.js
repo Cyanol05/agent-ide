@@ -12,15 +12,15 @@ import { Dot } from './dot.js'
 export function Runner(props) {
 	const runner = () => props.runner
 	const to = () => toFor(runner())
-	const agents = () => props.agents.filter((a) => a.to.runner === runner().name)
+	const agents = () => props.agents.filter((agent) => agent.to.runner === runner().name)
 	const models = () => [
 		...new Set([to().model, runner().model, ...(runner().offers ?? [])].filter(Boolean)),
 	]
 	const others = () =>
-		[...new Map(agents().map((a) => [agentName(a.to), a.to])).values()].filter(
+		[...new Map(agents().map((agent) => [agentName(agent.to), agent.to])).values()].filter(
 			(other) => agentName(other) !== agentName(to()),
 		)
-	const stop = (e) => e.stopPropagation()
+	const stop = (event) => event.stopPropagation()
 	const pick = () => choose(to())
 	return html`
 		<div
@@ -38,10 +38,10 @@ export function Runner(props) {
 			aria-label=${() => runner().name}
 			title="Click to ask it"
 			onClick=${pick}
-			onKeyDown=${(e) => {
-				if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-					e.preventDefault()
-					pick(e)
+			onKeyDown=${(event) => {
+				if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+					event.preventDefault()
+					pick(event)
 				}
 			}}
 		>
@@ -64,7 +64,7 @@ export function Runner(props) {
 							title="model"
 							value=${() => to().model ?? ''}
 							onClick=${stop}
-							onChange=${(e) => configure({ ...to(), model: e.currentTarget.value })}
+							onChange=${(event) => configure({ ...to(), model: event.currentTarget.value })}
 						>
 							<${For} each=${() => models()}
 								>${(model) => html`<option value=${() => model}>${() => model}</option>`}<//
@@ -78,10 +78,10 @@ export function Runner(props) {
 							value=${() => THINKING_LEVELS.indexOf(to().thinkingLevel) + 1}
 							title=${() => to().thinkingLevel || 'default thinking'}
 							onClick=${stop}
-							onInput=${(e) =>
+							onInput=${(event) =>
 								configure({
 									...to(),
-									thinkingLevel: THINKING_LEVELS[e.currentTarget.value - 1],
+									thinkingLevel: THINKING_LEVELS[event.currentTarget.value - 1],
 								})}
 						/>
 					<//>
@@ -104,10 +104,10 @@ const dotOf = (runner) =>
 
 function AgentRow(props) {
 	const status = () => props.runner.agents?.[agentName(props.to)] ?? 'idle'
-	const agents = () => props.agents.filter((a) => agentName(a.to) === agentName(props.to))
+	const agents = () => props.agents.filter((agent) => agentName(agent.to) === agentName(props.to))
 	const call = () =>
 		agents()
-			.map((a) => lastToolCall(doing[a.thread]?.[a.conversation]))
+			.map((agent) => lastToolCall(doing[agent.thread]?.[agent.conversation]))
 			.find(Boolean)
 	return html`
 		<li data-agent=${() => agentName(props.to)}>
@@ -125,7 +125,7 @@ function AgentRow(props) {
 /** The chat's runner list: who's there, and where you connect another machine or revoke one. */
 export function RunnerList() {
 	let button, panel
-	const online = () => runners.filter((r) => r.online).length
+	const online = () => runners.filter((runner) => runner.online).length
 	return html`
 		<button
 			class="runner-toggle"
@@ -134,7 +134,7 @@ export function RunnerList() {
 			onClick=${() => panel.togglePopover()}
 		>
 			<${For} each=${() => runners}
-				>${(r) => html`<${Dot} state=${() => (r.online ? 'on' : '')} />`}<//
+				>${(runner) => html`<${Dot} state=${() => (runner.online ? 'on' : '')} />`}<//
 			>
 			<span>${() => `${online()} runner${online() === 1 ? '' : 's'} online`}</span>
 		</button>
@@ -142,12 +142,12 @@ export function RunnerList() {
 			class="runner-list"
 			popover
 			ref=${(el) => (panel = el)}
-			onToggle=${(e) => {
-				if (e.newState === 'open') placePopover(panel, button)
+			onToggle=${(event) => {
+				if (event.newState === 'open') placePopover(panel, button)
 			}}
 		>
 			<ul>
-				<${For} each=${() => runners}>${(r) => html`<${RunnerItem} runner=${() => r} />`}<//>
+				<${For} each=${() => runners}>${(runner) => html`<${RunnerItem} runner=${() => runner} />`}<//>
 			</ul>
 			<${ConnectRunner} />
 		</div>
@@ -156,22 +156,22 @@ export function RunnerList() {
 
 function RunnerItem(props) {
 	const work = () =>
-		threads.flatMap((t) =>
-			t.agents
-				.filter((a) => a.to.runner === props.runner.name && a.status === 'working')
-				.map((a) => ({ thread: t.id, title: t.title, conversation: a.conversation })),
+		threads.flatMap((thread) =>
+			thread.agents
+				.filter((agent) => agent.to.runner === props.runner.name && agent.status === 'working')
+				.map((agent) => ({ thread: thread.id, title: thread.title, conversation: agent.conversation })),
 		)
 	const call = () =>
 		work()
-			.map((a) => lastToolCall(doing[a.thread]?.[a.conversation]))
+			.map((agent) => lastToolCall(doing[agent.thread]?.[agent.conversation]))
 			.find(Boolean)
 	const revoke = async (_e) => {
 		const { name } = props.runner
 		try {
 			await api(`/api/runners/${encodeURIComponent(name)}`, undefined, 'DELETE')
 			if (minted()?.name === name) setMinted(null)
-		} catch (e) {
-			report(e)
+		} catch (failure) {
+			report(failure)
 		}
 	}
 	return html`
@@ -187,7 +187,7 @@ function RunnerItem(props) {
 								? 'offline'
 								: call() ||
 									`working in ${work()
-										.map((a) => a.title || 'untitled')
+										.map((work) => work.title || 'untitled')
 										.join(', ')}`}</small
 					>
 				<//>
@@ -218,9 +218,9 @@ export function ConnectRunner(props) {
 	const [copied, setCopied] = createSignal(false)
 	// A new key for an online runner cuts it off, so the button asks first, in its own words.
 	const [cutting, setCutting] = createSignal(false)
-	const existing = () => runners.find((r) => r.name === name().trim())
-	const submit = async (e) => {
-		e.preventDefault()
+	const existing = () => runners.find((runner) => runner.name === name().trim())
+	const submit = async (event) => {
+		event.preventDefault()
 		if (existing()?.online && !cutting()) return setCutting(true)
 		setCutting(false)
 		setBusy(true)
@@ -229,8 +229,8 @@ export function ConnectRunner(props) {
 			setMinted(await api('/api/runners', { name: name().trim() }))
 			setName('')
 			setCopied(false)
-		} catch (e) {
-			setError(e.message)
+		} catch (failure) {
+			setError(failure.message)
 		} finally {
 			setBusy(false)
 		}
@@ -256,8 +256,8 @@ export function ConnectRunner(props) {
 						autocomplete="off"
 						required
 						value=${() => name()}
-						onInput=${(e) => {
-							setName(e.currentTarget.value)
+						onInput=${(event) => {
+							setName(event.currentTarget.value)
 							setCutting(false)
 						}}
 					/>

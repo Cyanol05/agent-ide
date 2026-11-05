@@ -11,9 +11,9 @@ import { ThreadList } from './thread-list.js'
 import { Wires } from './wires.js'
 
 export function System() {
-	const shown = createMemo(() => threads.filter((t) => family().includes(t.id)))
+	const shown = createMemo(() => threads.filter((thread) => family().includes(thread.id)))
 	const agents = createMemo(() =>
-		shown().flatMap((t) => t.agents.map((a) => ({ ...a, thread: t.id }))),
+		shown().flatMap((thread) => thread.agents.map((agent) => ({ ...agent, thread: thread.id }))),
 	)
 	const connections = createMemo(() => {
 		const asking = recipients()
@@ -32,24 +32,24 @@ export function System() {
 				state: connected() ? '' : 'off',
 			},
 		]
-		const reached = new Set([...asking.map((to) => to.runner), ...agents().map((a) => a.to.runner)])
-		for (const r of runners)
-			if (!reached.has(r.name))
+		const reached = new Set([...asking.map((to) => to.runner), ...agents().map((agent) => agent.to.runner)])
+		for (const runner of runners)
+			if (!reached.has(runner.name))
 				edges.push({
 					...down,
 					from: '.server',
-					to: `[data-runner="${CSS.escape(r.name)}"]`,
+					to: `[data-runner="${CSS.escape(runner.name)}"]`,
 					toAt: 40,
-					state: connected() && r.online ? '' : 'off',
+					state: connected() && runner.online ? '' : 'off',
 				})
-		for (const a of agents()) {
-			if (a.thread === current() && asking.some((to) => agentName(to) === agentName(a.to))) continue
+		for (const agent of agents()) {
+			if (agent.thread === current() && asking.some((to) => agentName(to) === agentName(agent.to))) continue
 			edges.push({
 				...down,
-				from: `[data-thread="${a.thread}"]`,
-				to: row(a.to),
+				from: `[data-thread="${agent.thread}"]`,
+				to: row(agent.to),
 				toAt: -20,
-				state: state(a.status),
+				state: state(agent.status),
 			})
 		}
 		for (const to of asking)
@@ -59,7 +59,7 @@ export function System() {
 				to: row(to),
 				toAt: -20,
 				state:
-					state(agents().find((a) => a.thread === current() && agentName(a.to) === agentName(to))?.status) ||
+					state(agents().find((agent) => agent.thread === current() && agentName(agent.to) === agentName(to))?.status) ||
 					'route',
 			})
 		return edges
@@ -114,11 +114,11 @@ function ListEdge() {
 			aria-label="Thread list width"
 			tabindex="0"
 			title="Drag to resize; double-click to reset"
-			onPointerDown=${(e) => {
-				const edge = e.currentTarget,
+			onPointerDown=${(event) => {
+				const edge = event.currentTarget,
 					left = list(edge).getBoundingClientRect().left
-				edge.setPointerCapture(e.pointerId)
-				const move = (m) => setWidth(fit(m.clientX - left))
+				edge.setPointerCapture(event.pointerId)
+				const move = (pointer) => setWidth(fit(pointer.clientX - left))
 				const up = () => {
 					edge.removeEventListener('pointermove', move)
 					edge.removeEventListener('pointerup', up)
@@ -127,14 +127,14 @@ function ListEdge() {
 				edge.addEventListener('pointermove', move)
 				edge.addEventListener('pointerup', up)
 				document.body.classList.add('resizing')
-				e.preventDefault()
+				event.preventDefault()
 			}}
 			onDblClick=${() => setWidth(null)}
-			onKeyDown=${(e) => {
-				const step = { ArrowLeft: -16, ArrowRight: 16 }[e.key]
+			onKeyDown=${(event) => {
+				const step = { ArrowLeft: -16, ArrowRight: 16 }[event.key]
 				if (!step) return
-				e.preventDefault()
-				setWidth(fit(list(e.currentTarget).offsetWidth + step))
+				event.preventDefault()
+				setWidth(fit(list(event.currentTarget).offsetWidth + step))
 			}}
 		></div>
 	`
