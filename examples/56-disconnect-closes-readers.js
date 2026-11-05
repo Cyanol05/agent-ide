@@ -8,7 +8,9 @@ await writeFile(`${dir}/text`, 'text\n')
 await writeFile(`${dir}/binary`, 'bytes')
 const runners = createRunners({ onChange() {} })
 const runner = serveRunner({ name: 'laptop', dir, send: (text) => runners.receive(text) })
-runners.connect('laptop', (text) => runner.receive(text))
+const connection = runners.connection('laptop')
+runners.register(connection)
+runners.connect(connection, (text) => runner.receive(text))
 const env = remoteEnv(runners, 'laptop', dir)
 const readers = await Promise.all([
 	env.openTextLineReader('text', {}, context),
@@ -22,7 +24,7 @@ const descriptors = async () => (await Promise.all(
 	(await readdir('/proc/self/fd')).map((fd) => readlink(`/proc/self/fd/${fd}`).catch(() => '')),
 )).filter((p) => p === dir || p.startsWith(`${dir}/`))
 if (process.platform === 'linux') check((await descriptors()).length === 3, 'all three readers hold descriptors')
-runners.disconnect('laptop')
+runners.disconnect(connection)
 await runner.stopAll()
 if (process.platform === 'linux') check(!(await descriptors()).length, 'disconnect closes every reader descriptor')
 await runner.stopAll()

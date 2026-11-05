@@ -1,4 +1,4 @@
-/** Closing or replacing a runner during registration never brings its old connection online. */
+/** Closing, replacing or cutting off a runner during registration never brings its old connection online. */
 import { readFile } from 'node:fs/promises'
 import { EventEmitter } from 'node:events'
 import vm from 'node:vm'
@@ -14,10 +14,10 @@ const deferred = () => {
 }
 
 for (const stage of ['key', 'known', 'commit']) {
-	for (const ending of ['close', 'error', 'replace']) {
-		if (stage === 'key' && ending === 'replace') continue
+	for (const ending of ['close', 'error', 'replace', 'kick']) {
+		if (stage === 'key' && ['replace', 'kick'].includes(ending)) continue
 		const entered = deferred(), resume = deferred()
-		const sockets = new Map(), records = {}, ready = []
+		const records = {}, ready = []
 		const runners = createRunners({ onChange() {} })
 		let socket, first = true
 		const pause = async (at) => {
@@ -27,7 +27,7 @@ for (const stage of ['key', 'known', 'commit']) {
 			await resume.promise
 		}
 		const context = vm.createContext({
-			URL, console: { log() {} }, say() {}, tilde: (dir) => dir, sockets, clients: new Set(), watch() {},
+			URL, console: { log() {} }, say() {}, tilde: (dir) => dir, clients: new Set(), watch() {},
 			wss: { handleUpgrade(req, raw, head, accept) { accept(socket) } },
 			origin: () => 'http://localhost',
 			keys: async () => { await pause('key'); return { laptop: 'hashed' } },
@@ -36,7 +36,7 @@ for (const stage of ['key', 'known', 'commit']) {
 			commit: async (fn) => fn({ doc: async () => { await pause('commit'); return records } }),
 			Runners: {}, models: { getProvider: () => true }, runners,
 			speaker: (s) => s, runnerProvider() {}, bundle: { version: 'v' },
-			outdated: new Map(), notify() {},
+			outdated: new Set(), notify() {},
 		})
 		vm.runInContext(upgrade, context)
 		const connect = (dir) => {
@@ -53,17 +53,18 @@ for (const stage of ['key', 'known', 'commit']) {
 		const old = socket
 		await entered.promise
 		if (ending === 'replace') await connect('/new')
+		else if (ending === 'kick') runners.kick('laptop', 4001, 'revoked')
 		else old.emit(ending)
+		const flashed = runners.isOnline('laptop')
 		resume.resolve()
 		await pending
 		if (ending === 'replace') {
 			old.emit('close')
-			check(runners.isOnline('laptop') && sockets.get('laptop') === socket &&
-				records.laptop.dir === '/new' && ready.join() === '/new',
+			check(runners.isOnline('laptop') && records.laptop.dir === '/new' && ready.join() === '/new',
 				`replacement during ${stage} keeps only the new connection`)
 		} else {
-			check(!runners.isOnline('laptop') && !sockets.has('laptop') && !ready.length,
-				`${ending} during ${stage} leaves the runner offline`)
+			check(!flashed && !runners.isOnline('laptop') && !ready.length,
+				`${ending} during ${stage} leaves the runner offline, never online for a moment`)
 		}
 	}
 }

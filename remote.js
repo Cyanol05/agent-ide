@@ -115,15 +115,26 @@ const FS = [
 	...Object.keys(READERS),
 ]
 
+/**
+ * A runner's connection goes `authenticating` → `registering` → `online` → `closed`, and only an online one takes
+ * calls. One map holds each name's current connection; a newer one for the name closes the old, and a closed one
+ * never comes back.
+ * @typedef {{ name: string, phase: 'authenticating' | 'registering' | 'online' | 'closed', end: (code?: number, reason?: string) => void, send?: (value: unknown) => void, held?: Map<string, unknown[]> }} Connection
+ */
 export function createRunners({ onChange }) {
-	const sockets = new Map()
+	/** @type {Map<string, Connection>} */
+	const connections = new Map()
 	const waiting = new Map()
 	const calls = new Map()
 	let next = 0
+	const current = (name) => {
+		const connection = connections.get(name)
+		return connection?.phase === 'online' ? connection : undefined
+	}
 
 	function online(name, signal) {
 		signal?.throwIfAborted()
-		if (sockets.has(name)) return Promise.resolve()
+		if (current(name)) return Promise.resolve()
 		return new Promise((resolve, reject) => {
 			const done = (fn) => () => {
 				const pending = waiting.get(name)
@@ -145,7 +156,7 @@ export function createRunners({ onChange }) {
 		await online(name, signal)
 		signal?.throwIfAborted()
 		const id = ++next
-		if (typeof message === 'function') message = message(sockets.get(name).held)
+		if (typeof message === 'function') message = message(current(name).held)
 		return new Promise((resolve, reject) => {
 			const done = (fn) => (value) => {
 				calls.delete(id)
@@ -156,7 +167,7 @@ export function createRunners({ onChange }) {
 			const cancel = () => {
 				// The runner is told to stop, but local cancellation never waits for its reply.
 				done(reject)(signal.reason ?? new Error('aborted'))
-				sockets.get(name)?.send({ id, op: 'cancel' })
+				current(name)?.send({ id, op: 'cancel' })
 			}
 			calls.set(id, {
 				runner: name,
@@ -167,22 +178,57 @@ export function createRunners({ onChange }) {
 				reject: done(reject),
 			})
 			signal?.addEventListener('abort', cancel, { once: true })
-			sockets.get(name).send({ id, ...message })
+			current(name).send({ id, ...message })
 			onChange()
 		})
+	}
+
+	/** Closes a connection; only the name's current one takes its calls down with it. True when it was current. */
+	function disconnect(connection) {
+		const was = connection.phase
+		connection.phase = 'closed'
+		if (connections.get(connection.name) !== connection) return false
+		connections.delete(connection.name)
+		if (was === 'online')
+			for (const pending of [...calls.values()])
+				if (pending.runner === connection.name)
+					pending.reject(new Error(`runner ${connection.name}: connection lost`))
+		return true
 	}
 
 	return {
 		call,
 		online,
-		isOnline: (name) => sockets.has(name),
-		tell: (name, message) => sockets.get(name)?.send(message),
+		isOnline: (name) => Boolean(current(name)),
+		tell: (name, message) => current(name)?.send(message),
 		working: (name) =>
 			[...calls.values()].filter((call) => call.runner === name).map(({ op, what }) => ({ op, what })),
-		connect(name, send) {
-			sockets.set(name, { send: (value) => send(encode(value)), held: new Map() })
-			for (const resolve of waiting.get(name) ?? []) resolve()
-			waiting.delete(name)
+		/** A connection that has yet to show its key; `end` closes its socket, with a code or at once */
+		connection: (name, end = () => {}) => ({ name, phase: 'authenticating', end }),
+		/** Its key held: it takes the name, and the name's older connection ends */
+		register(connection) {
+			if (connection.phase !== 'authenticating') return false
+			const old = connections.get(connection.name)
+			if (old) (disconnect(old), old.end())
+			connection.phase = 'registering'
+			connections.set(connection.name, connection)
+			return true
+		},
+		/** Registered and still current: it takes calls from now on */
+		connect(connection, send) {
+			if (connection.phase !== 'registering') return false
+			connection.send = (value) => send(encode(value))
+			connection.held = new Map()
+			connection.phase = 'online'
+			for (const resolve of waiting.get(connection.name) ?? []) resolve()
+			waiting.delete(connection.name)
+			return true
+		},
+		disconnect,
+		/** Cuts off the name's connection at once, whatever its phase, so it never comes online */
+		kick(name, code, reason) {
+			const connection = connections.get(name)
+			if (connection && disconnect(connection)) connection.end(code, reason)
 		},
 		receive(text) {
 			const message = decode(text)
@@ -191,11 +237,6 @@ export function createRunners({ onChange }) {
 			if ('result' in message) pending.resolve(message.result)
 			else if ('error' in message) pending.reject(new Error(message.error))
 			else pending.onMessage?.(message)
-		},
-		disconnect(name) {
-			sockets.delete(name)
-			for (const pending of [...calls.values()])
-				if (pending.runner === name) pending.reject(new Error(`runner ${name}: connection lost`))
 		},
 	}
 }

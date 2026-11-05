@@ -1354,13 +1354,13 @@ exec "$run" "$HOME/.agent-ide/runner-updater.js" "${server}" "$@"
 `
 
 /** A launched runner whose version differs is asked to update once per connection, when it has no calls open, so nothing it's doing is cut off */
-const outdated = new Map()
+const outdated = new Set()
 function nudge() {
-	for (const [name, socket] of outdated) {
-		if (sockets.get(name) !== socket) outdated.delete(name)
-		else if (!runners.working(name).length) {
-			outdated.delete(name)
-			runners.tell(name, { op: 'update' })
+	for (const connection of outdated) {
+		if (connection.phase !== 'online') outdated.delete(connection)
+		else if (!runners.working(connection.name).length) {
+			outdated.delete(connection)
+			runners.tell(connection.name, { op: 'update' })
 		}
 	}
 }
@@ -1480,7 +1480,7 @@ async function mintKey(name, server) {
 	await commit(async (tx) => {
 		;(await tx.doc(Keys))[name] = sha256(key)
 	})
-	sockets.get(name)?.close(4001, `${name}'s key was replaced`)
+	runners.kick(name, 4001, `${name}'s key was replaced`)
 	notify()
 	return {
 		name,
@@ -1497,12 +1497,11 @@ async function revoke(name) {
 		return true
 	})
 	if (!had) throw Object.assign(new Error(`No runner named ${name}`), { status: 404 })
-	sockets.get(name)?.close(4001, `${name} was revoked`)
+	runners.kick(name, 4001, `${name} was revoked`)
 	notify()
 	return { revoked: name }
 }
 
-const sockets = new Map()
 /** Compressed */
 const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true })
 async function upgrade(req, raw, head) {
@@ -1512,15 +1511,16 @@ async function upgrade(req, raw, head) {
 		return raw.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
 	const socket = await new Promise((resolve) => wss.handleUpgrade(req, raw, head, resolve))
 	const name = url.searchParams.get('runner')
-	let closed = false
+	/** A runner's connection: once closed, by its socket or by a newer one for its name, it stops wherever it is */
+	const connection =
+		name &&
+		runners.connection(name, (code, reason) =>
+			code ? socket.close(code, reason) : socket.terminate(),
+		)
 	const close = () => {
-		closed = true
 		clients.delete(socket)
 		watch(socket, null)
-		if (!name || sockets.get(name) !== socket) return
-		sockets.delete(name)
-		runners.disconnect(name)
-		say('runner', `${name} offline`)
+		if (connection && runners.disconnect(connection)) say('runner', `${name} offline`)
 	}
 	socket.on('close', close)
 	socket.on('error', close)
@@ -1540,7 +1540,7 @@ async function upgrade(req, raw, head) {
 	/** A runner shows its key before it counts, so nobody can take its name */
 	const given = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1]
 	const held = (await keys())[name]
-	if (closed) return
+	if (connection.phase === 'closed') return
 	if (!given || held !== sha256(given)) {
 		say('runner', `${name} turned away: ${given ? 'wrong or revoked key' : 'no key'}`)
 		return socket.close(
@@ -1550,14 +1550,10 @@ async function upgrade(req, raw, head) {
 				: `${name} needs a key; on the server: node cli.js key ${name}`,
 		)
 	}
-	if (sockets.has(name)) {
-		sockets.get(name).terminate()
-		runners.disconnect(name)
-	}
-	sockets.set(name, socket)
+	runners.register(connection)
 	const query = (param) => url.searchParams.get(param) || ''
 	const resolved = (await known())[name]?.models ?? {}
-	if (closed || sockets.get(name) !== socket) return
+	if (connection.phase === 'closed') return
 	const runner = {
 		alias: query('alias'),
 		owner: query('owner') && speaker(query('owner')),
@@ -1576,16 +1572,16 @@ async function upgrade(req, raw, head) {
 	}
 	await commit(async (tx) => {
 		const all = await tx.doc(Runners)
-		if (!closed && sockets.get(name) === socket) all[name] = runner
+		if (connection.phase !== 'closed') all[name] = runner
 	})
-	if (closed || sockets.get(name) !== socket) return
+	if (connection.phase === 'closed') return
 	if (!models.getProvider(`runner:${name}`))
 		models.setProvider(runnerProvider(runners, name, resolved))
 	listen(runners.receive)
-	runners.connect(name, (text) => socket.send(text))
+	runners.connect(connection, (text) => socket.send(text))
 	socket.send(JSON.stringify({ op: 'ready' }))
 	if (runner.version && runner.version !== bundle.version) {
-		outdated.set(name, socket)
+		outdated.add(connection)
 		notify()
 	}
 	say(
