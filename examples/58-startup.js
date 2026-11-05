@@ -1,0 +1,39 @@
+/** Startup explains module choices and prints one local URL, even with IPv6 listening. */
+import { spawn } from 'node:child_process'
+import path from 'node:path'
+import { check, db, done, repo, until } from './lib.js'
+
+for (const [modules, host, expected] of [
+	['+bots,+search,+director', '', 'talk,status,context,bots,search,director'],
+	['bots,search,director', '', 'bots,search,director'],
+	['-talk,-status', '::1', 'context'],
+	['+bots,search,director', '', null],
+]) {
+	let output = ''
+	const child = spawn(process.execPath, [path.join(repo, 'server.js')], {
+		cwd: repo,
+		env: { ...process.env, DB_PATH: db, PORT: '0', HOST: host, RUNNER: '0', MODULES: modules },
+		stdio: ['ignore', 'pipe', 'pipe'],
+	})
+	child.stdout.on('data', (data) => { output += data })
+	child.stderr.on('data', (data) => { output += data })
+	const exited = new Promise((resolve) => child.once('exit', resolve))
+	try {
+		const ready = await until(async () => child.exitCode !== null || /http:\/\//.test(output))
+		check(ready, `${modules}: starts or explains the error`, output)
+		if (!expected) {
+			check(output.includes('+bots,+search,+director'), 'mixed prefixes show the corrected command', output)
+			continue
+		}
+		const url = output.match(/http:\/\/\S+/)?.[0]
+		const state = url && await until(async () => (await fetch(`${url}/api/server`)).json())
+		check(state?.modules.join() === expected, `${modules}: loads ${expected}`, output)
+		check(output.match(/^http:\/\//gm)?.length === 1, 'one server URL', output)
+		check(output.includes('MODULES=talk,search loads only those'), 'startup explains replacement', output)
+		if (host) check(url?.includes('[::1]'), 'explicit IPv6 address is still printed', output)
+	} finally {
+		child.kill()
+		await exited
+	}
+}
+done()

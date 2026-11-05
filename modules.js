@@ -44,7 +44,9 @@ function pick(on, list, where) {
 	const changes = list.filter((name) => /^[+-]/.test(name))
 	if (!changes.length) return list
 	if (changes.length < list.length)
-		throw new Error(`${where}: names can't be mixed with +name or -name`)
+		throw new Error(
+			`${where}: put + or - before every name to change defaults (like +bots,+search,+director), or use only bare names to replace them (like bots,search,director)`,
+		)
 	return changes.reduce(
 		(on, change) =>
 			change[0] === '+'

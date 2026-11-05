@@ -1064,10 +1064,6 @@ const defaults = {
 	bots: false,
 }
 const modules = await load('server', defaults, core)
-/** A list of names alone replaces the defaults, so the start line says which of them it turned off */
-const dropped = Object.keys(defaults).filter(
-	(n) => defaults[n] && !modules.some((m) => m.name === n),
-)
 for (const m of modules) if (m.extension) registry.install(m.extension)
 /** One module answers each of these; two claiming one is a mistake, not an order */
 const hook = (name) => {
@@ -1519,6 +1515,15 @@ async function connectSelf(url) {
 	for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => lent.kill(signal))
 }
 
+// A list of names alone replaces the defaults, so say which of them it turned off.
+const off = Object.keys(defaults)
+	.filter((n) => !modules.some((m) => m.name === n))
+	.map((n) => (defaults[n] ? `${n} (on by default)` : n))
+console.log(
+	`Modules on: ${modules.map((m) => m.name).join(', ') || 'none'}.` +
+		(off.length ? ` Off: ${off.join(', ')}.` : '') +
+		'\nModules: MODULES=+search,+bots adds; MODULES=-talk removes; MODULES=talk,search loads only those.',
+)
 for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1']) {
 	const server = http.createServer(handleRequest)
 	server.on('upgrade', (req, socket, head) =>
@@ -1540,10 +1545,10 @@ for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1'])
 						.filter((a) => a.family === 'IPv4')
 						.map((a) => a.address)
 				: [host === '::1' ? '[::1]' : host]
-		for (const address of addresses)
-			console.log(
-				`http://${address}:${server.address().port} on ${file}, modules: ${modules.map((m) => m.name).join(', ') || 'none'}${dropped.length ? ` (off, though on by default: ${dropped.join(', ')})` : ''}`,
-			)
+		// Keep listening on IPv6 localhost without printing a second local URL.
+		if (process.env.HOST || host !== '::1')
+			for (const address of addresses)
+				console.log(`http://${address}:${server.address().port} on ${file}`)
 		connectSelf(
 			`http://${host === '0.0.0.0' ? '127.0.0.1' : addresses[0]}:${server.address().port}`,
 		).catch((error) => console.error(error))
