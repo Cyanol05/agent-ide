@@ -25,7 +25,7 @@ export function server(core) {
 		return Object.entries(await bots()).map(([name, bot]) => ({
 			name,
 			...bot,
-			status: core.busiest(all.filter((job) => job.name === name).map((job) => job.status)),
+			status: core.busiest(all.filter((job) => job.row === name).map((job) => job.status)),
 		}))
 	}
 
