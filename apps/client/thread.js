@@ -128,9 +128,7 @@ export function Thread(props) {
 						if (message.entries.some((entry) => entry.data.author === me && !shown.has(entry.id)))
 							stuck = true
 						setEntries((all) => {
-							all[id] ??= []
-							if (snapshot) reconcile(message.entries, 'id')(all[id])
-							else all[id].push(...message.entries)
+							all[id] = snapshot || !all[id] ? message.entries : [...all[id], ...message.entries]
 						})
 					}
 					if (message.people)
