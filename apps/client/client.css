@@ -800,7 +800,8 @@ agent-memory {
 
 		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
 		> li,
-		> li > .run > li {
+		> li > .run > li,
+		> li.exchange .run > li {
 			margin: 1.5rem 0 0;
 			white-space: pre-wrap;
 			overflow-wrap: anywhere;
@@ -954,8 +955,9 @@ agent-memory {
 				border-radius: 12px;
 			}
 
-			/* The run that answered it, alone, sits between the question and its answer. */
-			> .run {
+			/* The run that answered it sits between the question and its answer. */
+			> .run,
+			&.exchange .box > .run {
 				list-style: none;
 				margin: 0.7rem 0 0;
 				padding: 0;
@@ -966,7 +968,8 @@ agent-memory {
 			}
 
 			/* The answer said here to that question sits under it, past a thin rule, like a reply under its mail. */
-			&.elsewhere > .reply {
+			&.elsewhere > .reply,
+			&.exchange .box > .reply {
 				margin-top: 0.7rem;
 				padding-top: 0.6rem;
 				border-top: 1px solid var(--line);
@@ -984,8 +987,32 @@ agent-memory {
 
 			/* Light sea green says it crossed threads: the box's frame and its arrows. The names keep their author's colour, the words plain ink. */
 			&.elsewhere:not(.reply),
-			&.elsewhere > .reply {
+			&.elsewhere > .reply,
+			&.exchange .box,
+			&.exchange .box > .reply {
 				border-color: lightseagreen;
+			}
+
+			/* An ask is one quiet line in the flow; opened, the exchange in the same box a question gets over there. */
+			&.exchange {
+				summary > small {
+					display: inline;
+					margin: 0;
+				}
+
+				summary .dot {
+					display: inline-block;
+					width: 0.35rem;
+					height: 0.35rem;
+					vertical-align: middle;
+				}
+
+				.box {
+					margin-top: 0.35rem;
+					padding: 0.7rem 0.9rem;
+					border: 1px solid;
+					border-radius: 12px;
+				}
 			}
 
 			.cross {

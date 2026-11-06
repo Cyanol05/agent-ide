@@ -9,8 +9,8 @@ import {
 	For,
 	Show,
 } from 'solid-js'
-import { entries, threads, titleOf } from './server.js'
-import { ThreadLink } from './thread.js'
+import { api, colorOf, entries, homeBot, threads, titleOf } from './server.js'
+import { Body, ThreadLink } from './thread.js'
 import { authorLabel, doing, messageText } from './agent.js'
 import { Dot } from './dot.js'
 import { markdown } from './markdown.js'
@@ -70,15 +70,16 @@ export function cutsOf(conversation) {
 }
 
 /** A conversation cut into turns: each begins with a delivery and holds the calls, results and words that follow it */
-export function turnsOf(conversation) {
+export function turnsOf(conversation, list = conversations[conversation]) {
 	const turns = []
-	for (const entry of conversations[conversation] ?? []) {
+	for (const entry of list ?? []) {
 		const message = entry.model?.[0]
 		if (entry.kind === 'agent-ide.delivery') {
 			turns.push({
 				key: `${conversation}:${entry.id}`,
 				conversation,
 				delivery: entry.id,
+				held: entry.data?.held ?? [],
 				after: Math.max(0, ...(entry.data?.held ?? [])),
 				start: message?.timestamp,
 				end: message?.timestamp,
@@ -117,6 +118,7 @@ export function turnsOf(conversation) {
 			if (step)
 				step.result = {
 					at: entry.id,
+					time: message.timestamp,
 					text: messageText(message),
 					error: message.isError,
 					details: message.details,
@@ -141,17 +143,17 @@ const argsLine = ({ name, args }) =>
 				JSON.stringify(args)
 			).split('\n')[0]
 
-const seconds = (ms) => {
+export const seconds = (ms) => {
 	const s = Math.max(0, Math.round(ms / 1000))
 	return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
 }
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 /** A post's ask: the thread it went to, or for an answer, the thread it answered */
-const askedThread = (step) => step.result?.details?.thread ?? step.args.thread
+export const askedThread = (step) => step.result?.details?.thread ?? step.args.thread
 const answered = (step) => /^Answered /.test(step.result?.text ?? '')
 /** The posts a turn made that ask another thread, rather than answer one */
-const asksOf = (steps) =>
+export const asksOf = (steps) =>
 	steps.filter((step) => step.name === 'post' && !answered(step) && askedThread(step))
 
 /** Each post's answer, looked up by the thread it asked instead of scanning every message per post */
@@ -176,8 +178,8 @@ export const answerOf = (messages, step) =>
 		(entry) => entry.id > step.result.at && entry.data.from === askedThread(step) && entry.data.re,
 	)
 
-/** What a turn did, in a few words, given how many of its asks got their answer back */
-function summary(turn, back) {
+/** What a turn did, in a few words; its asks have their own lines */
+function summary(turn) {
 	const tools = turn.steps.filter((step) => step.name)
 	const edited = [
 		...new Set(
@@ -189,13 +191,11 @@ function summary(turn, back) {
 		),
 	].filter(Boolean)
 	const commands = tools.filter((step) => step.name === 'bash').length
-	const asks = asksOf(tools)
 	const posts = (word, list) =>
 		list.length && `${word} ${list.map((step) => titleOf(askedThread(step))).join(', ')}`
 	const parts = [
 		edited.length && `edited ${edited.join(', ')}`,
 		commands && plural(commands, 'command'),
-		posts('asked', asks),
 		posts(
 			'answered',
 			tools.filter((step) => step.name === 'post' && answered(step)),
@@ -203,21 +203,15 @@ function summary(turn, back) {
 		tools.length && plural(tools.length, 'step'),
 		turn.end - turn.start >= 1000 && seconds(turn.end - turn.start),
 	]
-	if (back)
-		parts.splice(
-			parts.indexOf(posts('asked', asks)) + 1,
-			0,
-			back === asks.length ? 'answered' : `${back} answered`,
-		)
 	// A turn with no call only thought, before its answer or instead of one
 	return parts.filter(Boolean).join(' · ') || 'thought'
 }
 
 /** One clock for every live turn, ticking only while one is on screen */
-const [clock, setClock] = createRoot(() => createSignal(Date.now()))
+export const [clock, setClock] = createRoot(() => createSignal(Date.now()))
 let ticking = 0,
 	timer
-const tick = () => {
+export const tick = () => {
 	if (!ticking++) timer = setInterval(() => setClock(Date.now()), 1000)
 	return () => --ticking || clearInterval(timer)
 }
@@ -235,7 +229,9 @@ export function Turn(props) {
 		() => props.live,
 		(on) => (on ? tick() : undefined),
 	)
-	const steps = () => props.turn?.steps ?? []
+	// In a box that already shows the question, the run doesn't repeat it as handed
+	const steps = () =>
+		(props.turn?.steps ?? []).filter((step) => props.handed !== false || step.label !== 'handed')
 	const now = () => {
 		const running = steps().findLast((step) => step.name && !step.result)
 		if (running)
@@ -246,20 +242,8 @@ export function Turn(props) {
 		return messageText(live()?.message) ? 'writing' : 'thinking'
 	}
 	const calls = () => steps().filter((step) => step.name)
-	/** How many asks got their answer back: it reads the thread's messages only while one is still out */
-	const back = createMemo(
-		(prev) => {
-			const asks = asksOf(steps())
-			if (prev === asks.length) return prev
-			const messages = entries[props.thread] ?? []
-			return asks.filter((step) => answerOf(messages, step)).length
-		},
-		{ lazy: true },
-	)
-	/** A closed turn's summary, worked out when its steps or answers change; an equal string updates nothing */
-	const summed = createMemo(() =>
-		props.live ? '' : summary({ ...props.turn, steps: steps() }, back()),
-	)
+	/** A closed turn's summary, worked out when its steps change; an equal string updates nothing */
+	const summed = createMemo(() => (props.live ? '' : summary({ ...props.turn, steps: steps() })))
 	const line = () => {
 		if (!props.live) return summed()
 		const start = props.turn?.start
@@ -396,6 +380,104 @@ function Ask(props) {
 						<div class="body markdown" innerHTML=${() => markdown(answer().body)} />
 					<//>
 				</div>
+			</details>
+		</li>
+	`
+}
+
+/**
+ * An ask, from the thread that asked: one quiet line, "→ who · answered · 6s", its dot pulsing while the answer is out.
+ * Opened, the exchange in time order: the question, the run that answered it over there, the answer.
+ */
+export function Exchange(props) {
+	const asked = () => askedThread(props.step)
+	const state = () => !props.answer && threads.find((thread) => thread.id === asked())?.status
+	const out = () => state() === 'working' || state() === 'blocked'
+	const who = () =>
+		props.answer?.data.author ??
+		homeBot(asked())?.name ??
+		threads.find((thread) => thread.id === asked())?.agents?.[0]?.name
+	createEffect(
+		() => !props.answer,
+		(waiting) => (waiting ? tick() : undefined),
+	)
+	const took = () => {
+		const start = props.step.result?.time
+		const end = props.back ?? (props.answer ? undefined : clock())
+		return start && end && end - start >= 1000 ? seconds(end - start) : ''
+	}
+	const [open, setOpen] = createSignal(false)
+	/** The other side's run, read from its agent's conversation when opened, again once the answer lands */
+	const [other, setOther] = createSignal(null)
+	createEffect(
+		() => open() && [asked(), props.answer?.id ?? 0, state()],
+		(on) => {
+			if (on) otherRun(on[0]).then(setOther, () => {})
+		},
+	)
+	const otherRun = async (id) => {
+		const view = await api(`/api/threads/${id}`)
+		const question = props.answer
+			? view.entries.find((entry) => entry.id === props.answer.data.re?.[0])
+			: view.entries.findLast(
+					(entry) => entry.data.from === props.thread && entry.data.body === props.step.args.body,
+				)
+		if (!question) return
+		for (const agent of view.agents ?? []) {
+			const { entries: list } = await api(`/api/conversations/${agent.conversation}`)
+			const turn = turnsOf(
+				agent.conversation,
+				list.filter((entry) => entry.kind !== 'pi.system'),
+			).find((turn) => turn.held.includes(question.id))
+			if (turn) return { agent, turn }
+		}
+		return null
+	}
+	return html`
+		<li class="elsewhere reply exchange">
+			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
+				<summary>
+					<small>
+						<${Show} when=${out}><${Dot} state=${() => state()} /> <//>
+						<span class="cross">→ </span
+						><span style=${() => colorOf(who() ?? '')}
+							><${ThreadLink} id=${() => asked()}
+								>${() => (who() ? authorLabel(who()) : titleOf(asked()))}<//
+							></span
+						>${() =>
+							[props.answer ? 'answered' : out() ? 'asking' : 'asked', took()]
+								.filter(Boolean)
+								.map((part) => ` · ${part}`)
+								.join('')}
+					</small>
+				</summary>
+				<${Show} when=${open}>
+					<div class="box">
+						<${Body} data=${() => props.step.args} />
+						<${Show} when=${other}>
+							<ul class="run">
+								<${Turn}
+									thread=${() => asked()}
+									agent=${() => other().agent}
+									turn=${() => other().turn}
+									handed=${() => other().turn.held.length !== 1}
+								/>
+							</ul>
+						<//>
+						<${Show} when=${() => props.answer}>
+							<div class="reply">
+								<small
+									><span class="cross">← </span
+									><span style=${() => colorOf(props.answer.data.author)}
+										>${() => authorLabel(props.answer.data.author)}</span
+									>
+									answered</small
+								>
+								<${Body} data=${() => props.answer.data} />
+							</div>
+						<//>
+					</div>
+				<//>
 			</details>
 		</li>
 	`

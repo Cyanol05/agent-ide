@@ -33,7 +33,7 @@ import {
 	watch,
 } from './server.js'
 import { authorLabel, doing, setDoing } from './agent.js'
-import { answersIn, conversations, cutsOf, heard, Turn, turnsOf } from './run.js'
+import { answersIn, asksOf, conversations, cutsOf, Exchange, heard, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -113,7 +113,7 @@ export function Thread(props) {
 							replies.set(id, entry)
 			const inside = new Set([...replies.values()].map((entry) => entry.id))
 			const shown = all.filter((entry) => !answers.has(entry.id) && !inside.has(entry.id))
-			// The run that answered such a question alone, and did nothing else, sits in its box between question and answer
+			// The run that answered such a question alone sits in its box between question and answer, whatever else it did
 			const runs = new Map()
 			const byId = new Map(all.map((entry) => [entry.id, entry]))
 			const turnsAfter = Map.groupBy(turns, (row) => row.turn?.after)
@@ -121,16 +121,33 @@ export function Thread(props) {
 				const question = byId.get(id)
 				const run = turnsAfter
 					.get(id)
-					?.find((row) => !row.live && row.agent.name === reply.data.author)
-				const calls = run?.turn.steps.filter((step) => step.name) ?? []
-				if (
-					run &&
-					reply.data.re.length === 1 &&
-					calls.every((step) => step.name === 'post' && step.args?.thread === question.data.from)
-				)
-					runs.set(id, run)
+					?.find((row) => row.turn && row.agent.name === reply.data.author)
+				if (run && question && reply.data.re.length === 1) runs.set(id, run)
 			}
 			const boxed = new Set(runs.values())
+			// Each ask an agent made here is one line after its run, open to the whole exchange
+			const asks = turns
+				.filter((row) => row.turn && !boxed.has(row))
+				.flatMap((row) =>
+					asksOf(row.turn.steps)
+						.filter((step) => step.result)
+						.map((step, index) => {
+							const answer = answerOf(step) || undefined
+							const back =
+								answer &&
+								perConversation(row.agent.conversation)
+									.turns()
+									.find((turn) => turn.held.includes(answer.id))?.start
+							return {
+								key: `${row.key}:ask:${step.key}`,
+								ask: step,
+								agent: row.agent,
+								answer,
+								back,
+								at: row.at + (index + 1) / 1000,
+							}
+						}),
+				)
 			const said = shown.map((entry) => ({
 				key: entry.id,
 				entry,
@@ -151,6 +168,7 @@ export function Thread(props) {
 			const rows = [
 				...said.filter((row) => !above(row)),
 				...turns.filter((row) => !above(row) && !boxed.has(row)),
+				...asks.filter((row) => !above(row)),
 				...lines,
 				...cuts,
 			].sort((one, other) => one.at - other.at)
@@ -363,24 +381,36 @@ export function Thread(props) {
 								`}
 							>
 								<${Show}
-									when=${() => row().turn || row().live}
+									when=${() => !row().ask}
 									fallback=${() => html`
-										<${Message}
+										<${Exchange}
 											thread=${() => props.id}
-											entry=${() => row().entry}
-											reply=${() => row().reply}
-											run=${() => row().run}
-											above=${() => row().above}
+											step=${() => row().ask}
+											answer=${() => row().answer}
+											back=${() => row().back}
 										/>
 									`}
 								>
-									<${Turn}
-										thread=${() => props.id}
-										agent=${() => row().agent}
-										turn=${() => row().turn}
-										live=${() => row().live}
-										above=${() => row().above}
-									/>
+									<${Show}
+										when=${() => row().turn || row().live}
+										fallback=${() => html`
+											<${Message}
+												thread=${() => props.id}
+												entry=${() => row().entry}
+												reply=${() => row().reply}
+												run=${() => row().run}
+												above=${() => row().above}
+											/>
+										`}
+									>
+										<${Turn}
+											thread=${() => props.id}
+											agent=${() => row().agent}
+											turn=${() => row().turn}
+											live=${() => row().live}
+											above=${() => row().above}
+										/>
+									<//>
 								<//>
 							<//>
 						`}<//
@@ -450,6 +480,8 @@ function Message(props) {
 								thread=${() => props.thread}
 								agent=${() => props.run.agent}
 								turn=${() => props.run.turn}
+								live=${() => props.run.live}
+								handed=${() => props.run.turn.held.length !== 1}
 							/>
 						</ul>
 					<//>
@@ -510,7 +542,7 @@ function Message(props) {
 }
 
 /** What a message says: markdown, except a `$ cmd` and an error, which stay as written */
-const Body = (props) => html`
+export const Body = (props) => html`
 	<${Show}
 		when=${() => !props.data.shell && !props.data.error}
 		fallback=${html`<span class="body">${() => props.data.body}</span>`}
