@@ -32,7 +32,7 @@ modules/
   talk.js                `post` and `threads` tools; reply sends answers back to askers
   memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut; render, memory
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
-  context.js             AGENTS.md and skills from the runner's folder
+  context.js             AGENTS.md and skills from the runner's folder; listed skills stay readable outside it
   director.js            @mentions ask that bot
   search.js              `web_search`
   status.js              OSC 7501 status on the runner's terminal
