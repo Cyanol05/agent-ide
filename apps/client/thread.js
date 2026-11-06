@@ -22,7 +22,7 @@ import {
 	watch,
 } from './server.js'
 import { authorLabel, doing, messageText, setDoing } from './agent.js'
-import { answerOf, cutsOf, delivered, hear, readConversation, streamed, Turn, turnsOf } from './run.js'
+import { answerOf, conversations, cutsOf, delivered, hear, readConversation, streamed, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -117,6 +117,9 @@ export function Thread(props) {
 		for (const [index, row] of rows.entries()) if (row.entry) row.previous = rows[index - 1]?.entry
 		return rows
 	})
+	/** The list waits for its messages and each agent's conversation, so it shows folded at once instead of shifting */
+	const ready = () =>
+		!!entries[props.id] && (thread()?.agents ?? []).every((agent) => conversations[agent.conversation])
 	const titleClick = () => (current() !== props.id ? openThread(props.id) : drawer('side'))
 	const [unfolded, setUnfolded] = createSignal(false)
 	let list,
@@ -170,6 +173,7 @@ export function Thread(props) {
 	)
 	createEffect(
 		() => [
+			ready(),
 			messages().length,
 			thread()?.agents.map((agent) => agent.status),
 			Object.values(doing[props.id] ?? {}).map((live) => messageText(live.message)),
@@ -225,7 +229,7 @@ export function Thread(props) {
 					}}
 					aria-label="Messages"
 				>
-					<${Show} when=${() => props.id && !entries[props.id]}
+					<${Show} when=${() => props.id && !ready()}
 						><li class="mute asking">Asking for messages…</li><//
 					>
 					<${Show} when=${() => homeBot(props.id)?.instructions === ''}>
@@ -235,7 +239,7 @@ export function Thread(props) {
 								`Talk to ${homeBot(props.id).name} and find out who it is.`}
 						</li>
 					<//>
-					<${For} each=${() => rows()} keyed=${(row) => row.key}
+					<${For} each=${() => (ready() ? rows() : [])} keyed=${(row) => row.key}
 						>${(row) => html`
 							<${Show}
 								when=${() => !row().cut && !row().line}

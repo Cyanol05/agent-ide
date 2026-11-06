@@ -36,7 +36,12 @@ export function readConversation(id) {
 				delete heard[id]
 			})
 		})
-		.catch(() => {})
+		// A conversation that can't be read shows as read and empty, so its thread doesn't wait on it
+		.catch(() =>
+			setConversations((read) => {
+				read[id] ??= []
+			}),
+		)
 		.finally(() => {
 			const again = asking.get(id)
 			asking.delete(id)
@@ -252,7 +257,6 @@ const tick = () => {
 }
 
 /** How many steps a live turn shows below its line, the newest last */
-const TAIL = 3
 
 /**
  * A turn's line. While its agent works, the step it's in now, and below it the last few steps and the words coming in;
@@ -261,8 +265,6 @@ const TAIL = 3
 export function Turn(props) {
 	const live = () => props.live && doing[props.thread]?.[props.agent.conversation]
 	const [open, setOpen] = createSignal(false)
-	// Closing a working turn hides its tail too; opening shows everything, and the tail only returns with a new turn
-	const [shut, setShut] = createSignal(false)
 	createEffect(
 		() => props.live,
 		(on) => (on ? tick() : undefined),
@@ -301,15 +303,9 @@ export function Turn(props) {
 			.join(' · ')
 	}
 	const said = () => messageText(live()?.message)
-	const tail = () => steps().slice(-TAIL)
 	return html`
 		<li class=${() => ({ turn: true, live: !!props.live })}>
-			<details
-				onToggle=${(event) => {
-					setOpen(event.currentTarget.open)
-					setShut(!event.currentTarget.open)
-				}}
-			>
+			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<small>
 						<${Show} when=${() => props.live}><${Dot} state=${() => props.agent.status} /><//>
@@ -325,17 +321,6 @@ export function Turn(props) {
 					</ol>
 				<//>
 			</details>
-			<${Show} when=${() => props.live && !open() && !shut()}>
-				<ol class="steps tail">
-					<${Show} when=${() => steps().length > TAIL}>
-						<li class="earlier">${() => `… ${plural(steps().length - TAIL, 'earlier step')}`}</li>
-					<//>
-					<${For} each=${tail} keyed=${(step) => step.key}
-						>${(step) => html`<${Step} step=${() => step()} thread=${() => props.thread} />`}<//
-					>
-					<${Show} when=${said}><li class="said">${said}</li><//>
-				</ol>
-			<//>
 		</li>
 	`
 }
