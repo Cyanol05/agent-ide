@@ -154,7 +154,7 @@ export function done() {
 /** A runner in this process, reconnecting like runner.js, serving `models` as `serveRunner` does */
 export async function localRunner(
 	name,
-	{ models, resolve, echo, onTell, model = '', query = [], readOnly = false },
+	{ models, resolve, echo, onTell, model = '', query = [], readOnly = false, ops, readable },
 ) {
 	let socket,
 		closing = false
@@ -171,6 +171,8 @@ export async function localRunner(
 			resolve,
 			echo,
 			readOnly,
+			ops,
+			readable,
 			send: (t) => socket.readyState === WebSocket.OPEN && socket.send(t),
 			onTell: (m) => {
 				if (m.op !== 'ready') onTell?.(m)
@@ -196,7 +198,11 @@ export async function localRunner(
 }
 
 /** A local runner whose only model, echo/echo, answers route(request) */
-export async function scriptedRunner(name, route, { onTell, model = {}, query, readOnly } = {}) {
+export async function scriptedRunner(
+	name,
+	route,
+	{ onTell, model = {}, query, readOnly, ops, readable } = {},
+) {
 	const script = fauxProvider({
 		provider: 'echo',
 		models: [{ id: 'echo', ...model }],
@@ -213,6 +219,8 @@ export async function scriptedRunner(name, route, { onTell, model = {}, query, r
 		model: 'echo/echo',
 		query,
 		readOnly,
+		ops,
+		readable,
 	})
 }
 

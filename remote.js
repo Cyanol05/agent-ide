@@ -408,6 +408,7 @@ export function serveRunner({
 	name,
 	dir,
 	roots = [dir],
+	readable = () => [],
 	models,
 	resolve,
 	echo,
@@ -431,9 +432,10 @@ export function serveRunner({
 		handle,
 	}
 
-	function inside(target, cwd = dir) {
+	/** `reading` also reaches the folders `readable()` lists, like the skills an agent was shown */
+	function inside(target, cwd = dir, reading = false) {
 		const full = path.resolve(cwd, target ?? '.')
-		if (!within(roots, full))
+		if (!within(roots, full) && !(reading && within(readable(), full)))
 			throw new FileError(
 				'permission_denied',
 				`${target} is outside ${name}'s folders ${roots.join(', ')}`,
@@ -516,7 +518,7 @@ export function serveRunner({
 		}
 		if (method === 'createTempDir' || method === 'createTempFile')
 			throw new FileError('permission_denied', `Temporary files are outside ${name}'s folder`)
-		if (method !== 'joinPath') args[0] = inside(args[0], root)
+		if (method !== 'joinPath') args[0] = inside(args[0], root, !CHANGES.includes(method))
 		if (method === 'renameFile') args[1] = inside(args[1], root)
 		const result = await local[method](...args, context)
 		if (result.ok && READERS[method]) {

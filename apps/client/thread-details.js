@@ -122,7 +122,7 @@ function Tools(props) {
 	}
 	return html`
 		<div class="hands">
-			<label title="Its agents read and ask others, and change nothing themselves">
+			<label title="Its agents can look things up, but every change has to go through a thread">
 				<input
 					type="checkbox"
 					checked=${() => !!tools()}

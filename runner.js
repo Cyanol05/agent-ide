@@ -163,6 +163,7 @@ async function connect() {
 		name,
 		dir,
 		roots,
+		readable: () => modules.flatMap((module) => module.readable?.() ?? []),
 		models,
 		resolve,
 		echo,

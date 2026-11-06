@@ -31,8 +31,9 @@ export function server({ runners }) {
 	return { extension: defineExtension({ name: 'agent-ide.context', sections: [section] }) }
 }
 
-/** Skill files can sit outside the runner's folder, where the file tools don't reach, so agents read them with bash */
+/** Skill files can sit outside the runner's folder, so the skills it lists are readable wherever they live */
 export function runner(core) {
+	const listed = new Set()
 	async function context({ dir }) {
 		if (!within(core.roots ?? [core.dir], path.resolve(dir)))
 			throw new Error(`${dir} is outside ${core.name}'s folders`)
@@ -51,7 +52,9 @@ export function runner(core) {
 				({ path, content }) =>
 					`<project_instructions path="${path}">\n${content}\n</project_instructions>`,
 			)
-		const skills = formatSkillsForPrompt(loader.getSkills().skills, 'bash').trim()
+		const shown = loader.getSkills().skills.filter((skill) => !skill.disableModelInvocation)
+		for (const skill of shown) listed.add(path.resolve(skill.baseDir))
+		const skills = formatSkillsForPrompt(shown).trim()
 		const parts = [
 			files.length &&
 				`<project_context>\nProject-specific instructions and guidelines:\n\n${files.join('\n\n')}\n</project_context>`,
@@ -59,5 +62,5 @@ export function runner(core) {
 		]
 		return parts.filter(Boolean).join('\n\n') || null
 	}
-	return { call: context }
+	return { call: context, readable: () => [...listed] }
 }
