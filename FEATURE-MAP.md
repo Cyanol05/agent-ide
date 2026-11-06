@@ -48,7 +48,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     Message              one message: author, reply/elsewhere (cross-thread), fork link, Body, Images
   run.js                 an agent's turns, from its own conversation
     heard, conversations the conversation entries the socket brings
-    turnsOf, cutsOf      a conversation cut into turns, and where compaction cut it
+    turnsOf, cutsOf      a conversation cut into turns, and where its newest compaction cut it
     summary              a closed turn's one line ("edited 2 files · 1 command")
     Exchange             an ask's own line in the asking thread; opened, question, the other side's run, answer
     answersIn, answerOf  a post step's answer from the thread it asked

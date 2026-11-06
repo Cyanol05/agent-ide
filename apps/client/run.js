@@ -35,13 +35,14 @@ const handedText = (message) =>
 	typeof message?.content === 'string' ? message.content : messageText(message)
 
 /**
- * Where an agent's compactions cut, as the thread's message ids: the first message of the first delivery the agent still reads whole.
- * `memory` is whether the summary is the thread's memory lines, or Pi's own.
+ * Where an agent's newest compaction cuts, as the thread's message ids: the first message of the first delivery the agent still reads whole.
+ * Older compactions are history the agent no longer reads, so they don't show. `memory` is whether the summary is the thread's memory lines, or Pi's own.
  */
 export function cutsOf(conversation) {
 	const all = conversations[conversation] ?? []
 	return all
 		.filter((entry) => entry.kind === 'pi.compaction')
+		.slice(-1)
 		.flatMap((entry) => {
 			const kept = all.find(
 				(other) => other.kind === 'agent-ide.delivery' && other.id >= entry.head,
@@ -59,6 +60,7 @@ export function cutsOf(conversation) {
 			return [
 				{
 					key: `${conversation}:cut:${entry.id}`,
+					id: entry.id,
 					at: first - 0.5,
 					memory: lines.length > 0,
 					lines: lines.length

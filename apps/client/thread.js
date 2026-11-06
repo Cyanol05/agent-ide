@@ -160,8 +160,8 @@ export function Thread(props) {
 					.cuts()
 					.map((cut) => ({ ...cut, cut: true })),
 			)
-			// What the agent reads as lines folds into them, unless opened from the newest cut's line
-			const newest = cuts.reduce((best, cut) => (!best || cut.at > best.at ? cut : best), null)
+			// One cut line, the newest compaction's; what the agent reads as lines folds into them, unless opened from it
+			const newest = cuts.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null)
 			const folded = newest && !unfolded() ? newest : null
 			const above = (row) => folded && row.at < folded.at
 			const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
@@ -170,7 +170,7 @@ export function Thread(props) {
 				...turns.filter((row) => !above(row) && !boxed.has(row)),
 				...asks.filter((row) => !above(row)),
 				...lines,
-				...cuts,
+				...(newest ? [newest] : []),
 			].sort((one, other) => one.at - other.at)
 			// A message or run line names its author only when it isn't the last one's that wasn't yours: your own are marked by where they sit
 			let last
