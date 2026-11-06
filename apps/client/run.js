@@ -195,7 +195,8 @@ function summary(turn, messages) {
 			0,
 			back === asks.length ? 'answered' : `${back} answered`,
 		)
-	return parts.filter(Boolean).join(' · ')
+	// A turn with no call only thought, before its answer or instead of one
+	return parts.filter(Boolean).join(' · ') || 'thought'
 }
 
 /** One clock for every live turn, ticking only while one is on screen */
@@ -249,7 +250,9 @@ export function Turn(props) {
 				<summary>
 					<small>
 						<${Show} when=${() => props.live}><${Dot} state=${() => props.agent.status} /><//>
-						<span>${() => authorLabel(props.agent.name)}</span> · <span class="now">${line}</span>
+						<${Show} when=${() => props.above !== props.agent.name}
+							><span>${() => authorLabel(props.agent.name)}</span> · <//
+						><span class="now">${line}</span>
 					</small>
 				</summary>
 				<${Show} when=${open}>

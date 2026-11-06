@@ -84,10 +84,10 @@ export function Thread(props) {
 		const above = (row) => folded && row.at < folded.at
 		const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
 		const rows = [...said.filter((row) => !above(row)), ...turns.filter((row) => !above(row)), ...lines, ...cuts].sort((one, other) => one.at - other.at)
-		// A message names its author only when the line above, a message or a run line, has someone else's
+		// A message or run line names its author only when the line above, a message or a run line, has someone else's
 		for (const [index, row] of rows.entries()) {
 			const above = rows[index - 1]
-			if (row.entry) row.above = above?.entry ? !above.entry.data.from && above.entry.data.author : above?.agent?.name
+			row.above = above?.entry ? !above.entry.data.from && above.entry.data.author : above?.agent?.name
 		}
 		return rows
 	})
@@ -260,6 +260,7 @@ export function Thread(props) {
 									agent=${() => row().agent}
 									turn=${() => row().turn}
 									live=${() => row().live}
+									above=${() => row().above}
 								/>
 							<//>
 							<//>
@@ -297,16 +298,22 @@ function Message(props) {
 			<${Show}
 				when=${() => elsewhere() && data().re}
 				fallback=${html`
-					<${Show} when=${() => elsewhere()}>
-						<div class="links">
-							<${ThreadLink} id=${() => data().from}
-								>${() => `→ asked from ${titleOf(data().from)}`}<//
-							>
-						</div>
-					<//>
-					<small title=${() => data().author} style=${() => colorOf(data().author)}
-						>${() => authorLabel(data().author)}</small
+					<${Show}
+						when=${() => elsewhere()}
+						fallback=${html`<small title=${() => data().author} style=${() => colorOf(data().author)}
+							>${() => authorLabel(data().author)}</small
+						>`}
 					>
+						<small title=${() => data().author}>
+							<${Show}
+								when=${() => homeBot(data().from)?.name === data().author}
+								fallback=${() => html`→ <span style=${() => colorOf(data().author)}>${() => authorLabel(data().author)}</span> asked from
+									<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>`}
+							>
+								→ <span style=${() => colorOf(data().author)}><${ThreadLink} id=${() => data().from}>${() => authorLabel(data().author)}<//></span> asked
+							<//>
+						</small>
+					<//>
 					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
 					<${Show} when=${() => props.reply}>

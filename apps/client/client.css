@@ -953,16 +953,28 @@ agent-memory {
 
 			/* The answer said here to that question sits under it, past a thin rule, like a reply under its mail. */
 			&.elsewhere > .reply {
-				color: lightseagreen;
 				margin-top: 0.7rem;
 				padding-top: 0.6rem;
 				border-top: 1px solid var(--line);
 			}
 
-			/* A post's answer is the post's result: one muted line in the flow, opened to read it. */
+			/* A post's answer is the post's result: one line in the flow the size of a run line, opened to read it. */
 			&.elsewhere.reply {
 				padding: 0;
 				border: 0;
+
+				> details > summary {
+					font-size: 12px;
+				}
+			}
+
+			/* Words crossing between threads, an answer said here or one come back, read in light sea green. */
+			&.reply,
+			> .reply {
+				&,
+				summary {
+					color: lightseagreen;
+				}
 			}
 
 			summary {
