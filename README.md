@@ -62,7 +62,7 @@ Pi Durable does the storage, tasks, ordering, retries, restarts, stops and forks
 Messages:
 
 - Each delivery hands an agent everything it hasn't seen yet as one input, and only its final answer comes back to the thread. Its tool calls stay in its own conversation, where any agent can read them with `threads`. Long output is cut at 4,000 characters, saying how much is left.
-- Threads talk like email. An agent asks with `post`: with no thread, it starts a child holding only the question; given a thread, it asks whoever is there. The answer goes back once to the asking thread, and a reply to that answer ends the exchange. Nothing else crosses. Posting to a thread that asked you something answers it.
+- Threads talk like email. An agent asks with `post`: with no thread, it starts a child holding only the question; given a thread, it asks whoever is there. The answer goes back once to the asking thread, and a reply to that answer ends the exchange. Nothing else crosses. Posting to a thread that asked you something answers it. A post, and an answer coming back, reach a busy agent mid-run, as a person's Enter does.
 - A name is one line of plain text and a message's later lines are indented, so nobody can forge a speaker in an agent's input. Agents are marked as agents by what they wrote, never by their name: a person's message is an instruction, an agent's is a colleague's report or request.
 - The client watches Pi's own event streams, so replies and tool calls show live; a reconnect starts from fresh snapshots.
 

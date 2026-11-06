@@ -84,7 +84,8 @@ export function server(core) {
 						from,
 						...(asked ? { re: [asked.id] } : {}),
 					},
-					{ empty: thread === undefined },
+					// Like a person's Enter, a post joins the run its agent is in, as answers coming back do
+					{ empty: thread === undefined, steer: true },
 				)
 				// An answer was said here too: its own thread shows it, and its agent never reads it back
 				if (asked) await core.post(tx, from, { author: name, body: args.body, re: [asked.id] })
