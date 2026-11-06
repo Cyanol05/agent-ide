@@ -665,7 +665,7 @@ agent-memory {
 		text-decoration: none;
 		text-align: start;
 
-		> span:not(.dot) {
+		> span:not(.dot, .plus) {
 			flex: 1;
 			overflow: hidden;
 			text-overflow: ellipsis;
@@ -698,8 +698,7 @@ agent-memory {
 
 /* Without hover, the open thread's row keeps its delete in sight. */
 @media (hover: none) {
-	.thread-list > ul > li.current button,
-	.thread-family > li.current button {
+	:is(.thread-list > ul, .thread-family) > li.current button {
 		visibility: visible;
 	}
 }
@@ -1645,8 +1644,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 		background: var(--step);
 	}
 
-	.thread-list > ul > li:hover button,
-	.thread-family > li:hover button {
+	:is(.thread-list > ul, .thread-family) > li:hover button {
 		visibility: visible;
 	}
 
@@ -2215,7 +2213,7 @@ body.chat {
 		flex: none;
 		display: flex;
 		align-items: center;
-		padding-right: 2.2rem;
+		padding: 0.55rem 2.2rem 0.55rem 0;
 		border-top: 1px solid var(--line);
 		background: Canvas;
 	}
@@ -2230,7 +2228,8 @@ body.chat {
 		background: none;
 		color: var(--mute);
 		font-size: 13px;
-		padding: 0.7rem 0.2rem 0.7rem 0.8rem;
+		height: 1.6rem;
+		padding: 0 0.2rem 0 0.8rem;
 		text-align: left;
 
 		span:last-child {

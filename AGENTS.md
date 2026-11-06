@@ -14,6 +14,7 @@
 - Use `pnpm install --frozen-lockfile` in a fresh checkout; keep package.json and the lockfile unchanged unless the task calls for dependency changes.
 - New features are modules, off by default.
 - Keep client.html and the README saying what the code does high level.
+- A thread's contract (which entries it holds, their data, what the API returns) and how the client shows it are two decisions. Change the contract only on purpose, in its own commit, with the README and an example; a UI wish is solved in the client from existing entries first.
 - Docs and UI copy read brief and human, like a person talking, never like SaaS marketing.
 - Prove logic, machinery and state machines in `examples/`, one file per idea. No UI tests, no unit tests, no TypeScript, no build step, no migrations or shims.
 - Thread views omit `dir` at the runner's root, so use a subfolder to prove CLI folder options.
