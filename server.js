@@ -991,6 +991,7 @@ async function postEntry(id, author, input) {
 						body,
 						...(images ? { images } : {}),
 						...(to.length ? { to } : {}),
+						...(picked ? { picked: picked.reason } : {}),
 					},
 					{ steer: input.steer === true },
 				),

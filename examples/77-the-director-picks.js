@@ -54,8 +54,8 @@ const before = asked.length
 await post(garden, 'what about the roses?')
 const picked = await last(garden)
 check(
-	JSON.stringify(picked.data.to) === '["Kira"]',
-	'in a thread of bots, the director picks one',
+	JSON.stringify(picked.data.to) === '["Kira"]' && picked.data.picked === 'she knows roses',
+	'in a thread of bots, the director picks one, and the message keeps why',
 	JSON.stringify(picked.data),
 )
 check(
@@ -69,12 +69,16 @@ check(answers(await view(garden)).at(-1)?.data.author === 'Kira', 'the bot it pi
 
 await post(garden, 'thanks!')
 const quiet = await last(garden)
-check(!quiet.data.to, 'it can pick nobody, and then no one is asked', JSON.stringify(quiet.data))
+check(
+	!quiet.data.to && quiet.data.picked === 'they have what they need',
+	'it can pick nobody, and then no one is asked',
+	JSON.stringify(quiet.data),
+)
 
 await post(garden, 'who knows?')
 const unknown = await last(garden)
 check(
-	JSON.stringify(unknown.data.to) === '["Kira"]',
+	JSON.stringify(unknown.data.to) === '["Kira"]' && !unknown.data.picked,
 	"a name that isn't here falls back to whom the thread asked last",
 	JSON.stringify(unknown.data),
 )
