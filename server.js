@@ -1120,6 +1120,17 @@ const core = {
 	startThread,
 	post,
 	seenBy,
+	/** Compacts each agent of the thread now, as Pi does when its context fills; what each came to is its outcome */
+	async compact(id) {
+		const { agents } = await thread(id)
+		return Promise.all(
+			Object.values(agents).map(async ({ conversation: agent }) => {
+				const taskId = await (await harness.conversation(agent, context)).compact(undefined, context)
+				const { outcome } = (await harness.waitForTask(taskId, context)).state
+				return outcome.status
+			}),
+		)
+	},
 	commit,
 	once,
 	receipt,

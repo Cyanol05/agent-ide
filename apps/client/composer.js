@@ -105,6 +105,17 @@ export const openPicker = (anchor) => lend?.(anchor)
 export function Composer(props) {
 	let input, picker, button, chooser, anchor, recall, recallButton
 	const [lines, setLines] = createSignal(false)
+	const [compacting, setCompacting] = createSignal(false)
+	const compactNow = async () => {
+		setCompacting(true)
+		try {
+			await api(`/api/threads/${props.thread}/memory`, { compact: true })
+		} catch (error) {
+			report(error)
+		} finally {
+			setCompacting(false)
+		}
+	}
 	const draft = () => compose.drafts[props.thread ?? 'new'] ?? emptyDraft
 	const changeDraft = (change, key = props.thread ?? 'new') =>
 		setCompose((store) => {
@@ -373,6 +384,10 @@ export function Composer(props) {
 						detail=${html`<${Memory} />`}
 					>
 						<${Compaction} />
+						<button type="button" disabled=${() => compacting()} onClick=${compactNow}>
+							<span>${() => (compacting() ? 'Compacting…' : 'Compact now')}</span>
+							<small>the agent reads the memory lines instead of the old messages</small>
+						</button>
 						<button type="button" onClick=${() => setLines(true)}>
 							<span>Read the lines</span>
 							<small>what the agent remembers, from the top down</small>

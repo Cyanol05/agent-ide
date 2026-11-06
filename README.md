@@ -119,6 +119,7 @@ POST   /api/threads/:id/tools {tools}      as pi --tools takes them
 POST   /api/threads/:id/read
 POST   /api/threads/:id/stop
 GET    /api/conversations/:id              an agent's own conversation, tool calls and all
+POST   /api/threads/:id/memory {compact: true}   memory module: compact the thread's agents now, as if their context were full
 ```
 
 A module can add routes under `/api/<module>` and `/api/threads/:id/<module>`. Runners speak the protocol in [remote.js](remote.js).

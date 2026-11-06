@@ -47,6 +47,10 @@ function CompactionOf(props) {
 		}
 		return found
 	})
+	onSettled(() => {
+		const timer = setInterval(() => refresh(cut), 3000)
+		return () => clearInterval(timer)
+	})
 	return html`
 		<p class="mute">
 			${() =>
