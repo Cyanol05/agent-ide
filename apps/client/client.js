@@ -26,10 +26,20 @@ function Client() {
 		}
 		const resize = () => drawer(null)
 		const phone = matchMedia('(max-width: 700px)')
+		// iOS Safari ignores interactive-widget: the keyboard shrinks only the visual viewport, so the stage follows that.
+		const viewport = window.visualViewport
+		const fit = () => {
+			document.documentElement.style.setProperty('--visual-height', `${viewport.height}px`)
+			if (viewport.offsetTop) scrollTo(0, 0)
+		}
+		viewport?.addEventListener('resize', fit)
+		viewport?.addEventListener('scroll', fit)
 		addEventListener('keydown', close)
 		phone.addEventListener('change', resize)
 		return () => {
 			removeEventListener('keydown', close)
+			viewport?.removeEventListener('resize', fit)
+			viewport?.removeEventListener('scroll', fit)
 			phone.removeEventListener('change', resize)
 		}
 	})

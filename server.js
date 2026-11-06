@@ -326,6 +326,8 @@ const types = {
 	'.js': 'text/javascript; charset=utf-8',
 	'.css': 'text/css; charset=utf-8',
 	'.woff2': 'font/woff2',
+	'.png': 'image/png',
+	'.webmanifest': 'application/manifest+json',
 }
 async function clientFile(pathname) {
 	if (!/^\/(?:[\w-]+\/)*[\w.-]+$/.test(pathname)) return null

@@ -314,7 +314,7 @@ export function Composer(props) {
 						aria-label="Send"
 						disabled=${() => draft().sending || !recipients(props.thread).length}
 					>
-						↵
+						↑
 					</button>
 				<//>
 			</div>

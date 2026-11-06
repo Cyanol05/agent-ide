@@ -1183,6 +1183,28 @@ agent-memory {
 		}
 
 		/* The bar is there in every thread, so the composer moving in doesn't change a thread's height. */
+		/* Send is a filled round arrow, like a messages app's. */
+		button.icon.send {
+			width: 1.6rem;
+			height: 1.6rem;
+			padding: 0;
+			justify-content: center;
+			align-items: center;
+			border-radius: 50%;
+			background: var(--ink);
+			color: Canvas;
+			font-weight: 700;
+
+			&:hover:not(:disabled) {
+				color: Canvas;
+			}
+
+			&:disabled {
+				background: var(--edge);
+				opacity: 1;
+			}
+		}
+
 		.bar {
 			display: flex;
 			align-items: center;
@@ -1458,6 +1480,7 @@ body.chat {
 		position: relative;
 		height: 100vh;
 		height: 100dvh;
+		height: var(--visual-height, 100dvh);
 		padding: 0;
 		overflow: hidden;
 	}
