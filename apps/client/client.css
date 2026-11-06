@@ -866,14 +866,16 @@ agent-memory {
 						color: var(--ink);
 					}
 
-					/* Closed, a step is two lines at most: the call and the start of what it printed. */
+					/* Closed, a step is one line: its label, then its input as stored, cut at the edge. */
 					> li.call > details > summary {
+						display: flex;
+						align-items: baseline;
 						white-space: nowrap;
-						overflow: hidden;
-						text-overflow: ellipsis;
 
 						&::before {
-							content: '• ';
+							content: '•';
+							flex: none;
+							width: 1rem;
 						}
 
 						&::after {
@@ -881,30 +883,28 @@ agent-memory {
 						}
 
 						.tool {
+							flex: none;
+							width: calc(var(--label) + 1ch);
 							font-weight: 600;
 						}
 
-						.out {
-							display: block;
-							padding-left: 1.4rem;
+						.in {
+							min-width: 0;
 							overflow: hidden;
 							text-overflow: ellipsis;
-							font-size: 12px;
-							opacity: 0.8;
-
-							&::before {
-								content: '⎿ ';
-								margin-left: -1rem;
-							}
 						}
 					}
 
 					> li.told.handed > details > summary::before {
-						content: '→ ';
+						content: '→';
 					}
 
 					> li.told.thought > details > summary::before {
-						content: '∴ ';
+						content: '∴';
+					}
+
+					> li.call.ask > details > summary:has(.dot)::before {
+						display: none;
 					}
 
 					> li.call.running > details > summary::before {
@@ -916,9 +916,10 @@ agent-memory {
 					}
 
 					> li.call.ask .dot {
+						flex: none;
 						width: 0.35rem;
 						height: 0.35rem;
-						margin-right: 0.3rem;
+						margin-right: 0.65rem;
 					}
 
 					.whole {

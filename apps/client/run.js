@@ -17,14 +17,14 @@ import { markdown } from './markdown.js'
 
 /**
  * Each agent conversation on screen, its entries as Pi keeps them.
- * Entries never change once written, so each conversation is one frozen array, replaced as it grows: a read tracks the conversation, not its every field.
+ * Entries never change once written, so the store is shallow: a read tracks the conversation, not each entry's fields.
  */
-export const [conversations, setConversations] = createRoot(() => createStore({}))
+export const [conversations, setConversations] = createRoot(() => createStore({}, { shallow: true }))
 /** Takes an agent's entries off the socket: whole on each new watch, then each one once, as it's written */
 export function heard(conversation, entries, whole) {
 	const shown = entries.filter((entry) => entry.kind !== 'pi.system')
 	setConversations((all) => {
-		all[conversation] = Object.freeze(whole || !all[conversation] ? shown : [...all[conversation], ...shown])
+		all[conversation] = whole || !all[conversation] ? shown : [...all[conversation], ...shown]
 	})
 }
 
@@ -131,17 +131,6 @@ const argsLine = ({ name, args }) =>
 				JSON.stringify(args)
 			).split('\n')[0]
 
-const lines = (text) => text.replace(/\n+$/, '').split('\n')
-/** The first line of an output, trimmed, and how many more there are */
-const preview = (text) => {
-	const all = lines(text)
-	const first =
-		all
-			.find((line) => line.trim())
-			?.trim()
-			.slice(0, 200) ?? ''
-	return all.length > 1 ? `${first}  … +${all.length - 1}` : first
-}
 const seconds = (ms) => {
 	const s = Math.max(0, Math.round(ms / 1000))
 	return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
@@ -256,7 +245,7 @@ export function Turn(props) {
 					</small>
 				</summary>
 				<${Show} when=${open}>
-					<ol class="steps">
+					<ol class="steps" style=${() => `--label: ${labelWidth(steps())}ch`}>
 						<${For} each=${steps} keyed=${(step) => step.key}
 							>${(step) => html`<${Step} step=${() => step()} thread=${() => props.thread} />`}<//
 						>
@@ -288,7 +277,14 @@ function Step(props) {
 	`
 }
 
-/** • tool(args), ⎿ the start of its output; opened, both whole */
+/** The widest label among a turn's steps, so their inputs start at one column */
+const labelWidth = (steps) =>
+	Math.max(...steps.map((step) => (step.name === 'post' && askedThread(step) ? 'answered' : (step.name ?? step.label ?? '')).length))
+
+/** A step's input as it was stored, on one line */
+const input = (step) => (step.name ? JSON.stringify(step.args) : (step.text ?? ''))
+
+/** • tool and its input; opened, input and output whole */
 function Call(props) {
 	const result = () => props.step.result
 	const [open, setOpen] = createSignal(false)
@@ -296,10 +292,8 @@ function Call(props) {
 		<li class=${() => ({ call: true, failed: result()?.error, running: !result() })}>
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
-					<span class="tool">${() => props.step.name}</span>(${() => argsLine(props.step)})
-					<${Show} when=${() => result()?.text.trim()}>
-						<span class="out">${() => preview(result().text)}</span>
-					<//>
+					<span class="tool">${() => props.step.name}</span>
+					<span class="in">${() => input(props.step)}</span>
 				</summary>
 				<${Show} when=${open}>
 					<div class="whole">
@@ -312,7 +306,7 @@ function Call(props) {
 	`
 }
 
-/** What the agent was handed, or what it thought: closed, its first line; opened, whole */
+/** What the agent was handed, or what it thought: closed, one line; opened, whole */
 function Told(props) {
 	const [open, setOpen] = createSignal(false)
 	return html`
@@ -320,7 +314,7 @@ function Told(props) {
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<span class="tool">${() => props.step.label}</span>
-					<span class="out">${() => preview(props.step.text ?? '')}</span>
+					<span class="in">${() => input(props.step)}</span>
 				</summary>
 				<${Show} when=${open}>
 					<div class="whole"><pre>${() => props.step.text}</pre></div>
@@ -343,9 +337,10 @@ function Ask(props) {
 					<${Show} when=${() => state() === 'working' || state() === 'blocked'}
 						><${Dot} state=${() => state()}
 					/><//>
-					<span class="tool">${() => (answered(props.step) ? 'answered ' : answer() ? `${authorLabel(answer().author)} answered in ` : 'asked ')}</span>
-					<${ThreadLink} id=${() => asked()}>${() => titleOf(asked())}<//>
-					<span class="out">${() => preview((answer() ?? props.step.args).body ?? '')}</span>
+					<span class="tool">${() => (answered(props.step) || answer() ? 'answered' : 'asked')}</span>
+					<span class="in"
+						><${ThreadLink} id=${() => asked()}>${() => titleOf(asked())}<//>${() => ` ${props.step.args.body ?? ''}`}</span
+					>
 				</summary>
 				<div class="whole">
 					<div class="body markdown" innerHTML=${() => markdown(props.step.args.body ?? '')} />
