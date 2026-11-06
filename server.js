@@ -339,7 +339,9 @@ async function clientFile(pathname) {
 	if (!/^\/(?:[\w-]+\/)*[\w.-]+$/.test(pathname)) return null
 	const type = types[path.extname(pathname)]
 	if (!type) return null
-	const body = await readFile(new URL(`./apps/client${pathname}`, import.meta.url)).catch(() => null)
+	const body = await readFile(new URL(`./apps/client${pathname}`, import.meta.url)).catch(
+		() => null,
+	)
 	return body ? { type, body } : null
 }
 /** Browser packages resolve through Node, so npm's hoisted installs work too. */
@@ -960,12 +962,19 @@ async function postEntry(id, author, input) {
 	const body = images ? (input.body ?? '').trim() : field(input.body, 'body')
 	const command = !images && body.match(/^\$\s+([\s\S]+)/)?.[1]
 	const mentioned = command ? [] : await mentions(id, body)
+	/** With the director picking, a message that names no one in a thread of bots asks whom it picks, or nobody */
+	const picked =
+		!command && !mentioned.length && !('to' in input) && pick
+			? await pick(id, { author, body })
+			: undefined
 	/** A mention of no one asks as a message without one: its own `to`, else whom the thread asked last */
 	const to = mentioned.length
 		? mentioned
-		: 'to' in input
-			? await addresses(input.to, Boolean(command), id)
-			: await lastAsked(id)
+		: picked
+			? await addresses(picked.to, false, id)
+			: 'to' in input
+				? await addresses(input.to, Boolean(command), id)
+				: await lastAsked(id)
 	if (command && !to.length) throw new Error('Pick a runner to run the command on')
 	if (command) await reach(to, author, await known())
 	if (!command && to.filter((to) => !to.name).length > 1)
@@ -977,7 +986,12 @@ async function postEntry(id, author, input) {
 			: post(
 					tx,
 					id,
-					{ author, body, ...(images ? { images } : {}), ...(to.length ? { to } : {}) },
+					{
+						author,
+						body,
+						...(images ? { images } : {}),
+						...(to.length ? { to } : {}),
+					},
 					{ steer: input.steer === true },
 				),
 	)
@@ -1174,6 +1188,7 @@ const core = {
 	messages,
 	lastAsked,
 	mentions,
+	instructionsOf: (name) => instructionsOf?.(name),
 	startThread,
 	post,
 	seenBy,
@@ -1219,7 +1234,14 @@ const hook = (name) => {
 }
 const posted = modules.flatMap((module) => module.posted ?? [])
 const hiding = modules.flatMap((module) => module.hiding ?? [])
-const [route, reply, catchUp, botAgent] = ['route', 'reply', 'catchUp', 'botAgent'].map(hook)
+const [route, pick, reply, catchUp, botAgent, instructionsOf] = [
+	'route',
+	'pick',
+	'reply',
+	'catchUp',
+	'botAgent',
+	'instructionsOf',
+].map(hook)
 compactAt = hook('compactAt')
 /**
  * Pi's own compaction, started early: each model's background compaction begins once its context passes `tokens`,
