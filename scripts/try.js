@@ -9,8 +9,6 @@ import {
 } from '@earendil-works/pi-ai/providers/faux'
 import { api, base, call, dir, say, scriptedRunner, server, text } from '../examples/lib.js'
 
-process.on('SIGTERM', () => process.exit(0))
-
 await server()
 const step = (request) => {
 	const last = request.messages.findLastIndex((m) => m.role === 'user')

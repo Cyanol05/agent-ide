@@ -41,15 +41,24 @@ mkdirSync(home)
 
 const procs = new Set()
 process.on('exit', () => {
-	for (const p of procs) p.kill()
+	// Disposable stores need no graceful shutdown; don't orphan a server waiting on a task.
+	for (const p of procs) {
+		try {
+			process.kill(-p.pid, 'SIGKILL')
+		} catch (error) {
+			if (error.code !== 'ESRCH') throw error
+		}
+	}
 	rmSync(tmp, { recursive: true, force: true })
 })
 process.on('SIGINT', () => process.exit(130))
+process.on('SIGTERM', () => process.exit(143))
 
 /** Servers start in the example's own folder, so the checkout's agent-ide.json stays out too */
-function start(file, args = [], env = {}, cwd = tmp) {
+export function start(file, args = [], env = {}, cwd = tmp) {
 	const p = spawn(process.execPath, [path.join(repo, file), ...args], {
 		cwd,
+		detached: true,
 		env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DB_PATH: db, ...env },
 		stdio: ['ignore', 'pipe', 'pipe'],
 	})

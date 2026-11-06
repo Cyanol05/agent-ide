@@ -83,7 +83,9 @@ scripts/
   try.js                 scratch server with a scripted bot, for clicking through
   page-spy.js            browser init script: fetches, socket frames, stalls
   replay-pi.js           replays pi sessions into a thread, to try memory
-examples/lib.js          what examples share: server, runner, scriptedRunner, api, view, until, check
+examples/lib.js          what examples share: start (owned child processes), server, runner, scriptedRunner, api, view, until, check
+examples/all.js          suite queue, per-example timeout and interruption cleanup
+examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
 ```
 
 Where a feature lives:

@@ -7,18 +7,27 @@ import { availableParallelism } from 'node:os'
 const files = readdirSync(import.meta.dirname)
 	.filter((f) => /^\d\d-.*\.js$/.test(f) && (process.env.REAL || !f.includes('real-model')))
 	.sort()
+const running = new Set()
+process.on('exit', () => {
+	for (const child of running) child.kill('SIGTERM')
+})
+process.on('SIGINT', () => process.exit(130))
+process.on('SIGTERM', () => process.exit(143))
+
 const run = (file) =>
-	new Promise((resolve) =>
-		execFile(
+	new Promise((resolve) => {
+		const child = execFile(
 			process.execPath,
 			[`${import.meta.dirname}/${file}`],
-			{ maxBuffer: 1e8 },
+			{ maxBuffer: 1e8, timeout: 180000 },
 			(e, out, err) => {
+				running.delete(child)
 				console.log(`\n# ${file}\n${out}${err}`.trimEnd())
 				resolve(e ? [file] : [])
 			},
-		),
-	)
+		)
+		running.add(child)
+	})
 const queue = [...files]
 const started = performance.now()
 const failed = (

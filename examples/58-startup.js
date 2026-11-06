@@ -1,7 +1,5 @@
 /** Startup explains module choices and prints one local URL, even with IPv6 listening. */
-import { spawn } from 'node:child_process'
-import path from 'node:path'
-import { check, db, done, repo, until } from './lib.js'
+import { check, done, start, until } from './lib.js'
 
 for (const [modules, host, expected] of [
 	['+bots,+search,+director', '', 'talk,status,context,bots,search,director'],
@@ -10,11 +8,7 @@ for (const [modules, host, expected] of [
 	['+bots,search,director', '', null],
 ]) {
 	let output = ''
-	const child = spawn(process.execPath, [path.join(repo, 'server.js')], {
-		cwd: path.dirname(db),
-		env: { ...process.env, DB_PATH: db, PORT: '0', HOST: host, RUNNER: '0', MODULES: modules },
-		stdio: ['ignore', 'pipe', 'pipe'],
-	})
+	const child = start('server.js', [], { PORT: '0', HOST: host, RUNNER: '0', MODULES: modules })
 	child.stdout.on('data', (data) => {
 		output += data
 	})
