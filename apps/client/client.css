@@ -1947,7 +1947,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 .model-controls > ul,
-.runner-list > ul,
+.runner-list .pane-body > ul,
 .settings .modules {
 	list-style: none;
 	margin: 0;
@@ -1957,7 +1957,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 /* One row across models, runners and modules, also inside the phone sheets. */
-:is(.model-controls .who, .model-controls .model, .runner-list > ul > li, .settings .modules > li) {
+:is(.model-controls .who, .model-controls .model, .runner-list .pane-body > ul > li, .settings .modules > li) {
 	display: flex;
 	align-items: start;
 	gap: 0.6rem;
@@ -1979,13 +1979,13 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 }
 
-:where(.runner-list > ul > li, .settings .modules > li) small {
+:where(.runner-list .pane-body > ul > li, .settings .modules > li) small {
 	display: block;
 	overflow-wrap: anywhere;
 }
 
 @media (hover: hover) and (pointer: fine) {
-	:is(.model-controls .model:not(.on), .runner-list > ul > li, .settings .modules > li):hover {
+	:is(.model-controls .model:not(.on), .runner-list .pane-body > ul > li, .settings .modules > li):hover {
 		background: var(--tint);
 	}
 }
@@ -2109,13 +2109,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 	padding: 0;
 	overflow: hidden;
 
-	.pane-body > h3 {
-		margin: 0.6rem 0.5rem 0.25rem;
-		font-size: 12px;
-		font-weight: 500;
-		color: var(--mute);
-	}
-
 	.modules > li.off b {
 		color: var(--mute);
 		font-weight: 500;
@@ -2230,7 +2223,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 /* Revoke waits at the row's end, like a thread's delete. */
-.runner-list > ul > li {
+.runner-list .pane-body > ul > li {
 	flex-wrap: wrap;
 
 	.revoke {
@@ -2253,13 +2246,13 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 @media (hover: hover) and (pointer: fine) {
-	.runner-list > ul > li:hover .revoke {
+	.runner-list .pane-body > ul > li:hover .revoke {
 		visibility: visible;
 	}
 }
 
 @media (hover: none) {
-	.runner-list > ul > li .revoke {
+	.runner-list .pane-body > ul > li .revoke {
 		visibility: visible;
 	}
 }
@@ -2314,7 +2307,7 @@ connect-runner {
 	display: none;
 }
 
-/* The list's foot: settings and the arrow back to the story that sits over its end. */
+/* The list's foot: runners, then settings, then the arrow back to the story that sits over its end. */
 body.chat {
 	.list-foot {
 		position: sticky;
@@ -2323,13 +2316,13 @@ body.chat {
 		flex: none;
 		display: flex;
 		align-items: center;
+		gap: 0.3rem;
 		padding: 0.55rem 2.2rem 0.55rem 0;
-		border-top: 1px solid var(--line);
 		background: Canvas;
 	}
 
-	.settings-toggle {
-		flex: 1;
+	.foot-toggle {
+		flex: none;
 		min-width: 0;
 		display: flex;
 		align-items: center;
@@ -2339,8 +2332,12 @@ body.chat {
 		color: var(--mute);
 		font-size: 13px;
 		height: 1.6rem;
-		padding: 0 0.2rem 0 0.8rem;
+		padding: 0 0.6rem;
 		text-align: left;
+
+		&.runner-toggle {
+			flex: 0 1 auto;
+		}
 
 		span:last-child {
 			margin-left: 0.2rem;

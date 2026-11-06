@@ -14,6 +14,7 @@ import {
 } from './server.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
+import { RunnerList } from './runner.js'
 import { Settings } from './settings.js'
 import { BotItem, NewBot } from './bot.js'
 
@@ -83,6 +84,7 @@ export function ThreadList() {
 				<//>
 			</ul>
 			<footer class="list-foot">
+				<${RunnerList} />
 				<${Settings} />
 			</footer>
 		</nav>

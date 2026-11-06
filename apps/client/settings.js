@@ -1,14 +1,13 @@
 /** The server's settings: its modules, on or off, and memory's model. Its own machine changes them; saving restarts it. */
 import html from '@solidjs/html'
 import { createEffect, createRoot, createSignal, createStore, createUniqueId, For, Show, snapshot, untrack } from 'solid-js'
-import { api, connected, runners, server } from './server.js'
+import { api, connected, server } from './server.js'
 import { ModelPicker } from './model-picker.js'
 import { Panes } from './panes.js'
 import { agentTo, formatAgent, writtenTo } from './agent.js'
 import { report } from './notice.js'
 import { placePopover } from './popover.js'
 import { Dot } from './dot.js'
-import { RunnerList } from './runner.js'
 
 /** Changes not saved yet, kept if the settings close before saving */
 const [draft, setDraft] = createRoot(() => createStore({ modules: {}, model: undefined, compactAt: undefined, state: '' }))
@@ -18,7 +17,6 @@ const changed = () =>
 export function Settings() {
 	let button, panel
 	const id = createUniqueId()
-	const online = () => runners.filter((runner) => runner.online).length
 	const [selection, setSelection] = createSignal(null)
 	const all = () => [
 		...server().modules.map((name) => ({ name, on: true })),
@@ -70,16 +68,12 @@ export function Settings() {
 	})
 	return html`
 		<button
-			class="settings-toggle"
+			class="foot-toggle settings-toggle"
 			type="button"
-			title="Settings"
 			ref=${(el) => (button = el)}
 			popovertarget=${id}
 		>
-			<${For} each=${() => runners}
-				>${(runner) => html`<${Dot} state=${() => (runner.online ? 'on' : '')} />`}<//
-			>
-			<span>${() => `${online()} runner${online() === 1 ? '' : 's'} online`}</span>
+			Settings
 		</button>
 		<div
 			class="settings"
@@ -119,9 +113,6 @@ export function Settings() {
 					onConfigure=${(to) => setSelection(to)}
 				/>`}
 			>
-			<h3>Runners</h3>
-			<${RunnerList} />
-			<h3>Modules</h3>
 			<ul class="modules">
 				<${For} each=${all}
 					>${(module) => html`

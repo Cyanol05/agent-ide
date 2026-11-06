@@ -1,9 +1,11 @@
 /** Runners show their agents and choose whom the composer asks. */
 import html from '@solidjs/html'
-import { createSignal, For, Show } from 'solid-js'
+import { createSignal, createUniqueId, For, Show } from 'solid-js'
 import { api, minted, runners, server, setMinted, threads } from './server.js'
 import { rowOf, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
 import { choose, configure, recipients, toFor } from './composer.js'
+import { placePopover } from './popover.js'
+import { Panes } from './panes.js'
 import { report } from './notice.js'
 import { Sure } from './sure.js'
 import { Dot } from './dot.js'
@@ -111,14 +113,39 @@ function AgentRow(props) {
 	`
 }
 
-/** Who's there, and where you connect another machine or revoke one. */
+/** The chat's runner list: who's there, and where you connect another machine or revoke one. */
 export function RunnerList() {
+	let button, panel
+	const id = createUniqueId()
+	const online = () => runners.filter((runner) => runner.online).length
 	return html`
-		<div class="runner-list">
-			<ul>
-				<${For} each=${() => runners}>${(runner) => html`<${RunnerItem} runner=${() => runner} />`}<//>
-			</ul>
-			<${ConnectRunner} />
+		<button
+			class="foot-toggle runner-toggle"
+			type="button"
+			title=${() => `${online()} runner${online() === 1 ? '' : 's'} online`}
+			ref=${(el) => (button = el)}
+			popovertarget=${id}
+		>
+			<${For} each=${() => runners}
+				>${(runner) => html`<${Dot} state=${() => (runner.online ? 'on' : '')} />`}<//
+			>
+			<span>${() => `${online()} online`}</span>
+		</button>
+		<div
+			class="settings runner-list"
+			id=${id}
+			popover
+			ref=${(el) => (panel = el)}
+			onToggle=${(event) => {
+				if (event.newState === 'open') placePopover(panel, button)
+			}}
+		>
+			<${Panes} title="Runners" open=${() => false}>
+				<ul>
+					<${For} each=${() => runners}>${(runner) => html`<${RunnerItem} runner=${() => runner} />`}<//>
+				</ul>
+				<${ConnectRunner} />
+			<//>
 		</div>
 	`
 }
