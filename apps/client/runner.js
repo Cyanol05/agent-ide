@@ -1,6 +1,6 @@
 /** Runners show their agents and choose whom the composer asks. */
 import html from '@solidjs/html'
-import { createSignal, createUniqueId, For, Show } from 'solid-js'
+import { createMemo, createSignal, createUniqueId, For, Show } from 'solid-js'
 import { api, minted, runners, server, setMinted, threads } from './server.js'
 import { rowOf, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
 import { choose, configure, recipients, toFor } from './composer.js'
@@ -151,12 +151,13 @@ export function RunnerList() {
 }
 
 function RunnerItem(props) {
-	const work = () =>
+	const work = createMemo(() =>
 		threads.flatMap((thread) =>
 			thread.agents
 				.filter((agent) => agent.to.runner === props.runner.name && agent.status === 'working')
 				.map((agent) => ({ thread: thread.id, title: thread.title, conversation: agent.conversation })),
-		)
+		),
+	)
 	const call = () =>
 		work()
 			.map((agent) => lastToolCall(doing[agent.thread]?.[agent.conversation]))
