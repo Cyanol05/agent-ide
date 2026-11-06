@@ -120,12 +120,19 @@ export const { threads, runners, server, bots, family, columns, closeColumn } = 
 	)
 	/** The columns on screen: the thread you're in and the open members of its family, in the family's order */
 	const columns = createMemo(() => family().filter((id) => id === current() || open().has(id)))
-	const closeColumn = (id) =>
+	/** Closing the thread you're in moves you to its nearest open neighbour, or to a new thread when it was alone */
+	const closeColumn = (id) => {
+		if (id === current()) {
+			const shown = columns()
+			const at = shown.indexOf(id)
+			openThread(shown[at + 1] ?? shown[at - 1] ?? null)
+		}
 		setOpen((ids) => {
 			const next = new Set(ids)
 			next.delete(id)
 			return next
 		})
+	}
 	return { threads, runners, server, bots, family, columns, closeColumn }
 })
 

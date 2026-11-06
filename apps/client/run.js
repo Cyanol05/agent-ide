@@ -1,34 +1,65 @@
 /** An agent's turns, read from its own conversation: each one line in the thread, opened into every step it took */
 import html from '@solidjs/html'
-import { createMemo, createRoot, createStore, For, Show } from 'solid-js'
+import {
+	createEffect,
+	createMemo,
+	createRoot,
+	createSignal,
+	createStore,
+	For,
+	Show,
+} from 'solid-js'
 import { api, entries, threads, titleOf } from './server.js'
 import { ThreadLink } from './thread.js'
-import { authorLabel, doing, lastToolCall, messageText } from './agent.js'
+import { authorLabel, doing, messageText } from './agent.js'
 import { Dot } from './dot.js'
 import { markdown } from './markdown.js'
 
 /** Each agent conversation on screen, its entries as Pi keeps them */
 export const [conversations, setConversations] = createRoot(() => createStore({}))
+/** Tool calls heard on the live stream since the conversation was last read, oldest first */
+export const [streamed, setStreamed] = createRoot(() => createStore({}))
 const asking = new Map()
 
-/** Fetches a conversation again, one request at a time, and once more if asked meanwhile */
+/** Reads a conversation, one request at a time, and once more if asked meanwhile; what it read replaces what was streamed */
 export function readConversation(id) {
 	if (asking.has(id)) return void asking.set(id, true)
 	asking.set(id, false)
 	api(`/api/conversations/${id}`)
-		.then(({ entries: all }) =>
-			setConversations((all_) => {
-				all_[id] = all
+		.then(({ entries: all }) => {
+			setConversations((read) => {
+				read[id] = all
 					.filter((entry) => entry.kind !== 'pi.system')
 					.map(({ id, kind, model, data }) => ({ id, kind, model, data }))
-			}),
-		)
+			})
+			setStreamed((heard) => {
+				delete heard[id]
+			})
+		})
 		.catch(() => {})
 		.finally(() => {
 			const again = asking.get(id)
 			asking.delete(id)
 			if (again) readConversation(id)
 		})
+}
+
+/** Keeps each tool call the live stream names, which holds only the round running now */
+export function hear(conversation, live) {
+	setStreamed((heard) => {
+		const calls = (heard[conversation] ??= [])
+		for (const tool of live.tools ?? []) {
+			const known = calls.find((call) => call.key === tool.callId)
+			if (known) Object.assign(known, { status: tool.status, args: tool.args ?? known.args })
+			else
+				calls.push({
+					key: tool.callId,
+					name: tool.name,
+					args: tool.args ?? {},
+					status: tool.status,
+				})
+		}
+	})
 }
 
 /** A conversation cut into turns: each begins with a delivery and holds the calls, results and words that follow it */
@@ -96,10 +127,15 @@ const argsLine = ({ name, args }) =>
 			).split('\n')[0]
 
 const lines = (text) => text.replace(/\n+$/, '').split('\n')
+/** The first line of an output, trimmed, and how many more there are */
 const preview = (text) => {
 	const all = lines(text)
-	const head = all.slice(0, 2).join('\n').slice(0, 240)
-	return all.length > 2 ? `${head}\n… ${all.length - 2} more lines` : head
+	const first =
+		all
+			.find((line) => line.trim())
+			?.trim()
+			.slice(0, 200) ?? ''
+	return all.length > 1 ? `${first}  … +${all.length - 1}` : first
 }
 const seconds = (ms) => {
 	const s = Math.max(0, Math.round(ms / 1000))
@@ -157,36 +193,92 @@ function summary(turn, messages) {
 	return parts.filter(Boolean).join(' · ')
 }
 
-/** A turn's line, live while its agent works, and its steps behind it */
+/** One clock for every live turn, ticking only while one is on screen */
+const [clock, setClock] = createRoot(() => createSignal(Date.now()))
+let ticking = 0,
+	timer
+const tick = () => {
+	if (!ticking++) timer = setInterval(() => setClock(Date.now()), 1000)
+	return () => --ticking || clearInterval(timer)
+}
+
+/** How many steps a live turn shows below its line, the newest last */
+const TAIL = 3
+
+/**
+ * A turn's line. While its agent works, the step it's in now, and below it the last few steps and the words coming in;
+ * when the turn ends, its summary. Open, every step in order.
+ */
 export function Turn(props) {
 	const live = () => props.live && doing[props.thread]?.[props.agent.conversation]
-	const now = () =>
-		lastToolCall(live()) || (props.agent.status === 'blocked' ? 'blocked' : 'writing')
+	const [open, setOpen] = createSignal(false)
+	createEffect(
+		() => props.live,
+		(on) => (on ? tick() : undefined),
+	)
+	/** The steps read so far, then those heard live since; a heard step that's done has no output until the turn is read */
+	const steps = createMemo(() => {
+		const known = props.turn?.steps ?? []
+		if (props.turn && !props.live && !props.latest) return known
+		const heard = (streamed[props.agent.conversation] ?? [])
+			.filter((call) => !known.some((step) => step.key === call.key))
+			.map((call) => ({
+				...call,
+				result: call.status === 'done' ? { text: '', heard: true } : null,
+			}))
+		return [...known, ...heard]
+	})
+	const now = () => {
+		const running = steps().findLast((step) => step.name && !step.result)
+		if (running)
+			return running.name === 'post'
+				? `asking ${askedThread(running) ? titleOf(askedThread(running)) : (running.args.title ?? 'a new thread')}`
+				: `${running.name}(${argsLine(running)})`
+		if (props.agent.status === 'blocked') return 'waiting for its runner'
+		return messageText(live()?.message) ? 'writing' : 'thinking'
+	}
+	const line = () => {
+		if (!props.live) return summary({ ...props.turn, steps: steps() }, entries[props.thread] ?? [])
+		const start = props.turn?.start ?? props.since
+		return [
+			now(),
+			steps().length && plural(steps().length, 'step'),
+			start && clock() - start >= 1000 && seconds(clock() - start),
+		]
+			.filter(Boolean)
+			.join(' · ')
+	}
+	const said = () => messageText(live()?.message)
+	const tail = () => steps().slice(-TAIL)
 	return html`
-		<li class="turn">
-			<details>
+		<li class=${() => ({ turn: true, live: !!props.live })}>
+			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<small>
 						<${Show} when=${() => props.live}><${Dot} state=${() => props.agent.status} /><//>
-						${() =>
-							[
-								authorLabel(props.agent.name),
-								props.live && now(),
-								props.turn && summary(props.turn, entries[props.thread] ?? []),
-							]
-								.filter(Boolean)
-								.join(' · ')}
+						<span>${() => authorLabel(props.agent.name)}</span> · <span class="now">${line}</span>
 					</small>
 				</summary>
-				<ol class="steps">
-					<${For} each=${() => props.turn?.steps ?? []} keyed=${(step) => step.key}
+				<${Show} when=${open}>
+					<ol class="steps">
+						<${For} each=${steps} keyed=${(step) => step.key}
+							>${(step) => html`<${Step} step=${() => step()} thread=${() => props.thread} />`}<//
+						>
+						<${Show} when=${said}><li class="said">${said}</li><//>
+					</ol>
+				<//>
+			</details>
+			<${Show} when=${() => props.live && !open()}>
+				<ol class="steps tail">
+					<${Show} when=${() => steps().length > TAIL}>
+						<li class="earlier">${() => `… ${plural(steps().length - TAIL, 'earlier step')}`}</li>
+					<//>
+					<${For} each=${tail} keyed=${(step) => step.key}
 						>${(step) => html`<${Step} step=${() => step()} thread=${() => props.thread} />`}<//
 					>
-					<${Show} when=${() => messageText(live()?.message)}>
-						<li class="said">${() => messageText(live()?.message)}</li>
-					<//>
+					<${Show} when=${said}><li class="said">${said}</li><//>
 				</ol>
-			</details>
+			<//>
 		</li>
 	`
 }
@@ -211,19 +303,22 @@ function Step(props) {
 /** ⏺ tool(args), ⎿ the start of its output; opened, both whole */
 function Call(props) {
 	const result = () => props.step.result
+	const [open, setOpen] = createSignal(false)
 	return html`
 		<li class=${() => ({ call: true, failed: result()?.error, running: !result() })}>
-			<details>
+			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<span class="tool">${() => props.step.name}</span>(${() => argsLine(props.step)})
 					<${Show} when=${() => result()?.text.trim()}>
 						<span class="out">${() => preview(result().text)}</span>
 					<//>
 				</summary>
-				<div class="whole">
-					<pre>${() => JSON.stringify(props.step.args, null, 2)}</pre>
-					<${Show} when=${() => result()?.text}><pre>${() => result().text}</pre><//>
-				</div>
+				<${Show} when=${open}>
+					<div class="whole">
+						<pre>${() => JSON.stringify(props.step.args, null, 2)}</pre>
+						<${Show} when=${() => result()?.text}><pre>${() => result().text}</pre><//>
+					</div>
+				<//>
 			</details>
 		</li>
 	`

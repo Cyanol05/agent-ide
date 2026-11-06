@@ -850,6 +850,7 @@ agent-memory {
 
 				.steps {
 					list-style: none;
+					tab-size: 2;
 					margin: 0.35rem 0 0;
 					padding: 0 0 0 0.2rem;
 					font-size: 13px;
@@ -864,9 +865,11 @@ agent-memory {
 						color: var(--ink);
 					}
 
+					/* Closed, a step is two lines at most: the call and the start of what it printed. */
 					> li.call > details > summary {
-						white-space: normal;
-						overflow: visible;
+						white-space: nowrap;
+						overflow: hidden;
+						text-overflow: ellipsis;
 
 						&::before {
 							content: '⏺ ';
@@ -883,7 +886,8 @@ agent-memory {
 						.out {
 							display: block;
 							padding-left: 1.4rem;
-							white-space: pre-wrap;
+							overflow: hidden;
+							text-overflow: ellipsis;
 							font-size: 12px;
 							opacity: 0.8;
 

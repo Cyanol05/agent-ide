@@ -22,7 +22,7 @@ import {
 	watch,
 } from './server.js'
 import { authorLabel, doing, messageText, setDoing } from './agent.js'
-import { answerOf, readConversation, Turn, turnsOf } from './run.js'
+import { answerOf, conversations, hear, readConversation, streamed, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -41,23 +41,24 @@ export const ThreadLink = (props) => html`
 export function Thread(props) {
 	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
 	const messages = () => entries[props.id] ?? []
-	/** Each agent's turns from its own conversation, read again when it starts, calls a tool or ends, and as the thread moves */
+	/** Each agent's conversation is read when the thread opens and as a turn starts or ends; the live stream fills in between */
+	let read = []
 	createEffect(
 		() =>
-			(thread()?.agents ?? []).map((agent) => {
-				const live = doing[props.id]?.[agent.conversation]
-				return [
-					agent.conversation,
-					agent.status,
-					live?.run,
-					live?.tools.map((tool) => `${tool.callId}${tool.status}`).join(),
-					messages().length,
-				]
-			}),
+			(thread()?.agents ?? []).map(
+				(agent) =>
+					`${agent.conversation}:${agent.status !== 'idle' || !!doing[props.id]?.[agent.conversation]?.run}`,
+			),
 		(agents) => {
-			for (const [conversation] of agents) readConversation(conversation)
+			for (const agent of agents)
+				if (!read.includes(agent)) readConversation(Number(agent.split(':')[0]))
+			read = agents
 		},
 	)
+	/** A live turn keeps the row it started in, though its entries are read later: its key, its place and its start */
+	const liveRows = new Map()
+	const keys = new Map()
+	let next = 0
 	/**
 	 * The thread's messages with each agent turn after the last message it was handed, and a live one while it works.
 	 * A turn that only answered is its answer; an answer to a post shows in the post.
@@ -66,19 +67,50 @@ export function Thread(props) {
 		const all = messages()
 		const turns = (thread()?.agents ?? []).flatMap((agent) => {
 			const turns = turnsOf(agent.conversation).map((turn) => ({
-				key: turn.key,
+				key: keys.get(turn.key)?.key ?? turn.key,
 				agent,
 				turn,
-				at: turn.after + 0.5,
+				at: keys.get(turn.key)?.at ?? turn.after + 0.5,
 			}))
 			const last = turns.at(-1)
-			if (agent.status !== 'idle') {
-				if (last && !last.turn.ended) last.live = true
-				// A turn that ended waits for the server to say so; a new one shows before its first entry is read
-				else if (!last || agent.status === 'blocked' || doing[props.id]?.[agent.conversation]?.run)
-					turns.push({ key: `${agent.conversation}:next`, agent, live: true, at: Infinity })
+			const waiting = liveRows.get(agent.conversation)
+			const working = agent.status !== 'idle'
+			const read = conversations[agent.conversation] !== undefined
+			// The turn running now is read once the last one read hasn't ended, or there's one more than when its row began
+			const caught =
+				read &&
+				last &&
+				(working ? !last.turn.ended : true) &&
+				(!waiting?.read || turns.length > waiting.turns)
+			if (caught && (working || waiting)) {
+				// A turn heard live keeps its row once its entries are read: same key, same place
+				if (waiting) {
+					keys.set(last.turn.key, waiting)
+					Object.assign(last, { key: waiting.key, at: waiting.at })
+					liveRows.delete(agent.conversation)
+				}
+				last.live = working && !last.turn.ended
+			} else if (working || waiting) {
+				// Started, but not read yet: a row after the newest message, until it is, even once it ended
+				const row = waiting ?? {
+					key: `${agent.conversation}:next:${next++}`,
+					at: (all.at(-1)?.id ?? 0) + 0.5,
+					since: Date.now(),
+				}
+				if (read && !row.read) Object.assign(row, { read, turns: turns.length })
+				liveRows.set(agent.conversation, row)
+				turns.push({ ...row, agent, live: working })
 			}
-			return turns.filter((row) => row.live || row.turn.steps.length)
+			// The newest turn also holds the steps heard live since its read, so it never blinks out before the next one
+			const newest = turns.at(-1)
+			if (newest) newest.latest = true
+			return turns.filter(
+				(row) =>
+					row.live ||
+					!row.turn ||
+					row.turn.steps.length ||
+					(row.latest && streamed[agent.conversation]?.length),
+			)
 		})
 		const steps = turns.flatMap((row) => row.turn?.steps ?? [])
 		const shown = all.filter((entry) => !steps.some((step) => answerOf(all, step)?.id === entry.id))
@@ -117,6 +149,7 @@ export function Thread(props) {
 						setPeople((all) => {
 							all[id] = message.people
 						})
+					if (message.live) hear(message.agent, message.live)
 					if (message.live)
 						setDoing((work) => {
 							work[id] ??= {}
@@ -165,7 +198,7 @@ export function Thread(props) {
 						<${Dot} state=${() => thread()?.status} />
 					</button>
 				</h2>
-				<${Show} when=${() => current() !== props.id}>
+				<${Show} when=${() => props.id}>
 					<button
 						type="button"
 						class="close"
@@ -221,6 +254,8 @@ export function Thread(props) {
 									agent=${() => row().agent}
 									turn=${() => row().turn}
 									live=${() => row().live}
+									latest=${() => row().latest}
+									since=${() => row().since}
 								/>
 							<//>
 						`}<//
