@@ -18,48 +18,6 @@ import { RunnerList } from './runner.js'
 import { Settings } from './settings.js'
 import { BotItem, NewBot } from './bot.js'
 
-export function ThreadItem(props) {
-	return html`
-		<li
-			title=${() => props.thread.title}
-			style=${() => `--depth: ${props.depth ?? 0}`}
-			class=${() => ({ current: props.thread.id === current() })}
-		>
-			<a
-				class="row"
-				href=${() => hrefOf(props.thread.id)}
-				onClick=${(event) => followThread(event, props.thread.id)}
-			>
-				<${Dot} state=${() => props.thread.status} />
-				<span>${() => props.thread.title || 'untitled'}</span>
-			</a>
-			<${Show} when=${() => !homeBot(props.thread.id)}>
-				<button
-					type="button"
-					class="delete"
-					data-danger
-					title="Delete this thread"
-					onClick=${() => deleteThread(props.thread.id).catch(report)}
-				>
-					delete
-				</button>
-			<//>
-		</li>
-	`
-}
-
-/** The first row of a list makes a new one of what it lists, in the place it will appear. */
-function NewRow(props) {
-	return html`
-		<li class=${() => ['new', { current: props.current }]}>
-			<button type="button" class="row" onClick=${() => props.onPick()}>
-				<span class="plus" aria-hidden="true">+</span>
-				<span>${() => props.label}</span>
-			</button>
-		</li>
-	`
-}
-
 export function ThreadList() {
 	const [creating, setCreating] = createSignal(false)
 	return html`
@@ -99,5 +57,47 @@ export function ThreadList() {
 				<${Settings} />
 			</footer>
 		</nav>
+	`
+}
+
+/** The first row of a list makes a new one of what it lists, in the place it will appear. */
+function NewRow(props) {
+	return html`
+		<li class=${() => ['new', { current: props.current }]}>
+			<button type="button" class="row" onClick=${() => props.onPick()}>
+				<span class="plus" aria-hidden="true">+</span>
+				<span>${() => props.label}</span>
+			</button>
+		</li>
+	`
+}
+
+export function ThreadItem(props) {
+	return html`
+		<li
+			title=${() => props.thread.title}
+			style=${() => `--depth: ${props.depth ?? 0}`}
+			class=${() => ({ current: props.thread.id === current() })}
+		>
+			<a
+				class="row"
+				href=${() => hrefOf(props.thread.id)}
+				onClick=${(event) => followThread(event, props.thread.id)}
+			>
+				<${Dot} state=${() => props.thread.status} />
+				<span>${() => props.thread.title || 'untitled'}</span>
+			</a>
+			<${Show} when=${() => !homeBot(props.thread.id)}>
+				<button
+					type="button"
+					class="delete"
+					data-danger
+					title="Delete this thread"
+					onClick=${() => deleteThread(props.thread.id).catch(report)}
+				>
+					delete
+				</button>
+			<//>
+		</li>
 	`
 }

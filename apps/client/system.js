@@ -93,21 +93,6 @@ export function System() {
 	`
 }
 
-/** The chat's thread list is as wide as you drag it, here, on this device; a double-click puts it back. */
-const WIDTH = 'agent-ide.list-width'
-const setWidth = (px) => {
-	if (px) document.documentElement.style.setProperty('--list-width', `${px}px`)
-	else document.documentElement.style.removeProperty('--list-width')
-	try {
-		if (px) localStorage.setItem(WIDTH, String(px))
-		else localStorage.removeItem(WIDTH)
-	} catch {}
-}
-try {
-	const saved = Number(localStorage.getItem(WIDTH))
-	if (saved) document.documentElement.style.setProperty('--list-width', `${saved}px`)
-} catch {}
-
 function ListEdge() {
 	const fit = (px) => Math.round(Math.min(Math.max(px, 160), Math.min(640, innerWidth / 2)))
 	const list = (el) => el.parentElement.querySelector('.thread-list')
@@ -144,3 +129,18 @@ function ListEdge() {
 		></div>
 	`
 }
+
+/** The chat's thread list is as wide as you drag it, here, on this device; a double-click puts it back. */
+const WIDTH = 'agent-ide.list-width'
+const setWidth = (px) => {
+	if (px) document.documentElement.style.setProperty('--list-width', `${px}px`)
+	else document.documentElement.style.removeProperty('--list-width')
+	try {
+		if (px) localStorage.setItem(WIDTH, String(px))
+		else localStorage.removeItem(WIDTH)
+	} catch {}
+}
+try {
+	const saved = Number(localStorage.getItem(WIDTH))
+	if (saved) document.documentElement.style.setProperty('--list-width', `${saved}px`)
+} catch {}

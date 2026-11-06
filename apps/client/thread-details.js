@@ -17,7 +17,6 @@ import { authorLabel } from './agent.js'
 import { BotSettings } from './bot.js'
 import { ThreadItem } from './thread-list.js'
 
-const HANDS_OFF = ['-write', '-edit', '-bash']
 export function ThreadDetails() {
 	const here = () => threads.find((thread) => thread.id === current())
 	// A bot's home is named for it already, so only who else is there
@@ -155,3 +154,5 @@ function Tools(props) {
 		</div>
 	`
 }
+
+const HANDS_OFF = ['-write', '-edit', '-bash']

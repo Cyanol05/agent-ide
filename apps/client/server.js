@@ -57,14 +57,6 @@ export const [entries, setEntries] = createStore({}, { shallow: true })
 export const [people, setPeople] = createStore({})
 export const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
 
-/** A thread's address: what a real link needs, so it can also be opened in a new tab or copied */
-export function hrefOf(id) {
-	const next = new URL(location.href)
-	if (id) next.searchParams.set('thread', id)
-	else next.searchParams.delete('thread')
-	return next.pathname + next.search
-}
-
 export function openThread(id) {
 	setCurrent(id)
 	drawer(null)
@@ -76,6 +68,19 @@ export function followThread(event, id) {
 	if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
 	event.preventDefault()
 	openThread(id)
+}
+
+/** A thread's address: what a real link needs, so it can also be opened in a new tab or copied */
+export function hrefOf(id) {
+	const next = new URL(location.href)
+	if (id) next.searchParams.set('thread', id)
+	else next.searchParams.delete('thread')
+	return next.pathname + next.search
+}
+
+export function drawer(which) {
+	for (const name of ['list', 'side'])
+		document.body.classList.toggle(name, name === which && !document.body.classList.contains(name))
 }
 
 export const { threads, runners, server, bots, family, columns, closeColumn } = createRoot(() => {
@@ -134,10 +139,6 @@ export const { threads, runners, server, bots, family, columns, closeColumn } = 
 	return { threads, runners, server, bots, family, columns, closeColumn }
 })
 
-export function drawer(which) {
-	for (const name of ['list', 'side'])
-		document.body.classList.toggle(name, name === which && !document.body.classList.contains(name))
-}
 export async function createThread(title) {
 	const tools = newThreadTools()
 	const { id } = await api('/api/threads', { title, tools })
@@ -150,6 +151,9 @@ export async function deleteThread(id) {
 	if (family().includes(id)) openThread(null)
 	refresh(threads)
 }
+
+export const fork = async (id, at) => openThread((await api(`/api/threads/${id}/fork`, { at })).id)
+
 export const homeBot = (id) => bots.find((bot) => bot.home === id)
 export const botAgent = (bot) => ({ ...bot.to, name: bot.name })
 export const colorOf = (name) => {
@@ -158,4 +162,3 @@ export const colorOf = (name) => {
 }
 export const forkedFrom = (thread) => thread?.conversation?.parent?.conversationId
 export const titleOf = (id) => threads.find((thread) => thread.id === id)?.title || `thread ${id}`
-export const fork = async (id, at) => openThread((await api(`/api/threads/${id}/fork`, { at })).id)
