@@ -2,8 +2,8 @@
 import { createRoot, createStore } from 'solid-js'
 
 export const [doing, setDoing] = createRoot(() => createStore({}))
-/** How a message names an agent, as util.js does: a bot's name, or the thread's agent as `model@runner` */
-export const agentName = (to) => to.name ?? `${to.model}@${to.runner}`
+/** How a `to` is written, as util.js does: a bot's name, or the thread's agent as its recipe `model@runner` */
+export const writtenTo = (to) => to.name ?? `${to.model}@${to.runner}`
 
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 

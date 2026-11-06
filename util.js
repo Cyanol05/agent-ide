@@ -11,8 +11,8 @@ export async function collect(scan) {
 	return items
 }
 
-/** How a message names an agent: a bot's name, or the thread's agent as `model@runner` at the time */
-export const agentName = (to) => to && (to.name ?? `${to.model}@${to.runner}`)
+/** How a `to` is written: a bot's name, or the thread's agent as its recipe `model@runner` */
+export const writtenTo = (to) => to && (to.name ?? `${to.model}@${to.runner}`)
 /** The thread's own agent's key among its agents; bots are keyed by name */
 export const AGENT = 'agent'
 /** Bot names have no `@`, so any name with one is the thread's agent, whatever model it had */

@@ -1,13 +1,15 @@
-/** Asks whom a message @mentions, a bot by name or the thread's agent as model@runner, instead of whom the thread asked last. MODULES=+director */
-import { agentName } from '../util.js'
+/** Asks the bots a message @mentions, by name in any case, instead of whom the thread asked last. A recipe is never a mention. MODULES=+director */
 
-/** Whom a message asks: the agents it @mentions, else its own `to`, or nobody */
+/** The thread's bots a message @mentions; none, and the message asks as it would without the director */
 export const server = () => ({ route })
 
-function route({ body, to }, agents) {
-	const named = new Map(agents.map((agent) => [agentName(agent), agent]))
-	const picked = [...body.matchAll(/@([\w./-]+(?:@[\w.-]+)?)/g)]
-		.map(([, name]) => named.get(name.replace(/\.+$/, '')))
+function route({ body }, agents) {
+	/** Bot names are written as they read, but people type them in any case */
+	const bots = new Map(
+		agents.filter((agent) => agent.name).map((bot) => [bot.name.toLowerCase(), bot]),
+	)
+	const mentioned = [...body.matchAll(/@([\w.-]+)/g)]
+		.map(([, name]) => bots.get(name.replace(/\.+$/, '').toLowerCase()))
 		.filter(Boolean)
-	return picked.length ? [...new Set(picked)] : to
+	return [...new Set(mentioned)]
 }

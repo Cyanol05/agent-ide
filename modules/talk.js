@@ -6,7 +6,7 @@
 import { num, obj, opt, str } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
-import { AGENT, agentName, field, keyOf, said } from '../util.js'
+import { AGENT, writtenTo, field, keyOf, said } from '../util.js'
 
 export function server(core) {
 	const { agentOf, home } = core
@@ -58,8 +58,11 @@ export function server(core) {
 			const asker =
 				asked &&
 				(await agentOf((await core.thread(thread)).agents[askerKey]?.conversation, askerKey))
-			const to =
-				args.to === 'nobody'
+			/** An answer goes back to its asker; any other post to a thread asks the bots it @mentions there */
+			const mentioned = thread === undefined || asked ? [] : await core.mentions(thread, args.body)
+			const to = mentioned.length
+				? mentioned
+				: args.to === 'nobody'
 					? []
 					: args.to !== undefined
 						? [await core.whom(thread, args.to, false, context.abortSignal)]
@@ -85,7 +88,7 @@ export function server(core) {
 				)
 				// An answer was said here too: its own thread shows it, and its agent never reads it back
 				if (asked) await core.post(tx, from, { author: name, body: args.body, re: [asked.id] })
-				const who = to.map(agentName).join(', ') || 'nobody'
+				const who = to.map(writtenTo).join(', ') || 'nobody'
 				if (asked)
 					return {
 						output: [{ type: 'text', text: `Answered thread ${id}'s question, for ${who}.` }],
@@ -168,7 +171,7 @@ export function server(core) {
 		/** The thread's agent goes by its key and by the model it runs as now */
 		const candidates = await Promise.all(
 			Object.entries(agents).map(async ([key, { conversation }]) => [
-				key === AGENT ? agentName(await agentOf(conversation, key)) : key,
+				key === AGENT ? writtenTo(await agentOf(conversation, key)) : key,
 				key,
 				conversation,
 			]),

@@ -25,7 +25,7 @@ import { createCodemodeExtension } from '@earendil-works/pi-durable/codemode'
 import { CodemodeSandbox } from '@earendil-works/pi-codemode'
 import { about, load, readConfig } from './modules.js'
 import { WebSocketServer } from 'ws'
-import { AGENT, agentName, agentTo, collect, field, keyOf, said, speaker } from './util.js'
+import { AGENT, writtenTo, agentTo, collect, field, keyOf, said, speaker } from './util.js'
 import {
 	createRunners,
 	messageText,
@@ -560,7 +560,7 @@ async function work() {
 			const to = shell ? task.input.to : await agentOf(task.input.agent)
 			return {
 				thread: task.conversationId,
-				...(shell ? {} : { conversation: task.input.agent, name: agentName(to) }),
+				...(shell ? {} : { conversation: task.input.agent, name: writtenTo(to) }),
 				runner: to?.runner,
 				status: to && runners.isOnline(to.runner) ? 'working' : 'blocked',
 			}
@@ -574,7 +574,7 @@ async function agentsIn(row, busy) {
 		Object.entries(row.agents).map(async ([key, { conversation }]) => {
 			const to = await agentOf(conversation, key)
 			const status = busiest(busy.filter((job) => job.conversation === conversation).map((job) => job.status))
-			return { name: to ? agentName(to) : key, conversation, to, status }
+			return { name: to ? writtenTo(to) : key, conversation, to, status }
 		}),
 	)
 }
@@ -626,7 +626,7 @@ async function post(tx, threadId, message, options = {}) {
 /** Already-authorized answers return to their askers; new requests enter through post. */
 async function append(tx, threadId, { to, ...message }, { steer = false, empty = false } = {}) {
 	const row = await tx.doc(Thread, threadId)
-	const names = (to ?? []).map(agentName)
+	const names = (to ?? []).map(writtenTo)
 	const data = { ...message, ...(to ? { to: names } : {}) }
 	const prior =
 		!empty && names.some((name) => !row.agents[keyOf(name)])
@@ -874,7 +874,7 @@ async function home(conversationId) {
 	const key =
 		row && Object.keys(row.agents).find((key) => row.agents[key].conversation === conversationId)
 	if (!key) return null
-	const name = key === AGENT ? agentName(await agentOf(conversationId, key)) : key
+	const name = key === AGENT ? writtenTo(await agentOf(conversationId, key)) : key
 	return { thread: threadId, key, name }
 }
 
@@ -904,7 +904,15 @@ const once = (requestId, command, work) =>
 		return result
 	})
 
-/** No `to` asks whom the thread last asked, or with the director, whom the body @mentions */
+/** With the director, the bots here a message @mentions; none without it */
+async function mentions(id, body) {
+	if (!route) return []
+	const { agents } = await thread(id)
+	const here = await Promise.all(Object.entries(agents).map(([key, agent]) => agentOf(agent.conversation, key)))
+	return addresses(route({ body }, here.filter(Boolean)), false, id)
+}
+
+/** No `to` asks whom the thread last asked; with the director, an @mention of a bot here asks that bot */
 async function postEntry(id, author, input) {
 	const saved = await receipt(input.requestId, `post ${id}`)
 	if (saved) return saved.result
@@ -912,26 +920,13 @@ async function postEntry(id, author, input) {
 	const images = imageList(input.images)
 	const body = images ? (input.body ?? '').trim() : field(input.body, 'body')
 	const command = !images && body.match(/^\$\s+([\s\S]+)/)?.[1]
-	const routed = route && !command
-	let to =
-		'to' in input
+	const mentioned = command ? [] : await mentions(id, body)
+	/** A mention of no one asks as a message without one: its own `to`, else whom the thread asked last */
+	const to = mentioned.length
+		? mentioned
+		: 'to' in input
 			? await addresses(input.to, Boolean(command), id)
-			: routed
-				? []
-				: await lastAsked(id)
-	if (routed)
-		to = await addresses(
-			route(
-				{ body, to },
-				(
-					await Promise.all(
-						Object.entries((await thread(id)).agents).map(([key, recipient]) => agentOf(recipient.conversation, key)),
-					)
-				).filter(Boolean),
-			),
-			false,
-			id,
-		)
+			: await lastAsked(id)
 	if (command && !to.length) throw new Error('Pick a runner to run the command on')
 	if (command) await reach(to, author, await known())
 	if (!command && to.filter((to) => !to.name).length > 1)
@@ -1119,6 +1114,7 @@ const core = {
 	entries,
 	messages,
 	lastAsked,
+	mentions,
 	startThread,
 	post,
 	seenBy,
