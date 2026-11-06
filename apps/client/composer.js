@@ -32,6 +32,7 @@ import { agentTo, formatAgent, writtenTo } from './agent.js'
 import { placePopover } from './popover.js'
 import { ModelPicker } from './model-picker.js'
 import { Dot } from './dot.js'
+import { conversations } from './run.js'
 import { Compaction, Memory } from './agent-memory.js'
 import { Panes } from './panes.js'
 import { report } from './notice.js'
@@ -106,10 +107,17 @@ export function Composer(props) {
 	let input, picker, button, chooser, anchor, recall, recallButton
 	const [lines, setLines] = createSignal(false)
 	const [compacting, setCompacting] = createSignal(false)
+	/** How full the agent's context was at its last answer: tokens, and the share of its window */
+	const filled = () => {
+		const agent = here(props.thread).find((agent) => agent.contextWindow)
+		const used = (conversations[agent?.conversation] ?? []).findLast((entry) => entry.kind === 'pi.assistant')?.model?.[0]
+			?.usage?.totalTokens
+		return used && { used, share: Math.round((used / agent.contextWindow) * 100) }
+	}
 	const compactNow = async () => {
 		setCompacting(true)
 		try {
-			await api(`/api/threads/${props.thread}/memory`, { compact: true })
+			await api(`/api/threads/${props.thread}/compact`, {})
 		} catch (error) {
 			report(error)
 		} finally {
@@ -331,19 +339,19 @@ export function Composer(props) {
 						Stop
 					</button>
 				<//>
-				<${Show} when=${() => server().modules?.includes('memory') && props.thread !== undefined}>
+				<${Show} when=${() => filled()}>
 					<button
 						type="button"
 						class="pick"
-						aria-label="Memory"
-						title="What the agent remembers of this thread"
+						aria-label="Context"
+						title="How full the agent's context is"
 						ref=${(el) => (recallButton = el)}
 						onClick=${() => {
 							openThread(props.thread)
 							recall.togglePopover()
 						}}
 					>
-						<span>Memory</span>
+						<span>${() => `${filled().share}% · ${Math.round(filled().used / 1000)}k`}</span>
 					</button>
 				<//>
 				<button
@@ -377,7 +385,7 @@ export function Composer(props) {
 			>
 				<${Show} when=${() => active()}>
 					<${Panes}
-						title="Memory"
+						title="Context"
 						detailTitle="Memory’s lines"
 						open=${() => lines()}
 						onBack=${() => setLines(false)}
@@ -386,12 +394,19 @@ export function Composer(props) {
 						<${Compaction} />
 						<button type="button" disabled=${() => compacting()} onClick=${compactNow}>
 							<span>${() => (compacting() ? 'Compacting…' : 'Compact now')}</span>
-							<small>the agent reads the memory lines instead of the old messages</small>
+							<small>
+								${() =>
+									server().modules?.includes('memory')
+										? 'the agent reads the memory lines instead of the old messages'
+										: 'Pi summarises the old messages, which costs a model call'}
+							</small>
 						</button>
-						<button type="button" onClick=${() => setLines(true)}>
-							<span>Read the lines</span>
-							<small>what the agent remembers, from the top down</small>
-						</button>
+						<${Show} when=${() => server().modules?.includes('memory')}>
+							<button type="button" onClick=${() => setLines(true)}>
+								<span>Read the lines</span>
+								<small>what the agent remembers, from the top down</small>
+							</button>
+						<//>
 					<//>
 				<//>
 			</div>

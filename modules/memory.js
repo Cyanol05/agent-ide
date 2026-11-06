@@ -302,9 +302,8 @@ export function server(core) {
 		},
 	})
 
-	async function serve(thread, query, body) {
+	async function serve(thread, query) {
 		if (thread === undefined) throw new Error('Memory is per thread: /api/threads/:id/memory')
-		if (body?.compact) return { compacted: await core.compact(thread) }
 		if (query.has('zoom')) {
 			const opened = await open(thread, ...query.get('zoom').split(',').map(Number))
 			return typeof opened === 'string' ? { message: opened } : { lines: opened.map(span) }

@@ -49,7 +49,7 @@ import {
  * @property {true} [error]  The agent gave no answer.
  * @property {{ runner: string, code: number | null, stdout: string, stderr: string, error?: string }} [shell]  What `$ cmd` printed.
  * @typedef {{ id: number, kind: 'agent-ide.message', data: Message }} Entry
- * @typedef {{ name: string, conversation: number, to: To | null, status: string }} Agent  An agent or bot, as a thread view shows it.
+ * @typedef {{ name: string, conversation: number, to: To | null, status: string, contextWindow?: number }} Agent  An agent or bot, as a thread view shows it.
  * @typedef {{ conversation: number, unseen: number[], admission?: { admit: number, deliver: number }, note?: string }} Recipient
  *   A thread doc's row for its agent or a bot: its conversation, the thread messages it hasn't seen, its latest input's
  *   tasks, and what to tell it about a change before its next one.
@@ -576,7 +576,8 @@ async function agentsIn(row, busy) {
 		Object.entries(row.agents).map(async ([key, { conversation }]) => {
 			const to = await agentOf(conversation, key)
 			const status = busiest(busy.filter((job) => job.conversation === conversation).map((job) => job.status))
-			return { name: to ? writtenTo(to) : key, conversation, to, status }
+			const contextWindow = to && models.getModel(`runner:${to.runner}`, to.model)?.contextWindow
+			return { name: to ? writtenTo(to) : key, conversation, to, status, ...(contextWindow && { contextWindow }) }
 		}),
 	)
 }
@@ -1098,6 +1099,18 @@ async function forkThread(id, { at, title }) {
 	return { id: fork.id }
 }
 
+/** Compacts each agent of the thread now, as Pi does when its context fills; what each came to is its outcome */
+async function compact(id) {
+	const { agents } = await thread(id)
+	return Promise.all(
+		Object.values(agents).map(async ({ conversation: agent }) => {
+			const taskId = await (await harness.conversation(agent, context)).compact(undefined, context)
+			const { outcome } = (await harness.waitForTask(taskId, context)).state
+			return outcome.status
+		}),
+	)
+}
+
 const core = {
 	/** A thread's doc inside a commit, where a snapshot would wait for the commit itself */
 	threadIn: (tx, id) => tx.doc(Thread, id),
@@ -1120,17 +1133,7 @@ const core = {
 	startThread,
 	post,
 	seenBy,
-	/** Compacts each agent of the thread now, as Pi does when its context fills; what each came to is its outcome */
-	async compact(id) {
-		const { agents } = await thread(id)
-		return Promise.all(
-			Object.values(agents).map(async ({ conversation: agent }) => {
-				const taskId = await (await harness.conversation(agent, context)).compact(undefined, context)
-				const { outcome } = (await harness.waitForTask(taskId, context)).state
-				return outcome.status
-			}),
-		)
-	},
+	compact,
 	commit,
 	once,
 	receipt,
@@ -1278,6 +1281,7 @@ const routes = [
 			return { stopped: id }
 		},
 	],
+	['POST /api/threads/:id/compact', async (req, id) => ({ compacted: await compact(id) })],
 	['GET /api/conversations/:id', (req, id) => conversationView(id)],
 	...modules
 		.filter((module) => module.serve)
