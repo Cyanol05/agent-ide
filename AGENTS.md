@@ -3,7 +3,7 @@
 ## Working here
 
 - Work on `main` in the one checkout, `~/sites/agent-ide`, with jj: no branches, worktrees or copies of the repo, `/tmp` included. Every thread shares it, so commit only your own paths (`jj commit <paths>`), read your diff for anyone else's hunks first, and `jj git fetch` and rebase before you push.
-- Use agent-ide the way a person would: `node scripts/try.js &` starts a scratch server with a scripted bot and an answered thread, and prints its address and the `kill` that stops it. Open it with `agent-browser --session <yours> open <url>`. The server reads the client's files at startup, so restart it after each edit. Never kill by pattern.
+- Use agent-ide the way a person would: `node scripts/try.js &` starts a scratch server with a scripted bot and an answered thread, and prints its address and the `kill` that stops it. Open it with `agent-browser --session <yours> open <url>`. The server reads the client's files at startup, so restart it after each edit. Never kill by pattern. For what a page fetches, hears on its socket, or stalls on, open it with `--init-script <repo>/scripts/page-spy.js` (an absolute path) and read `spy` back with `eval`.
 - Test in proportion. A style, copy or layout tweak gets one look in the browser, or none when it's trivial. Logic runs the examples it touches. Server behaviour and contract changes get an example that fails on the old code first (say so) and the full suite. If a check fails twice, stop and report.
 - `pnpm install --frozen-lockfile` in a fresh checkout; leave package.json and the lockfile alone unless the task is about dependencies. After packaging changes, prove npm and npx installs; Chord's optional `ws` peer must fit the root range.
 

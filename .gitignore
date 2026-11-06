@@ -4,3 +4,4 @@ node_modules/
 .mull/
 .env*
 third-party/
+bun.lock
