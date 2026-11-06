@@ -11,8 +11,9 @@ import { Dot } from './dot.js'
 import { RunnerList } from './runner.js'
 
 /** Changes not saved yet, kept if the settings close before saving */
-const [draft, setDraft] = createRoot(() => createStore({ modules: {}, model: undefined, state: '' }))
-const changed = () => Object.keys(draft.modules).length > 0 || draft.model !== undefined
+const [draft, setDraft] = createRoot(() => createStore({ modules: {}, model: undefined, compactAt: undefined, state: '' }))
+const changed = () =>
+	Object.keys(draft.modules).length > 0 || draft.model !== undefined || draft.compactAt !== undefined
 
 export function Settings() {
 	let button, panel
@@ -27,6 +28,7 @@ export function Settings() {
 	const editable = () => server().local && draft.state === ''
 	const on = (module) => draft.modules[module.name] ?? module.on
 	const model = () => draft.model ?? server().settings?.memory.model ?? ''
+	const compactAt = () => draft.compactAt ?? server().settings?.memory.compactAt ?? 100000
 	const toggle = (module) =>
 		setDraft((store) => {
 			if (!module.on === !on(module)) store.modules[module.name] = !module.on
@@ -43,11 +45,17 @@ export function Settings() {
 		try {
 			const { restarts } = await api('/api/settings', {
 				modules: snapshot(draft.modules),
-				...(draft.model !== undefined && { memory: { model: draft.model } }),
+				...((draft.model !== undefined || draft.compactAt !== undefined) && {
+					memory: {
+						...(draft.model !== undefined && { model: draft.model }),
+						...(draft.compactAt !== undefined && { compactAt: draft.compactAt }),
+					},
+				}),
 			})
 			setDraft((store) => {
 				store.modules = {}
 				store.model = undefined
+				store.compactAt = undefined
 				store.state = restarts ? 'restarting' : 'stopped'
 			})
 		} catch (error) {
@@ -145,7 +153,19 @@ export function Settings() {
 									</div>
 									<div class="option">
 										<span>Compacts past</span>
-										<span>${() => `${Math.round((server().settings?.memory.compactAt ?? 100000) / 1000)}k tokens`}</span>
+										<input
+											type="number"
+											min="10"
+											step="10"
+											aria-label="Compacts past, in thousands of tokens"
+											disabled=${() => !editable()}
+											value=${() => Math.round(compactAt() / 1000)}
+											onChange=${(event) => {
+												const thousands = Number(event.currentTarget.value)
+												if (thousands > 0) setDraft((store) => void (store.compactAt = thousands * 1000))
+											}}
+										/>
+										<span>k tokens</span>
 									</div>
 								<//>
 							</div>

@@ -21,7 +21,7 @@ check(rebound.status === 403 && !existsSync(file), 'only the server’s own mach
 const pid = srv.pid
 const on = await api('POST', '/api/settings', {
 	modules: { search: true, status: false },
-	memory: { model: 'echo/echo:high@bot' },
+	memory: { model: 'echo/echo:high@bot', compactAt: 60000 },
 })
 check(on.status === 201 && on.json.restarts, 'saving says the server restarts itself', JSON.stringify(on.json))
 check(
@@ -39,6 +39,11 @@ check(
 	JSON.parse(readFileSync(file, 'utf8')).memory.model === 'echo/echo:high@bot' &&
 		(await api('GET', '/api/server')).json.settings.memory.model === 'echo/echo:high@bot',
 	'the memory model keeps its thinking level across the restart',
+)
+check(
+	JSON.parse(readFileSync(file, 'utf8')).memory.compactAt === 60000,
+	'memory compacts past the tokens the page set',
+	readFileSync(file, 'utf8'),
 )
 
 await api('POST', '/api/settings', { modules: { search: false, status: true }, memory: { model: '' } })

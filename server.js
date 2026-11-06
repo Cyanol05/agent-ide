@@ -1712,8 +1712,16 @@ async function saveSettings({ modules: wanted = {}, memory }) {
 	if (memory !== undefined) {
 		const model = typeof memory.model === 'string' ? memory.model.trim() : ''
 		if (model && !model.includes('@')) throw new Error('A memory model is model@runner, or empty for each thread\'s agent')
-		if (model) next.memory = { ...next.memory, model }
-		else if (next.memory) delete next.memory.model
+		if (memory.model !== undefined) {
+			if (model) next.memory = { ...next.memory, model }
+			else if (next.memory) delete next.memory.model
+		}
+		if (memory.compactAt !== undefined) {
+			const tokens = Number(memory.compactAt)
+			if (!Number.isInteger(tokens) || tokens < 10000) throw new Error('memory compacts past at least 10000 tokens')
+			if (tokens === 100000) delete next.memory?.compactAt
+			else next.memory = { ...next.memory, compactAt: tokens }
+		}
 		if (next.memory && !Object.keys(next.memory).length) delete next.memory
 	}
 	writeFileSync(settings.file, `${JSON.stringify(next, null, '\t')}\n`)
