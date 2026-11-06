@@ -74,7 +74,17 @@ export function Thread(props) {
 					if (!replies.has(id) || (replies.get(id).data.answer && !entry.data.answer)) replies.set(id, entry)
 		const inside = new Set([...replies.values()].map((entry) => entry.id))
 		const shown = all.filter((entry) => !answers.has(entry.id) && !inside.has(entry.id))
-		const said = shown.map((entry) => ({ key: entry.id, entry, at: entry.id, reply: replies.get(entry.id) }))
+		// The run that answered such a question alone, and did nothing else, sits in its box between question and answer
+		const runs = new Map()
+		for (const [id, reply] of replies) {
+			const question = all.find((entry) => entry.id === id)
+			const run = turns.find((row) => !row.live && row.turn?.after === id && row.agent.name === reply.data.author)
+			const calls = run?.turn.steps.filter((step) => step.name) ?? []
+			if (run && reply.data.re.length === 1 && calls.every((step) => step.name === 'post' && step.args?.thread === question.data.from))
+				runs.set(id, run)
+		}
+		const boxed = new Set(runs.values())
+		const said = shown.map((entry) => ({ key: entry.id, entry, at: entry.id, reply: replies.get(entry.id), run: runs.get(entry.id) }))
 		const cuts = (thread()?.agents ?? []).flatMap((agent) =>
 			cutsOf(agent.conversation).map((cut) => ({ ...cut, cut: true })),
 		)
@@ -83,7 +93,7 @@ export function Thread(props) {
 		const folded = newest && !unfolded() ? newest : null
 		const above = (row) => folded && row.at < folded.at
 		const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
-		const rows = [...said.filter((row) => !above(row)), ...turns.filter((row) => !above(row)), ...lines, ...cuts].sort((one, other) => one.at - other.at)
+		const rows = [...said.filter((row) => !above(row)), ...turns.filter((row) => !above(row) && !boxed.has(row)), ...lines, ...cuts].sort((one, other) => one.at - other.at)
 		// A message or run line names its author only when it isn't the last one's that wasn't yours: your own are marked by where they sit
 		let last
 		for (const row of rows) {
@@ -253,6 +263,7 @@ export function Thread(props) {
 										thread=${() => props.id}
 										entry=${() => row().entry}
 										reply=${() => row().reply}
+										run=${() => row().run}
 										above=${() => row().above}
 									/>
 								`}
@@ -318,6 +329,11 @@ function Message(props) {
 					<//>
 					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
+					<${Show} when=${() => props.run}>
+						<ul class="run">
+							<${Turn} thread=${() => props.thread} agent=${() => props.run.agent} turn=${() => props.run.turn} />
+						</ul>
+					<//>
 					<${Show} when=${() => props.reply}>
 						<div class="reply">
 							<small title=${() => props.reply.data.author}

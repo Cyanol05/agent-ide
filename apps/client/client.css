@@ -798,7 +798,9 @@ agent-memory {
 		font-size: 15px;
 		line-height: 1.6;
 
-		> li {
+		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
+		> li,
+		> li > .run > li {
 			margin: 1.5rem 0 0;
 			white-space: pre-wrap;
 			overflow-wrap: anywhere;
@@ -950,6 +952,17 @@ agent-memory {
 				padding: 0.7rem 0.9rem;
 				border: 1px solid var(--line);
 				border-radius: 12px;
+			}
+
+			/* The run that answered it, alone, sits between the question and its answer. */
+			> .run {
+				list-style: none;
+				margin: 0.7rem 0 0;
+				padding: 0;
+
+				> li {
+					margin: 0;
+				}
 			}
 
 			/* The answer said here to that question sits under it, past a thin rule, like a reply under its mail. */
