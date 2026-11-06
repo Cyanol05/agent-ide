@@ -1,39 +1,30 @@
 # AGENTS.md
 
-- Work on `main` in the one checkout, `~/sites/agent-ide`, with jj: no branches, worktrees or copies of the repo elsewhere, `/tmp` included. Every thread shares it.
-- Other agents edit this checkout at the same time: commit only your own paths (`jj commit <paths>`), read your diff for anyone else's hunks first, and `jj git fetch` and rebase before you push.
-- Check a change by using agent-ide the way a person would: `node scripts/try.js &` starts a scratch server with a scripted bot and an answered thread, and prints the address and the `kill` that stops it. Open it with `agent-browser --session <yours> open <url>`; the default session is shared. The server reads the client's files once at startup, so restart it after each edit. Never kill by pattern.
-- Test in proportion. A style, copy or layout tweak gets one look in the browser, or none when it's trivial: no measuring, no phone check unless the phone layout changed. Logic runs the examples it touches, not the whole suite. Old-code-first and the full suite are for server behaviour and contract changes. Don't loop: if a check fails twice, stop and report.
-- An example proves a fix only if it fails without it: run it on the old code first and say so. Server errors print in example output; `VERBOSE=1` adds the server's own log.
-- A change serves one of the promises in [apps/client/client.html](apps/client/client.html), or it requires a chat with Oskar. When a better design breaks a principle, or an idea looks wrong, Oskar's included, argue before building.
-- Use the words the README uses, one per concept. Fewer concepts beats fewer lines.
-- A name says what it holds and stays the same in every layer, so `rg` finds the whole path: the API's word in the server, the modules and the client (a `To` is `to`). No one-letter names, but `_` and stored notation such as memory's `l`, `i` and `n`.
-- Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own.
-- In a Pi commit, read before you write: one `submit(tx, ...)` comes before table writes, and after the first write a commit can't scan entries or take a snapshot. A snapshot inside a commit deadlocks without an error. Copy document values before they leave the commit.
-- Don't over-fix. A rare failure that would need a new store, task layer or journal stays a known gap, written on its issue. Small and readable beats covering every crash.
-- A tool's cancellation comes from `execute`'s third Context argument: pass its `abortSignal` through runner calls, and settle cancellation locally without waiting for the runner's reply.
-- Use `pnpm install --frozen-lockfile` in a fresh checkout; keep package.json and the lockfile unchanged unless the task calls for dependency changes.
+## Working here
+
+- Work on `main` in the one checkout, `~/sites/agent-ide`, with jj: no branches, worktrees or copies of the repo, `/tmp` included. Every thread shares it, so commit only your own paths (`jj commit <paths>`), read your diff for anyone else's hunks first, and `jj git fetch` and rebase before you push.
+- Use agent-ide the way a person would: `node scripts/try.js &` starts a scratch server with a scripted bot and an answered thread, and prints its address and the `kill` that stops it. Open it with `agent-browser --session <yours> open <url>`. The server reads the client's files at startup, so restart it after each edit. Never kill by pattern.
+- Test in proportion. A style, copy or layout tweak gets one look in the browser, or none when it's trivial. Logic runs the examples it touches. Server behaviour and contract changes get an example that fails on the old code first (say so) and the full suite. If a check fails twice, stop and report.
+- `pnpm install --frozen-lockfile` in a fresh checkout; leave package.json and the lockfile alone unless the task is about dependencies. After packaging changes, prove npm and npx installs; Chord's optional `ws` peer must fit the root range.
+
+## What to build
+
+- A change serves a promise in [apps/client/client.html](apps/client/client.html), or it needs a chat with Oskar. When an idea looks wrong, Oskar's included, argue before building.
 - New features are modules, off by default.
-- Keep client.html and the README saying what the code does high level.
-- A thread's contract (which entries it holds, their data, what the API returns) and how the client shows it are two decisions. Change the contract only on purpose, in its own commit, with the README and an example; a UI wish is solved in the client from existing entries first.
-- Docs and UI copy read brief and human, like a person talking, never like SaaS marketing.
-- Prove logic, machinery and state machines in `examples/`, one file per idea. No UI tests, no unit tests, no TypeScript, no build step, no migrations or shims.
-- Thread views omit `dir` at the runner's root, so use a subfolder to prove CLI folder options.
-- Pi forks restore `pi.agent` at the fork entry, so apply the thread's current tools and new identity in the creating commit without replacing the inherited model, thinking or folder.
-- Runner commands minted through localhost need a network address, preferably Tailscale rather than the first non-loopback interface.
-- Solid 2 is not Solid 1: read `CHEATSHEET.md` and `skills/solid-2.0/SKILL.md` in node_modules/solid-js before writing the Solid client, and fix any `[CODE]` warning in the browser console with `skills/reactivity-diagnostics/SKILL.md` there.
-- There is one web client: Solid, no build step, in apps/client; client.html is served at `/`. Its import map names every package Solid imports bare, so each one, `@solidjs/signals` too, is a root dependency. Mermaid is served locally too.
-- Resolve installed packages, never assume `<app>/node_modules`: npm/npx hoist dependencies. Use `import.meta.resolve` for browser assets. `runnerBundle` uses `createRequire(...).resolve.paths` for manifests that needn't be exported; runners call it too, and Bun lacks Node's `findPackageJSON`.
-- Examples go through the API, socket or CLI, the way a user would, not server internals; then a refactor doesn't break them. `examples/00-the-api.js` is the README's walkthrough: change both together.
-- Don't assume the `hostname` command exists; use Node's `os.hostname()`.
-- npm enforces Chord's optional `ws` peer too; the root range must admit it. Prove npm and npx installs after packaging changes.
-- For an example of a failed npm install, use a missing `.tgz` dependency: a missing `file:` directory can install successfully as a dangling symlink.
-- Pi Durable's SQLite task `kind` column stores a JSON string; bind `JSON.stringify(name)` when inspecting example outcomes.
-- Pi's `openTextLineReader` and `openBinaryReader` take an options object before Context; `openDirReader` takes Context directly.
-- In no-build Solid templates, wrap live values in `() =>`, give component callbacks an argument (zero-argument functions become getters even for `on…` props), and keep the phone header's async reads inside `Loading`.
-- Look up wire endpoints after Solid places the DOM, and ignore the wires' own SVG mutations when observing layout changes.
-- The README's words say what each thing is; don't restate it here. In short: a thread has one agent whose model, thinking and runner change in place, and only bots have names.
-- Solid batches navigation, so walkthrough actions pass their new-thread target explicitly, and post-await navigation checks use `latest(current)`.
-- Examples drop the shell's agent-ide settings (`MODULES`, `MEMORY_MODEL`, …) in `examples/lib.js`; when one fails at every old commit, suspect the environment before bisecting.
-- Scratch servers start a local runner unless RUNNER=0; use a scripted runner to prove sends without calling a real model.
-- You can use `ast-grep`, `ast-grep outline` and `jq` to your advantage
+- A thread's contract (its entries, their data, what the API returns) and how the client shows it are two decisions. A UI wish is solved in the client from existing entries; change the contract only on purpose, in its own commit, with the README and an example.
+- Don't over-fix. A rare failure that would need a new store, task layer or journal stays a known gap, written on its issue.
+- Keep client.html and the README saying what the code does. Docs and UI copy read like a person talking.
+
+## Words and names
+
+- The README says what each thing is; use its words, one per concept. A thread has one agent whose model, thinking and runner change in place; only bots have names.
+- A name says what it holds and stays the same in every layer, so `rg` finds the whole path (a `To` is `to`). No one-letter names, but `_` and memory's stored `l`, `i` and `n`.
+
+## Code
+
+- Prove logic in `examples/`, one file per idea, through the API, socket or CLI, never server internals. `examples/00-the-api.js` is the README's walkthrough: change both together. No unit or UI tests, no TypeScript, no build step, no migrations or shims.
+- Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own. A tool's cancellation is `execute`'s third argument's `abortSignal`; pass it through runner calls and settle locally.
+- In a Pi commit, `submit(tx, ...)` comes before table writes; after the first write it can't scan entries or snapshot. A snapshot inside a commit deadlocks silently. Copy document values before they leave the commit.
+- Pi forks restore `pi.agent` at the fork entry, so the creating commit applies the thread's tools and identity without replacing the inherited model, thinking or folder.
+- One web client: Solid 2, no build step, in apps/client. Read `CHEATSHEET.md` and `skills/solid-2.0/SKILL.md` in node_modules/solid-js first; fix `[CODE]` console warnings with `skills/reactivity-diagnostics/SKILL.md`. In templates, wrap live values in `() =>` and give callbacks an argument. Every bare import in the import map is a root dependency.
+- Resolve installed packages (`import.meta.resolve`), never assume `<app>/node_modules`.
