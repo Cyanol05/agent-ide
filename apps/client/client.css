@@ -71,6 +71,7 @@ a[href] {
 	touch-action: manipulation;
 	-webkit-user-select: none;
 	user-select: none;
+	-webkit-touch-callout: none;
 }
 
 @media (pointer: coarse) {
@@ -82,6 +83,7 @@ a[href] {
 }
 
 body {
+	padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
 	font:
 		17px/1.6 'iA Writer Quattro S',
 		system-ui,
@@ -104,6 +106,11 @@ body {
 .thread > ul,
 .thread-list > ul {
 	overscroll-behavior: contain;
+}
+
+h1,
+h2 {
+	text-wrap: balance;
 }
 
 h1 {
@@ -205,6 +212,7 @@ button {
 		grid-column: 1;
 		padding: 3rem 0;
 		min-height: 60vh;
+		min-height: 60svh;
 
 		&:first-child {
 			padding-top: 4rem;
@@ -212,6 +220,7 @@ button {
 
 		&:last-of-type {
 			min-height: 90vh;
+			min-height: 90svh;
 		}
 	}
 }
@@ -379,8 +388,10 @@ agent-memory {
 			cursor: pointer;
 			transition: flex-grow 0.3s;
 
-			&:hover {
-				outline: 2px solid var(--pick);
+			@media (hover: hover) and (pointer: fine) {
+				&:hover {
+					outline: 2px solid var(--pick);
+				}
 			}
 		}
 	}
@@ -808,8 +819,10 @@ agent-memory {
 		font-weight: 400;
 		line-height: 1;
 
-		&:hover {
-			color: var(--ink);
+		@media (hover: hover) and (pointer: fine) {
+			&:hover {
+				color: var(--ink);
+			}
 		}
 	}
 
@@ -1465,9 +1478,11 @@ body.chat {
 		background: none;
 		color: var(--mute);
 
-		&:hover {
-			border-color: var(--line);
-			color: inherit;
+		@media (hover: hover) and (pointer: fine) {
+			&:hover {
+				border-color: var(--line);
+				color: inherit;
+			}
 		}
 	}
 
@@ -1613,8 +1628,10 @@ body.chat .thread > header {
 		padding: 0;
 		color: var(--mute);
 
-		&:hover {
-			color: var(--ink);
+		@media (hover: hover) and (pointer: fine) {
+			&:hover {
+				color: var(--ink);
+			}
 		}
 	}
 
@@ -2470,9 +2487,11 @@ body.chat {
 			white-space: nowrap;
 		}
 
-		&:hover {
-			border-color: var(--line);
-			color: var(--ink);
+		@media (hover: hover) and (pointer: fine) {
+			&:hover {
+				border-color: var(--line);
+				color: var(--ink);
+			}
 		}
 	}
 
@@ -2838,5 +2857,18 @@ body.resizing {
 
 	small {
 		flex: none;
+	}
+}
+
+/* A finger needs 44px: the small icon buttons keep their look and reach past it. */
+@media (pointer: coarse) {
+	.thread form button.icon {
+		position: relative;
+
+		&::after {
+			content: '';
+			position: absolute;
+			inset: min(0px, (100% - 44px) / 2);
+		}
 	}
 }

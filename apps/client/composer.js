@@ -491,6 +491,8 @@ export function Composer(props) {
 						class="recipients"
 						aria-label="Recipients"
 						autocomplete="off"
+						autocapitalize="none"
+						autocorrect="off"
 						spellcheck="false"
 						title="model:thinking@runner, and any bots' names, comma between them"
 						value=${() => pick(props.thread)?.typed ?? recipients(props.thread).map(formatAgent).join(', ')}
