@@ -1,6 +1,6 @@
 /**
- * The draft stays with the composer as you move between threads; a pick stays with its thread, since asking a thread's
- * agent as another model switches it. A pick is one model plus any bots; in a bot's home, it is the bot's model.
+ * Each thread keeps its draft, images and pick when you move away; a new thread keeps its own.
+ * Asking a thread's agent as another model switches it. A pick is one model plus any bots; in a bot's home, it is the bot's model.
  */
 import html from '@solidjs/html'
 import {
@@ -8,7 +8,6 @@ import {
 	createRoot,
 	createStore,
 	For,
-	latest,
 	onSettled,
 	refresh,
 	Show,
@@ -35,8 +34,9 @@ import { report } from './notice.js'
 import { imageContent, imageUrl } from './images.js'
 
 const [compose, setCompose] = createRoot(() =>
-	createStore({ draft: '', images: [], sending: false, picks: {}, settings: {} }),
+	createStore({ drafts: {}, picks: {}, settings: {} }),
 )
+const emptyDraft = { draft: '', images: [], sending: false }
 /** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
 const pick = (thread = current()) => compose.picks[thread ?? 'new'] ?? null
 const here = (thread = current()) => threads.find((row) => row.id === thread)?.agents ?? []
@@ -100,10 +100,16 @@ export const openPicker = (anchor) => lend?.(anchor)
 
 export function Composer(props) {
 	let input, picker, button, chooser, anchor
+	const draft = () => compose.drafts[props.thread ?? 'new'] ?? emptyDraft
+	const changeDraft = (change, key = props.thread ?? 'new') =>
+		setCompose((store) => {
+			store.drafts[key] ??= { draft: '', images: [], sending: false }
+			change(store.drafts[key])
+		})
 	const touch = () => matchMedia('(pointer: coarse)').matches
 	const active = () => current() === props.thread
 	const busy = () => threads.find((thread) => thread.id === props.thread)?.status === 'working'
-	createEffect(() => [compose.draft, active()], () => {
+	createEffect(() => [draft().draft, active()], () => {
 		if (CSS.supports('field-sizing', 'content')) return
 		onSettled(() => {
 			input.style.height = 'auto'
@@ -121,12 +127,13 @@ export function Composer(props) {
 	})
 	/** Pasted, dropped or picked: each image waits above the box until it's sent or taken off */
 	const add = async (files) => {
+		const key = props.thread ?? 'new'
 		for (const file of files)
 			try {
 				const image = await imageContent(file)
-				setCompose((store) => {
-					store.images.push(image)
-				})
+				changeDraft((draft) => {
+					draft.images.push(image)
+				}, key)
 			} catch (error) {
 				report(error)
 			}
@@ -139,17 +146,18 @@ export function Composer(props) {
 			.filter((file) => file?.type.startsWith('image/'))
 	const submit = async (event) => {
 		event.preventDefault()
-		if (compose.sending || !recipients(props.thread).length) return
-		if (!compose.draft.trim() && !compose.images.length) return
-		const body = compose.draft,
-			images = snapshot(compose.images),
+		if (draft().sending || !recipients(props.thread).length) return
+		if (!draft().draft.trim() && !draft().images.length) return
+		const body = draft().draft,
+			images = snapshot(draft().images),
 			to = snapshot(recipients(props.thread))
 		let id = props.thread
-		setCompose((store) => {
-			store.sending = true
-			store.draft = ''
-			store.images = []
-		})
+		const key = id ?? 'new'
+		changeDraft((draft) => {
+			draft.sending = true
+			draft.draft = ''
+			draft.images = []
+		}, key)
 		try {
 			id ??= await createThread(body.slice(0, 60) || 'An image')
 			await api(`/api/threads/${id}/entries`, {
@@ -159,16 +167,16 @@ export function Composer(props) {
 				...(images.length && { images }),
 			})
 		} catch (error) {
-			setCompose((store) => {
-				if (latest(current) !== id || store.draft || store.images.length) return
-				store.draft = body
-				store.images = images
-			})
+			changeDraft((draft) => {
+				if (draft.draft || draft.images.length) return
+				draft.draft = body
+				draft.images = images
+			}, id ?? key)
 			report(error)
 		} finally {
-			setCompose((store) => {
-				store.sending = false
-			})
+			changeDraft((draft) => {
+				draft.sending = false
+			}, key)
 		}
 	}
 	const typeRecipients = (event) => {
@@ -200,9 +208,9 @@ export function Composer(props) {
 				add(files)
 			}}
 		>
-			<${Show} when=${() => active() && compose.images.length}>
+			<${Show} when=${() => draft().images.length}>
 				<ul class="images" aria-label="Images to send">
-					<${For} each=${() => compose.images}
+					<${For} each=${() => draft().images}
 						>${(image, index) => html`
 							<li>
 								<img src=${() => imageUrl(image)} alt="" />
@@ -210,8 +218,8 @@ export function Composer(props) {
 									type="button"
 									aria-label="Take this image off"
 									onClick=${(_e) =>
-										setCompose((store) => {
-											store.images.splice(index(), 1)
+										changeDraft((draft) => {
+											draft.images.splice(index(), 1)
 										})}
 								>
 									×
@@ -238,7 +246,7 @@ export function Composer(props) {
 							: recipients(props.thread).length
 								? 'Write a message'
 								: 'Pick a model below, then write'}
-					value=${() => (active() ? compose.draft : '')}
+					value=${() => draft().draft}
 					onFocus=${() => {
 						if (!active()) openThread(props.thread)
 					}}
@@ -252,8 +260,8 @@ export function Composer(props) {
 						// What it asks stays as it was when the typing started
 						if (!pick(props.thread) && !homeBot(props.thread))
 							setPick(snapshot(agent(props.thread)), snapshot(askedBots(props.thread)), null, props.thread)
-						setCompose((store) => {
-							store.draft = event.currentTarget.value
+						changeDraft((draft) => {
+							draft.draft = event.currentTarget.value
 						})
 					}}
 				></textarea>
@@ -262,7 +270,7 @@ export function Composer(props) {
 						class="icon send"
 						title="Send"
 						aria-label="Send"
-						disabled=${() => compose.sending || !recipients(props.thread).length}
+						disabled=${() => draft().sending || !recipients(props.thread).length}
 					>
 						↵
 					</button>
@@ -299,7 +307,7 @@ export function Composer(props) {
 				>
 					<button
 						type="button"
-						class="icon"
+						class="stop"
 						aria-label="Stop"
 						title="Stop this thread"
 						onClick=${() => api(`/api/threads/${props.thread}/stop`, {}).catch(report)}

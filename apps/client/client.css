@@ -1070,6 +1070,15 @@ agent-memory {
 			min-height: 2.2rem;
 		}
 
+		.stop {
+			border: 0;
+			border-radius: 8px;
+			background: none;
+			color: var(--mute);
+			font-size: 12px;
+			padding: 0.25rem 0.5rem;
+		}
+
 		.pick {
 			display: flex;
 			align-items: center;
@@ -1725,6 +1734,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 
 	.thread form .pick:hover,
+	.thread form .stop:hover,
 	.model-controls .model:hover,
 	.model-controls .steps button:hover {
 		background: color-mix(in srgb, CanvasText 8%, transparent);
