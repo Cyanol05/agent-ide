@@ -111,16 +111,11 @@ export const { threads, runners, server, bots, family, columns, closeColumn } = 
 				])
 			: [null],
 	)
-	/** Family members open in this page: what you visited, and any member since working or waiting for its runner; closing forgets one */
+	/** Family members you opened in this page; closing forgets one */
 	const [open, setOpen] = createSignal(new Set())
-	const statusOf = (id) => threads.find((thread) => thread.id === id)?.status
-	createEffect(
-		() => [current(), family().filter((id) => ['working', 'blocked'].includes(statusOf(id)))],
-		([here, working], [, before] = [null, []]) => {
-			const woke = [here, ...working.filter((id) => !before.includes(id))].filter(Boolean)
-			if (woke.some((id) => !untrack(open).has(id))) setOpen((ids) => new Set([...ids, ...woke]))
-		},
-	)
+	createEffect(current, (here) => {
+		if (here && !untrack(open).has(here)) setOpen((ids) => new Set([...ids, here]))
+	})
 	/** The columns on screen: the thread you're in and the open members of its family, in the family's order */
 	const columns = createMemo(() => family().filter((id) => id === current() || open().has(id)))
 	/** Closing the thread you're in moves you to its nearest open neighbour, or to a new thread when it was alone */
