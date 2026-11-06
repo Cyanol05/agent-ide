@@ -84,10 +84,12 @@ export function Thread(props) {
 		const above = (row) => folded && row.at < folded.at
 		const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
 		const rows = [...said.filter((row) => !above(row)), ...turns.filter((row) => !above(row)), ...lines, ...cuts].sort((one, other) => one.at - other.at)
-		// A message or run line names its author only when the line above, a message or a run line, has someone else's
-		for (const [index, row] of rows.entries()) {
-			const above = rows[index - 1]
-			row.above = above?.entry ? !above.entry.data.from && above.entry.data.author : above?.agent?.name
+		// A message or run line names its author only when it isn't the last one's that wasn't yours: your own are marked by where they sit
+		let last
+		for (const row of rows) {
+			row.above = last
+			const author = row.entry ? !row.entry.data.from && row.entry.data.author : row.agent?.name
+			if (author !== me) last = author
 		}
 		return rows
 	})
@@ -307,10 +309,10 @@ function Message(props) {
 						<small title=${() => data().author}>
 							<${Show}
 								when=${() => homeBot(data().from)?.name === data().author}
-								fallback=${() => html`→ <span style=${() => colorOf(data().author)}>${() => authorLabel(data().author)}</span> asked from
+								fallback=${() => html`<span class="cross">→ </span><span style=${() => colorOf(data().author)}>${() => authorLabel(data().author)}</span> asked from
 									<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>`}
 							>
-								→ asked from <span style=${() => colorOf(data().author)}><${ThreadLink} id=${() => data().from}>${() => authorLabel(data().author)}<//></span>
+								<span class="cross">→ </span>asked from <span style=${() => colorOf(data().author)}><${ThreadLink} id=${() => data().from}>${() => authorLabel(data().author)}<//></span>
 							<//>
 						</small>
 					<//>
@@ -318,8 +320,8 @@ function Message(props) {
 					<${Images} images=${() => data().images} />
 					<${Show} when=${() => props.reply}>
 						<div class="reply">
-							<small title=${() => props.reply.data.author} style=${() => colorOf(props.reply.data.author)}
-								>${() => `← ${authorLabel(props.reply.data.author)} answered`}</small
+							<small title=${() => props.reply.data.author}
+								><span class="cross">← </span><span style=${() => colorOf(props.reply.data.author)}>${() => authorLabel(props.reply.data.author)}</span> answered</small
 							>
 							<${Body} data=${() => props.reply.data} />
 							<${Images} images=${() => props.reply.data.images} />
@@ -332,12 +334,14 @@ function Message(props) {
 						<${Show}
 							when=${() => homeBot(data().from)?.name === data().author}
 							fallback=${() => html`
+								<span class="cross">← </span>
 								<span style=${() => colorOf(data().author)}
 									>${() => authorLabel(data().author)}</span
 								>
 								answered in <${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
 							`}
 						>
+							<span class="cross">← </span>
 							<span style=${() => colorOf(data().author)}>
 								<${ThreadLink} id=${() => data().from}>${() => authorLabel(data().author)}<//>
 							</span>

@@ -968,13 +968,19 @@ agent-memory {
 				}
 			}
 
-			/* Words crossing between threads, an answer said here or one come back, read in light sea green. */
-			&.reply,
-			> .reply {
-				&,
-				summary {
-					color: lightseagreen;
-				}
+			/* Light sea green says it crossed threads: the box's frame and its arrows. The names keep their author's colour, the words plain ink. */
+			&.elsewhere:not(.reply),
+			&.elsewhere > .reply {
+				border-color: lightseagreen;
+			}
+
+			.cross {
+				color: lightseagreen;
+			}
+
+			small span[style] > .thread-link,
+			summary span[style] > .thread-link {
+				color: inherit;
 			}
 
 			summary {
