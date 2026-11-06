@@ -1437,7 +1437,9 @@ async function rewatch(socket, id) {
 	if (!keep(messages)) return
 	/** Who's there changes with a message, or a read */
 	const present = async () => ({ people: await people(id) })
-	await told(handle, messages, send, present)
+	await told(handle, messages, async (entries) =>
+		send({ entries: entries.filter((entry) => entry.kind === KIND), ...(await present()) }),
+	)
 	const followed = new Set()
 	/** By conversation, which stays as an agent switches model or runner */
 	const follow = async (agents) => {
@@ -1460,14 +1462,24 @@ async function rewatch(socket, id) {
 				return { ...doing(value), ...named }
 			}
 			send({ agent, live: await live(watch.value) })
-			watch.start(async ({ value }) => send({ agent, live: await live(value) }))
+			// Its conversation, whole once, then each entry as it's written, beside its live work
+			const shown = ({ id, kind, model, data, head }) => ({ id, kind, model, data, head })
+			await told(
+				handle,
+				watch,
+				(entries) => send({ agent, entries: entries.filter((entry) => entry.kind !== 'pi.system').map(shown) }),
+				async (value) => send({ agent, live: await live(value) }),
+			)
 		}
 	}
 	await follow(row.value.agents)
 	row.start(async ({ value }) => (await follow(value.agents), send(await present())))
 }
-/** The thread's messages through Pi's transcript, which keeps them whole, each new batch with `also` */
-async function told(handle, watch, send, also) {
+/**
+ * A conversation's entries through Pi's transcript, which keeps them whole: all of them first, then each new batch once.
+ * `then` hears every update after its batch.
+ */
+async function told(handle, watch, send, then) {
 	const transcript = new ConversationTranscript(
 		(query, limit, ctx) => handle.entries(query, limit, undefined, ctx),
 		{ pageSize: 500 },
@@ -1485,10 +1497,10 @@ async function told(handle, watch, send, also) {
 		if (!fresh.length && !first) return
 		first = false
 		newest = fresh.at(-1)?.id ?? newest
-		send({ entries: fresh.filter((entry) => entry.kind === KIND), ...(await also()) })
+		await send(fresh)
 	}
 	await tell(watch.value)
-	watch.start(async ({ value }) => tell(value))
+	watch.start(async ({ value }) => (await tell(value), await then?.(value)))
 }
 /** An agent's newest delivery entry from `first` on, for a run longer than its watch's window */
 async function lastDelivery(handle, first) {

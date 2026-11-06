@@ -94,7 +94,7 @@ api threads/3/fork '{"at": 5}'                                  # a new thread f
 api threads/3/stop '{}'
 ```
 
-To watch a thread live, open `/ws` and send `{"watch": 3}`. You get its new messages and who's in it as they happen, and each agent's live work (the tool it's in, the words it's writing), naming while it works the `delivery` it answers: `{id, held}`, its entry in the agent's conversation and the messages it handed over. Every other change arrives as `{}`, which means "fetch the list again".
+To watch a thread live, open `/ws` and send `{"watch": 3}`. You get its new messages and who's in it as they happen. For each agent you get its conversation as `{agent, entries}`, whole first and then each entry once, as it's written, so thinking and tool output show while it works. You also get its live work (the tool it's in, the words it's writing), naming while it works the `delivery` it answers: `{id, held}`, its entry in the agent's conversation and the messages it handed over. Every other change arrives as `{}`, which means "fetch the list again".
 
 Four ideas carry it:
 

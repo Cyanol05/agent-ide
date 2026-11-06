@@ -24,7 +24,7 @@ const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'live' })
 
-/** Every message the socket hears for the thread, in order: `{entries}` or `{agent, live}` */
+/** Every message the socket hears for the thread, in order: `{entries}`, or an agent's `{agent, live}` and `{agent, entries}` */
 function watch(thread) {
 	const heard = []
 	const socket = new WebSocket(`${base.replace('http', 'ws')}/ws`)
@@ -37,7 +37,7 @@ function watch(thread) {
 }
 // Live work is keyed by the agent's conversation, which stays as it switches model or runner
 const lives = (heard) => heard.filter((m) => m.live).map((m) => m.live)
-const said = (heard) => heard.flatMap((m) => m.entries ?? []).map((e) => e.data.body)
+const said = (heard) => heard.flatMap((m) => (m.agent ? [] : (m.entries ?? []))).map((e) => e.data.body)
 const text = (message) =>
 	(message?.content ?? [])
 		.filter((b) => b.type === 'text')

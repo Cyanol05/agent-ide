@@ -28,7 +28,7 @@ check(
 	JSON.stringify(first?.entries.map((entry) => entry.data)),
 )
 check(
-	Boolean(await until(async () => heard.some((message) => message.entries?.some((entry) => entry.data.answer)))),
+	Boolean(await until(async () => heard.some((message) => !message.agent && message.entries?.some((entry) => entry.data.answer)))),
 	'a watching socket hears the answer land',
 )
 
