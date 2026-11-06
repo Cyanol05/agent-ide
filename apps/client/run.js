@@ -44,8 +44,19 @@ export function readConversation(id) {
 		})
 }
 
-/** Keeps each tool call the live stream names, which holds only the round running now */
+/** The deliveries each agent was heard answering, `{id, held, since}`, oldest first, so a turn keeps its row before it is read */
+export const [delivered, setDelivered] = createRoot(() => createStore({}))
+
+/** Keeps each tool call the live stream names, which holds only the round running now, and the delivery it answers */
 export function hear(conversation, live) {
+	const heard = delivered[conversation] ?? []
+	if (live.delivery && !heard.some((delivery) => delivery.id === live.delivery.id)) {
+		setDelivered((all) => {
+			;(all[conversation] ??= []).push({ ...live.delivery, since: Date.now() })
+		})
+		// A turn that ended into the next without a pause is read now, so its steps leave the live one
+		if (heard.length) readConversation(conversation)
+	}
 	setStreamed((heard) => {
 		const calls = (heard[conversation] ??= [])
 		for (const tool of live.tools ?? []) {
