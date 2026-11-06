@@ -248,7 +248,7 @@ export function server(core) {
 						memory(
 							await core.commit((tx) => lines(tx, home.thread)),
 							T,
-							await budget(api.conversationId),
+							Math.min(await budget(api.conversationId), PANEL),
 						),
 					),
 				}
@@ -267,7 +267,7 @@ export function server(core) {
 		const older = memory(
 			await core.commit((tx) => lines(tx, threadId)),
 			at(held[first - 1]) + 1,
-			most,
+			Math.min(most, PANEL),
 			at(held[0]),
 		)
 		return `${render(older)}\n\n${whole}`
