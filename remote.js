@@ -485,6 +485,10 @@ export function serveRunner({
 				['start', 'done', 'error'].includes(event.type) ||
 				event.type.endsWith('_end') ||
 				Date.now() - sentAt > 100
+			// The first Claude Code request after a system prompt change carries one cache marker too many; the next one
+			// doesn't, so it's worded for Pi's retry. Delete once earendil-works/pi-claude-code#10 is fixed.
+			if (event.type === 'error' && /maximum of 4 blocks with cache_control/.test(event.error.errorMessage))
+				event.error.errorMessage += ' (try your request again)'
 			const { partial, ...slim } = event
 			if (due && partial) sentAt = Date.now()
 			reply({ id, event: due ? event : slim })
