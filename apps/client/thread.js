@@ -6,8 +6,10 @@ import {
 	createProjection,
 	createSignal,
 	For,
+	getOwner,
 	latest,
 	reconcile,
+	runWithOwner,
 	Show,
 } from 'solid-js'
 import {
@@ -30,8 +32,8 @@ import {
 	titleOf,
 	watch,
 } from './server.js'
-import { authorLabel, doing, messageText, setDoing } from './agent.js'
-import { answerOf, conversations, cutsOf, heard, Turn, turnsOf } from './run.js'
+import { authorLabel, doing, setDoing } from './agent.js'
+import { answersIn, conversations, cutsOf, heard, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -51,22 +53,38 @@ export function Thread(props) {
 	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
 	const messages = () => entries[props.id] ?? []
 	const [unfolded, setUnfolded] = createSignal(false)
+	/** Each agent's turns and cuts, worked out again only when its own conversation grows, not when a message lands */
+	const owner = getOwner()
+	const memos = new Map()
+	const perConversation = (conversation) => {
+		if (!memos.has(conversation))
+			runWithOwner(owner, () =>
+				memos.set(conversation, {
+					turns: createMemo(() => turnsOf(conversation)),
+					cuts: createMemo(() => cutsOf(conversation)),
+				}),
+			)
+		return memos.get(conversation)
+	}
 	/**
 	 * The thread's messages with each agent turn after the last message its delivery held, and a live one while it works.
 	 * A turn that only answered is its answer; an answer to a post shows in the post.
 	 */
+	let built = new Map()
 	const rows = createProjection(
 		() => {
 			const all = messages()
 			const turns = (latest(thread)?.agents ?? []).flatMap((agent) => {
 				const live = doing[props.id]?.[agent.conversation]
-				const turns = turnsOf(agent.conversation).map((turn) => ({
-					key: turn.key,
-					agent,
-					turn,
-					at: turn.after + 0.5,
-					live: !!live?.run && live.delivery?.id === turn.delivery,
-				}))
+				const turns = perConversation(agent.conversation)
+					.turns()
+					.map((turn) => ({
+						key: turn.key,
+						agent,
+						turn,
+						at: turn.after + 0.5,
+						live: !!live?.run && live.delivery?.id === turn.delivery,
+					}))
 				// Asked while its runner is offline, before any delivery
 				if (agent.status === 'blocked' && !live?.run)
 					turns.push({
@@ -81,7 +99,8 @@ export function Thread(props) {
 				)
 			})
 			const steps = turns.flatMap((row) => row.turn?.steps ?? [])
-			const answers = new Set(steps.map((step) => answerOf(all, step)?.id))
+			const answerOf = answersIn(all)
+			const answers = new Set(steps.map((step) => answerOf(step)?.id))
 			// A question from another thread holds the answer said here to it alone, as a reply under it: a post's, else the run's last words
 			const questions = new Set(
 				all.filter((entry) => entry.data.from && !entry.data.re).map((entry) => entry.id),
@@ -96,11 +115,13 @@ export function Thread(props) {
 			const shown = all.filter((entry) => !answers.has(entry.id) && !inside.has(entry.id))
 			// The run that answered such a question alone, and did nothing else, sits in its box between question and answer
 			const runs = new Map()
+			const byId = new Map(all.map((entry) => [entry.id, entry]))
+			const turnsAfter = Map.groupBy(turns, (row) => row.turn?.after)
 			for (const [id, reply] of replies) {
-				const question = all.find((entry) => entry.id === id)
-				const run = turns.find(
-					(row) => !row.live && row.turn?.after === id && row.agent.name === reply.data.author,
-				)
+				const question = byId.get(id)
+				const run = turnsAfter
+					.get(id)
+					?.find((row) => !row.live && row.agent.name === reply.data.author)
 				const calls = run?.turn.steps.filter((step) => step.name) ?? []
 				if (
 					run &&
@@ -118,7 +139,9 @@ export function Thread(props) {
 				run: runs.get(entry.id),
 			}))
 			const cuts = (latest(thread)?.agents ?? []).flatMap((agent) =>
-				cutsOf(agent.conversation).map((cut) => ({ ...cut, cut: true })),
+				perConversation(agent.conversation)
+					.cuts()
+					.map((cut) => ({ ...cut, cut: true })),
 			)
 			// What the agent reads as lines folds into them, unless opened from the newest cut's line
 			const newest = cuts.reduce((best, cut) => (!best || cut.at > best.at ? cut : best), null)
@@ -138,7 +161,19 @@ export function Thread(props) {
 				const author = row.entry ? !row.entry.data.from && row.entry.data.author : row.agent?.name
 				if (author !== me) last = author
 			}
-			return rows
+			// A row that didn't change is handed back as the same object, so the diff skips it and an update costs the rows it touched
+			const next = new Map()
+			const reused = rows.map((row) => {
+				const before = built.get(row.key)
+				const same =
+					before &&
+					Object.keys(row).length === Object.keys(before).length &&
+					Object.keys(row).every((key) => row[key] === before[key])
+				next.set(row.key, same ? before : row)
+				return same ? before : row
+			})
+			built = next
+			return reused
 		},
 		[],
 		{ key: 'key' },
@@ -149,6 +184,7 @@ export function Thread(props) {
 		(thread()?.agents ?? []).every((agent) => conversations[agent.conversation])
 	const titleClick = () => (current() !== props.id ? openThread(props.id) : drawer('side'))
 	let list,
+		followed,
 		stuck = true
 	createEffect(
 		() => props.id,
@@ -202,17 +238,19 @@ export function Thread(props) {
 			}
 		},
 	)
-	createEffect(
-		() => [
-			ready(),
-			messages().length,
-			thread()?.agents.map((agent) => agent.status),
-			Object.values(doing[props.id] ?? {}).map((live) => messageText(live.message)),
-		],
-		() => {
-			if (list && stuck) list.scrollTop = list.scrollHeight
-		},
-	)
+	/** Following the bottom watches the list's real size: a row added or growing, an image loading, the list itself resized */
+	const follow = (list) => {
+		const bottom = () => {
+			if (stuck) list.scrollTop = list.scrollHeight
+			followed = list.scrollHeight
+		}
+		const sizes = new ResizeObserver(bottom)
+		sizes.observe(list)
+		new MutationObserver((changes) => {
+			for (const change of changes)
+				for (const row of change.addedNodes) if (row.nodeType === 1) sizes.observe(row)
+		}).observe(list, { childList: true })
+	}
 	return html`
 		<article
 			data-thread=${() => props.id}
@@ -254,9 +292,12 @@ export function Thread(props) {
 				<ul
 					ref=${(el) => {
 						list = el
+						follow(el)
 					}}
 					onScroll=${() => {
-						stuck = list.scrollTop + list.clientHeight >= list.scrollHeight - 4
+						// Only a scroll at the height we last followed is the reader's; one from content moving under them keeps following
+						if (list.scrollHeight === followed)
+							stuck = list.scrollTop + list.clientHeight >= list.scrollHeight - 4
 					}}
 					aria-label="Messages"
 				>

@@ -154,6 +154,19 @@ const answered = (step) => /^Answered /.test(step.result?.text ?? '')
 const asksOf = (steps) =>
 	steps.filter((step) => step.name === 'post' && !answered(step) && askedThread(step))
 
+/** Each post's answer, looked up by the thread it asked instead of scanning every message per post */
+export function answersIn(messages) {
+	const byThread = new Map()
+	for (const entry of messages)
+		if (entry.data.from && entry.data.re)
+			byThread.set(entry.data.from, [...(byThread.get(entry.data.from) ?? []), entry])
+	return (step) =>
+		step.name === 'post' &&
+		step.result &&
+		!answered(step) &&
+		byThread.get(askedThread(step))?.find((entry) => entry.id > step.result.at)
+}
+
 /** The answer a thread got back to a post made in it */
 export const answerOf = (messages, step) =>
 	step.name === 'post' &&
