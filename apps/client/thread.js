@@ -423,9 +423,9 @@ export function Thread(props) {
 	`
 }
 
-function Message(props) {
+export function Message(props) {
 	const data = () => props.entry.data
-	const elsewhere = () => data().from && data().from !== props.thread
+	const elsewhere = () => !props.embedded && data().from && data().from !== props.thread
 	const forks = () =>
 		threads.filter(
 			(thread) =>
@@ -524,20 +524,22 @@ function Message(props) {
 					<${Images} images=${() => data().images} />
 				</details>
 			<//>
-			<${For} each=${() => forks()}
+			<${For} each=${() => (props.embedded ? [] : forks())}
 				>${(fork) => html`
 					<div class="links">
 						<${ThreadLink} id=${() => fork.id}>${() => `forked → ${fork.title}`}<//>
 					</div>
 				`}<//
 			>
-			<button
-				class="fork"
-				title="A new thread from this message"
-				onClick=${() => fork(props.thread, props.entry.id).catch(report)}
-			>
-				fork
-			</button>
+			<${Show} when=${() => !props.embedded}>
+				<button
+					class="fork"
+					title="A new thread from this message"
+					onClick=${() => fork(props.thread, props.entry.id).catch(report)}
+				>
+					fork
+				</button>
+			<//>
 		</li>
 	`
 }

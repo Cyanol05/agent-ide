@@ -9,8 +9,8 @@ import {
 	For,
 	Show,
 } from 'solid-js'
-import { api, colorOf, entries, homeBot, threads, titleOf } from './server.js'
-import { Body, ThreadLink } from './thread.js'
+import { colorOf, entries, homeBot, threads, titleOf } from './server.js'
+import { Message, ThreadLink } from './thread.js'
 import { authorLabel, doing, messageText } from './agent.js'
 import { Dot } from './dot.js'
 import { markdown } from './markdown.js'
@@ -390,7 +390,7 @@ function Ask(props) {
 
 /**
  * An ask, from the thread that asked: one quiet line, "→ who · answered · 6s", its dot pulsing while the answer is out.
- * Opened, the exchange in time order: the question under its author, the run that answered it over there, the answer.
+ * Opened, the question and answer as ordinary messages.
  */
 export function Exchange(props) {
 	const asked = () => askedThread(props.step)
@@ -410,32 +410,7 @@ export function Exchange(props) {
 		return start && end && end - start >= 1000 ? seconds(end - start) : ''
 	}
 	const [open, setOpen] = createSignal(false)
-	/** The other side's run, read from its agent's conversation when opened, again once the answer lands */
-	const [other, setOther] = createSignal(null)
-	createEffect(
-		() => open() && [asked(), props.answer?.id ?? 0, state()],
-		(on) => {
-			if (on) otherRun(on[0]).then(setOther, () => {})
-		},
-	)
-	const otherRun = async (id) => {
-		const view = await api(`/api/threads/${id}`)
-		const question = props.answer
-			? view.entries.find((entry) => entry.id === props.answer.data.re?.[0])
-			: view.entries.findLast(
-					(entry) => entry.data.from === props.thread && entry.data.body === props.step.args.body,
-				)
-		if (!question) return
-		for (const agent of view.agents ?? []) {
-			const { entries: list } = await api(`/api/conversations/${agent.conversation}`)
-			const turn = turnsOf(
-				agent.conversation,
-				list.filter((entry) => entry.kind !== 'pi.system'),
-			).find((turn) => turn.held.includes(question.id))
-			if (turn) return { agent, turn }
-		}
-		return null
-	}
+
 	return html`
 		<li class="elsewhere reply exchange">
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
@@ -455,39 +430,21 @@ export function Exchange(props) {
 					</small>
 				</summary>
 				<${Show} when=${open}>
-					<div class="box">
-						<small
-							><span class="cross">→ </span
-							><span style=${() => colorOf(props.agent?.name ?? '')}
-								>${() => authorLabel(props.agent?.name)}</span
-							>
-							asked</small
-						>
-						<${Body} data=${() => props.step.args} />
-						<${Show} when=${other}>
-							<ul class="run">
-								<${Turn}
-									thread=${() => asked()}
-									agent=${() => other().agent}
-									turn=${() => other().turn}
-									lead="worked:"
-									handed=${() => other().turn.held.length !== 1}
-								/>
-							</ul>
-						<//>
+					<ul class="box">
+						<${Message}
+							thread=${() => props.thread}
+							entry=${() => ({ data: { ...props.step.args, author: props.agent?.name } })}
+							embedded=${true}
+						/>
 						<${Show} when=${() => props.answer}>
-							<div class="reply">
-								<small
-									><span class="cross">← </span
-									><span style=${() => colorOf(props.answer.data.author)}
-										>${() => authorLabel(props.answer.data.author)}</span
-									>
-									answered</small
-								>
-								<${Body} data=${() => props.answer.data} />
-							</div>
+							<${Message}
+								thread=${() => props.thread}
+								entry=${() => props.answer}
+								embedded=${true}
+								above=${() => props.agent?.name}
+							/>
 						<//>
-					</div>
+					</ul>
 				<//>
 			</details>
 		</li>

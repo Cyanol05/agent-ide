@@ -801,7 +801,7 @@ agent-memory {
 		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
 		> li,
 		> li > .run > li,
-		> li.exchange .run > li {
+		> li.exchange .box > li {
 			margin: 1.5rem 0 0;
 			white-space: pre-wrap;
 			overflow-wrap: anywhere;
@@ -956,8 +956,7 @@ agent-memory {
 			}
 
 			/* The run that answered it sits between the question and its answer. */
-			> .run,
-			&.exchange .box > .run {
+			> .run {
 				list-style: none;
 				margin: 0.7rem 0 0;
 				padding: 0;
@@ -968,8 +967,7 @@ agent-memory {
 			}
 
 			/* The answer said here to that question sits under it, past a thin rule, like a reply under its mail. */
-			&.elsewhere > .reply,
-			&.exchange .box > .reply {
+			&.elsewhere > .reply {
 				margin-top: 0.7rem;
 				padding-top: 0.6rem;
 				border-top: 1px solid var(--line);
@@ -988,8 +986,7 @@ agent-memory {
 			/* Light sea green says it crossed threads: the box's frame and its arrows. The names keep their author's colour, the words plain ink. */
 			&.elsewhere:not(.reply),
 			&.elsewhere > .reply,
-			&.exchange .box,
-			&.exchange .box > .reply {
+			&.exchange .box {
 				border-color: lightseagreen;
 			}
 
@@ -1008,7 +1005,8 @@ agent-memory {
 				}
 
 				.box {
-					margin-top: 0.35rem;
+					list-style: none;
+					margin: 0.35rem 0 0;
 					padding: 0.7rem 0.9rem;
 					border: 1px solid;
 					border-radius: 12px;
