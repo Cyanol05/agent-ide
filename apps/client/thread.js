@@ -1,6 +1,6 @@
 /** A thread owns its message subscription while it is on screen. */
 import html from '@solidjs/html'
-import { createEffect, createMemo, createSignal, For, reconcile, Show } from 'solid-js'
+import { createEffect, createMemo, createProjection, createSignal, For, reconcile, Show } from 'solid-js'
 import {
 	closeColumn,
 	colorOf,
@@ -46,7 +46,7 @@ export function Thread(props) {
 	 * The thread's messages with each agent turn after the last message its delivery held, and a live one while it works.
 	 * A turn that only answered is its answer; an answer to a post shows in the post.
 	 */
-	const rows = createMemo(() => {
+	const rows = createProjection(() => {
 		const all = messages()
 		const turns = (thread()?.agents ?? []).flatMap((agent) => {
 			const live = doing[props.id]?.[agent.conversation]
@@ -102,7 +102,7 @@ export function Thread(props) {
 			if (author !== me) last = author
 		}
 		return rows
-	})
+	}, [], { key: 'key' })
 	/** The list waits for its messages and each agent's conversation, so it shows folded at once instead of shifting */
 	const ready = () =>
 		!!entries[props.id] && (thread()?.agents ?? []).every((agent) => conversations[agent.conversation])
@@ -144,7 +144,8 @@ export function Thread(props) {
 					if (message.live)
 						setDoing((work) => {
 							work[id] ??= {}
-							work[id][message.agent] = message.live
+							work[id][message.agent] ??= {}
+							reconcile(message.live, 'callId')(work[id][message.agent])
 						})
 				},
 				(socket) => {
@@ -230,7 +231,7 @@ export function Thread(props) {
 								`Talk to ${homeBot(props.id).name} and find out who it is.`}
 						</li>
 					<//>
-					<${For} each=${() => (ready() ? rows() : [])} keyed=${(row) => row.key}
+					<${For} each=${() => (ready() ? rows : [])} keyed=${(row) => row.key}
 						>${(row) => html`
 							<${Show}
 								when=${() => !row().cut && !row().line}

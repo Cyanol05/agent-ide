@@ -245,7 +245,7 @@ export function Turn(props) {
 					</small>
 				</summary>
 				<${Show} when=${open}>
-					<ol class="steps" style=${() => `--label: ${labelWidth(steps())}ch`}>
+					<ol class="steps">
 						<${For} each=${steps} keyed=${(step) => step.key}
 							>${(step) => html`<${Step} step=${() => step()} thread=${() => props.thread} />`}<//
 						>
