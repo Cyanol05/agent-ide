@@ -952,6 +952,7 @@ agent-memory {
 
 			/* The answer said here to that question sits under it, past a thin rule, like a reply under its mail. */
 			&.elsewhere > .reply {
+				color: lightseagreen;
 				margin-top: 0.7rem;
 				padding-top: 0.6rem;
 				border-top: 1px solid var(--line);
