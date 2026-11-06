@@ -5,6 +5,7 @@
 import html from '@solidjs/html'
 import {
 	createEffect,
+	createSignal,
 	createRoot,
 	createStore,
 	For,
@@ -24,12 +25,15 @@ import {
 	homeBot,
 	openThread,
 	runners,
+	server,
 	threads,
 } from './server.js'
 import { agentTo, formatAgent, writtenTo } from './agent.js'
 import { placePopover } from './popover.js'
 import { ModelPicker } from './model-picker.js'
 import { Dot } from './dot.js'
+import { Compaction, Memory } from './agent-memory.js'
+import { Panes } from './panes.js'
 import { report } from './notice.js'
 import { imageContent, imageUrl } from './images.js'
 
@@ -99,7 +103,8 @@ let lend
 export const openPicker = (anchor) => lend?.(anchor)
 
 export function Composer(props) {
-	let input, picker, button, chooser, anchor
+	let input, picker, button, chooser, anchor, recall, recallButton
+	const [lines, setLines] = createSignal(false)
 	const draft = () => compose.drafts[props.thread ?? 'new'] ?? emptyDraft
 	const changeDraft = (change, key = props.thread ?? 'new') =>
 		setCompose((store) => {
@@ -315,6 +320,21 @@ export function Composer(props) {
 						Stop
 					</button>
 				<//>
+				<${Show} when=${() => server().modules?.includes('memory') && props.thread !== undefined}>
+					<button
+						type="button"
+						class="pick"
+						aria-label="Memory"
+						title="What the agent remembers of this thread"
+						ref=${(el) => (recallButton = el)}
+						onClick=${() => {
+							openThread(props.thread)
+							recall.togglePopover()
+						}}
+					>
+						<span>Memory</span>
+					</button>
+				<//>
 				<button
 					type="button"
 					class="pick"
@@ -334,6 +354,31 @@ export function Composer(props) {
 					<${Dot} state=${() => (recipients(props.thread).length ? (busy() ? 'working' : 'on') : '')} />
 					<span>${() => recipients(props.thread).map((to) => recipientLabel(to, props.thread)).join(' + ') || 'Pick a model'}</span>
 				</button>
+			</div>
+			<div
+				class="settings"
+				popover
+				ref=${(el) => (recall = el)}
+				onToggle=${(event) => {
+					if (event.newState === 'open') placePopover(recall, recallButton)
+					else setLines(false)
+				}}
+			>
+				<${Show} when=${() => active()}>
+					<${Panes}
+						title="Memory"
+						detailTitle="Memory’s lines"
+						open=${() => lines()}
+						onBack=${() => setLines(false)}
+						detail=${html`<${Memory} />`}
+					>
+						<${Compaction} />
+						<button type="button" class="model" onClick=${() => setLines(true)}>
+							<span>Read the lines</span>
+							<small>what the agent remembers, from the top down</small>
+						</button>
+					<//>
+				<//>
 			</div>
 			<div
 				class="model-picker"

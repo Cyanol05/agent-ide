@@ -12,12 +12,52 @@ import {
 	Show,
 	untrack,
 } from 'solid-js'
-import { api, connected, current, server } from './server.js'
+import { api, connected, current, server, threads } from './server.js'
 
 const bytes = (text) => new TextEncoder().encode(text).length
 const sizeOf = (lines) => lines.reduce((sum, line) => sum + bytes(`${line.id}+${line.n}|${line.text}`) + 1, 0)
 const inside = (line, id, n) => line.id >= id && line.id + line.n <= id + n
 const key = (line) => `${line.id}+${line.n}`
+
+/** What compaction did to this thread's agent: where its newest cut fell, from the agent's own conversation */
+export function Compaction() {
+	return html`
+		<${Show} when=${() => current()} keyed>
+			${(thread) => html`
+				<${Loading} fallback=${html`<p class="mute">Reading the agent…</p>`}>
+					<${CompactionOf} thread=${thread} />
+				<//>
+			`}
+		<//>
+	`
+}
+
+function CompactionOf(props) {
+	const cut = createMemo(async () => {
+		const row = threads.find((thread) => thread.id === props.thread)
+		let found = null
+		for (const { conversation } of row?.agents ?? []) {
+			const { entries } = await api(`/api/conversations/${conversation}`)
+			for (const entry of entries.filter((entry) => entry.kind === 'pi.compaction')) {
+				const ends = [...JSON.stringify(entry).matchAll(/(\d+)\+(\d+)\|/g)].map(
+					(line) => Number(line[1]) + Number(line[2]),
+				)
+				found = ends.length ? Math.max(...ends) : (found ?? 0)
+			}
+		}
+		return found
+	})
+	return html`
+		<p class="mute">
+			${() =>
+				cut() === null
+					? 'Not compacted yet: the agent still reads every message in full.'
+					: cut() === 0
+						? "Compacted with Pi's own summary, not these lines."
+						: `Compacted: the agent reads messages 0 to ${cut() - 1} only as lines, the rest in full.`}
+		</p>
+	`
+}
 
 export function Memory() {
 	const [room, setRoom] = createSignal(30)
