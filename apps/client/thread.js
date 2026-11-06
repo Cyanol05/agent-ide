@@ -95,7 +95,7 @@ export function Thread(props) {
 				(row) =>
 					row.live ||
 					!row.turn ||
-					row.turn.steps.length ||
+					row.turn.steps.some((step) => step.label !== 'handed') ||
 					(row.heard && !row.turn.ended) ||
 					(row.latest && streamed[agent.conversation]?.length),
 			)
