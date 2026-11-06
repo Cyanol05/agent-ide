@@ -150,6 +150,9 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 /** A post's ask: the thread it went to, or for an answer, the thread it answered */
 const askedThread = (step) => step.result?.details?.thread ?? step.args.thread
 const answered = (step) => /^Answered /.test(step.result?.text ?? '')
+/** The posts a turn made that ask another thread, rather than answer one */
+const asksOf = (steps) =>
+	steps.filter((step) => step.name === 'post' && !answered(step) && askedThread(step))
 
 /** The answer a thread got back to a post made in it */
 export const answerOf = (messages, step) =>
@@ -160,8 +163,8 @@ export const answerOf = (messages, step) =>
 		(entry) => entry.id > step.result.at && entry.data.from === askedThread(step) && entry.data.re,
 	)
 
-/** What a turn did, in a few words */
-function summary(turn, messages) {
+/** What a turn did, in a few words, given how many of its asks got their answer back */
+function summary(turn, back) {
 	const tools = turn.steps.filter((step) => step.name)
 	const edited = [
 		...new Set(
@@ -173,7 +176,7 @@ function summary(turn, messages) {
 		),
 	].filter(Boolean)
 	const commands = tools.filter((step) => step.name === 'bash').length
-	const asks = tools.filter((step) => step.name === 'post' && !answered(step) && askedThread(step))
+	const asks = asksOf(tools)
 	const posts = (word, list) =>
 		list.length && `${word} ${list.map((step) => titleOf(askedThread(step))).join(', ')}`
 	const parts = [
@@ -187,7 +190,6 @@ function summary(turn, messages) {
 		tools.length && plural(tools.length, 'step'),
 		turn.end - turn.start >= 1000 && seconds(turn.end - turn.start),
 	]
-	const back = asks.filter((step) => answerOf(messages, step)).length
 	if (back)
 		parts.splice(
 			parts.indexOf(posts('asked', asks)) + 1,
@@ -231,8 +233,22 @@ export function Turn(props) {
 		return messageText(live()?.message) ? 'writing' : 'thinking'
 	}
 	const calls = () => steps().filter((step) => step.name)
+	/** How many asks got their answer back: it reads the thread's messages only while one is still out */
+	const back = createMemo(
+		(prev) => {
+			const asks = asksOf(steps())
+			if (prev === asks.length) return prev
+			const messages = entries[props.thread] ?? []
+			return asks.filter((step) => answerOf(messages, step)).length
+		},
+		{ lazy: true },
+	)
+	/** A closed turn's summary, worked out when its steps or answers change; an equal string updates nothing */
+	const summed = createMemo(() =>
+		props.live ? '' : summary({ ...props.turn, steps: steps() }, back()),
+	)
 	const line = () => {
-		if (!props.live) return summary({ ...props.turn, steps: steps() }, entries[props.thread] ?? [])
+		if (!props.live) return summed()
 		const start = props.turn?.start
 		return [
 			now(),
