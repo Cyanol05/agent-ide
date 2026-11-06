@@ -10,7 +10,7 @@ const bot = await scriptedRunner('bot', (request) =>
 		? say('answered second')
 		: request.messages.some((m) => m.role === 'toolResult')
 			? fauxAssistantMessage([], { stopReason: 'error', errorMessage: 'the model broke' })
-			: call('bash', { command: 'sleep 1' }),
+			: call('bash', { command: 'sleep 0.5' }),
 )
 const to = { runner: 'bot', model: 'echo/echo' }
 const {

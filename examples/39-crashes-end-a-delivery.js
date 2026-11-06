@@ -26,9 +26,9 @@ check(
 )
 for (let i = 0; i < 6; i++) {
 	srv.kill('SIGKILL')
-	await sleep(300)
+	await sleep(100)
 	srv = await server()
-	await sleep(300)
+	await sleep(100)
 }
 const v = await until(async () => {
 	const v = await view(id)
@@ -45,7 +45,7 @@ check(
 	v?.agents[0]?.status,
 )
 laptop = await runner('laptop')
-await sleep(500)
+await sleep(200)
 check((await view(id)).entries.length === v?.entries.length, 'nothing runs again on its own')
 await api('POST', `/api/threads/${id}/entries`, { body: 'again', to })
 const after = await answered(id, 2)

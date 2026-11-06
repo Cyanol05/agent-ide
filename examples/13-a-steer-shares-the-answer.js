@@ -19,7 +19,7 @@ await server()
 const bot = await scriptedRunner('bot', (request) =>
 	request.messages.some((m) => m.role === 'toolResult')
 		? say('answered both')
-		: call('bash', { command: 'sleep 1' }),
+		: call('bash', { command: 'sleep 0.5' }),
 )
 const to = { runner: 'bot', model: 'echo/echo' }
 const {
@@ -72,7 +72,7 @@ const dee = await scriptedRunner('dee', (request) => {
 	if (last.role === 'toolResult') return say(t.startsWith('Posted') ? '' : 'dee answered both')
 	if (t.includes('tell thread'))
 		return call('post', { thread: Number(t.match(/thread (\d+)/)[1]), body: 'news' })
-	if (t.includes('work')) return call('bash', { command: 'sleep 1' })
+	if (t.includes('work')) return call('bash', { command: 'sleep 0.5' })
 	return say('dee heard')
 })
 const toDee = { runner: 'dee', model: 'echo/echo' }
@@ -115,7 +115,7 @@ const cy = await scriptedRunner('cy', (request) => {
 	const t = text(request.messages.findLast((m) => m.role === 'user'))
 	if (t.includes('again')) return say('cy heard it all')
 	if (request.messages.at(-1).role === 'user' && t.includes('work'))
-		return call('bash', { command: 'sleep 1' })
+		return call('bash', { command: 'sleep 0.5' })
 	return say(`cy thinks ${'hmm '.repeat(300)}`)
 })
 const toCy = { runner: 'cy', model: 'echo/echo' }

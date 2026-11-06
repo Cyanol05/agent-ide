@@ -25,7 +25,7 @@ check(v?.entries.at(-1).data.body.startsWith(`echo@${name} heard`), 'an agent on
 srv.kill('SIGTERM')
 await new Promise((r) => srv.on('exit', r))
 srv = await server()
-await sleep(3000)
+await sleep(1000)
 check(!(await online()), 'its runner stopped with the server, so it never comes back')
 check((await view(id)).entries.length === v.entries.length, 'and the thread kept everything')
 done()

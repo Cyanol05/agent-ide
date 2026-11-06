@@ -58,7 +58,7 @@ check(
 	JSON.stringify(there?.agents),
 )
 
-await api('POST', `/api/threads/${id}/entries`, { body: '$ sleep 2', to: { runner: 'laptop' } })
+await api('POST', `/api/threads/${id}/entries`, { body: '$ sleep 0.7', to: { runner: 'laptop' } })
 const busy = await until(async () =>
 	(await api('GET', '/api/runners')).json.find((r) => r.name === 'laptop' && r.busy === 1),
 )

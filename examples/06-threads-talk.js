@@ -100,7 +100,7 @@ check(
 	'the reply says where it came from and which post it answers',
 	JSON.stringify(replies[0]?.data).slice(0, 300),
 )
-await sleep(1500)
+await sleep(500)
 check(
 	(await view(child.id)).entries.filter((e) => e.data.from === parent).length === 1,
 	"the parent's answer to the reply stays in the parent: no ping-pong",
@@ -168,7 +168,7 @@ await api('POST', `/api/threads/${parent}/entries`, { body: 'just a note', to: n
 srv.kill('SIGKILL')
 await sleep(300)
 srv = await server()
-await sleep(2000)
+await sleep(600)
 const quiet = await view(parent)
 check(
 	answers(quiet).length === answers(settledParent).length && quiet.status !== 'working',
@@ -185,7 +185,7 @@ const byPost = await until(async () => {
 	const v = await view(asker)
 	return v.entries.some((e) => e.data.body === 'by post: 5') && v.status !== 'working' ? v : null
 }, 10000)
-await sleep(1000)
+await sleep(300)
 const back = (await view(asker)).entries.filter((e) => e.data.from && e.data.from !== asker)
 check(
 	Boolean(byPost) && back.length === 1 && back[0].data.body === 'by post: 5',

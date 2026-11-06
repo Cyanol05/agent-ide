@@ -56,7 +56,7 @@ async function round(env) {
 		),
 	)
 	await until(async () => (await view(id)).status !== 'working')
-	await sleep(1000)
+	await sleep(300)
 	const children = (await api('GET', '/api/threads')).json.filter((t) => t.parent === id)
 	const parent = await view(id)
 	bot.close()

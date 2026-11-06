@@ -23,7 +23,7 @@ const bot = await scriptedRunner('bot', (request) =>
 		? say(long)
 		: fauxAssistantMessage([
 				fauxThinking('first the folder'),
-				fauxToolCall('bash', { command: 'sleep 1; echo slept' }),
+				fauxToolCall('bash', { command: 'sleep 0.5; echo slept' }),
 			], { stopReason: 'toolUse' }),
 )
 const {

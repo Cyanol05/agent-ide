@@ -4,7 +4,7 @@ import { once } from 'node:events'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { base, check, dir, done, home, keyFor, repo, server } from './lib.js'
 
-async function terminal(answers7501, ms = 4000) {
+async function terminal(answers7501) {
 	let out = ''
 	let answered = false
 	/** A home of its own, as every example's runner has: no pi extensions to load first */
@@ -46,7 +46,10 @@ async function terminal(answers7501, ms = 4000) {
 			p.stdin.write((answers7501 ? '\x1b]7501;?\x1b\\' : '') + '\x1b[?62;22c')
 		}
 	})
-	await sleep(ms)
+	/** Until it has been asked and, if it answers the query, has reported; then a moment for anything more to arrive */
+	for (let waited = 0; waited < 8000 && !(answered && (!answers7501 || out.includes('state=idle'))); waited += 50)
+		await sleep(50)
+	await sleep(500)
 	p.kill('SIGKILL')
 	await closed
 	return out

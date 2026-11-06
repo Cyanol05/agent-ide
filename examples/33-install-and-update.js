@@ -101,7 +101,7 @@ check(
 check((await ask(id, 2)).includes('echo@fresh heard'), 'and it answers again, in the same thread')
 
 await runner('checkout')
-await new Promise((r) => setTimeout(r, 2000))
+await until(async () => (await runnerOf('checkout'))?.online)
 const checkout = await runnerOf('checkout')
 check(checkout?.outdated && checkout.online, 'a runner from a checkout is outdated, and stays up')
 done()

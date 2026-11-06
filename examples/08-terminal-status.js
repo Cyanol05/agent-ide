@@ -72,7 +72,7 @@ check(
 check(!reports.some((r) => r.app && r.id), 'only the root names the app; threads inherit it')
 
 // A command in the runner's folder
-await api('POST', `/api/threads/${id}/entries`, { body: '$ sleep 1.5' })
+await api('POST', `/api/threads/${id}/entries`, { body: '$ sleep 0.5' })
 check(
 	Boolean(
 		await until(
@@ -118,7 +118,7 @@ check(
 
 const before = reports.length
 await api('POST', `/api/threads/${other}/read`, {}, 'oskar')
-await until(async () => (await view(other)).status === 'done')
+await until(async () => (await view(other)).status === 'idle')
 check(
 	reports.length === before,
 	"nothing is re-sent when this runner's records did not change",

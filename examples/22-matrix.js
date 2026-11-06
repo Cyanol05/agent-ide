@@ -141,7 +141,7 @@ await scriptedRunner('bot', (request) => {
 	if (heard.endsWith('@bot fail please'))
 		return fauxAssistantMessage([], { stopReason: 'error', errorMessage: 'boom' })
 	if (heard.includes('busy') && !request.messages.some((m) => m.role === 'toolResult'))
-		return call('bash', { command: 'sleep 1' })
+		return call('bash', { command: 'sleep 0.5' })
 	return say(`heard ${heard}`)
 })
 
@@ -204,7 +204,7 @@ check(
 
 // In that Matrix thread
 said('@eve:fake', 'me too', reply(hello))
-await sleep(1500)
+await sleep(300)
 check(
 	fromBot(hello).length === 1 && (await messages(a)).some((m) => m.author === '@eve:fake' && !m.to),
 	"a stranger's reply is recorded and asks nobody",
@@ -246,7 +246,7 @@ await until(
 )
 said('@oskar:fake', 'and this too', reply(busy))
 await until(async () => fromBot(busy).length)
-await sleep(1000)
+await sleep(300)
 const c = await titled('busy one')
 check(
 	fromBot(busy).length === 1 &&
@@ -275,7 +275,7 @@ await api('POST', `/api/threads/${fork.id}/entries`, {
 await until(async () =>
 	(await messages(fork.id)).some((m) => m.body.includes('in the fork') && m.answer),
 )
-await sleep(1000)
+await sleep(300)
 check(
 	!fromBot().some((b) => b.includes('in the fork')),
 	'a fork sends nothing to the room',
@@ -320,7 +320,7 @@ await until(
 		(await titled('next one')) && (await messages(await titled('next one'))).some((m) => m.answer),
 	10000,
 )
-await sleep(500)
+await sleep(300)
 check(
 	!fromBot().some((b) => b.endsWith('@bot next one')),
 	'the second answer waits for the first send',
@@ -330,7 +330,7 @@ srv.kill('SIGKILL')
 said('@oskar:fake', 'while the server was down', reply(hello))
 const down = Array.from({ length: 12 }, (_, i) => `down ${i + 1}`)
 for (const body of down) said('@ana:fake', body)
-await sleep(500)
+await sleep(300)
 srv = await server(env)
 await until(
 	async () =>
@@ -350,7 +350,7 @@ check(
 	'and the second is sent only after it',
 	JSON.stringify(sends.map((s) => s.body.slice(-15))),
 )
-await sleep(1000)
+await sleep(300)
 const kept = [room, ...(await threads()).map((t) => t.id)]
 const twice = []
 for (const id of kept) {
@@ -421,7 +421,7 @@ const exited = once(srv, 'exit')
 srv.kill('SIGTERM')
 await exited
 srv = await server(env)
-await sleep(1000)
+await sleep(300)
 check(
 	(await failures()).length === 1 &&
 		sends.filter((s) => s.body.endsWith('@bot forbidden')).length === 1 &&

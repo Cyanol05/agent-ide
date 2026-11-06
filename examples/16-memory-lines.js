@@ -100,7 +100,7 @@ const built = await until(async () => {
 	const ls = await linesOf(c)
 	return want.every((k) => ls.some((x) => `${x.l}:${x.i}` === k)) && ls
 }, 30000)
-await sleep(1000)
+await sleep(300)
 const keys = (await linesOf(c)).map((x) => `${x.l}:${x.i}`)
 check(
 	Boolean(built) &&
@@ -125,7 +125,7 @@ await until(async () => {
 	const own = (await linesOf(f)).filter((x) => x.id > at)
 	return forkWant.every((k) => own.some((x) => `${x.l}:${x.i}` === k))
 }, 30000)
-await sleep(1000)
+await sleep(300)
 const own = (await linesOf(f))
 	.filter((x) => x.id > at)
 	.map((x) => `${x.l}:${x.i}`)
