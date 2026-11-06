@@ -22,7 +22,7 @@ import {
 	watch,
 } from './server.js'
 import { authorLabel, doing, messageText, setDoing } from './agent.js'
-import { answerOf, delivered, hear, readConversation, streamed, Turn, turnsOf } from './run.js'
+import { answerOf, cutsOf, delivered, hear, readConversation, streamed, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -104,7 +104,10 @@ export function Thread(props) {
 		const answers = new Set(steps.map((step) => answerOf(all, step)?.id))
 		const shown = all.filter((entry) => !answers.has(entry.id))
 		const said = shown.map((entry) => ({ key: entry.id, entry, at: entry.id }))
-		const rows = [...said, ...turns].sort((one, other) => one.at - other.at)
+		const cuts = (thread()?.agents ?? []).flatMap((agent) =>
+			cutsOf(agent.conversation).map((cut) => ({ ...cut, cut: true })),
+		)
+		const rows = [...said, ...turns, ...cuts].sort((one, other) => one.at - other.at)
 		// A message after a turn's line says who wrote it again
 		for (const [index, row] of rows.entries()) if (row.entry) row.previous = rows[index - 1]?.entry
 		return rows
@@ -229,6 +232,17 @@ export function Thread(props) {
 					<${For} each=${() => rows()} keyed=${(row) => row.key}
 						>${(row) => html`
 							<${Show}
+								when=${() => !row().cut}
+								fallback=${() => html`
+									<li class="cut mute">
+										${() =>
+											row().memory
+												? 'above here the agent reads the memory lines'
+												: 'above here the agent reads a summary'}
+									</li>
+								`}
+							>
+							<${Show}
 								when=${() => row().turn || row().live}
 								fallback=${() => html`
 									<${Message}
@@ -246,6 +260,7 @@ export function Thread(props) {
 									latest=${() => row().latest}
 									since=${() => row().since}
 								/>
+							<//>
 							<//>
 						`}<//
 					>

@@ -2656,3 +2656,10 @@ body.resizing {
 		padding: 0;
 	}
 }
+
+/* Where compaction cut: a quiet line across the thread, not a message. */
+.thread > ul > li.cut {
+	font-size: 12px;
+	text-align: center;
+	padding: 0.4rem 0;
+}

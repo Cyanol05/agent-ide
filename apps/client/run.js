@@ -30,7 +30,7 @@ export function readConversation(id) {
 			setConversations((read) => {
 				read[id] = all
 					.filter((entry) => entry.kind !== 'pi.system')
-					.map(({ id, kind, model, data }) => ({ id, kind, model, data }))
+					.map(({ id, kind, model, data, head }) => ({ id, kind, model, data, head }))
 			})
 			setStreamed((heard) => {
 				delete heard[id]
@@ -76,6 +76,23 @@ export function hear(conversation, live) {
 /** A delivery's words, whether Pi kept them as a string or as blocks beside images */
 const handedText = (message) =>
 	typeof message?.content === 'string' ? message.content : messageText(message)
+
+/**
+ * Where an agent's compactions cut, as the thread's message ids: the first message of the first delivery the agent still reads whole.
+ * `memory` is whether the summary is the thread's memory lines, or Pi's own.
+ */
+export function cutsOf(conversation) {
+	const all = conversations[conversation] ?? []
+	return all
+		.filter((entry) => entry.kind === 'pi.compaction')
+		.flatMap((entry) => {
+			const kept = all.find((other) => other.kind === 'agent-ide.delivery' && other.id >= entry.head)
+			const first = Math.min(...(kept?.data?.held ?? []))
+			return Number.isFinite(first)
+				? [{ key: `${conversation}:cut:${entry.id}`, at: first - 0.5, memory: JSON.stringify(entry.model).includes('<chat>') }]
+				: []
+		})
+}
 
 /** A conversation cut into turns: each begins with a delivery and holds the calls, results and words that follow it */
 export function turnsOf(conversation) {
