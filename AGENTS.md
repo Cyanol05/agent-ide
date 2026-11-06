@@ -2,7 +2,7 @@
 
 - Work on `main` in the one checkout, `~/sites/agent-ide`, with jj: no branches, worktrees or copies of the repo elsewhere, `/tmp` included. Every thread shares it.
 - Other agents edit this checkout at the same time: commit only your own paths (`jj commit <paths>`), read your diff for anyone else's hunks first, and `jj git fetch` and rebase before you push.
-- Check UI changes in a browser with `agent-browser open <url>`, on a scratch server with its own port and store: `PORT=3917 DB_PATH=<scratch>/s.sqlite node server.js`. The server reads the client's files once at startup, so restart it after each edit; stop it by its port when done.
+- Check a change by using agent-ide the way a person would: `node scripts/try.js &` starts a scratch server with a scripted bot and an answered thread, and prints the address and the `kill` that stops it. Open it with `agent-browser --session <yours> open <url>`; the default session is shared. The server reads the client's files once at startup, so restart it after each edit. Never kill by pattern.
 - An example proves a fix only if it fails without it: run it on the old code first and say so. Server errors print in example output; `VERBOSE=1` adds the server's own log.
 - A change serves one of the promises in [apps/client/client.html](apps/client/client.html), or it requires a chat with Oskar. When a better design breaks a principle, or an idea looks wrong, Oskar's included, argue before building.
 - Use the words the README uses, one per concept. Fewer concepts beats fewer lines.
