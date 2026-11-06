@@ -387,6 +387,7 @@ export function Composer(props) {
 					<${Panes}
 						title="Context"
 						detailTitle="Memory’s lines"
+						actions=${html`<button type="button" onClick=${() => recall.hidePopover()}>Done</button>`}
 						open=${() => lines()}
 						onBack=${() => setLines(false)}
 						detail=${html`<${Memory} />`}

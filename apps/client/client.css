@@ -2631,21 +2631,8 @@ body.resizing {
 	}
 }
 
-/* The memory popover keeps its frame and nothing else: no rules, and the title lines up with the content. */
+/* The memory popover keeps its frame and nothing else: no rules. */
 .recall {
-	.panes .pane:not(.detail) > header {
-		grid-template-columns: 1fr auto;
-		border-bottom: 0;
-
-		> span[aria-hidden] {
-			display: none;
-		}
-	}
-
-	.panes .detail > header {
-		border-bottom: 0;
-	}
-
 	.compact button {
 		white-space: nowrap;
 	}
