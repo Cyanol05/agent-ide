@@ -349,7 +349,7 @@ const browserPackages = new Map([
 	['@solidjs/web', new URL('./', import.meta.resolve('@solidjs/web'))],
 	['@solidjs/html', new URL('./', import.meta.resolve('@solidjs/html'))],
 	['@solidjs/signals', new URL('./dist/', import.meta.resolve('@solidjs/signals/package.json'))],
-	['mermaid', new URL('./', import.meta.resolve('mermaid'))],
+	['pele', new URL('./', import.meta.resolve('pele'))],
 	['marked', new URL('./', import.meta.resolve('marked'))],
 ])
 async function servePackage(res, pathname) {

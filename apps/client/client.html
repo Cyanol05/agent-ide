@@ -161,7 +161,7 @@ sequenceDiagram
   participant A as The agent, on the server
   participant R as runner laptop
   participant M as The model's provider
-  You->>A: "fix the flaky test", to sonnet:high@laptop
+  You->>A: "fix the flaky test"
   A->>R: model request
   R->>M: with the laptop's login
   M-->>A: call bash
@@ -181,18 +181,12 @@ sequenceDiagram
 		</main>
 		<script type="module" src="/client.js"></script>
 		<script type="module">
-			import mermaid from '/packages/mermaid/mermaid.esm.min.mjs'
-			mermaid.initialize({
-				startOnLoad: false,
-				securityLevel: 'strict',
-				theme: 'neutral',
-				fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-			})
-			for (const [i, pre] of [...document.querySelectorAll('pre.mermaid')].entries()) {
+			import { mount } from '/packages/pele/pele.js'
+			for (const pre of document.querySelectorAll('pre.mermaid')) {
 				const box = document.createElement('div')
 				box.className = 'diagram'
-				box.innerHTML = (await mermaid.render(`diagram-${i}`, pre.textContent)).svg
 				pre.replaceWith(box)
+				mount(box, pre.textContent, { zoom: false })
 			}
 		</script>
 	</body>

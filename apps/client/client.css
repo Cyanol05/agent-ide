@@ -2444,6 +2444,12 @@ body.chat {
 		border: 1px solid var(--line);
 		border-radius: 10px;
 		overflow-x: auto;
+		--pele-font: ui-sans-serif, system-ui, sans-serif;
+
+		svg {
+			display: block;
+			margin: 0 auto;
+		}
 	}
 
 	.name {

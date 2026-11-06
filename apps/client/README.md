@@ -2,7 +2,7 @@
 
 Solid 2, no build step. [client.html](client.html) is the walkthrough at `/`, beside the app itself; [client.css](client.css) styles both. Tagged templates from `@solidjs/html` describe the views.
 
-Install at the repository root with `pnpm install --frozen-lockfile` or `npm install`, then run `node server.js`. Solid and Mermaid are root dependencies. The server resolves their installed files and serves them under `/packages/`, including Mermaid's lazy-loaded chunks. Nothing in the browser comes from a CDN. The import map selects Solid's development builds so reactivity warnings remain visible.
+Install at the repository root with `pnpm install --frozen-lockfile` or `npm install`, then run `node server.js`. Solid and Pele are root dependencies. The server resolves their installed files and serves them under `/packages/`. Nothing in the browser comes from a CDN. The import map selects Solid's development builds so reactivity warnings remain visible.
 
 One file per thing, named with client.html's words: `server.js` keeps the lists live over /ws; each `thread.js` owns its message subscription while on screen, and keeps the messages it has seen, so coming back to a thread shows them at once while it catches up. `composer.js` keeps the draft as you move between threads, but what you choose in the model picker stays with the thread you chose it in, since asking a thread's agent as another model switches it. You choose one model, plus any bots; in a bot's home, the picker sets the bot's model, and the bot's settings open the same picker. It restores a failed send only if the same thread is still open and the draft is empty. Runner controls change the same choice rather than keeping another picker.
 

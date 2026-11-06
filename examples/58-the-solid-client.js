@@ -30,22 +30,16 @@ for (const font of fonts) {
 		font,
 	)
 }
-const entry = '/packages/mermaid/mermaid.esm.min.mjs'
-const mermaid = await fetch(base + entry)
-check(
-	mermaid.ok && mermaid.headers.get('content-type').includes('javascript'),
-	'Mermaid is local too',
-)
-const chunk = (await mermaid.text()).match(/from\s*["'](\.\/chunks\/[^"']+)/)?.[1]
-const loaded = chunk && (await fetch(new URL(chunk, base + entry)))
-check(loaded?.ok && (await loaded.text()).length > 0, 'its chunks are served beside it')
+const entry = '/packages/pele/pele.js'
+const pele = await fetch(base + entry)
+check(pele.ok && pele.headers.get('content-type').includes('javascript'), 'Pele is local too')
 for (const url of [
 	'/solid',
 	'/solid/client.js',
 	'/state.js',
 	'/dom.js',
 	'/packages/not-installed/index.js',
-	'/packages/mermaid/package.json',
+	'/packages/pele/package.json',
 	'/packages/solid-js/../../package.json',
 	'/packages/solid-js/%2e%2e%2fpackage.json',
 	'/packages/solid-js/http://[invalid',
