@@ -872,7 +872,7 @@ agent-memory {
 						text-overflow: ellipsis;
 
 						&::before {
-							content: '⏺ ';
+							content: '• ';
 						}
 
 						&::after {
@@ -915,6 +915,8 @@ agent-memory {
 					}
 
 					> li.call.ask .dot {
+						width: 0.35rem;
+						height: 0.35rem;
 						margin-right: 0.3rem;
 					}
 

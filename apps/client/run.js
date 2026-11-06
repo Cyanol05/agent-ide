@@ -322,7 +322,7 @@ function Step(props) {
 	`
 }
 
-/** ⏺ tool(args), ⎿ the start of its output; opened, both whole */
+/** • tool(args), ⎿ the start of its output; opened, both whole */
 function Call(props) {
 	const result = () => props.step.result
 	const [open, setOpen] = createSignal(false)
@@ -377,7 +377,7 @@ function Ask(props) {
 					<${Show} when=${() => state() === 'working' || state() === 'blocked'}
 						><${Dot} state=${() => state()}
 					/><//>
-					${() => (answered(props.step) ? 'answered ' : answer() ? `${authorLabel(answer().author)} answered in ` : 'asked ')}
+					<span class="tool">${() => (answered(props.step) ? 'answered ' : answer() ? `${authorLabel(answer().author)} answered in ` : 'asked ')}</span>
 					<${ThreadLink} id=${() => asked()}>${() => titleOf(asked())}<//>
 					<span class="out">${() => preview((answer() ?? props.step.args).body ?? '')}</span>
 				</summary>
