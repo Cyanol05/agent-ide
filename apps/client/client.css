@@ -42,7 +42,6 @@
 	--ok: #2f9e62;
 	--wait: #d39a00;
 	--pick: #3b7be0;
-	--draft: #a02f6f;
 	--danger: light-dark(#c92a2a, #ff8787);
 }
 
@@ -261,22 +260,6 @@ button {
 	}
 }
 
-/* Sections not yet read with Oskar say so. */
-section.draft > h2::after {
-	content: 'not reviewed yet';
-	font:
-		600 11px system-ui,
-		sans-serif;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	color: #fff;
-	background: var(--draft);
-	border-radius: 99px;
-	padding: 0.1rem 0.5rem;
-	margin-left: 0.5rem;
-	vertical-align: 0.15em;
-}
-
 .memory {
 	font-size: 14px;
 
@@ -309,8 +292,7 @@ section.draft > h2::after {
 			font-style: italic;
 		}
 
-		&.pending > small::after,
-		&.opening > small::after {
+		&.pending > small::after {
 			content: ' ●';
 			color: var(--ok);
 			animation: blink 1s ease-in-out infinite;
@@ -349,11 +331,6 @@ section.draft > h2::after {
 
 agent-memory {
 	display: block;
-
-	h3 {
-		font-size: 15px;
-		margin: 1.5rem 0 0.3rem;
-	}
 }
 
 .reads {
@@ -615,11 +592,9 @@ agent-memory {
 
 /* What the section in view talks about gets a soft glow; nothing else changes, so the live parts stay readable. */
 .stage[data-focus='server'] .server,
-.stage[data-focus='loop'] .server,
 .stage[data-focus='runners'] .runners .node,
 .stage[data-focus='hands'] .runners .node,
-.stage[data-focus='thread'] .thread,
-.stage[data-focus='model'] .models > li {
+.stage[data-focus='thread'] .thread {
 	box-shadow: 0 0 0 3px #2f6fd633;
 }
 
@@ -944,23 +919,12 @@ agent-memory {
 						content: '∴';
 					}
 
-					> li.call.ask > details > summary:has(.dot)::before {
-						display: none;
-					}
-
 					> li.call.running > details > summary::before {
 						animation: blink 1s ease-in-out infinite;
 					}
 
 					> li.call.failed > details > summary::before {
 						color: var(--danger);
-					}
-
-					> li.call.ask .dot {
-						flex: none;
-						width: 0.35rem;
-						height: 0.35rem;
-						margin-right: 0.65rem;
 					}
 
 					.whole {
@@ -1423,10 +1387,6 @@ agent-memory {
 	min-width: 0;
 }
 
-.thread > ul:focus {
-	outline: none;
-}
-
 .models {
 	select.swap {
 		border: 0;
@@ -1714,46 +1674,46 @@ body.chat {
 			}
 		}
 	}
+}
 
-	/* This thread's sheet, from the right at every size: its family, and whether its hands are off. */
-	.scrim {
-		display: block;
-		position: fixed;
-		inset: 0;
-		z-index: 9;
-		background: rgb(0 0 0 / 0.4);
-		opacity: 0;
-		pointer-events: none;
-		transition: opacity 0.25s;
-	}
+/* This thread's sheet, from the right at every size, in chat and beside the story: its family, and whether its hands are off. */
+body .scrim {
+	display: block;
+	position: fixed;
+	inset: 0;
+	z-index: 9;
+	background: rgb(0 0 0 / 0.4);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.25s;
+}
 
-	&.list .scrim,
-	&.side .scrim {
-		opacity: 1;
-		pointer-events: auto;
-	}
+body.list .scrim,
+body.side .scrim {
+	opacity: 1;
+	pointer-events: auto;
+}
 
-	.thread-details {
-		display: block;
-		position: fixed;
-		top: 0;
-		bottom: 0;
-		right: 0;
-		z-index: 10;
-		width: min(85vw, 22rem);
-		overflow-y: auto;
-		overscroll-behavior: contain;
-		background: Canvas;
-		padding: calc(0.6rem + env(safe-area-inset-top)) 0.6rem calc(1rem + env(safe-area-inset-bottom));
-		visibility: hidden;
-		border-left: 1px solid var(--line);
-		transform: translateX(100%);
-	}
+body .thread-details {
+	display: block;
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	z-index: 10;
+	width: min(85vw, 22rem);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	background: Canvas;
+	padding: calc(0.6rem + env(safe-area-inset-top)) 0.6rem calc(1rem + env(safe-area-inset-bottom));
+	visibility: hidden;
+	border-left: 1px solid var(--line);
+	transform: translateX(100%);
+}
 
-	&.side .thread-details {
-		transform: none;
-		visibility: visible;
-	}
+body.side .thread-details {
+	transform: none;
+	visibility: visible;
 }
 
 /* A sheet's own headings, and a bot's parts within it, read as one kind of small label. */
@@ -2526,13 +2486,8 @@ body.chat {
 		}
 	}
 
-	.runners,
-	.recipients {
+	.runners {
 		display: none;
-	}
-
-	.model-picker .recipients {
-		display: block;
 	}
 }
 
@@ -2598,7 +2553,6 @@ body.chat {
 		border: 1px solid var(--line);
 		border-radius: 10px;
 		overflow-x: auto;
-		--pele-font: ui-sans-serif, system-ui, sans-serif;
 
 		svg {
 			display: block;
@@ -2651,33 +2605,6 @@ body.chat {
 
 ol.promises li {
 	margin: 0.35rem 0;
-}
-
-/* The same details sheet is reachable beside the story, not just in chat. */
-body:not(.chat) .thread-details {
-	display: block;
-	position: fixed;
-	inset: 0 0 0 auto;
-	z-index: 10;
-	width: min(85vw, 22rem);
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	background: Canvas;
-	padding: 0.6rem;
-	border-left: 1px solid var(--line);
-	visibility: hidden;
-	transform: translateX(100%);
-}
-body:not(.chat).side .thread-details {
-	visibility: visible;
-	transform: none;
-}
-body:not(.chat).side .scrim {
-	display: block;
-	position: fixed;
-	inset: 0;
-	z-index: 9;
-	background: rgb(0 0 0 / 0.4);
 }
 
 /* The thread list's right edge drags; a line shows where while you hover or drag. */

@@ -98,9 +98,7 @@ export function Thread(props) {
 					(row) => row.live || !row.turn || row.turn.steps.some((step) => step.label !== 'handed'),
 				)
 			})
-			const steps = turns.flatMap((row) => row.turn?.steps ?? [])
 			const answerOf = answersIn(all)
-			const answers = new Set(steps.map((step) => answerOf(step)?.id))
 			// A question from another thread holds the answer said here to it alone, as a reply under it: a post's, else the run's last words
 			const questions = new Set(
 				all.filter((entry) => entry.data.from && !entry.data.re).map((entry) => entry.id),
@@ -112,7 +110,6 @@ export function Thread(props) {
 						if (!replies.has(id) || (replies.get(id).data.answer && !entry.data.answer))
 							replies.set(id, entry)
 			const inside = new Set([...replies.values()].map((entry) => entry.id))
-			const shown = all.filter((entry) => !answers.has(entry.id) && !inside.has(entry.id))
 			// The run that answered such a question alone sits in its box between question and answer, whatever else it did
 			const runs = new Map()
 			const byId = new Map(all.map((entry) => [entry.id, entry]))
@@ -125,6 +122,13 @@ export function Thread(props) {
 				if (run && question && reply.data.re.length === 1) runs.set(id, run)
 			}
 			const boxed = new Set(runs.values())
+			// An answer to an ask line shows in it; one with no line (a boxed run's post, say) stays a message
+			const answers = new Set(
+				turns.flatMap((row) =>
+					row.turn && !boxed.has(row) ? row.turn.steps.map((step) => answerOf(step)?.id) : [],
+				),
+			)
+			const shown = all.filter((entry) => !answers.has(entry.id) && !inside.has(entry.id))
 			// Each ask an agent made here is one line after its run, open to the whole exchange
 			const asks = turns
 				.filter((row) => row.turn && !boxed.has(row))

@@ -43,7 +43,7 @@ export const messageText = (message) =>
 		.map((block) => block.text)
 		.join('')
 /** A tool call as one line: its name and the argument that says what it touches */
-export const toolLine = (tool) => {
+const toolLine = (tool) => {
 	const args = tool.args ?? {}
 	return `${tool.name} ${args.command ?? args.path ?? args.pattern ?? args.query ?? args.body ?? ''}`.trim()
 }
