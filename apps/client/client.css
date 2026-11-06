@@ -1536,9 +1536,8 @@ body.chat .thread > header > button.close {
 	padding: 0 0.75rem;
 	border: 1px solid var(--line);
 	border-radius: 6px;
-	background: color-mix(in srgb, Canvas 75%, transparent);
-	-webkit-backdrop-filter: blur(16px);
-	backdrop-filter: blur(16px);
+	/* Opaque, with no blur: the messages already fade out beneath, and Safari's blur over the faded list dims the pill. */
+	background: Canvas;
 	color: var(--ink);
 	font-size: 13px;
 	font-weight: 400;
@@ -1899,9 +1898,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 	.app-bar {
 		button {
 			border: 1px solid var(--line);
-			background: color-mix(in srgb, Canvas 75%, transparent);
-			-webkit-backdrop-filter: blur(16px);
-			backdrop-filter: blur(16px);
+			background: Canvas;
 			color: var(--ink);
 		}
 
