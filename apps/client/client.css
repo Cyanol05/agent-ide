@@ -665,11 +665,16 @@ agent-memory {
 		text-decoration: none;
 		text-align: start;
 
-		> span:last-child {
+		> span:not(.dot) {
 			flex: 1;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
+		}
+
+		> small {
+			flex: none;
+			color: var(--mute);
 		}
 	}
 
@@ -835,8 +840,31 @@ agent-memory {
 				}
 			}
 
+			/* One line while it works; open, the calls so far and the words, each in its own quiet block */
 			&.writing {
 				color: var(--mute);
+
+				summary > small {
+					display: inline;
+					margin: 0;
+				}
+
+				> details > :is(.calls, .body) {
+					margin-top: 0.35rem;
+					padding: 0;
+					border: 0;
+					font-size: 13px;
+					line-height: 1.45;
+					white-space: pre-wrap;
+					overflow-wrap: anywhere;
+				}
+
+				> details > .calls {
+					font-size: 12px;
+					max-height: 6rem;
+					overflow-y: auto;
+					opacity: 0.8;
+				}
 			}
 
 			/* A quick snapshot shows nothing; a slow one says so. */
@@ -1791,9 +1819,8 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 }
 
-/* The model picker, runner list and settings: popovers on desktop, bottom sheets on phones. */
+/* The model picker and settings: popovers on desktop, bottom sheets on phones. */
 .model-picker,
-.runner-list,
 .settings {
 	position: fixed;
 	inset: auto;
@@ -1802,7 +1829,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 	max-height: min(70dvh, 32rem);
 	overflow-y: auto;
 	overscroll-behavior: contain;
-	padding: 0.4rem;
+	padding: 0.7rem;
 	border: 1px solid var(--line);
 	border-radius: 14px;
 	background: Canvas;
@@ -1811,17 +1838,48 @@ button[data-danger]:focus-visible:not(:disabled) {
 	box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
 }
 
-.runner-list {
-	padding: 0.7rem;
-}
-
 .model-controls > ul,
-.runner-list > ul {
+.runner-list > ul,
+.settings .modules {
 	list-style: none;
 	margin: 0;
 	padding: 0;
 	display: grid;
 	gap: 0.25rem;
+}
+
+/* One row across models, runners and modules, also inside the phone sheets. */
+:is(.model-controls .who, .model-controls .model, .runner-list > ul > li, .settings .modules > li) {
+	display: flex;
+	align-items: start;
+	gap: 0.6rem;
+	padding: 0.45rem 0.5rem;
+	border-radius: 8px;
+
+	> .dot {
+		margin-top: 0.45rem;
+	}
+
+	> div {
+		flex: 1;
+		min-width: 0;
+	}
+
+	small {
+		color: var(--mute);
+		font-size: 12px;
+	}
+}
+
+:where(.runner-list > ul > li, .settings .modules > li) small {
+	display: block;
+	overflow-wrap: anywhere;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	:is(.model-controls .model:not(.on), .runner-list > ul > li, .settings .modules > li):hover {
+		background: var(--tint);
+	}
 }
 
 /* A runner, its models as rows with a check on the one asked, and how hard it thinks as a row of steps. */
@@ -1832,17 +1890,9 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 
 	.who {
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-		padding: 0.35rem 0.5rem 0.25rem;
-		font-size: 13px;
-
 		small {
 			flex: 1;
 			min-width: 0;
-			color: var(--mute);
-			font-size: 12px;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -1854,19 +1904,12 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 
 	.model {
-		display: flex;
-		align-items: baseline;
-		gap: 0.5rem;
 		width: 100%;
 		border: 0;
-		border-radius: 8px;
 		background: none;
-		padding: 0.35rem 0.5rem;
 		text-align: left;
 
 		small {
-			color: var(--mute);
-			font-size: 12px;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -1936,27 +1979,9 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 .runner-list {
-	> ul > li {
-		display: flex;
-		align-items: start;
-		gap: 0.6rem;
-		padding: 0.45rem 0.4rem;
-
-		.dot {
-			margin-top: 0.45rem;
-		}
-
-		small {
-			display: block;
-			color: var(--mute);
-			font-size: 12px;
-			overflow-wrap: anywhere;
-
-			&.doing {
-				color: var(--ok);
-				font-family: ui-monospace, monospace;
-			}
-		}
+	> ul > li small.doing {
+		color: var(--ok);
+		font-family: ui-monospace, monospace;
 	}
 
 	.connect-runner {
@@ -1976,39 +2001,16 @@ button[data-danger]:focus-visible:not(:disabled) {
 	padding: 0;
 	overflow: hidden;
 
-	.modules {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: grid;
-		gap: 0.25rem;
+	.pane-body > h3 {
+		margin: 0.6rem 0.5rem 0.25rem;
+		font-size: 12px;
+		font-weight: 500;
+		color: var(--mute);
 	}
 
-	.modules > li {
-		display: flex;
-		align-items: start;
-		gap: 0.6rem;
-		padding: 0.45rem 0.4rem;
-
-		.dot {
-			margin-top: 0.45rem;
-		}
-
-		> div {
-			flex: 1;
-			min-width: 0;
-		}
-
-		small {
-			display: block;
-			color: var(--mute);
-			font-size: 12px;
-		}
-
-		&.off b {
-			color: var(--mute);
-			font-weight: 500;
-		}
+	.modules > li.off b {
+		color: var(--mute);
+		font-weight: 500;
 	}
 
 	/* A module's option opens its detail in the same frame. */
@@ -2123,11 +2125,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 .runner-list > ul > li {
 	flex-wrap: wrap;
 
-	> div {
-		flex: 1;
-		min-width: 0;
-	}
-
 	.revoke {
 		flex: none;
 		padding: 0 0.35rem;
@@ -2209,7 +2206,7 @@ connect-runner {
 	display: none;
 }
 
-/* The list's foot: runners, then settings, then the arrow back to the story that sits over its end. */
+/* The list's foot: settings and the arrow back to the story that sits over its end. */
 body.chat {
 	.list-foot {
 		position: sticky;
@@ -2223,14 +2220,13 @@ body.chat {
 		background: Canvas;
 	}
 
-	.runner-toggle {
+	.settings-toggle {
 		flex: 1;
 		min-width: 0;
 		display: flex;
 		align-items: center;
 		gap: 0.3rem;
-		border: 0;
-		border-radius: 0;
+		border-color: transparent;
 		background: none;
 		color: var(--mute);
 		font-size: 13px;
@@ -2243,18 +2239,6 @@ body.chat {
 			text-overflow: ellipsis;
 			white-space: nowrap;
 		}
-	}
-
-	.settings-toggle {
-		flex: none;
-		display: grid;
-		place-items: center;
-		width: 1.6rem;
-		height: 1.6rem;
-		padding: 0;
-		border-color: transparent;
-		background: none;
-		color: var(--mute);
 
 		&:hover {
 			border-color: var(--line);
@@ -2274,7 +2258,6 @@ body.chat {
 
 @media (max-width: 700px) {
 	.model-picker,
-	.runner-list,
 	.settings {
 		inset: auto 0 0 0;
 		width: 100%;
@@ -2299,7 +2282,6 @@ body.chat {
 
 @media (prefers-reduced-motion: no-preference) {
 	.model-picker,
-	.runner-list,
 	.settings {
 		transition:
 			opacity 0.18s,
@@ -2309,7 +2291,6 @@ body.chat {
 	}
 
 	.model-picker:not(:popover-open),
-	.runner-list:not(:popover-open),
 	.settings:not(:popover-open) {
 		opacity: 0;
 		translate: 0 8px;
@@ -2317,7 +2298,6 @@ body.chat {
 
 	@starting-style {
 		.model-picker:popover-open,
-		.runner-list:popover-open,
 		.settings:popover-open {
 			opacity: 0;
 			translate: 0 8px;

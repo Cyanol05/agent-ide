@@ -21,7 +21,7 @@ import {
 	titleOf,
 	watch,
 } from './server.js'
-import { authorLabel, doing, lastToolCall, messageText, setDoing } from './agent.js'
+import { authorLabel, doing, lastToolCall, messageText, setDoing, toolLine } from './agent.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -176,21 +176,45 @@ export function Thread(props) {
 	`
 }
 
-/** While the server says the agent works or waits for its runner, what it's writing so far */
+/** While the server says the agent works or waits for its runner: one line, and what it has done so far behind it */
 function Writing(props) {
 	return html`
 		<${Show} when=${() => props.agent.status !== 'idle'}>
-			<li class="writing">
-				<small title=${() => lastToolCall(props.live)}>
-					<${Dot} state=${() => props.agent.status} />
-					${() =>
-						`${authorLabel(props.agent.name)} · ` +
-						(lastToolCall(props.live) ||
-							(props.agent.status === 'blocked' ? 'blocked' : 'writing'))}
-				</small>
-				<div class="body markdown" innerHTML=${() => markdown(messageText(props.live?.message))} />
-			</li>
+			<${Working} agent=${() => props.agent} live=${() => props.live} />
 		<//>
+	`
+}
+
+/** A turn's row, made afresh each time the agent starts, so what it has run belongs to this turn */
+function Working(props) {
+	// The live doc holds only the tool running now, so keep the calls as they come and go
+	const called = []
+	const calls = () => {
+		for (const tool of props.live?.tools ?? []) {
+			const known = called.find((call) => call.callId === tool.callId)
+			if (known) known.line = toolLine(tool)
+			else called.push({ callId: tool.callId, line: toolLine(tool) })
+		}
+		return called.map((call) => call.line).join('\n')
+	}
+	return html`
+		<li class="writing">
+			<details>
+				<summary title=${() => lastToolCall(props.live)}>
+					<small>
+						<${Dot} state=${() => props.agent.status} />
+						${() =>
+							`${authorLabel(props.agent.name)} · ` +
+							(lastToolCall(props.live) ||
+								(props.agent.status === 'blocked' ? 'blocked' : 'writing'))}
+					</small>
+				</summary>
+				<${Show} when=${() => calls()}>
+					<div class="calls">${() => calls()}</div>
+				<//>
+				<div class="body">${() => messageText(props.live?.message)}</div>
+			</details>
+		</li>
 	`
 }
 

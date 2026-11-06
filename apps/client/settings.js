@@ -1,13 +1,14 @@
 /** The server's settings: its modules, on or off, and memory's model. Its own machine changes them; saving restarts it. */
 import html from '@solidjs/html'
 import { createEffect, createRoot, createSignal, createStore, createUniqueId, For, Show, snapshot, untrack } from 'solid-js'
-import { api, connected, server } from './server.js'
+import { api, connected, runners, server } from './server.js'
 import { ModelPicker } from './model-picker.js'
 import { Panes } from './panes.js'
 import { agentLabel, agentTo, formatAgent } from './agent.js'
 import { report } from './notice.js'
 import { placePopover } from './popover.js'
 import { Dot } from './dot.js'
+import { RunnerList } from './runner.js'
 
 /** Changes not saved yet, kept if the settings close before saving */
 const [draft, setDraft] = createRoot(() => createStore({ modules: {}, model: undefined, state: '' }))
@@ -16,6 +17,7 @@ const changed = () => Object.keys(draft.modules).length > 0 || draft.model !== u
 export function Settings() {
 	let button, panel
 	const id = createUniqueId()
+	const online = () => runners.filter((runner) => runner.online).length
 	const [selection, setSelection] = createSignal(null)
 	const all = () => [
 		...server().modules.map((name) => ({ name, on: true })),
@@ -63,15 +65,13 @@ export function Settings() {
 			class="settings-toggle"
 			type="button"
 			title="Settings"
-			aria-label="Settings"
 			ref=${(el) => (button = el)}
 			popovertarget=${id}
 		>
-			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-				<path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
-				<circle cx="16" cy="7" r="2" />
-				<circle cx="10" cy="17" r="2" />
-			</svg>
+			<${For} each=${() => runners}
+				>${(runner) => html`<${Dot} state=${() => (runner.online ? 'on' : '')} />`}<//
+			>
+			<span>${() => `${online()} runner${online() === 1 ? '' : 's'} online`}</span>
 		</button>
 		<div
 			class="settings"
@@ -84,7 +84,7 @@ export function Settings() {
 			}}
 		>
 			<${Panes}
-				title="Modules"
+				title="Settings"
 				detailTitle="Memory’s agent"
 				open=${() => selection() !== null}
 				onBack=${(event) => back()}
@@ -111,6 +111,9 @@ export function Settings() {
 					onConfigure=${(to) => setSelection(to)}
 				/>`}
 			>
+			<h3>Runners</h3>
+			<${RunnerList} />
+			<h3>Modules</h3>
 			<ul class="modules">
 				<${For} each=${all}
 					>${(module) => html`

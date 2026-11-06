@@ -41,9 +41,12 @@ export const messageText = (message) =>
 		.filter((block) => block.type === 'text')
 		.map((block) => block.text)
 		.join('')
-export const lastToolCall = (doing) => {
-	const tool = doing?.run && doing.tools.at(-1)
-	if (!tool) return ''
+/** A tool call as one line: its name and the argument that says what it touches */
+export const toolLine = (tool) => {
 	const args = tool.args ?? {}
 	return `${tool.name} ${args.command ?? args.path ?? args.pattern ?? args.query ?? args.body ?? ''}`.trim()
+}
+export const lastToolCall = (doing) => {
+	const tool = doing?.run && doing.tools.at(-1)
+	return tool ? toolLine(tool) : ''
 }

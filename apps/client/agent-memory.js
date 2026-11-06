@@ -35,7 +35,7 @@ export function Memory() {
 					when=${() => server().modules.includes('memory')}
 					fallback=${html`
 						<p class="mute">
-							This server runs without memory. Switch it on in settings beside the runners.
+							This server runs without memory. Switch it on in settings with the runners.
 						</p>
 					`}
 				>

@@ -1,6 +1,6 @@
 /** A bot's name, home, recipe and instructions. */
 import html from '@solidjs/html'
-import { createEffect, createSignal, For, onSettled, refresh, Show, snapshot } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onSettled, refresh, Show, snapshot } from 'solid-js'
 import { api, bots, colorOf, current, followThread, hrefOf, openThread, threads } from './server.js'
 import { formatAgent } from './agent.js'
 import { agent, openPicker } from './composer.js'
@@ -9,19 +9,32 @@ import { ThreadItem } from './thread-list.js'
 import { report } from './notice.js'
 import { Sure } from './sure.js'
 
-export const BotItem = (props) => html`
-	<li class=${() => ({ current: props.bot.home === current() })}>
-		<a
-			class="row"
-			href=${() => hrefOf(props.bot.home)}
-			title=${() => props.bot.instructions.split('\n')[0]}
-			onClick=${(event) => followThread(event, props.bot.home)}
-		>
-			<${Dot} state=${() => props.bot.status} />
-			<span style=${() => colorOf(props.bot.name)}>${() => props.bot.name}</span>
-		</a>
-	</li>
-`
+export function BotItem(props) {
+	const family = createMemo(() => {
+		const home = threads.find((thread) => thread.id === props.bot.home)
+		return threads.filter((thread) => home?.family.some((member) => member.id === thread.id))
+	})
+	const working = createMemo(() => family().filter((thread) => thread.status === 'working').length)
+	const status = createMemo(() =>
+		['working', 'blocked', 'error', 'done'].find((status) => family().some((thread) => thread.status === status)) ?? 'idle',
+	)
+	return html`
+		<li class=${() => ({ current: props.bot.home === current() })}>
+			<a
+				class="row"
+				href=${() => hrefOf(props.bot.home)}
+				title=${() => props.bot.instructions.split('\n')[0]}
+				onClick=${(event) => followThread(event, props.bot.home)}
+			>
+				<${Dot} state=${() => status()} />
+				<span style=${() => colorOf(props.bot.name)}>${() => props.bot.name}</span>
+				<${Show} when=${() => working()}>
+					<small title="Threads working">${() => working()}</small>
+				<//>
+			</a>
+		</li>
+	`
+}
 
 export function BotSettings(props) {
 	let instructionsField
