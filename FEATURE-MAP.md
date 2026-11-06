@@ -64,7 +64,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   runner.js              runner list, a runner's agents, ConnectRunner
   bot.js                 a bot's settings, new bot
   thread-list.js         the thread list, its family rows
-  thread-details.js      title, people, family, tools for the open thread
+  thread-details.js      title, people, family, tools for the open thread; ThreadMembers popover in the chat header
   agent-memory.js        memory popover and compaction view for the visible thread
   settings.js            server settings: modules on/off, memory's model
   system.js, wires.js    the live system diagram and the wires between boxes
@@ -102,4 +102,5 @@ Where a feature lives:
 - Forks: server.js forkThread/seenBy, client server.js fork, thread.js Message (fork link).
 - `$ cmd`: server.js Shell, printed, shells.
 - Status dots: server.js status/busiest, client dot.js.
+- A new popover or panel: copy the context popover in composer.js (Settings in settings.js is the fuller model): `<div class="settings" popover>` placed by `placePopover`, holding `<Panes title actions>` (panes.js, its header and Done button) and rows as `ul.modules > li`, all styled by the `.settings` rules in client.css ("The model picker and settings"); add no CSS of your own.
 - Settings and modules: modules.js, server.js saveSettings/restart, client settings.js.
