@@ -65,8 +65,16 @@ export function Thread(props) {
 		})
 		const steps = turns.flatMap((row) => row.turn?.steps ?? [])
 		const answers = new Set(steps.map((step) => answerOf(all, step)?.id))
-		const shown = all.filter((entry) => !answers.has(entry.id))
-		const said = shown.map((entry) => ({ key: entry.id, entry, at: entry.id }))
+		// A question from another thread holds the answer said here to it alone, as a reply under it: a post's, else the run's last words
+		const questions = new Set(all.filter((entry) => entry.data.from && !entry.data.re).map((entry) => entry.id))
+		const replies = new Map()
+		for (const entry of all)
+			if (!entry.data.from && entry.data.re?.every((id) => questions.has(id)))
+				for (const id of entry.data.re)
+					if (!replies.has(id) || (replies.get(id).data.answer && !entry.data.answer)) replies.set(id, entry)
+		const inside = new Set([...replies.values()].map((entry) => entry.id))
+		const shown = all.filter((entry) => !answers.has(entry.id) && !inside.has(entry.id))
+		const said = shown.map((entry) => ({ key: entry.id, entry, at: entry.id, reply: replies.get(entry.id) }))
 		const cuts = (thread()?.agents ?? []).flatMap((agent) =>
 			cutsOf(agent.conversation).map((cut) => ({ ...cut, cut: true })),
 		)
@@ -239,6 +247,7 @@ export function Thread(props) {
 									<${Message}
 										thread=${() => props.id}
 										entry=${() => row().entry}
+										reply=${() => row().reply}
 										previous=${() => row().previous}
 									/>
 								`}
@@ -298,6 +307,15 @@ function Message(props) {
 					>
 					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
+					<${Show} when=${() => props.reply}>
+						<div class="reply">
+							<small title=${() => props.reply.data.author} style=${() => colorOf(props.reply.data.author)}
+								>${() => `← ${authorLabel(props.reply.data.author)} answered`}</small
+							>
+							<${Body} data=${() => props.reply.data} />
+							<${Images} images=${() => props.reply.data.images} />
+						</div>
+					<//>
 				`}
 			>
 				<details>

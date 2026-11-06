@@ -950,6 +950,13 @@ agent-memory {
 				border-radius: 12px;
 			}
 
+			/* The answer said here to that question sits under it, past a thin rule, like a reply under its mail. */
+			&.elsewhere > .reply {
+				margin-top: 0.7rem;
+				padding-top: 0.6rem;
+				border-top: 1px solid var(--line);
+			}
+
 			/* A post's answer is the post's result: one muted line in the flow, opened to read it. */
 			&.elsewhere.reply {
 				padding: 0;
