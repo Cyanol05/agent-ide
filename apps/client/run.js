@@ -15,14 +15,16 @@ import { authorLabel, doing, messageText } from './agent.js'
 import { Dot } from './dot.js'
 import { markdown } from './markdown.js'
 
-/** Each agent conversation on screen, its entries as Pi keeps them */
+/**
+ * Each agent conversation on screen, its entries as Pi keeps them.
+ * Entries never change once written, so each conversation is one frozen array, replaced as it grows: a read tracks the conversation, not its every field.
+ */
 export const [conversations, setConversations] = createRoot(() => createStore({}))
 /** Takes an agent's entries off the socket: whole on each new watch, then each one once, as it's written */
 export function heard(conversation, entries, whole) {
 	const shown = entries.filter((entry) => entry.kind !== 'pi.system')
 	setConversations((all) => {
-		if (whole || !all[conversation]) all[conversation] = shown
-		else all[conversation].push(...shown)
+		all[conversation] = Object.freeze(whole || !all[conversation] ? shown : [...all[conversation], ...shown])
 	})
 }
 
