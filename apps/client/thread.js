@@ -84,8 +84,11 @@ export function Thread(props) {
 		const above = (row) => folded && row.at < folded.at
 		const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
 		const rows = [...said.filter((row) => !above(row)), ...turns.filter((row) => !above(row)), ...lines, ...cuts].sort((one, other) => one.at - other.at)
-		// A message after a turn's line says who wrote it again
-		for (const [index, row] of rows.entries()) if (row.entry) row.previous = rows[index - 1]?.entry
+		// A message names its author only when the line above, a message or a run line, has someone else's
+		for (const [index, row] of rows.entries()) {
+			const above = rows[index - 1]
+			if (row.entry) row.above = above?.entry ? !above.entry.data.from && above.entry.data.author : above?.agent?.name
+		}
 		return rows
 	})
 	/** The list waits for its messages and each agent's conversation, so it shows folded at once instead of shifting */
@@ -248,7 +251,7 @@ export function Thread(props) {
 										thread=${() => props.id}
 										entry=${() => row().entry}
 										reply=${() => row().reply}
-										previous=${() => row().previous}
+										above=${() => row().above}
 									/>
 								`}
 							>
@@ -288,8 +291,7 @@ function Message(props) {
 				same:
 					!elsewhere() &&
 					data().author !== me &&
-					!props.previous?.data.from &&
-					props.previous?.data.author === data().author,
+					props.above === data().author,
 			})}
 		>
 			<${Show}
