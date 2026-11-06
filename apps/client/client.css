@@ -680,6 +680,7 @@ agent-memory {
 
 	> button.delete {
 		margin-left: auto;
+		margin-right: 0.4rem;
 		padding: 0 0.3rem;
 		font-size: 11px;
 		line-height: 1.4;
