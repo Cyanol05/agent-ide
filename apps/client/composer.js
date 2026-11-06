@@ -356,7 +356,7 @@ export function Composer(props) {
 				</button>
 			</div>
 			<div
-				class="settings"
+				class="settings recall"
 				popover
 				ref=${(el) => (recall = el)}
 				onToggle=${(event) => {
@@ -373,7 +373,7 @@ export function Composer(props) {
 						detail=${html`<${Memory} />`}
 					>
 						<${Compaction} />
-						<button type="button" class="model" onClick=${() => setLines(true)}>
+						<button type="button" onClick=${() => setLines(true)}>
 							<span>Read the lines</span>
 							<small>what the agent remembers, from the top down</small>
 						</button>

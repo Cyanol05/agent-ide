@@ -2628,3 +2628,29 @@ body.resizing {
 		border-radius: 8px;
 	}
 }
+
+/* The memory popover keeps its frame and nothing else: no rules, no boxed button. */
+.recall {
+	.panes .pane > header {
+		border-bottom: 0;
+	}
+
+	.pane-body > button {
+		display: block;
+		border: 0;
+		background: none;
+		padding: 0.3rem 0;
+		text-align: left;
+
+		small {
+			display: block;
+			color: var(--mute);
+		}
+	}
+
+	.pane-body > p {
+		margin: 0.3rem 0;
+		border: 0;
+		padding: 0;
+	}
+}
