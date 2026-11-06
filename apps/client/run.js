@@ -435,7 +435,7 @@ export function Exchange(props) {
 					</small>
 				</summary>
 				<${Show} when=${open}>
-					<ul class="box">
+					<ul class="said">
 						<${Message}
 							thread=${() => props.thread}
 							entry=${() => ({ data: { ...props.step.args, author: props.agent?.name } })}
