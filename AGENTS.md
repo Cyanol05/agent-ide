@@ -32,3 +32,4 @@
 - Look up wire endpoints after Solid places the DOM, and ignore the wires' own SVG mutations when observing layout changes.
 - The README's words say what each thing is; don't restate it here. In short: a thread has one agent whose model, thinking and runner change in place, and only bots have names.
 - Solid batches navigation, so walkthrough actions pass their new-thread target explicitly, and post-await navigation checks use `latest(current)`.
+- Scratch servers start a local runner unless RUNNER=0; use a scripted runner to prove sends without calling a real model.

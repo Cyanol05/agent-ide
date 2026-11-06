@@ -9,7 +9,8 @@ import { ConnectRunner } from './runner.js'
 import { report } from './notice.js'
 import { Memory } from './agent-memory.js'
 
-const defaults = () => runners.filter((runner) => runner.online && toFor(runner).model).map(toFor)
+const defaults = () =>
+	runners.filter((runner) => runner.online && toFor(runner).model).map((runner) => toFor(runner))
 async function ask(body, to, was = current()) {
 	if (!to) throw new Error('Pick a model first.')
 	choose(to)

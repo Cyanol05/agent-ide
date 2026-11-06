@@ -908,7 +908,7 @@ agent-memory {
 			display: none;
 		}
 
-		&.elsewhere input {
+		&.elsewhere textarea {
 			color: var(--mute);
 		}
 
@@ -925,13 +925,21 @@ agent-memory {
 				border-color: var(--mute);
 			}
 
-			> input {
+			> textarea {
 				flex: 1;
+				min-width: 0;
+				field-sizing: content;
+				min-height: calc(1lh + 0.8rem);
+				max-height: min(12rem, 40dvh);
+				overflow-y: auto;
+				resize: none;
 				border: 0;
 				background: none;
 				padding: 0.4rem 0;
 				outline: none;
+				font: inherit;
 				font-size: 15px;
+				color: inherit;
 			}
 		}
 
@@ -984,6 +992,111 @@ agent-memory {
 				color: var(--ink);
 			}
 		}
+	}
+}
+
+/* A message's markdown: as compact as the chat around it, headings barely bigger than text. */
+.markdown {
+	white-space: normal;
+
+	> :first-child {
+		margin-top: 0;
+	}
+
+	> :last-child {
+		margin-bottom: 0;
+	}
+
+	p,
+	ul,
+	ol,
+	blockquote,
+	pre,
+	table {
+		margin: 0.5rem 0;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-size: 1em;
+		line-height: inherit;
+		margin: 0.9rem 0 0.3rem;
+	}
+
+	h1 {
+		font-size: 1.15em;
+	}
+
+	h2 {
+		font-size: 1.05em;
+	}
+
+	ul,
+	ol {
+		padding-left: 1.4rem;
+	}
+
+	li > p {
+		margin: 0;
+	}
+
+	blockquote {
+		padding-left: 0.8rem;
+		border-left: 2px solid var(--line);
+		color: var(--mute);
+	}
+
+	code {
+		padding: 0.1em 0.3em;
+		border-radius: 4px;
+		background: var(--tint);
+	}
+
+	pre {
+		padding: 0.6rem 0.8rem;
+		font-size: 13px;
+		line-height: 1.45;
+		white-space: pre;
+		word-break: normal;
+
+		code {
+			padding: 0;
+			background: none;
+			font-size: inherit;
+		}
+	}
+
+	table {
+		display: block;
+		max-width: 100%;
+		overflow-x: auto;
+		border-collapse: collapse;
+		font-size: 0.93em;
+	}
+
+	th,
+	td {
+		padding: 0.25rem 0.6rem;
+		border: 1px solid var(--line);
+		text-align: start;
+	}
+
+	th {
+		background: var(--tint);
+	}
+
+	hr {
+		border: 0;
+		border-top: 1px solid var(--line);
+		margin: 0.8rem 0;
+	}
+
+	img {
+		max-width: 100%;
 	}
 }
 

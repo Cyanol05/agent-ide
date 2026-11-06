@@ -25,7 +25,9 @@ const to = { runner: 'bot', model: 'echo/echo' }
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'steer' })
-const first = (await api('POST', `/api/threads/${id}/entries`, { body: 'first', to })).json.entry
+const first = (
+	await api('POST', `/api/threads/${id}/entries`, { body: 'first', to, steer: true })
+).json.entry
 check(
 	Boolean(
 		await until(
@@ -50,6 +52,17 @@ check(
 	JSON.stringify(answers(v)[0]?.data.re) === JSON.stringify([first, second]),
 	'the answer says it answers both',
 	JSON.stringify(answers(v)[0]?.data.re),
+)
+const idle = (
+	await api('POST', `/api/threads/${id}/entries`, { body: 'idle again', to, steer: true })
+).json.entry
+const restarted = await answered(id, 2)
+check(
+	restarted &&
+		answers(restarted).length === 2 &&
+		JSON.stringify(answers(restarted)[1]?.data.re) === JSON.stringify([idle]),
+	'a steer sent while idle starts its own run',
+	JSON.stringify(restarted?.entries.map((entry) => entry.data)),
 )
 bot.close()
 

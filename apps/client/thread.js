@@ -25,6 +25,7 @@ import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageUrl } from './images.js'
+import { markdown } from './markdown.js'
 
 export const ThreadLink = (props) => html`
 	<a
@@ -46,10 +47,12 @@ export function Thread(props) {
 		(id) => {
 			if (!id) return
 			let first = true
+			stuck = true
 			const close = watch(
 				(message) => {
 					if (message.thread !== id) return
-					stuck = !list || list.scrollTop + list.clientHeight >= list.scrollHeight - 4
+					// Your own send always shows; others' entries follow only a view already at the bottom.
+					if (!first && message.entries?.some((entry) => entry.data.author === me)) stuck = true
 					if (message.entries) {
 						const snapshot = first
 						first = false
@@ -86,6 +89,7 @@ export function Thread(props) {
 	createEffect(
 		() => [
 			messages().length,
+			thread()?.agents.map((agent) => agent.status),
 			Object.values(doing[props.id] ?? {}).map((live) => messageText(live.message)),
 		],
 		() => {
@@ -122,6 +126,9 @@ export function Thread(props) {
 				<ul
 					ref=${(el) => {
 						list = el
+					}}
+					onScroll=${() => {
+						stuck = list.scrollTop + list.clientHeight >= list.scrollHeight - 4
 					}}
 					aria-label="Messages"
 				>
@@ -168,7 +175,7 @@ function Writing(props) {
 						(lastToolCall(props.live) ||
 							(props.agent.status === 'blocked' ? 'blocked' : 'writing'))}
 				</small>
-				${() => messageText(props.live?.message)}
+				<div class="body markdown" innerHTML=${() => markdown(messageText(props.live?.message))} />
 			</li>
 		<//>
 	`
@@ -208,7 +215,7 @@ function Message(props) {
 					<small title=${() => data().author} style=${() => colorOf(data().author)}
 						>${() => authorLabel(data().author)}</small
 					>
-					<span class="body">${() => data().body}</span>
+					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
 				`}
 			>
@@ -229,7 +236,7 @@ function Message(props) {
 							answered
 						<//>
 					</summary>
-					<span class="body">${() => data().body}</span>
+					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
 				</details>
 			<//>
@@ -250,6 +257,16 @@ function Message(props) {
 		</li>
 	`
 }
+
+/** What a message says: markdown, except a `$ cmd` and an error, which stay as written */
+const Body = (props) => html`
+	<${Show}
+		when=${() => !props.data.shell && !props.data.error}
+		fallback=${html`<span class="body">${() => props.data.body}</span>`}
+	>
+		<div class="body markdown" innerHTML=${() => markdown(props.data.body)} />
+	<//>
+`
 
 /** A message's images, as it sent them */
 const Images = (props) => html`
