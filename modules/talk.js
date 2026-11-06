@@ -30,7 +30,7 @@ export function server(core) {
 			to: opt(
 				str({
 					description:
-						'Who should answer. A bot by its name. From anywhere, 12 is thread 12\'s agent and 12/ada a bot there, which also picks the thread. ' +
+						"Who should answer. A bot by its name. From anywhere, 12 is thread 12's agent and 12/ada a bot there, which also picks the thread. " +
 						"Or model@runner, where model is anything `pi --model` takes, or a runner alone for its default model: it starts the thread's agent as that, or switches the one there, which keeps its conversation. " +
 						'Or "nobody". Leave out for whom the thread last asked; in a new thread, yourself.',
 				}),
@@ -189,7 +189,9 @@ export function server(core) {
 			for (const message of model) {
 				if (message.role === 'user') lines.push(`#${id} handed: ${messageText(message)}`)
 				if (message.role === 'toolResult')
-					lines.push(`#${id} ${message.toolName}${message.isError ? ' failed' : ''}: ${messageText(message)}`)
+					lines.push(
+						`#${id} ${message.toolName}${message.isError ? ' failed' : ''}: ${messageText(message)}`,
+					)
 				if (message.role === 'assistant')
 					for (const part of message.content) {
 						if (part.type === 'text' && part.text) lines.push(`#${id} said: ${part.text}`)

@@ -59,8 +59,9 @@ check(
 const before = readFileSync(path.join(installed, 'version'), 'utf8')
 check(!(await runnerOf('fresh')).outdated, "it runs the server's own runner")
 check(
-	readdirSync(path.join(HOME, '.config', 'agent-ide')).some((file) =>
-		readFileSync(path.join(HOME, '.config', 'agent-ide', file), 'utf8') === key),
+	readdirSync(path.join(HOME, '.config', 'agent-ide')).some(
+		(file) => readFileSync(path.join(HOME, '.config', 'agent-ide', file), 'utf8') === key,
+	),
 	'and keeps its key in ~/.config/agent-ide, for starts without curl',
 )
 const {

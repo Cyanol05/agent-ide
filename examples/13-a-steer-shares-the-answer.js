@@ -25,9 +25,8 @@ const to = { runner: 'bot', model: 'echo/echo' }
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'steer' })
-const first = (
-	await api('POST', `/api/threads/${id}/entries`, { body: 'first', to, steer: true })
-).json.entry
+const first = (await api('POST', `/api/threads/${id}/entries`, { body: 'first', to, steer: true }))
+	.json.entry
 check(
 	Boolean(
 		await until(

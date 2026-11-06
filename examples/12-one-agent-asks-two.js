@@ -31,15 +31,22 @@ const desk = await scriptedRunner('desk', (request) => {
 			{ stopReason: 'toolUse' },
 		)
 	const heard = JSON.stringify(request.messages)
-	return say(heard.includes('ann here') && heard.includes('bob here') ? 'ann and bob both answered' : '')
+	return say(
+		heard.includes('ann here') && heard.includes('bob here') ? 'ann and bob both answered' : '',
+	)
 })
 
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'two' })
-const refused = await api('POST', `/api/threads/${id}/entries`, { body: 'both?', to: [toAnn, toBob] })
+const refused = await api('POST', `/api/threads/${id}/entries`, {
+	body: 'both?',
+	to: [toAnn, toBob],
+})
 check(
-	refused.status === 400 && /one agent/.test(refused.json.error) && !(await view(id)).entries.length,
+	refused.status === 400 &&
+		/one agent/.test(refused.json.error) &&
+		!(await view(id)).entries.length,
 	'two models in one message are refused: a thread has one agent',
 	JSON.stringify(refused.json),
 )
@@ -53,7 +60,10 @@ const children = (await api('GET', '/api/threads')).json.filter((t) => t.parent 
 check(
 	children.length === 2 &&
 		children.every((t) => t.agents.length === 1) &&
-		children.map((t) => t.agents[0].name).sort().join() === 'echo@ann,echo@bob',
+		children
+			.map((t) => t.agents[0].name)
+			.sort()
+			.join() === 'echo@ann,echo@bob',
 	'the agent posts two child threads, one agent in each, side by side as its family',
 	JSON.stringify(children.map((t) => [t.id, t.title, t.agents.map((a) => a.name)])),
 )

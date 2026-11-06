@@ -1,6 +1,15 @@
 /** A bot's name, home, the agent it joins as, and instructions. */
 import html from '@solidjs/html'
-import { createEffect, createMemo, createSignal, For, onSettled, refresh, Show, snapshot } from 'solid-js'
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	onSettled,
+	refresh,
+	Show,
+	snapshot,
+} from 'solid-js'
 import { api, bots, colorOf, current, followThread, hrefOf, openThread, threads } from './server.js'
 import { formatAgent } from './agent.js'
 import { agent, openPicker } from './composer.js'
@@ -15,8 +24,11 @@ export function BotItem(props) {
 		return threads.filter((thread) => home?.family.some((member) => member.id === thread.id))
 	})
 	const working = createMemo(() => family().filter((thread) => thread.status === 'working').length)
-	const status = createMemo(() =>
-		['working', 'blocked', 'error', 'done'].find((status) => family().some((thread) => thread.status === status)) ?? 'idle',
+	const status = createMemo(
+		() =>
+			['working', 'blocked', 'error', 'done'].find((status) =>
+				family().some((thread) => thread.status === status),
+			) ?? 'idle',
 	)
 	return html`
 		<li class=${() => ({ current: props.bot.home === current() })}>
@@ -48,7 +60,9 @@ export function BotSettings(props) {
 	const elsewhere = () =>
 		threads.filter(
 			(thread) =>
-				thread.id !== props.bot.home && !thread.hidden && thread.agents.some((agent) => agent.name === props.bot.name),
+				thread.id !== props.bot.home &&
+				!thread.hidden &&
+				thread.agents.some((agent) => agent.name === props.bot.name),
 		)
 	return html`
 		<div class="bot">
@@ -80,7 +94,9 @@ export function BotSettings(props) {
 			<${Show} when=${() => elsewhere().length}>
 				<h3 class="also">Also in</h3>
 				<ul class="thread-family">
-					<${For} each=${() => elsewhere()}>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//>
+					<${For} each=${() => elsewhere()}
+						>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//
+					>
 				</ul>
 			<//>
 			<${Sure}

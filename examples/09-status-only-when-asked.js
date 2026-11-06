@@ -11,17 +11,34 @@ async function terminal(answers7501, ms = 4000) {
 	const env = { ...process.env, HOME: home, AGENT_IDE_KEY: await keyFor('terminal') }
 	delete env.STATUS
 	/** A terminal double over pipes: Node has no built-in PTY allocator. Only the query/reply matters here. */
-	const p = spawn(process.execPath, ['--input-type=module', '--eval', `
+	const p = spawn(
+		process.execPath,
+		[
+			'--input-type=module',
+			'--eval',
+			`
 		process.stdin.isTTY = process.stdout.isTTY = true
 		process.stdin.setRawMode = () => process.stdin
 		await import('./runner.js')
-	`, '--', '--server', base, '--name', 'terminal', '--dir', dir], {
-		cwd: repo,
-		env,
-		stdio: ['pipe', 'pipe', 'pipe'],
-	})
+	`,
+			'--',
+			'--server',
+			base,
+			'--name',
+			'terminal',
+			'--dir',
+			dir,
+		],
+		{
+			cwd: repo,
+			env,
+			stdio: ['pipe', 'pipe', 'pipe'],
+		},
+	)
 	const closed = once(p, 'close')
-	p.stderr.on('data', (bytes) => { out += bytes })
+	p.stderr.on('data', (bytes) => {
+		out += bytes
+	})
 	p.stdout.setEncoding('utf8').on('data', (bytes) => {
 		out += bytes
 		if (!answered && out.includes('\x1b[c')) {

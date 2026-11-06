@@ -14,11 +14,14 @@
 	window.WebSocket = function (...args) {
 		const socket = new WebSocket(...args)
 		spy.sockets++
-		socket.addEventListener('message', (event) => spy.socket.push(`${now()} ${String(event.data).slice(0, 160)}`))
+		socket.addEventListener('message', (event) =>
+			spy.socket.push(`${now()} ${String(event.data).slice(0, 160)}`),
+		)
 		return socket
 	}
 	window.WebSocket.prototype = WebSocket.prototype
 	new PerformanceObserver((list) => {
-		for (const entry of list.getEntries()) spy.long.push(`${Math.round(entry.startTime)}:${Math.round(entry.duration)}`)
+		for (const entry of list.getEntries())
+			spy.long.push(`${Math.round(entry.startTime)}:${Math.round(entry.duration)}`)
 	}).observe({ type: 'longtask', buffered: true })
 }

@@ -2,7 +2,11 @@
  * `node scripts/try.js &`, open the address it prints, stop it with the `kill` line it prints. Every server it starts goes with it.
  * The bot's model, echo/echo, thinks, writes, reads, edits and runs a command in its folder, then answers in markdown.
  * A message with "post" in it makes it post to a new thread too; "slow" makes the command take five seconds, to watch live work. */
-import { fauxAssistantMessage, fauxThinking, fauxToolCall } from '@earendil-works/pi-ai/providers/faux'
+import {
+	fauxAssistantMessage,
+	fauxThinking,
+	fauxToolCall,
+} from '@earendil-works/pi-ai/providers/faux'
 import { api, base, call, dir, say, scriptedRunner, server, text } from '../examples/lib.js'
 
 process.on('SIGTERM', () => process.exit(0))
@@ -15,22 +19,39 @@ const step = (request) => {
 	if (n === 0)
 		return fauxAssistantMessage(
 			[
-				fauxThinking(`They said "${asked.slice(0, 80)}".\nI'll start a notes file, then look around.`),
-				fauxToolCall('write', { path: 'notes.md', content: `# Notes\n\nasked: ${asked.slice(0, 80)}\n` }),
+				fauxThinking(
+					`They said "${asked.slice(0, 80)}".\nI'll start a notes file, then look around.`,
+				),
+				fauxToolCall('write', {
+					path: 'notes.md',
+					content: `# Notes\n\nasked: ${asked.slice(0, 80)}\n`,
+				}),
 			],
 			{ stopReason: 'toolUse' },
 		)
 	if (n === 1) return call('read', { path: 'notes.md' })
-	if (n === 2) return call('edit', { path: 'notes.md', edits: [{ oldText: '# Notes', newText: '# Notes, edited' }] })
-	if (n === 3) return call('bash', { command: `${asked.includes('slow') ? 'sleep 5; ' : ''}ls -la; cat notes.md` })
+	if (n === 2)
+		return call('edit', {
+			path: 'notes.md',
+			edits: [{ oldText: '# Notes', newText: '# Notes, edited' }],
+		})
+	if (n === 3)
+		return call('bash', {
+			command: `${asked.includes('slow') ? 'sleep 5; ' : ''}ls -la; cat notes.md`,
+		})
 	if (n === 4 && asked.includes('post') && !asked.includes('from thread'))
 		return call('post', { title: 'side question', body: 'what did you find?', to: 'echo/echo@bot' })
-	return say(`Done. I wrote, read and edited \`notes.md\`, then ran a command:\n\n\`\`\`\n${text(request.messages.at(-1)).slice(0, 400)}\n\`\`\`\n\n- one\n- two`)
+	return say(
+		`Done. I wrote, read and edited \`notes.md\`, then ran a command:\n\n\`\`\`\n${text(request.messages.at(-1)).slice(0, 400)}\n\`\`\`\n\n- one\n- two`,
+	)
 }
 await scriptedRunner('bot', step)
 
 const { json: thread } = await api('POST', '/api/threads', { title: 'try me' })
-await api('POST', `/api/threads/${thread.id}/entries`, { body: 'look around', to: { runner: 'bot', model: 'echo/echo' } })
+await api('POST', `/api/threads/${thread.id}/entries`, {
+	body: 'look around',
+	to: { runner: 'bot', model: 'echo/echo' },
+})
 
 console.log(`agent-ide at ${base}/?thread=${thread.id}
 the bot works in ${dir}; send to echo/echo@bot, "post" or "slow" in a message for more

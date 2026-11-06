@@ -103,9 +103,7 @@ function AgentRow(props) {
 	return html`
 		<li data-agent=${() => rowOf(props.to)}>
 			${() => props.children}
-			<${Show} when=${() => agents().length}
-				><${Dot} state=${status} title=${status}
-			/><//>
+			<${Show} when=${() => agents().length}><${Dot} state=${status} title=${status} /><//>
 			<${Show} when=${() => call()}
 				><span class="hands" title=${() => call()}>${() => call()}</span><//
 			>
@@ -142,7 +140,9 @@ export function RunnerList() {
 		>
 			<${Panes} title="Runners" open=${() => false}>
 				<ul>
-					<${For} each=${() => runners}>${(runner) => html`<${RunnerItem} runner=${() => runner} />`}<//>
+					<${For} each=${() => runners}
+						>${(runner) => html`<${RunnerItem} runner=${() => runner} />`}<//
+					>
 				</ul>
 				<${ConnectRunner} />
 			<//>
@@ -155,7 +155,11 @@ function RunnerItem(props) {
 		threads.flatMap((thread) =>
 			thread.agents
 				.filter((agent) => agent.to.runner === props.runner.name && agent.status === 'working')
-				.map((agent) => ({ thread: thread.id, title: thread.title, conversation: agent.conversation })),
+				.map((agent) => ({
+					thread: thread.id,
+					title: thread.title,
+					conversation: agent.conversation,
+				})),
 		),
 	)
 	const call = () =>

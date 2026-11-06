@@ -73,7 +73,9 @@ for (const body of ['one', 'two', 'three'])
 	await api('POST', `/api/threads/${twice}/entries`, { body, to: 'echo/echo@bot' })
 check(Boolean(await answered(twice)), 'the third delivery answers after two failed admissions')
 const failed = await conversationOf(await view(twice), 'echo/echo@bot')
-const given = failed.entries.filter((e) => e.kind === 'agent-ide.delivery').map((e) => text(e.model[0]))
+const given = failed.entries
+	.filter((e) => e.kind === 'agent-ide.delivery')
+	.map((e) => text(e.model[0]))
 check(
 	JSON.stringify(given) === JSON.stringify(['one | two | three']),
 	'both failed admissions hand their messages on: none is lost',

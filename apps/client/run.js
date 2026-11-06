@@ -19,7 +19,9 @@ import { markdown } from './markdown.js'
  * Each agent conversation on screen, its entries as Pi keeps them.
  * Entries never change once written, so the store is shallow: a read tracks the conversation, not each entry's fields.
  */
-export const [conversations, setConversations] = createRoot(() => createStore({}, { shallow: true }))
+export const [conversations, setConversations] = createRoot(() =>
+	createStore({}, { shallow: true }),
+)
 /** Takes an agent's entries off the socket: whole on each new watch, then each one once, as it's written */
 export function heard(conversation, entries, whole) {
 	const shown = entries.filter((entry) => entry.kind !== 'pi.system')
@@ -41,7 +43,9 @@ export function cutsOf(conversation) {
 	return all
 		.filter((entry) => entry.kind === 'pi.compaction')
 		.flatMap((entry) => {
-			const kept = all.find((other) => other.kind === 'agent-ide.delivery' && other.id >= entry.head)
+			const kept = all.find(
+				(other) => other.kind === 'agent-ide.delivery' && other.id >= entry.head,
+			)
 			const first = Math.min(...(kept?.data?.held ?? []))
 			if (!Number.isFinite(first)) return []
 			const summary = messageText(entry.model?.[0]) || ''
@@ -57,7 +61,9 @@ export function cutsOf(conversation) {
 					key: `${conversation}:cut:${entry.id}`,
 					at: first - 0.5,
 					memory: lines.length > 0,
-					lines: lines.length ? lines : [{ key: `${conversation}:summary:${entry.id}`, at: 0, n: first, text: summary }],
+					lines: lines.length
+						? lines
+						: [{ key: `${conversation}:summary:${entry.id}`, at: 0, n: first, text: summary }],
 				},
 			]
 		})
@@ -96,7 +102,11 @@ export function turnsOf(conversation) {
 						result: null,
 					})
 				else if (block.type === 'thinking' && block.thinking?.trim())
-					turn.steps.push({ key: `${entry.id}:thought:${turn.steps.length}`, label: 'thought', text: block.thinking })
+					turn.steps.push({
+						key: `${entry.id}:thought:${turn.steps.length}`,
+						label: 'thought',
+						text: block.thinking,
+					})
 				// The last words are the answer, which the thread shows itself
 				else if (block.type === 'text' && block.text.trim() && message.stopReason === 'toolUse')
 					turn.steps.push({ key: `${entry.id}:said`, said: block.text })
@@ -279,7 +289,13 @@ function Step(props) {
 
 /** The widest label among a turn's steps, so their inputs start at one column */
 const labelWidth = (steps) =>
-	Math.max(...steps.map((step) => (step.name === 'post' && askedThread(step) ? 'answered' : (step.name ?? step.label ?? '')).length))
+	Math.max(
+		...steps.map(
+			(step) =>
+				(step.name === 'post' && askedThread(step) ? 'answered' : (step.name ?? step.label ?? ''))
+					.length,
+		),
+	)
 
 /** A step's input as it was stored, on one line */
 const input = (step) => (step.name ? JSON.stringify(step.args) : (step.text ?? ''))
@@ -337,9 +353,12 @@ function Ask(props) {
 					<${Show} when=${() => state() === 'working' || state() === 'blocked'}
 						><${Dot} state=${() => state()}
 					/><//>
-					<span class="tool">${() => (answered(props.step) || answer() ? 'answered' : 'asked')}</span>
+					<span class="tool"
+						>${() => (answered(props.step) || answer() ? 'answered' : 'asked')}</span
+					>
 					<span class="in"
-						><${ThreadLink} id=${() => asked()}>${() => titleOf(asked())}<//>${() => ` ${props.step.args.body ?? ''}`}</span
+						><${ThreadLink} id=${() => asked()}>${() => titleOf(asked())}<//
+						>${() => ` ${props.step.args.body ?? ''}`}</span
 					>
 				</summary>
 				<div class="whole">

@@ -16,7 +16,8 @@ import { api, connected, current, server, threads } from './server.js'
 import { conversations } from './run.js'
 
 const bytes = (text) => new TextEncoder().encode(text).length
-const sizeOf = (lines) => lines.reduce((sum, line) => sum + bytes(`${line.id}+${line.n}|${line.text}`) + 1, 0)
+const sizeOf = (lines) =>
+	lines.reduce((sum, line) => sum + bytes(`${line.id}+${line.n}|${line.text}`) + 1, 0)
 const inside = (line, id, n) => line.id >= id && line.id + line.n <= id + n
 const key = (line) => `${line.id}+${line.n}`
 
@@ -39,7 +40,9 @@ function CompactionOf(props) {
 		const row = threads.find((thread) => thread.id === props.thread)
 		let found = null
 		for (const { conversation } of row?.agents ?? [])
-			for (const entry of (conversations[conversation] ?? []).filter((entry) => entry.kind === 'pi.compaction')) {
+			for (const entry of (conversations[conversation] ?? []).filter(
+				(entry) => entry.kind === 'pi.compaction',
+			)) {
 				const ends = [...JSON.stringify(entry).matchAll(/(\d+)\+(\d+)\|/g)].map(
 					(line) => Number(line[1]) + Number(line[2]),
 				)

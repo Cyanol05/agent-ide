@@ -67,7 +67,8 @@ const name = args.name
 
 /** pi's own models and logins, as pi reads them, with the providers its extensions add, such as claude-code */
 const { modelRuntime: models, diagnostics } = await createAgentSessionServices({ cwd: dir })
-for (const diagnostic of diagnostics) if (diagnostic.type === 'error') console.log(`pi: ${diagnostic.message}`)
+for (const diagnostic of diagnostics)
+	if (diagnostic.type === 'error') console.log(`pi: ${diagnostic.message}`)
 const echo = fauxProvider({ provider: 'echo', models: [{ id: 'echo' }] })
 models.registerNativeProvider(echo.provider)
 
@@ -82,15 +83,21 @@ function resolve(pattern) {
 	return {
 		model: found.model,
 		...(found.thinkingLevel ? { thinkingLevel: found.thinkingLevel } : {}),
-		defaultThinkingLevel: clampThinkingLevel(found.model,
+		defaultThinkingLevel: clampThinkingLevel(
+			found.model,
 			settings.getModelThinkingLevel(found.model.provider, found.model.id) ??
-			settings.getDefaultThinkingLevel() ?? DEFAULT_THINKING_LEVEL),
+				settings.getDefaultThinkingLevel() ??
+				DEFAULT_THINKING_LEVEL,
+		),
 	}
 }
 const defaultModel = () => {
 	try {
 		const { model, thinkingLevel, defaultThinkingLevel } = resolve('')
-		return { model: `${model.provider}/${model.id}`, thinkingLevel: thinkingLevel ?? defaultThinkingLevel }
+		return {
+			model: `${model.provider}/${model.id}`,
+			thinkingLevel: thinkingLevel ?? defaultThinkingLevel,
+		}
 	} catch (error) {
 		return { error: error.message }
 	}
@@ -159,7 +166,9 @@ async function connect() {
 		models,
 		resolve,
 		echo,
-		ops: Object.fromEntries(modules.filter((module) => module.call).map((module) => [module.name, module.call])),
+		ops: Object.fromEntries(
+			modules.filter((module) => module.call).map((module) => [module.name, module.call]),
+		),
 		readOnly: args['read-only'],
 		send: (text) => socket.readyState === WebSocket.OPEN && socket.send(text),
 		onTell: (message) =>
@@ -174,7 +183,8 @@ async function connect() {
 		console.log(
 			`${name} online at ${server}, offering pi's logins and ${roots.join(', ')}${args['read-only'] ? ' to read only' : ''}${from}`,
 		)
-	socket.onmessage = ({ data }) => JSON.parse(data).op === 'ready' ? online() : runner.receive(data)
+	socket.onmessage = ({ data }) =>
+		JSON.parse(data).op === 'ready' ? online() : runner.receive(data)
 	socket.onclose = ({ code, reason }) => {
 		runner.stopAll()
 		for (const module of modules) module.disconnected?.()

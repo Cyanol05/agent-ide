@@ -1,6 +1,15 @@
 /** A thread owns its message subscription while it is on screen. */
 import html from '@solidjs/html'
-import { createEffect, createMemo, createProjection, createSignal, For, latest, reconcile, Show } from 'solid-js'
+import {
+	createEffect,
+	createMemo,
+	createProjection,
+	createSignal,
+	For,
+	latest,
+	reconcile,
+	Show,
+} from 'solid-js'
 import {
 	closeColumn,
 	colorOf,
@@ -46,66 +55,98 @@ export function Thread(props) {
 	 * The thread's messages with each agent turn after the last message its delivery held, and a live one while it works.
 	 * A turn that only answered is its answer; an answer to a post shows in the post.
 	 */
-	const rows = createProjection(() => {
-		const all = messages()
-		const turns = (latest(thread)?.agents ?? []).flatMap((agent) => {
-			const live = doing[props.id]?.[agent.conversation]
-			const turns = turnsOf(agent.conversation).map((turn) => ({
-				key: turn.key,
-				agent,
-				turn,
-				at: turn.after + 0.5,
-				live: !!live?.run && live.delivery?.id === turn.delivery,
+	const rows = createProjection(
+		() => {
+			const all = messages()
+			const turns = (latest(thread)?.agents ?? []).flatMap((agent) => {
+				const live = doing[props.id]?.[agent.conversation]
+				const turns = turnsOf(agent.conversation).map((turn) => ({
+					key: turn.key,
+					agent,
+					turn,
+					at: turn.after + 0.5,
+					live: !!live?.run && live.delivery?.id === turn.delivery,
+				}))
+				// Asked while its runner is offline, before any delivery
+				if (agent.status === 'blocked' && !live?.run)
+					turns.push({
+						key: `${agent.conversation}:waiting`,
+						agent,
+						at: (all.at(-1)?.id ?? 0) + 0.5,
+						live: true,
+					})
+				// A turn that only answered is its answer
+				return turns.filter(
+					(row) => row.live || !row.turn || row.turn.steps.some((step) => step.label !== 'handed'),
+				)
+			})
+			const steps = turns.flatMap((row) => row.turn?.steps ?? [])
+			const answers = new Set(steps.map((step) => answerOf(all, step)?.id))
+			// A question from another thread holds the answer said here to it alone, as a reply under it: a post's, else the run's last words
+			const questions = new Set(
+				all.filter((entry) => entry.data.from && !entry.data.re).map((entry) => entry.id),
+			)
+			const replies = new Map()
+			for (const entry of all)
+				if (!entry.data.from && entry.data.re?.every((id) => questions.has(id)))
+					for (const id of entry.data.re)
+						if (!replies.has(id) || (replies.get(id).data.answer && !entry.data.answer))
+							replies.set(id, entry)
+			const inside = new Set([...replies.values()].map((entry) => entry.id))
+			const shown = all.filter((entry) => !answers.has(entry.id) && !inside.has(entry.id))
+			// The run that answered such a question alone, and did nothing else, sits in its box between question and answer
+			const runs = new Map()
+			for (const [id, reply] of replies) {
+				const question = all.find((entry) => entry.id === id)
+				const run = turns.find(
+					(row) => !row.live && row.turn?.after === id && row.agent.name === reply.data.author,
+				)
+				const calls = run?.turn.steps.filter((step) => step.name) ?? []
+				if (
+					run &&
+					reply.data.re.length === 1 &&
+					calls.every((step) => step.name === 'post' && step.args?.thread === question.data.from)
+				)
+					runs.set(id, run)
+			}
+			const boxed = new Set(runs.values())
+			const said = shown.map((entry) => ({
+				key: entry.id,
+				entry,
+				at: entry.id,
+				reply: replies.get(entry.id),
+				run: runs.get(entry.id),
 			}))
-			// Asked while its runner is offline, before any delivery
-			if (agent.status === 'blocked' && !live?.run)
-				turns.push({ key: `${agent.conversation}:waiting`, agent, at: (all.at(-1)?.id ?? 0) + 0.5, live: true })
-			// A turn that only answered is its answer
-			return turns.filter((row) => row.live || !row.turn || row.turn.steps.some((step) => step.label !== 'handed'))
-		})
-		const steps = turns.flatMap((row) => row.turn?.steps ?? [])
-		const answers = new Set(steps.map((step) => answerOf(all, step)?.id))
-		// A question from another thread holds the answer said here to it alone, as a reply under it: a post's, else the run's last words
-		const questions = new Set(all.filter((entry) => entry.data.from && !entry.data.re).map((entry) => entry.id))
-		const replies = new Map()
-		for (const entry of all)
-			if (!entry.data.from && entry.data.re?.every((id) => questions.has(id)))
-				for (const id of entry.data.re)
-					if (!replies.has(id) || (replies.get(id).data.answer && !entry.data.answer)) replies.set(id, entry)
-		const inside = new Set([...replies.values()].map((entry) => entry.id))
-		const shown = all.filter((entry) => !answers.has(entry.id) && !inside.has(entry.id))
-		// The run that answered such a question alone, and did nothing else, sits in its box between question and answer
-		const runs = new Map()
-		for (const [id, reply] of replies) {
-			const question = all.find((entry) => entry.id === id)
-			const run = turns.find((row) => !row.live && row.turn?.after === id && row.agent.name === reply.data.author)
-			const calls = run?.turn.steps.filter((step) => step.name) ?? []
-			if (run && reply.data.re.length === 1 && calls.every((step) => step.name === 'post' && step.args?.thread === question.data.from))
-				runs.set(id, run)
-		}
-		const boxed = new Set(runs.values())
-		const said = shown.map((entry) => ({ key: entry.id, entry, at: entry.id, reply: replies.get(entry.id), run: runs.get(entry.id) }))
-		const cuts = (latest(thread)?.agents ?? []).flatMap((agent) =>
-			cutsOf(agent.conversation).map((cut) => ({ ...cut, cut: true })),
-		)
-		// What the agent reads as lines folds into them, unless opened from the newest cut's line
-		const newest = cuts.reduce((best, cut) => (!best || cut.at > best.at ? cut : best), null)
-		const folded = newest && !unfolded() ? newest : null
-		const above = (row) => folded && row.at < folded.at
-		const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
-		const rows = [...said.filter((row) => !above(row)), ...turns.filter((row) => !above(row) && !boxed.has(row)), ...lines, ...cuts].sort((one, other) => one.at - other.at)
-		// A message or run line names its author only when it isn't the last one's that wasn't yours: your own are marked by where they sit
-		let last
-		for (const row of rows) {
-			row.above = last
-			const author = row.entry ? !row.entry.data.from && row.entry.data.author : row.agent?.name
-			if (author !== me) last = author
-		}
-		return rows
-	}, [], { key: 'key' })
+			const cuts = (latest(thread)?.agents ?? []).flatMap((agent) =>
+				cutsOf(agent.conversation).map((cut) => ({ ...cut, cut: true })),
+			)
+			// What the agent reads as lines folds into them, unless opened from the newest cut's line
+			const newest = cuts.reduce((best, cut) => (!best || cut.at > best.at ? cut : best), null)
+			const folded = newest && !unfolded() ? newest : null
+			const above = (row) => folded && row.at < folded.at
+			const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
+			const rows = [
+				...said.filter((row) => !above(row)),
+				...turns.filter((row) => !above(row) && !boxed.has(row)),
+				...lines,
+				...cuts,
+			].sort((one, other) => one.at - other.at)
+			// A message or run line names its author only when it isn't the last one's that wasn't yours: your own are marked by where they sit
+			let last
+			for (const row of rows) {
+				row.above = last
+				const author = row.entry ? !row.entry.data.from && row.entry.data.author : row.agent?.name
+				if (author !== me) last = author
+			}
+			return rows
+		},
+		[],
+		{ key: 'key' },
+	)
 	/** The list waits for its messages and each agent's conversation, so it shows folded at once instead of shifting */
 	const ready = () =>
-		!!entries[props.id] && (thread()?.agents ?? []).every((agent) => conversations[agent.conversation])
+		!!entries[props.id] &&
+		(thread()?.agents ?? []).every((agent) => conversations[agent.conversation])
 	const titleClick = () => (current() !== props.id ? openThread(props.id) : drawer('side'))
 	let list,
 		stuck = true
@@ -237,7 +278,10 @@ export function Thread(props) {
 									<${Show}
 										when=${() => row().cut}
 										fallback=${() => html`
-											<li class="line mute" title=${() => `messages ${row().at} to ${row().at + row().n - 1}`}>
+											<li
+												class="line mute"
+												title=${() => `messages ${row().at} to ${row().at + row().n - 1}`}
+											>
 												<small>${() => `${row().at}+${row().n}`}</small>
 												<span>${() => row().text}</span>
 											</li>
@@ -255,26 +299,26 @@ export function Thread(props) {
 									<//>
 								`}
 							>
-							<${Show}
-								when=${() => row().turn || row().live}
-								fallback=${() => html`
-									<${Message}
+								<${Show}
+									when=${() => row().turn || row().live}
+									fallback=${() => html`
+										<${Message}
+											thread=${() => props.id}
+											entry=${() => row().entry}
+											reply=${() => row().reply}
+											run=${() => row().run}
+											above=${() => row().above}
+										/>
+									`}
+								>
+									<${Turn}
 										thread=${() => props.id}
-										entry=${() => row().entry}
-										reply=${() => row().reply}
-										run=${() => row().run}
+										agent=${() => row().agent}
+										turn=${() => row().turn}
+										live=${() => row().live}
 										above=${() => row().above}
 									/>
-								`}
-							>
-								<${Turn}
-									thread=${() => props.id}
-									agent=${() => row().agent}
-									turn=${() => row().turn}
-									live=${() => row().live}
-									above=${() => row().above}
-								/>
-							<//>
+								<//>
 							<//>
 						`}<//
 					>
@@ -301,10 +345,7 @@ function Message(props) {
 				elsewhere: elsewhere(),
 				reply: elsewhere() && data().re,
 				mine: !elsewhere() && data().author === me,
-				same:
-					!elsewhere() &&
-					data().author !== me &&
-					props.above === data().author,
+				same: !elsewhere() && data().author !== me && props.above === data().author,
 			})}
 		>
 			<${Show}
@@ -312,17 +353,29 @@ function Message(props) {
 				fallback=${html`
 					<${Show}
 						when=${() => elsewhere()}
-						fallback=${html`<small title=${() => data().author} style=${() => colorOf(data().author)}
+						fallback=${html`<small
+							title=${() => data().author}
+							style=${() => colorOf(data().author)}
 							>${() => authorLabel(data().author)}</small
 						>`}
 					>
 						<small title=${() => data().author}>
 							<${Show}
 								when=${() => homeBot(data().from)?.name === data().author}
-								fallback=${() => html`<span class="cross">→ </span><span style=${() => colorOf(data().author)}>${() => authorLabel(data().author)}</span> asked from
-									<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>`}
+								fallback=${() =>
+									html`<span class="cross">→ </span
+										><span style=${() => colorOf(data().author)}
+											>${() => authorLabel(data().author)}</span
+										>
+										asked from
+										<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>`}
 							>
-								<span class="cross">→ </span>asked from <span style=${() => colorOf(data().author)}><${ThreadLink} id=${() => data().from}>${() => authorLabel(data().author)}<//></span>
+								<span class="cross">→ </span>asked from
+								<span style=${() => colorOf(data().author)}
+									><${ThreadLink} id=${() => data().from}
+										>${() => authorLabel(data().author)}<//
+									></span
+								>
 							<//>
 						</small>
 					<//>
@@ -330,13 +383,21 @@ function Message(props) {
 					<${Images} images=${() => data().images} />
 					<${Show} when=${() => props.run}>
 						<ul class="run">
-							<${Turn} thread=${() => props.thread} agent=${() => props.run.agent} turn=${() => props.run.turn} />
+							<${Turn}
+								thread=${() => props.thread}
+								agent=${() => props.run.agent}
+								turn=${() => props.run.turn}
+							/>
 						</ul>
 					<//>
 					<${Show} when=${() => props.reply}>
 						<div class="reply">
 							<small title=${() => props.reply.data.author}
-								><span class="cross">← </span><span style=${() => colorOf(props.reply.data.author)}>${() => authorLabel(props.reply.data.author)}</span> answered</small
+								><span class="cross">← </span
+								><span style=${() => colorOf(props.reply.data.author)}
+									>${() => authorLabel(props.reply.data.author)}</span
+								>
+								answered</small
 							>
 							<${Body} data=${() => props.reply.data} />
 							<${Images} images=${() => props.reply.data.images} />

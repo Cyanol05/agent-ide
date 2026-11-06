@@ -33,7 +33,8 @@ export function server(core) {
 		if (typeof name !== 'string' || !/^[\w.-]{1,40}$/.test(name))
 			throw new Error('A name is 1 to 40 letters, digits, _ . or -')
 		if ((await core.known())[name]) throw new Error(`${name} is a runner; pick another name`)
-		if (name === AGENT) throw new Error(`${AGENT} is what every thread calls its own; pick another name`)
+		if (name === AGENT)
+			throw new Error(`${AGENT} is what every thread calls its own; pick another name`)
 		if (instructions !== undefined && typeof instructions !== 'string')
 			throw new Error('instructions is text')
 		if (to !== undefined) {
@@ -133,9 +134,12 @@ export function server(core) {
 			const bot = all?.[at.name]
 			if (!bot) return undefined
 			const threads = (await core.threadList(at.name)).filter(
-				(thread) => thread.id !== at.thread && thread.agents.some((agent) => agent.name === at.name),
+				(thread) =>
+					thread.id !== at.thread && thread.agents.some((agent) => agent.name === at.name),
 			)
-			const where = threads.map((thread) => `${thread.id} "${thread.title}"${thread.id === bot.home ? ' (home)' : ''}`)
+			const where = threads.map(
+				(thread) => `${thread.id} "${thread.title}"${thread.id === bot.home ? ' (home)' : ''}`,
+			)
 			const home = at.thread === bot.home
 			const others = Object.keys(all).filter((name) => name !== at.name)
 			return [

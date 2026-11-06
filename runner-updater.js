@@ -1,6 +1,16 @@
 /** The runner's updater, which `curl -fsSL <server>/connect-runner | sh` downloads and starts */
 import { spawn, spawnSync } from 'node:child_process'
-import { constants, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import {
+	constants,
+	cpSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -30,14 +40,21 @@ async function install() {
 			writeFileSync(path.join(staged, file), text)
 		}
 		const manifest = JSON.stringify(
-			{ name: 'agent-ide-runner', private: true, type: 'module', dependencies: bundle.dependencies },
+			{
+				name: 'agent-ide-runner',
+				private: true,
+				type: 'module',
+				dependencies: bundle.dependencies,
+			},
 			null,
 			2,
 		)
 		writeFileSync(path.join(staged, 'package.json'), manifest)
 		if (manifest === read('package.json') && existsSync(path.join(home, 'node_modules'))) {
 			cpSync(path.join(home, 'node_modules'), path.join(staged, 'node_modules'), {
-				recursive: true, verbatimSymlinks: true, mode: constants.COPYFILE_FICLONE,
+				recursive: true,
+				verbatimSymlinks: true,
+				mode: constants.COPYFILE_FICLONE,
 			})
 		} else {
 			const [command, ...rest] = bun
@@ -91,10 +108,12 @@ for (;;) {
 		stdio: 'inherit',
 		env: { ...process.env, ...(updates && !stale ? { AGENT_IDE_LAUNCHER: '1' } : {}) },
 	})
-	const code = await new Promise((resolve) => runner.on('exit', (code) => {
-		runner = undefined
-		resolve(code)
-	}))
+	const code = await new Promise((resolve) =>
+		runner.on('exit', (code) => {
+			runner = undefined
+			resolve(code)
+		}),
+	)
 	if (code !== 75) process.exit(code ?? 0)
 	asked = true
 }

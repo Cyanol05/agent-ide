@@ -38,9 +38,7 @@ await api('POST', `/api/threads/${id}/tools`, { tools: ['read'] })
 const read = (await api('POST', `/api/threads/${id}/fork`, { at: oldAnswer.id })).json.id
 forks.push({ id: read, tools: ['read'], expected: ['read'], inherited: 1 })
 // Before any answer, the asked agent is made afresh with the same thread policy.
-const fresh = (
-	await api('POST', `/api/threads/${id}/fork`, { at: first.entries[0].id })
-).json.id
+const fresh = (await api('POST', `/api/threads/${id}/fork`, { at: first.entries[0].id })).json.id
 forks.push({ id: fresh, tools: ['read'], expected: ['read'], inherited: 0 })
 
 await api('POST', `/api/threads/${id}/entries`, { body: 'with just read' })
@@ -79,12 +77,16 @@ for (const fork of forks) {
 	check(
 		['model', 'thinkingLevel', 'cwd'].every(
 			(key) =>
-				JSON.stringify(own.docs['pi.agent'][key]) === JSON.stringify(original.docs['pi.agent'][key]),
+				JSON.stringify(own.docs['pi.agent'][key]) ===
+				JSON.stringify(original.docs['pi.agent'][key]),
 		),
 		`fork ${fork.id} keeps the same agent's model, thinking and folder`,
 	)
 	// A thread's number alone reaches its agent
-	await api('POST', `/api/threads/${fork.id}/entries`, { body: 'which tools now?', to: String(fork.id) })
+	await api('POST', `/api/threads/${fork.id}/entries`, {
+		body: 'which tools now?',
+		to: String(fork.id),
+	})
 	v = await answered(fork.id, fork.inherited + 1)
 	const received = JSON.parse(answers(v).at(-1).data.body)
 	check(
@@ -102,8 +104,7 @@ for (const fork of forks) {
 }
 check(
 	JSON.stringify((await conversationOf(await view(id), name)).docs['pi.agent']) ===
-		JSON.stringify(source.docs['pi.agent']) &&
-		answers(await view(id)).length === 2,
+		JSON.stringify(source.docs['pi.agent']) && answers(await view(id)).length === 2,
 	'forking leaves the source agent and answers unchanged',
 )
 

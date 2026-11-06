@@ -2,7 +2,10 @@
 import { marked } from 'marked'
 
 const escape = (text) =>
-	text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
+	text.replace(
+		/[&<>"']/g,
+		(char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char],
+	)
 const SAFE = /^(https?:|mailto:|#|\/(?!\/))/i
 
 marked.use({
@@ -16,7 +19,9 @@ marked.use({
 			return `<a href="${escape(href)}"${title ? ` title="${escape(title)}"` : ''} target="_blank" rel="noopener noreferrer">${label}</a>`
 		},
 		image: ({ href, text }) =>
-			/^https?:/i.test(href.trim()) ? `<img src="${escape(href)}" alt="${escape(text)}">` : escape(text),
+			/^https?:/i.test(href.trim())
+				? `<img src="${escape(href)}" alt="${escape(text)}">`
+				: escape(text),
 	},
 })
 

@@ -38,9 +38,7 @@ import { Panes } from './panes.js'
 import { report } from './notice.js'
 import { imageContent, imageUrl } from './images.js'
 
-const [compose, setCompose] = createRoot(() =>
-	createStore({ drafts: {}, picks: {}, settings: {} }),
-)
+const [compose, setCompose] = createRoot(() => createStore({ drafts: {}, picks: {}, settings: {} }))
 const emptyDraft = { draft: '', images: [], sending: false }
 /** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
 const pick = (thread = current()) => compose.picks[thread ?? 'new'] ?? null
@@ -68,18 +66,23 @@ const askedBots = (thread = current()) =>
 			here(thread)
 				.map((agent) => agent.to)
 				.filter((to) => to?.name && lastTo(thread)?.includes(to.name)))
-export const recipients = (thread = current()) => [agent(thread), ...askedBots(thread)].filter(Boolean)
+export const recipients = (thread = current()) =>
+	[agent(thread), ...askedBots(thread)].filter(Boolean)
 /** An agent asked without thinking keeps the running level, or uses the runner's known pi default. */
 const recipientLabel = (to, thread) => {
 	const running = here(thread).find(
-		(agent) => agent.to?.name === to.name && agent.to?.model === to.model && agent.to?.runner === to.runner,
+		(agent) =>
+			agent.to?.name === to.name && agent.to?.model === to.model && agent.to?.runner === to.runner,
 	)?.to
 	const runner = runners.find((runner) => runner.name === to.runner)
-	return writtenTo({ ...to, thinkingLevel: to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel) })
+	return writtenTo({
+		...to,
+		thinkingLevel: to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel),
+	})
 }
 /** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
 export const toFor = (runner, thread = current()) =>
-	(agent(thread)?.runner === runner.name ? agent(thread) : fallback(runner))
+	agent(thread)?.runner === runner.name ? agent(thread) : fallback(runner)
 const setPick = (to, bots, typed = null, thread = current()) =>
 	setCompose((store) => {
 		store.picks[thread ?? 'new'] = { agent: to, bots, typed }
@@ -110,8 +113,9 @@ export function Composer(props) {
 	/** How full the agent's context was at its last answer: tokens, and the share of its window */
 	const filled = () => {
 		const agent = here(props.thread).find((agent) => agent.contextWindow)
-		const used = (conversations[agent?.conversation] ?? []).findLast((entry) => entry.kind === 'pi.assistant')?.model?.[0]
-			?.usage?.totalTokens
+		const used = (conversations[agent?.conversation] ?? []).findLast(
+			(entry) => entry.kind === 'pi.assistant',
+		)?.model?.[0]?.usage?.totalTokens
 		return used && { used, share: Math.round((used / agent.contextWindow) * 100) }
 	}
 	const compactNow = async () => {
@@ -133,13 +137,16 @@ export function Composer(props) {
 	const touch = () => matchMedia('(pointer: coarse)').matches
 	const active = () => current() === props.thread
 	const busy = () => threads.find((thread) => thread.id === props.thread)?.status === 'working'
-	createEffect(() => [draft().draft, active()], () => {
-		if (CSS.supports('field-sizing', 'content')) return
-		onSettled(() => {
-			input.style.height = 'auto'
-			input.style.height = `${input.scrollHeight}px`
-		})
-	})
+	createEffect(
+		() => [draft().draft, active()],
+		() => {
+			if (CSS.supports('field-sizing', 'content')) return
+			onSettled(() => {
+				input.style.height = 'auto'
+				input.style.height = `${input.scrollHeight}px`
+			})
+		},
+	)
 	createEffect(active, (on) => {
 		if (!on) return
 		input.focus()
@@ -212,10 +219,16 @@ export function Composer(props) {
 			.map((text) => {
 				const bot = bots.find((bot) => bot.name === text)
 				return (
-					here(props.thread).find((agent) => agent.name === text)?.to ?? (bot ? botAgent(bot) : agentTo(text))
+					here(props.thread).find((agent) => agent.name === text)?.to ??
+					(bot ? botAgent(bot) : agentTo(text))
 				)
 			})
-		setPick(next.find((to) => !to.name) ?? null, next.filter((to) => to.name), text, props.thread)
+		setPick(
+			next.find((to) => !to.name) ?? null,
+			next.filter((to) => to.name),
+			text,
+			props.thread,
+		)
 	}
 	return html`
 		<form
@@ -283,7 +296,12 @@ export function Composer(props) {
 					onInput=${(event) => {
 						// What it asks stays as it was when the typing started
 						if (!pick(props.thread) && !homeBot(props.thread))
-							setPick(snapshot(agent(props.thread)), snapshot(askedBots(props.thread)), null, props.thread)
+							setPick(
+								snapshot(agent(props.thread)),
+								snapshot(askedBots(props.thread)),
+								null,
+								props.thread,
+							)
 						changeDraft((draft) => {
 							draft.draft = event.currentTarget.value
 						})
@@ -327,7 +345,10 @@ export function Composer(props) {
 				<${Show}
 					when=${() =>
 						active() &&
-						threads.some((thread) => thread.id === props.thread && ['working', 'blocked'].includes(thread.status))}
+						threads.some(
+							(thread) =>
+								thread.id === props.thread && ['working', 'blocked'].includes(thread.status),
+						)}
 				>
 					<button
 						type="button"
@@ -370,8 +391,15 @@ export function Composer(props) {
 						picker.togglePopover()
 					}}
 				>
-					<${Dot} state=${() => (recipients(props.thread).length ? (busy() ? 'working' : 'on') : '')} />
-					<span>${() => recipients(props.thread).map((to) => recipientLabel(to, props.thread)).join(' + ') || 'Pick a model'}</span>
+					<${Dot}
+						state=${() => (recipients(props.thread).length ? (busy() ? 'working' : 'on') : '')}
+					/>
+					<span
+						>${() =>
+							recipients(props.thread)
+								.map((to) => recipientLabel(to, props.thread))
+								.join(' + ') || 'Pick a model'}</span
+					>
 				</button>
 			</div>
 			<div
@@ -447,22 +475,29 @@ export function Composer(props) {
 						<${Show} when=${() => bots.length}>
 							<li><h3>Bots</h3></li>
 						<//>
-						<${For} each=${() => bots}> ${(bot) => PickerBot(bot, () => picker.hidePopover(), () => props.thread)} <//>
+						<${For} each=${() => bots}>
+							${(bot) =>
+								PickerBot(
+									bot,
+									() => picker.hidePopover(),
+									() => props.thread,
+								)}
+						<//>
 					<//>
 				<//>
 				<${Show} when=${() => !homeBot(props.thread)}>
-				<input
-					class="recipients"
-					aria-label="Recipients"
-					autocomplete="off"
-					spellcheck="false"
-					title="model:thinking@runner, and any bots' names, comma between them"
-					value=${() => pick(props.thread)?.typed ?? recipients(props.thread).map(formatAgent).join(', ')}
-					onInput=${typeRecipients}
-					onKeyDown=${(event) => {
-						if (event.key === 'Enter') event.preventDefault()
-					}}
-				/>
+					<input
+						class="recipients"
+						aria-label="Recipients"
+						autocomplete="off"
+						spellcheck="false"
+						title="model:thinking@runner, and any bots' names, comma between them"
+						value=${() => pick(props.thread)?.typed ?? recipients(props.thread).map(formatAgent).join(', ')}
+						onInput=${typeRecipients}
+						onKeyDown=${(event) => {
+							if (event.key === 'Enter') event.preventDefault()
+						}}
+					/>
 				<//>
 			</div>
 		</form>
@@ -494,4 +529,3 @@ function PickerBot(bot, close, thread) {
 		</li>
 	`
 }
-

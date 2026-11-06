@@ -5,7 +5,8 @@ export const [doing, setDoing] = createRoot(() => createStore({}))
 /** How a `to` is written, shown and typed alike, as util.js does: a bot's name, or the thread's agent as
  * `model:thinking@runner`, the model by its own name without its provider */
 export const writtenTo = (to) =>
-	to.name ?? `${(to.model ?? '').split('/').pop()}${to.thinkingLevel ? `:${to.thinkingLevel}` : ''}@${to.runner}`
+	to.name ??
+	`${(to.model ?? '').split('/').pop()}${to.thinkingLevel ? `:${to.thinkingLevel}` : ''}@${to.runner}`
 
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
@@ -29,9 +30,11 @@ export function agentTo(text) {
 /** A runner's row for a model, whatever its thinking: a bot's name, or `provider/id@runner`, as /api/runners keys its agents */
 export const rowOf = (to) => to.name ?? `${to.model}@${to.runner}`
 /** What you type to ask it: the agent written out, and for a bot `ada=` before it */
-export const formatAgent = (to) => `${to.name ? `${to.name}=` : ''}${writtenTo({ ...to, name: undefined })}`
+export const formatAgent = (to) =>
+	`${to.name ? `${to.name}=` : ''}${writtenTo({ ...to, name: undefined })}`
 /** An author as a message shows it: a person's or bot's name, or an agent written out, older `provider/id` ones too */
-export const authorLabel = (author) => (author?.includes('@') ? writtenTo(agentTo(author)) : (author ?? ''))
+export const authorLabel = (author) =>
+	author?.includes('@') ? writtenTo(agentTo(author)) : (author ?? '')
 
 /** What an agent is doing, as the server sends it */
 export const messageText = (message) =>

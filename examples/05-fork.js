@@ -185,7 +185,9 @@ const routed = await api('POST', `/api/threads/${early.id}/entries`, {
 	body: '@echo/echo@bot try another way',
 })
 const settled = await answered(early.id)
-const earlyInputs = (await conversationOf(settled ?? (await view(early.id)), 'echo/echo@bot')).entries
+const earlyInputs = (
+	await conversationOf(settled ?? (await view(early.id)), 'echo/echo@bot')
+).entries
 	.filter((e) => e.kind === 'agent-ide.delivery')
 	.map((e) => text(e.model[0]))
 check(

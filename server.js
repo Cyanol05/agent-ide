@@ -177,9 +177,7 @@ const Admit = defineTask({
 			if (!held.length) return rt.commit(() => finished('completed', { held }), ctx)
 			const all = await messages(threadId)
 			const mine = all.filter((entry) => held.includes(entry.id))
-			const told = catchUp
-				? await catchUp(threadId, mine, all, agent)
-				: mine.map(said).join('\n\n')
+			const told = catchUp ? await catchUp(threadId, mine, all, agent) : mine.map(said).join('\n\n')
 			const text = note ? `${note}\n\n${told}` : told
 			const images = mine.flatMap((entry) => entry.data.images ?? [])
 			const content = images.length ? [{ type: 'text', text }, ...images] : text
@@ -232,7 +230,10 @@ const Deliver = defineTask({
 	abort: ({ conversationId: threadId, input: { admit, agent } }, rt, ctx) =>
 		rt.commit(async (tx) => {
 			const submitted = (await tx.task(admit)).state.outcome?.result
-			if (submitted?.submission && (await tx.submissionByRequest(agent, String(admit)))?.entry === undefined)
+			if (
+				submitted?.submission &&
+				(await tx.submissionByRequest(agent, String(admit)))?.entry === undefined
+			)
 				await restore(tx, threadId, agent, submitted)
 			return finished('aborted')
 		}, ctx),
@@ -396,7 +397,10 @@ const harness = await Harness.open(
 			return runner ? remoteEnv(runners, runner, cwd) : undefined
 		},
 		/** A failed run doesn't strand the messages queued behind it: the next run takes them */
-		settings: () => ({ afterFailedRun: 'continue', ...(compactAt && { compaction: compactingAt(compactAt) }) }),
+		settings: () => ({
+			afterFailedRun: 'continue',
+			...(compactAt && { compaction: compactingAt(compactAt) }),
+		}),
 		onReport: (report) => {
 			console.error(`pi-durable: ${report.kind}:`, report.error)
 			if (report.kind === 'task_faulted') faulted(report).catch((error) => console.error(error))
@@ -448,7 +452,13 @@ async function address(to, command = false, signal, useDefaultThinking = true) {
 		runner: name,
 		...(command
 			? {}
-			: await modelOn(name, runner, typeof to.model === 'string' ? to.model.trim() : '', signal, useDefaultThinking)),
+			: await modelOn(
+					name,
+					runner,
+					typeof to.model === 'string' ? to.model.trim() : '',
+					signal,
+					useDefaultThinking,
+				)),
 	}
 	for (const key of ['thinkingLevel', 'dir'])
 		if (typeof to[key] === 'string' && to[key].trim()) clean[key] = to[key].trim()
@@ -482,7 +492,8 @@ async function whom(threadId, to, command = false, signal) {
 	// its thinking, as a runner alone resolves to pi's default thinking there, which no one asked for, and on the same
 	// runner its folder.
 	const { thinkingLevel, dir, ...model } = resolved
-	const level = asked?.thinkingLevel || (asked?.model && thinkingLevel) || agent.thinkingLevel || thinkingLevel
+	const level =
+		asked?.thinkingLevel || (asked?.model && thinkingLevel) || agent.thinkingLevel || thinkingLevel
 	const into = dir ?? (resolved.runner === agent.runner ? agent.dir : undefined)
 	return { ...model, ...(level ? { thinkingLevel: level } : {}), ...(into ? { dir: into } : {}) }
 }
@@ -492,10 +503,14 @@ async function modelOn(name, runner, asked, signal, useDefaultThinking) {
 	// A model by its own name, as an agent is written, is the one model of that id it has run
 	const ids = Object.keys(runner.models ?? {}).filter((ref) => ref.split('/').pop() === asked)
 	const had = runner.models?.[asked] ?? (ids.length === 1 ? runner.models[ids[0]] : undefined)
-	if (had && (!useDefaultThinking || !runners.isOnline(name))) return { model: `${had.provider}/${had.id}` }
-	if (!runners.isOnline(name))
-		throw new Error(`${name} is offline; name a model it has run`)
-	const { model, thinkingLevel, defaultThinkingLevel } = await runners.call(name, { op: 'resolve', model: asked }, { signal })
+	if (had && (!useDefaultThinking || !runners.isOnline(name)))
+		return { model: `${had.provider}/${had.id}` }
+	if (!runners.isOnline(name)) throw new Error(`${name} is offline; name a model it has run`)
+	const { model, thinkingLevel, defaultThinkingLevel } = await runners.call(
+		name,
+		{ op: 'resolve', model: asked },
+		{ signal },
+	)
 	const ref = `${model.provider}/${model.id}`
 	if (!runner.models?.[ref]) {
 		await commit(async (tx) => {
@@ -549,7 +564,8 @@ async function agentOf(id, key, tx) {
 /** One status for an agent, a thread, a runner or a bot: `working`, `blocked` while its runner is offline, or `idle` */
 const STATUSES = ['idle', 'blocked', 'working']
 /** Of several, the busiest */
-const busiest = (statuses) => STATUSES[Math.max(0, ...statuses.map((status) => STATUSES.indexOf(status)))]
+const busiest = (statuses) =>
+	STATUSES[Math.max(0, ...statuses.map((status) => STATUSES.indexOf(status)))]
 /**
  * Whatever works right now, from Pi's live tasks: each agent answering and each `$ cmd` running, once for every list
  * @returns {Promise<{ thread: number, conversation?: number, runner: string, row?: string, status: string }[]>}
@@ -564,7 +580,9 @@ async function work() {
 			const to = shell ? task.input.to : await agentOf(task.input.agent)
 			return {
 				thread: task.conversationId,
-				...(shell ? {} : { conversation: task.input.agent, row: to && (to.name ?? `${to.model}@${to.runner}`) }),
+				...(shell
+					? {}
+					: { conversation: task.input.agent, row: to && (to.name ?? `${to.model}@${to.runner}`) }),
 				runner: to?.runner,
 				status: to && runners.isOnline(to.runner) ? 'working' : 'blocked',
 			}
@@ -577,9 +595,17 @@ async function agentsIn(row, busy) {
 	return Promise.all(
 		Object.entries(row.agents).map(async ([key, { conversation }]) => {
 			const to = await agentOf(conversation, key)
-			const status = busiest(busy.filter((job) => job.conversation === conversation).map((job) => job.status))
+			const status = busiest(
+				busy.filter((job) => job.conversation === conversation).map((job) => job.status),
+			)
 			const contextWindow = to && models.getModel(`runner:${to.runner}`, to.model)?.contextWindow
-			return { name: to ? writtenTo(to) : key, conversation, to, status, ...(contextWindow && { contextWindow }) }
+			return {
+				name: to ? writtenTo(to) : key,
+				conversation,
+				to,
+				status,
+				...(contextWindow && { contextWindow }),
+			}
 		}),
 	)
 }
@@ -610,7 +636,9 @@ async function lastAsked(id) {
 
 /** An agent's own answer, which it never reads back: its turn's last words, or what it posted to its asker */
 const ownAnswer = ({ data: message }, key) =>
-	keyOf(message.author) === key && !message.from && Boolean(message.answer || message.error || message.re)
+	keyOf(message.author) === key &&
+	!message.from &&
+	Boolean(message.answer || message.error || message.re)
 
 /**
  * Writes a message, inside the caller's commit, and gives each agent it asks a Deliver task with all it hasn't seen.
@@ -728,7 +756,9 @@ const recipientOf = (row, conversation) =>
 /** An input Pi withdrew before it was placed: its messages are unseen again, and its note untold */
 async function restore(tx, threadId, conversation, { held, note }) {
 	const recipient = recipientOf(await tx.doc(Thread, threadId), conversation)
-	recipient.unseen = [...new Set([...recipient.unseen, ...held])].sort((left, right) => left - right)
+	recipient.unseen = [...new Set([...recipient.unseen, ...held])].sort(
+		(left, right) => left - right,
+	)
 	if (note) recipient.note ??= note
 }
 
@@ -747,13 +777,15 @@ async function outcome(threadId, agent, settled, mine) {
 	const { key, name } = await home(agent)
 	const ids = new Set(
 		done
-			? (await commit((tx) => Promise.all(group.map((submission) => tx.entry(submission.entry))))).flatMap(
-					(entry) => entry.data.held,
-				)
+			? (
+					await commit((tx) => Promise.all(group.map((submission) => tx.entry(submission.entry))))
+				).flatMap((entry) => entry.data.held)
 			: mine,
 	)
 	const held = (await messages(threadId)).filter((entry) => ids.has(entry.id))
-	const re = held.filter((entry) => entry.data.to?.some((name) => keyOf(name) === key)).map((entry) => entry.id)
+	const re = held
+		.filter((entry) => entry.data.to?.some((name) => keyOf(name) === key))
+		.map((entry) => entry.id)
 	const body = done
 		? messageText((await commit((tx) => tx.entry(settled.answer)))?.model?.[0])
 		: `gave no answer: ${settled.reason}${settled.detail ? ` (${JSON.stringify(settled.detail)})` : ''}`
@@ -774,7 +806,8 @@ async function outcome(threadId, agent, settled, mine) {
 /** Posts what a settled input told; a submitted input Pi never placed gives its messages back */
 async function tell(tx, threadId, agent, settled, submitted, told) {
 	for (const { thread, data, steer } of told) await append(tx, thread, data, { steer })
-	if (submitted?.submission && settled.entry === undefined) await restore(tx, threadId, agent, submitted)
+	if (submitted?.submission && settled.entry === undefined)
+		await restore(tx, threadId, agent, submitted)
 }
 
 /** Work that threw, or that crashes kept cutting off, Pi ends instead of running again, and the thread says so */
@@ -850,7 +883,8 @@ const threadList = async (reader) => {
 	const families = new Map()
 	for (const row of rows) {
 		let root = row
-		for (let hops = 0; byId.has(parentOf(root)) && hops < 20; hops++) root = byId.get(parentOf(root))
+		for (let hops = 0; byId.has(parentOf(root)) && hops < 20; hops++)
+			root = byId.get(parentOf(root))
 		if (!families.has(root.id)) {
 			const family = [{ id: root.id, depth: 0 }]
 			for (let index = 0; index < family.length; index++)
@@ -913,7 +947,9 @@ const once = (requestId, command, work) =>
 async function mentions(id, body) {
 	if (!route) return []
 	const { agents } = await thread(id)
-	const here = await Promise.all(Object.entries(agents).map(([key, agent]) => agentOf(agent.conversation, key)))
+	const here = await Promise.all(
+		Object.entries(agents).map(([key, agent]) => agentOf(agent.conversation, key)),
+	)
 	return addresses(route({ body }, here.filter(Boolean)), false, id)
 }
 
@@ -960,7 +996,9 @@ function imageList(images) {
 		/^[A-Za-z0-9+/]+={0,2}$/.test(image.data)
 	if (!Array.isArray(images) || images.length > 8 || !images.every(fits))
 		throw new Error("images is a list of up to 8 of pi's ImageContent, base64, 4.5 MB each")
-	return images.length ? images.map(({ mimeType, data }) => ({ type: 'image', mimeType, data })) : null
+	return images.length
+		? images.map(({ mimeType, data }) => ({ type: 'image', mimeType, data }))
+		: null
 }
 
 /** Inside the caller's commit */
@@ -1064,7 +1102,9 @@ async function forkThread(id, { at, title }) {
 			return {
 				key,
 				answer,
-				unseen: shown.filter((entry) => !seen.has(entry.id) && !ownAnswer(entry, key)).map((entry) => entry.id),
+				unseen: shown
+					.filter((entry) => !seen.has(entry.id) && !ownAnswer(entry, key))
+					.map((entry) => entry.id),
 			}
 		}),
 	)
@@ -1093,7 +1133,11 @@ async function forkThread(id, { at, title }) {
 					)
 					await setUp(tx, row[key].conversation, forkId, to)
 				}
-				Object.assign(await tx.doc(Thread, forkId), { title: forkTitle, createdAt: now(), agents: row })
+				Object.assign(await tx.doc(Thread, forkId), {
+					title: forkTitle,
+					createdAt: now(),
+					agents: row,
+				})
 			},
 		},
 		context,
@@ -1158,8 +1202,15 @@ for (const module of modules) if (module.extension) registry.install(module.exte
 /** Each module's name → what it does, from its own file */
 const aboutModules = Object.fromEntries(
 	await Promise.all(
-		[...Object.keys(defaults), ...(settings.config.modules ?? []).map((entry) => entry.replace(/^[+-]/, '')).filter((entry) => entry.includes('/'))]
-			.map(async (entry) => [entry.includes('/') ? path.basename(entry, '.js') : entry, await about(entry)]),
+		[
+			...Object.keys(defaults),
+			...(settings.config.modules ?? [])
+				.map((entry) => entry.replace(/^[+-]/, ''))
+				.filter((entry) => entry.includes('/')),
+		].map(async (entry) => [
+			entry.includes('/') ? path.basename(entry, '.js') : entry,
+			await about(entry),
+		]),
 	),
 )
 /** One module answers each of these; two claiming one is a mistake, not an order */
@@ -1265,7 +1316,8 @@ const routes = [
 				const here = all.filter((job) => job.runner === name)
 				/** Its agents' statuses, by row: a bot's name, or `provider/id@runner` whatever its thinking */
 				const agents = {}
-				for (const job of here) if (job.row) agents[job.row] = busiest([agents[job.row], job.status].filter(Boolean))
+				for (const job of here)
+					if (job.row) agents[job.row] = busiest([agents[job.row], job.status].filter(Boolean))
 				return {
 					name,
 					...runner,
@@ -1276,7 +1328,8 @@ const routes = [
 					calls: runners.working(name),
 					status: busiest(here.map((job) => job.status)),
 					agents,
-					busy: new Set(here.filter((job) => job.status === 'working').map((job) => job.thread)).size,
+					busy: new Set(here.filter((job) => job.status === 'working').map((job) => job.thread))
+						.size,
 					outdated: Boolean(runner.version) && runner.version !== bundle.version,
 				}
 			})
@@ -1311,7 +1364,9 @@ const routes = [
 				`POST /api/${module.name}`,
 				async (req, _, url) => module.serve(undefined, url.searchParams, await input(req)),
 			],
-			...(module.remove ? [[`DELETE /api/${module.name}/:name`, (req, name) => module.remove(name)]] : []),
+			...(module.remove
+				? [[`DELETE /api/${module.name}/:name`, (req, name) => module.remove(name)]]
+				: []),
 			[`GET /api/threads/:id/${module.name}`, (req, id, url) => module.serve(id, url.searchParams)],
 			[
 				`POST /api/threads/:id/${module.name}`,
@@ -1330,14 +1385,24 @@ function send(res, status, value) {
 
 async function handleRequest(req, res) {
 	const url = new URL(req.url, 'http://localhost')
-	if (!['GET', 'HEAD'].includes(req.method) && req.headers.origin && req.headers.origin !== origin(req))
+	if (
+		!['GET', 'HEAD'].includes(req.method) &&
+		req.headers.origin &&
+		req.headers.origin !== origin(req)
+	)
 		return send(res, 403, { error: 'Cross-origin writes are refused; use the server’s own page' })
-	if ((req.method === 'POST' && url.pathname === '/api/runners' ||
-		req.method === 'DELETE' && url.pathname.startsWith('/api/runners/')) &&
-		!local(req))
-		return send(res, 403, { error: 'Open this page on the server’s own machine to connect a runner' })
+	if (
+		((req.method === 'POST' && url.pathname === '/api/runners') ||
+			(req.method === 'DELETE' && url.pathname.startsWith('/api/runners/'))) &&
+		!local(req)
+	)
+		return send(res, 403, {
+			error: 'Open this page on the server’s own machine to connect a runner',
+		})
 	if (req.method === 'POST' && url.pathname === '/api/settings' && !local(req))
-		return send(res, 403, { error: 'Open this page on the server’s own machine to change its settings' })
+		return send(res, 403, {
+			error: 'Open this page on the server’s own machine to change its settings',
+		})
 	if (req.method === 'OPTIONS') {
 		res.writeHead(204)
 		return res.end()
@@ -1450,7 +1515,8 @@ async function rewatch(socket, id) {
 	if (!row) return
 	const watches = (socket.watching = [row])
 	/** A watch that comes back after the socket moved on is stopped instead */
-	const keep = (watch) => (socket.watching === watches ? (watches.push(watch), true) : (watch.stop(), false))
+	const keep = (watch) =>
+		socket.watching === watches ? (watches.push(watch), true) : (watch.stop(), false)
 	const send = (message) => socket.send(JSON.stringify({ thread: id, ...message }))
 	const handle = await harness.conversation(id, context)
 	const messages = await handle.watch(context)
@@ -1487,7 +1553,11 @@ async function rewatch(socket, id) {
 			await told(
 				handle,
 				watch,
-				(entries) => send({ agent, entries: entries.filter((entry) => entry.kind !== 'pi.system').map(shown) }),
+				(entries) =>
+					send({
+						agent,
+						entries: entries.filter((entry) => entry.kind !== 'pi.system').map(shown),
+					}),
 				async (value) => send({ agent, live: await live(value) }),
 			)
 		}
@@ -1525,7 +1595,12 @@ async function told(handle, watch, send, then) {
 /** An agent's newest delivery entry from `first` on, for a run longer than its watch's window */
 async function lastDelivery(handle, first) {
 	for (let cursor; ;) {
-		const page = await handle.entries({ minEntryId: first, order: 'descending' }, 100, cursor, context)
+		const page = await handle.entries(
+			{ minEntryId: first, order: 'descending' },
+			100,
+			cursor,
+			context,
+		)
 		const found = page.items.find((entry) => entry.kind === DELIVERY)
 		if (found || !page.next) return found
 		cursor = page.next
@@ -1556,7 +1631,8 @@ const sha256 = (text) => createHash('sha256').update(text).digest('hex')
 /** The start-up table and every runner event after it share one column */
 const say = (label, text) => console.log(`  ${label.padEnd(8)} ${text}`)
 const tilde = (dir) => (dir?.startsWith(os.homedir()) ? `~${dir.slice(os.homedir().length)}` : dir)
-const loopback = (address) => /^(127\.|::ffff:127\.)/.test(address) || ['::1', '[::1]', 'localhost'].includes(address)
+const loopback = (address) =>
+	/^(127\.|::ffff:127\.)/.test(address) || ['::1', '[::1]', 'localhost'].includes(address)
 /** Opened on the server's own machine: only such a page connects and revokes runners */
 const local = (req) =>
 	loopback(req.socket.remoteAddress) && loopback(req.headers.host?.replace(/:\d+$/, ''))
@@ -1567,7 +1643,9 @@ async function mintKey(name, server) {
 		throw new Error('name the runner: letters, digits, dot, dash or underscore')
 	if (process.env.HOST === '0.0.0.0' && loopback(new URL(server).hostname)) {
 		const interfaces = os.networkInterfaces()
-		const address = [...(interfaces.tailscale0 ?? []), ...Object.values(interfaces).flat()].find((net) => net.family === 'IPv4' && !net.internal)?.address
+		const address = [...(interfaces.tailscale0 ?? []), ...Object.values(interfaces).flat()].find(
+			(net) => net.family === 'IPv4' && !net.internal,
+		)?.address
 		if (address) server = server.replace(new URL(server).hostname, address)
 	}
 	const key = `air_${randomBytes(24).toString('base64url')}`
@@ -1696,7 +1774,9 @@ async function upgrade(req, raw, head) {
  */
 async function saveSettings({ modules: wanted = {}, memory }) {
 	const loaded = modules.map((module) => module.name)
-	const own = (settings.config.modules ?? []).map((entry) => entry.replace(/^[+-]/, '')).filter((entry) => entry.includes('/'))
+	const own = (settings.config.modules ?? [])
+		.map((entry) => entry.replace(/^[+-]/, ''))
+		.filter((entry) => entry.includes('/'))
 	const known = [...Object.keys(defaults), ...own.map((entry) => path.basename(entry, '.js'))]
 	for (const name of Object.keys(wanted))
 		if (!known.includes(name)) throw new Error(`No module named ${name}`)
@@ -1711,14 +1791,16 @@ async function saveSettings({ modules: wanted = {}, memory }) {
 	if (!next.modules.length) delete next.modules
 	if (memory !== undefined) {
 		const model = typeof memory.model === 'string' ? memory.model.trim() : ''
-		if (model && !model.includes('@')) throw new Error('A memory model is model@runner, or empty for each thread\'s agent')
+		if (model && !model.includes('@'))
+			throw new Error("A memory model is model@runner, or empty for each thread's agent")
 		if (memory.model !== undefined) {
 			if (model) next.memory = { ...next.memory, model }
 			else if (next.memory) delete next.memory.model
 		}
 		if (memory.compactAt !== undefined) {
 			const tokens = Number(memory.compactAt)
-			if (!Number.isInteger(tokens) || tokens < 10000) throw new Error('memory compacts past at least 10000 tokens')
+			if (!Number.isInteger(tokens) || tokens < 10000)
+				throw new Error('memory compacts past at least 10000 tokens')
 			if (tokens === 100000) delete next.memory?.compactAt
 			else next.memory = { ...next.memory, compactAt: tokens }
 		}
@@ -1756,7 +1838,9 @@ async function connectSelf(url) {
 
 // A list of names alone replaces the defaults, so say which of them it left out.
 const off = (on) =>
-	Object.keys(defaults).filter((name) => defaults[name] === on && !modules.some((module) => module.name === name))
+	Object.keys(defaults).filter(
+		(name) => defaults[name] === on && !modules.some((module) => module.name === name),
+	)
 for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1']) {
 	const server = http.createServer(handleRequest)
 	server.on('upgrade', (req, socket, head) =>

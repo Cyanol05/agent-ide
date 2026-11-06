@@ -15,7 +15,8 @@ export function Panes(props) {
 		})
 	})
 	return html`
-		<div class="panes"
+		<div
+			class="panes"
 			onKeyDown=${(event) => {
 				if (event.key !== 'Escape' || !props.open) return
 				event.preventDefault()
@@ -23,12 +24,16 @@ export function Panes(props) {
 				props.onBack()
 			}}
 		>
-			<section class="pane"
+			<section
+				class="pane"
 				inert=${() => props.open}
-				aria-hidden=${() => props.open ? 'true' : undefined}
+				aria-hidden=${() => (props.open ? 'true' : undefined)}
 				style=${() => ({ visibility: props.open ? 'hidden' : 'visible' })}
 			>
-				<header><span aria-hidden="true"></span><h2>${() => props.title}</h2></header>
+				<header>
+					<span aria-hidden="true"></span>
+					<h2>${() => props.title}</h2>
+				</header>
 				<div class="pane-body">${() => props.children}</div>
 			</section>
 			<${Show} when=${() => props.open}>

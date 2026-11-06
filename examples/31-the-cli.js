@@ -20,8 +20,17 @@ for (const flag of ['--help', '-h']) {
 	})
 	check(
 		[
-			'server', 'name', 'alias', 'dir', 'discover-dirs', 'owner', 'allow',
-			'read-only', 'key', 'key-file', 'help',
+			'server',
+			'name',
+			'alias',
+			'dir',
+			'discover-dirs',
+			'owner',
+			'allow',
+			'read-only',
+			'key',
+			'key-file',
+			'help',
 		].every((option) => stdout.includes(`--${option}`)),
 		`runner ${flag} prints its options without connecting`,
 		stdout,
@@ -41,16 +50,19 @@ check(
 )
 
 const both = await cli(
-	'post', '--thread', id, '--to', 'echo/echo@laptop', '--to', 'echo/echo@desk', 'both of you',
+	'post',
+	'--thread',
+	id,
+	'--to',
+	'echo/echo@laptop',
+	'--to',
+	'echo/echo@desk',
+	'both of you',
 ).catch((error) => error.stderr)
 check(/one agent/.test(both), 'two models in one message are refused: a thread has one agent', both)
 
 const again = await cli('post', '--thread', id, 'and again')
-check(
-	/#\d+ echo:off@laptop\n/.test(again),
-	'no --to asks whom the thread last asked',
-	again,
-)
+check(/#\d+ echo:off@laptop\n/.test(again), 'no --to asks whom the thread last asked', again)
 
 const shell = await cli('post', '--thread', id, '--to', 'echo/echo@desk', '$ echo from-desk')
 check(
@@ -80,15 +92,30 @@ check(
 const named = await cli('post', '--to', 'reviewer=echo/echo@desk', 'review this').catch(
 	(error) => error.stderr,
 )
-check(/only bots have names/.test(named), "--to can't name a thread's agent: only bots have names", named)
+check(
+	/only bots have names/.test(named),
+	"--to can't name a thread's agent: only bots have names",
+	named,
+)
 const reply = await cli('post', '--thread', id, '--to', id, 'by number')
-check(/#\d+ echo:off@laptop\n/.test(reply), "--to with the thread's number reaches its agent", reply)
+check(
+	/#\d+ echo:off@laptop\n/.test(reply),
+	"--to with the thread's number reaches its agent",
+	reply,
+)
 const nobody = await cli('post', '--thread', id, '--to', 'nobody', 'just a note')
 check(!nobody, '--to nobody posts without waiting for an answer', nobody)
 
 mkdirSync(`${dir}/review`)
 const options = await cli(
-	'post', '--to', 'echo/echo@desk', '--thinking', 'low', '--dir', 'review', 'with options',
+	'post',
+	'--to',
+	'echo/echo@desk',
+	'--thinking',
+	'low',
+	'--dir',
+	'review',
+	'with options',
 )
 const optionsId = /thread (\d+)/.exec(options)?.[1]
 const asked = optionsId && (await view(optionsId)).agents[0]?.to
@@ -101,23 +128,33 @@ check(
 /** A stop posts no answer, so waiting must end on the thread's status alone. */
 laptop.kill()
 check(
-	await until(async () =>
-		!(await api('GET', '/api/runners')).json.find((r) => r.name === 'laptop').online,
+	await until(
+		async () => !(await api('GET', '/api/runners')).json.find((r) => r.name === 'laptop').online,
 	),
 	'laptop goes offline',
 )
 const stopped = (await api('POST', '/api/threads', { title: 'stop a CLI delivery' })).json.id
-const pending = cli('post', '--thread', String(stopped), '--to', 'echo/echo@laptop', 'wait for stop')
-	.then(
-		(output) => ({ output }),
-		(error) => ({ error: error.message }),
-	)
+const pending = cli(
+	'post',
+	'--thread',
+	String(stopped),
+	'--to',
+	'echo/echo@laptop',
+	'wait for stop',
+).then(
+	(output) => ({ output }),
+	(error) => ({ error: error.message }),
+)
 check(
 	await until(async () => (await view(stopped)).status === 'blocked'),
 	'CLI waits for the offline runner',
 )
 await cli('stop', String(stopped))
 const result = await pending
-check(!result.error, 'stopping a delivery ends the CLI wait without an answer', JSON.stringify(result))
+check(
+	!result.error,
+	'stopping a delivery ends the CLI wait without an answer',
+	JSON.stringify(result),
+)
 check((await view(stopped)).entries.length === 1, 'a stopped delivery posts no answer')
 done()

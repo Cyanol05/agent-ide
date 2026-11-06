@@ -15,18 +15,26 @@ for (const [modules, host, expected] of [
 		env: { ...process.env, DB_PATH: db, PORT: '0', HOST: host, RUNNER: '0', MODULES: modules },
 		stdio: ['ignore', 'pipe', 'pipe'],
 	})
-	child.stdout.on('data', (data) => { output += data })
-	child.stderr.on('data', (data) => { output += data })
+	child.stdout.on('data', (data) => {
+		output += data
+	})
+	child.stderr.on('data', (data) => {
+		output += data
+	})
 	const exited = new Promise((resolve) => child.once('exit', resolve))
 	try {
 		const ready = await until(async () => child.exitCode !== null || /http:\/\//.test(output))
 		check(ready, `${modules}: starts or explains the error`, output)
 		if (!expected) {
-			check(output.includes('+bots,+search,+director'), 'mixed prefixes show the corrected command', output)
+			check(
+				output.includes('+bots,+search,+director'),
+				'mixed prefixes show the corrected command',
+				output,
+			)
 			continue
 		}
 		const url = output.match(/http:\/\/\S+/)?.[0]
-		const state = url && await until(async () => (await fetch(`${url}/api/server`)).json())
+		const state = url && (await until(async () => (await fetch(`${url}/api/server`)).json()))
 		check(state?.modules.join() === expected, `${modules}: loads ${expected}`, output)
 		check(output.match(/http:\/\//g)?.length === 1, 'one server URL', output)
 		check(

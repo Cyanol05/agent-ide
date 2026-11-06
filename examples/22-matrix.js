@@ -76,8 +76,7 @@ const hs = createServer(async (req, res) => {
 		})
 	}
 	const [, , , what, id] = route.split('/').map(decodeURIComponent)
-	if (what === 'event' && req.method === 'GET')
-		return send(events.find((e) => e.event_id === id))
+	if (what === 'event' && req.method === 'GET') return send(events.find((e) => e.event_id === id))
 	if (what === 'messages') {
 		const from = Number(url.searchParams.get('from').slice(1))
 		const start = Math.max(Number(url.searchParams.get('to')), from - 5)

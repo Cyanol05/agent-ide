@@ -143,7 +143,8 @@ export function Tutorial(props) {
 		const stage = document.getElementById('stage')
 		const sections = new IntersectionObserver(
 			(list) => {
-				for (const entry of list) if (entry.isIntersecting) stage.dataset.focus = entry.target.dataset.focus
+				for (const entry of list)
+					if (entry.isIntersecting) stage.dataset.focus = entry.target.dataset.focus
 			},
 			{ rootMargin: '-45% 0px -45% 0px' },
 		)
@@ -168,7 +169,9 @@ export function Tutorial(props) {
 		}
 	})
 	return html`
-		<${Show} when=${() => props.story}><${Portal} mount=${document.getElementById('memory')}><${Memory} /><//><//>
+		<${Show} when=${() => props.story}
+			><${Portal} mount=${document.getElementById('memory')}><${Memory} /><//
+		><//>
 		<${Portal} mount=${document.getElementById('connect-runner')}
 			><${ConnectRunner} name="laptop"
 		/><//>

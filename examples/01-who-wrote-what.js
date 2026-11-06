@@ -143,9 +143,6 @@ check(
 )
 
 const page = await (await fetch(`${base}/`)).text()
-check(
-	page.includes('Under it all'),
-	'the server serves its walkthrough on its one page',
-)
+check(page.includes('Under it all'), 'the server serves its walkthrough on its one page')
 
 done()

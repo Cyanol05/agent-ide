@@ -41,7 +41,11 @@ const bad = await api('POST', `/api/threads/${id}/entries`, {
 	body: 'x',
 	images: [{ type: 'image', mimeType: 'text/html', data: 'PGI+' }],
 })
-check(bad.status === 400 && /images/.test(bad.json.error), 'anything but an image is turned away', bad.json.error)
+check(
+	bad.status === 400 && /images/.test(bad.json.error),
+	'anything but an image is turned away',
+	bad.json.error,
+)
 
 const none = await api('POST', `/api/threads/${id}/entries`, { body: ' ' })
 check(none.status === 400, 'no words and no images is still nothing to send')

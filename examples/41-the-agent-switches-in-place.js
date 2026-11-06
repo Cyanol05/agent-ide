@@ -110,7 +110,11 @@ check(
 	JSON.stringify(v.agents[0].to),
 )
 
-const named = await post('be the reviewer', { runner: 'laptop', model: 'echo/one', name: 'reviewer' })
+const named = await post('be the reviewer', {
+	runner: 'laptop',
+	model: 'echo/one',
+	name: 'reviewer',
+})
 check(
 	named.status === 400 && /only bots have names/.test(named.json.error),
 	'a plain agent takes no name; only bots have names',

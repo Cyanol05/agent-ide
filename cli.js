@@ -73,7 +73,12 @@ function agent(name) {
 function show({ id, data: message }) {
 	const shell =
 		message.shell &&
-		[message.shell.stdout, message.shell.stderr, message.shell.error, message.shell.code ? `exit ${message.shell.code}` : '']
+		[
+			message.shell.stdout,
+			message.shell.stderr,
+			message.shell.error,
+			message.shell.code ? `exit ${message.shell.code}` : '',
+		]
 			.filter(Boolean)
 			.join('\n')
 	console.log(
@@ -91,7 +96,9 @@ async function post() {
 	const seen = (await api('GET', `/api/threads/${id}`)).entries.at(-1)?.id ?? 0
 	const to = flags.to && (flags.to.includes('nobody') ? null : flags.to.map(agent))
 	/** Listen before posting so even an immediate answer can't slip between the read and the wait */
-	const socket = flags['no-wait'] ? null : new WebSocket(flags.server.replace(/^http/, 'ws') + '/ws')
+	const socket = flags['no-wait']
+		? null
+		: new WebSocket(flags.server.replace(/^http/, 'ws') + '/ws')
 	const changes = socket && on(socket, 'message', { close: ['close'] })
 	try {
 		if (socket) await once(socket, 'open')
@@ -110,7 +117,9 @@ async function post() {
 				if (entry.id !== posted.entry) show(entry)
 				last = entry.id
 			}
-			const blocked = view.agents.filter((agent) => agent.status === 'blocked').map((agent) => agent.to?.runner)
+			const blocked = view.agents
+				.filter((agent) => agent.status === 'blocked')
+				.map((agent) => agent.to?.runner)
 			if (blocked.join() !== waiting && (waiting = blocked.join()))
 				console.error(`waiting for ${waiting}, offline…`)
 			if (!['working', 'blocked'].includes(view.status)) return

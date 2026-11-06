@@ -37,7 +37,9 @@ function PickerRunner(runner, props) {
 	return html`
 		<li class=${() => ({ on: selected() })}>
 			<div class="who">
-				<${Dot} state=${() => (runner.status === 'idle' ? 'on' : runner.status)} /><b>${() => runner.name}</b>
+				<${Dot} state=${() => (runner.status === 'idle' ? 'on' : runner.status)} /><b
+					>${() => runner.name}</b
+				>
 				<small title=${() => runner.dir}
 					>${() =>
 						runner.busy

@@ -44,7 +44,18 @@ function Client() {
 		>
 			${() =>
 				chat()
-					? html`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6" /></svg>`
+					? html`<svg
+							width="15"
+							height="15"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M12 19V5M6 11l6-6 6 6" />
+						</svg>`
 					: 'Just the chat'}
 		</button>
 		<${Notice} />

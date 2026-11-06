@@ -17,16 +17,24 @@ const readers = await Promise.all([
 	env.openBinaryReader('binary', {}, context),
 	env.openDirReader('.', context),
 ])
-check(readers.every((r) => r.ok), 'open text, binary and directory readers')
+check(
+	readers.every((r) => r.ok),
+	'open text, binary and directory readers',
+)
 
 // Linux lets us check the actual descriptors, independently of the protocol's handle map.
-const descriptors = async () => (await Promise.all(
-	(await readdir('/proc/self/fd')).map((fd) => readlink(`/proc/self/fd/${fd}`).catch(() => '')),
-)).filter((p) => p === dir || p.startsWith(`${dir}/`))
-if (process.platform === 'linux') check((await descriptors()).length === 3, 'all three readers hold descriptors')
+const descriptors = async () =>
+	(
+		await Promise.all(
+			(await readdir('/proc/self/fd')).map((fd) => readlink(`/proc/self/fd/${fd}`).catch(() => '')),
+		)
+	).filter((p) => p === dir || p.startsWith(`${dir}/`))
+if (process.platform === 'linux')
+	check((await descriptors()).length === 3, 'all three readers hold descriptors')
 runners.disconnect(connection)
 await runner.stopAll()
-if (process.platform === 'linux') check(!(await descriptors()).length, 'disconnect closes every reader descriptor')
+if (process.platform === 'linux')
+	check(!(await descriptors()).length, 'disconnect closes every reader descriptor')
 await runner.stopAll()
 check(!runners.isOnline('laptop'), 'closing again is harmless and leaves the runner offline')
 done()

@@ -106,7 +106,9 @@ export const { threads, runners, server, bots, family, columns, closeColumn } = 
 	/** The open thread's family, as the server sends it: one thread until the list has it, `[null]` for a new one */
 	const family = createMemo(() =>
 		current()
-			? (threads.find((thread) => thread.id === current())?.family.map((member) => member.id) ?? [current()])
+			? (threads.find((thread) => thread.id === current())?.family.map((member) => member.id) ?? [
+					current(),
+				])
 			: [null],
 	)
 	/** Family members open in this page: what you visited, and any member since working or waiting for its runner; closing forgets one */

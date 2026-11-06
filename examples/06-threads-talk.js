@@ -78,9 +78,7 @@ check(
 const kid = await view(child.id)
 const asks = kid.entries.filter((e) => e.data.from === parent)
 check(
-	asks.length === 1 &&
-		asks[0].data.author === 'echo@bot' &&
-		asks[0].data.to?.join() === 'echo@bot',
+	asks.length === 1 && asks[0].data.author === 'echo@bot' && asks[0].data.to?.join() === 'echo@bot',
 	'one post in the child, by the parent agent',
 	brief(kid),
 )

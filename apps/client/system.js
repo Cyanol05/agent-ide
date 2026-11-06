@@ -32,7 +32,10 @@ export function System() {
 				state: connected() ? '' : 'off',
 			},
 		]
-		const reached = new Set([...asking.map((to) => to.runner), ...agents().map((agent) => agent.to.runner)])
+		const reached = new Set([
+			...asking.map((to) => to.runner),
+			...agents().map((agent) => agent.to.runner),
+		])
 		for (const runner of runners)
 			if (!reached.has(runner.name))
 				edges.push({
@@ -59,8 +62,10 @@ export function System() {
 				to: row(to),
 				toAt: -20,
 				state:
-					state(agents().find((agent) => agent.thread === current() && rowOf(agent.to) === rowOf(to))?.status) ||
-					'route',
+					state(
+						agents().find((agent) => agent.thread === current() && rowOf(agent.to) === rowOf(to))
+							?.status,
+					) || 'route',
 			})
 		return edges
 	})

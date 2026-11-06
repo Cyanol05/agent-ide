@@ -1977,7 +1977,12 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 /* One row across models, runners and modules, also inside the phone sheets. */
-:is(.model-controls .who, .model-controls .model, .runner-list .pane-body > ul > li, .settings .modules > li) {
+:is(
+	.model-controls .who,
+	.model-controls .model,
+	.runner-list .pane-body > ul > li,
+	.settings .modules > li
+) {
 	display: flex;
 	align-items: start;
 	gap: 0.6rem;
@@ -2005,7 +2010,11 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 @media (hover: hover) and (pointer: fine) {
-	:is(.model-controls .model:not(.on), .runner-list .pane-body > ul > li, .settings .modules > li):hover {
+	:is(
+		.model-controls .model:not(.on),
+		.runner-list .pane-body > ul > li,
+		.settings .modules > li
+	):hover {
 		background: var(--tint);
 	}
 }

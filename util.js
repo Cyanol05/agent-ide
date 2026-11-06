@@ -14,7 +14,9 @@ export async function collect(scan) {
 /** How a `to` is written, shown and typed alike: a bot's name, or the thread's agent as `model:thinking@runner`, the
  * model by its own name without its provider */
 export const writtenTo = (to) =>
-	to && (to.name ?? `${to.model.split('/').pop()}${to.thinkingLevel ? `:${to.thinkingLevel}` : ''}@${to.runner}`)
+	to &&
+	(to.name ??
+		`${to.model.split('/').pop()}${to.thinkingLevel ? `:${to.thinkingLevel}` : ''}@${to.runner}`)
 /** The thread's own agent's key among its agents; bots are keyed by name */
 export const AGENT = 'agent'
 /** Bot names have no `@`, so any name with one is the thread's agent, whatever model it had */

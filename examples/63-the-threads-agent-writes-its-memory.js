@@ -1,5 +1,16 @@
 /** With no MEMORY_MODEL, a thread's own agent writes its lines, on the runner it runs on now; before it has one, they wait */
-import { api, check, done, linesOf, say, scriptedRunner, server, sleep, text, until } from './lib.js'
+import {
+	api,
+	check,
+	done,
+	linesOf,
+	say,
+	scriptedRunner,
+	server,
+	sleep,
+	text,
+	until,
+} from './lib.js'
 
 const asked = { a: 0, b: 0 }
 const route = (runner) => (request) => {
@@ -37,5 +48,9 @@ check(asked.a > 0 && asked.b === 0, 'on its own runner', JSON.stringify(asked))
 const before = { ...asked }
 await post(id, long(4), { runner: 'b', model: 'echo/echo' })
 await until(async () => (await level0(id)) >= 5, 15000)
-check(asked.b > before.b, 'switched to another runner, the agent writes its next lines there', JSON.stringify(asked))
+check(
+	asked.b > before.b,
+	'switched to another runner, the agent writes its next lines there',
+	JSON.stringify(asked),
+)
 done()

@@ -86,7 +86,12 @@ export async function runner({ name, server }) {
 		for (const thread of threads)
 			next.set(
 				String(thread.id),
-				programStatus({ state: thread.status, id: thread.id, title: `#${thread.id} ${thread.title}`, msg: thread.agents }),
+				programStatus({
+					state: thread.status,
+					id: thread.id,
+					title: `#${thread.id} ${thread.title}`,
+					msg: thread.agents,
+				}),
 			)
 		for (const id of reported.keys())
 			if (!next.has(id)) process.stdout.write(programStatus({ state: 'clear', id }))

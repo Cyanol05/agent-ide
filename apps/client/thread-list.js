@@ -25,7 +25,11 @@ export function ThreadItem(props) {
 			style=${() => `--depth: ${props.depth ?? 0}`}
 			class=${() => ({ current: props.thread.id === current() })}
 		>
-			<a class="row" href=${() => hrefOf(props.thread.id)} onClick=${(event) => followThread(event, props.thread.id)}>
+			<a
+				class="row"
+				href=${() => hrefOf(props.thread.id)}
+				onClick=${(event) => followThread(event, props.thread.id)}
+			>
 				<${Dot} state=${() => props.thread.status} />
 				<span>${() => props.thread.title || 'untitled'}</span>
 			</a>
@@ -66,18 +70,25 @@ export function ThreadList() {
 					<${Show}
 						when=${() => creating()}
 						fallback=${html`<${NewRow} label="New bot" onPick=${(_e) => setCreating(true)} />`}
-						><${NewBot} onDone=${(_e) => setCreating(false)} /><//
-					>
+						><${NewBot} onDone=${(_e) => setCreating(false)}
+					/><//>
 					<${For} each=${() => bots}>${(bot) => html`<${BotItem} bot=${() => bot} />`}<//>
 				</ul>
 				<h2>Threads</h2>
 			<//>
 			<ul>
-				<${NewRow} label="New thread" current=${() => !current()} onPick=${(_e) => openThread(null)} />
+				<${NewRow}
+					label="New thread"
+					current=${() => !current()}
+					onPick=${(_e) => openThread(null)}
+				/>
 				<${For}
 					each=${() =>
 						threads.filter(
-							(thread) => !thread.hidden && !homeBot(thread.id) && !threads.some((other) => other.id === thread.parent),
+							(thread) =>
+								!thread.hidden &&
+								!homeBot(thread.id) &&
+								!threads.some((other) => other.id === thread.parent),
 						)}
 				>
 					${(thread) => html`<${ThreadItem} thread=${() => thread} />`}

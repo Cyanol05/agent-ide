@@ -6,20 +6,28 @@ import { createRunners } from '../remote.js'
 import { check, done, repo } from './lib.js'
 
 const source = await readFile(`${repo}/server.js`, 'utf8')
-const upgrade = source.slice(source.indexOf('async function upgrade('), source.indexOf('/** The server connects this machine too'))
+const upgrade = source.slice(
+	source.indexOf('async function upgrade('),
+	source.indexOf('/** The server connects this machine too'),
+)
 const deferred = () => {
 	let resolve
-	const promise = new Promise((r) => { resolve = r })
+	const promise = new Promise((r) => {
+		resolve = r
+	})
 	return { promise, resolve }
 }
 
 for (const stage of ['key', 'known', 'commit']) {
 	for (const ending of ['close', 'error', 'replace', 'kick']) {
 		if (stage === 'key' && ['replace', 'kick'].includes(ending)) continue
-		const entered = deferred(), resume = deferred()
-		const records = {}, ready = []
+		const entered = deferred(),
+			resume = deferred()
+		const records = {},
+			ready = []
 		const runners = createRunners({ onChange() {} })
-		let socket, first = true
+		let socket,
+			first = true
 		const pause = async (at) => {
 			if (!first || stage !== at) return
 			first = false
@@ -27,16 +35,43 @@ for (const stage of ['key', 'known', 'commit']) {
 			await resume.promise
 		}
 		const context = vm.createContext({
-			URL, console: { log() {} }, say() {}, tilde: (dir) => dir, clients: new Set(), watch() {},
-			wss: { handleUpgrade(req, raw, head, accept) { accept(socket) } },
+			URL,
+			console: { log() {} },
+			say() {},
+			tilde: (dir) => dir,
+			clients: new Set(),
+			watch() {},
+			wss: {
+				handleUpgrade(req, raw, head, accept) {
+					accept(socket)
+				},
+			},
 			origin: () => 'http://localhost',
-			keys: async () => { await pause('key'); return { laptop: 'hashed' } },
-			context: {}, sha256: () => 'hashed',
-			known: async () => { await pause('known'); return {} },
-			commit: async (fn) => fn({ doc: async () => { await pause('commit'); return records } }),
-			Runners: {}, models: { getProvider: () => true }, runners,
-			speaker: (s) => s, runnerProvider() {}, bundle: { version: 'v' },
-			outdated: new Set(), notify() {},
+			keys: async () => {
+				await pause('key')
+				return { laptop: 'hashed' }
+			},
+			context: {},
+			sha256: () => 'hashed',
+			known: async () => {
+				await pause('known')
+				return {}
+			},
+			commit: async (fn) =>
+				fn({
+					doc: async () => {
+						await pause('commit')
+						return records
+					},
+				}),
+			Runners: {},
+			models: { getProvider: () => true },
+			runners,
+			speaker: (s) => s,
+			runnerProvider() {},
+			bundle: { version: 'v' },
+			outdated: new Set(),
+			notify() {},
 		})
 		vm.runInContext(upgrade, context)
 		const connect = (dir) => {
@@ -44,10 +79,14 @@ for (const stage of ['key', 'known', 'commit']) {
 			const connected = socket
 			socket.send = () => ready.push(dir)
 			socket.close = socket.terminate = () => connected.emit('close')
-			return context.upgrade({
-				url: `/ws?runner=laptop&dir=${dir}`,
-				headers: { authorization: 'Bearer key' },
-			}, {}, null)
+			return context.upgrade(
+				{
+					url: `/ws?runner=laptop&dir=${dir}`,
+					headers: { authorization: 'Bearer key' },
+				},
+				{},
+				null,
+			)
 		}
 		const pending = connect('/old')
 		const old = socket
@@ -60,11 +99,15 @@ for (const stage of ['key', 'known', 'commit']) {
 		await pending
 		if (ending === 'replace') {
 			old.emit('close')
-			check(runners.isOnline('laptop') && records.laptop.dir === '/new' && ready.join() === '/new',
-				`replacement during ${stage} keeps only the new connection`)
+			check(
+				runners.isOnline('laptop') && records.laptop.dir === '/new' && ready.join() === '/new',
+				`replacement during ${stage} keeps only the new connection`,
+			)
 		} else {
-			check(!flashed && !runners.isOnline('laptop') && !ready.length,
-				`${ending} during ${stage} leaves the runner offline, never online for a moment`)
+			check(
+				!flashed && !runners.isOnline('laptop') && !ready.length,
+				`${ending} during ${stage} leaves the runner offline, never online for a moment`,
+			)
 		}
 	}
 }

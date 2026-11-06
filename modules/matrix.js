@@ -124,21 +124,18 @@ export function server(core) {
 					if (rt.signal.aborted) return
 					console.error(`matrix send: ${error.message}`)
 					if (refused(error))
-						return rt.commit(
-							async (tx) => {
-								await core.post(tx, rt.conversationId, {
-									author: 'matrix',
-									body: `Could not deliver to Matrix room ${room}: ${error.message}`,
-									re: [entry],
-									error: true,
-								})
-								return {
-									status: 'terminal',
-									outcome: { status: 'failed', error: { message: error.message } },
-								}
-							},
-							ctx,
-						)
+						return rt.commit(async (tx) => {
+							await core.post(tx, rt.conversationId, {
+								author: 'matrix',
+								body: `Could not deliver to Matrix room ${room}: ${error.message}`,
+								re: [entry],
+								error: true,
+							})
+							return {
+								status: 'terminal',
+								outcome: { status: 'failed', error: { message: error.message } },
+							}
+						}, ctx)
 					return rt.sleepUntil(
 						Date.now() + (error.retryAfter ?? wait),
 						{ phase: 'send', wait: Math.min(wait * 2, 60000) },
@@ -154,7 +151,8 @@ export function server(core) {
 	async function posted(tx, threadId, { id, data }) {
 		if (!data.answer && (!data.error || data.author === 'matrix')) return
 		const bridge = await tx.doc(MatrixBridge)
-		const { room, root } = Object.values(bridge.threads).find((bridged) => bridged.thread === threadId) ?? {}
+		const { room, root } =
+			Object.values(bridge.threads).find((bridged) => bridged.thread === threadId) ?? {}
 		if (!room) return
 		bridge.salt ||= crypto.randomUUID()
 		bridge.last[room] = await tx.createTask(

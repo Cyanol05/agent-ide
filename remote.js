@@ -202,7 +202,9 @@ export function createRunners({ onChange }) {
 		isOnline: (name) => Boolean(current(name)),
 		tell: (name, message) => current(name)?.send(message),
 		working: (name) =>
-			[...calls.values()].filter((call) => call.runner === name).map(({ op, what }) => ({ op, what })),
+			[...calls.values()]
+				.filter((call) => call.runner === name)
+				.map(({ op, what }) => ({ op, what })),
 		/** A connection that has yet to show its key; `end` closes its socket, with a code or at once */
 		connection: (name, end = () => {}) => ({ name, phase: 'authenticating', end }),
 		/** Its key held: it takes the name, and the name's older connection ends */
@@ -271,7 +273,8 @@ function keep(kept, key, messages) {
 }
 /** Pi hands over the same message objects turn after turn, so each is encoded once */
 const encoded = new WeakMap()
-const encodeOnce = (message) => encoded.get(message) ?? encoded.set(message, encode(message)).get(message)
+const encodeOnce = (message) =>
+	encoded.get(message) ?? encoded.set(message, encode(message)).get(message)
 
 /** The models pi on the runner resolved, by `provider/id` */
 export function runnerProvider(runners, name, resolved = {}) {
@@ -302,7 +305,9 @@ export function runnerProvider(runners, name, resolved = {}) {
 			const sent = context.messages.map(encodeOnce)
 			const last = held.get(key)
 			const since =
-				last?.length <= sent.length && last.every((message, index) => message === sent[index]) ? last.length : 0
+				last?.length <= sent.length && last.every((message, index) => message === sent[index])
+					? last.length
+					: 0
 			if (key) keep(held, key, sent)
 			const messages = context.messages.slice(since)
 			return { op: 'stream', model: model.id, context: { messages, since }, options: rest }
@@ -395,7 +400,8 @@ export function remoteEnv(runners, name, cwd) {
 }
 
 /** Whether a path is one of `folders` or inside one: the folders a runner offers */
-export const within = (folders, target) => folders.some((folder) => target === folder || target.startsWith(folder + path.sep))
+export const within = (folders, target) =>
+	folders.some((folder) => target === folder || target.startsWith(folder + path.sep))
 
 /** `resolve(pattern)` is pi's `--model pattern`: { model, thinkingLevel? */
 export function serveRunner({
@@ -464,10 +470,13 @@ export function serveRunner({
 			])
 			model = echo.getModel()
 		}
-		const said = messages.findLast((message) => message.role === 'assistant' && message.stopReason !== 'error')
+		const said = messages.findLast(
+			(message) => message.role === 'assistant' && message.stopReason !== 'error',
+		)
 		// Without a session id pi-claude-code starts a fresh Claude Code process instead of the warm one.
 		// Delete this, with `quiet`, once earendil-works/pi-claude-code#30 is fixed.
-		if (model.provider === 'claude-code' && said && quiet(said)) options = { ...options, sessionId: undefined }
+		if (model.provider === 'claude-code' && said && quiet(said))
+			options = { ...options, sessionId: undefined }
 		let sentAt = 0
 		for await (const event of models.streamSimple(model, context, { ...options, signal })) {
 			const due =
@@ -587,4 +596,6 @@ export const messageText = (message) => (saidNothing(message) ? '' : text(messag
  */
 const quiet = (message) =>
 	saidNothing(message) ||
-	!message.content.some((part) => (part.type === 'text' && part.text.trim()) || part.type === 'toolCall')
+	!message.content.some(
+		(part) => (part.type === 'text' && part.text.trim()) || part.type === 'toolCall',
+	)

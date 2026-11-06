@@ -58,7 +58,10 @@ export function Wires(props) {
 				start[axis] = end[axis]
 			}
 			const control = (point, side) =>
-				directions[side].map((direction, index) => point[index] + direction * Math.max(12, Math.abs(end[index] - start[index]) / 2))
+				directions[side].map(
+					(direction, index) =>
+						point[index] + direction * Math.max(12, Math.abs(end[index] - start[index]) / 2),
+				)
 			const coords = (point) => `${point[0] - origin.left},${point[1] - origin.top}`
 			next.push({
 				d:

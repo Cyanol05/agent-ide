@@ -4,7 +4,10 @@ import { answered, answers, api, base, check, done, runner, server, until } from
 await server()
 await runner('laptop')
 
-check((await api('GET', '/api/threads/999')).status === 404, 'a thread that does not exist is not found')
+check(
+	(await api('GET', '/api/threads/999')).status === 404,
+	'a thread that does not exist is not found',
+)
 
 const {
 	json: { id },
@@ -20,7 +23,10 @@ socket.onmessage = ({ data }) => {
 socket.onopen = () => socket.send(JSON.stringify({ watch: id }))
 await until(async () => heard.length)
 
-await api('POST', `/api/threads/${id}/entries`, { body: 'what machine is this?', to: 'echo/one@laptop' })
+await api('POST', `/api/threads/${id}/entries`, {
+	body: 'what machine is this?',
+	to: 'echo/one@laptop',
+})
 const first = await answered(id)
 check(
 	first?.people.join() === 'oskar' && answers(first)[0]?.data.author === 'one:off@laptop',
@@ -28,7 +34,13 @@ check(
 	JSON.stringify(first?.entries.map((entry) => entry.data)),
 )
 check(
-	Boolean(await until(async () => heard.some((message) => !message.agent && message.entries?.some((entry) => entry.data.answer)))),
+	Boolean(
+		await until(async () =>
+			heard.some(
+				(message) => !message.agent && message.entries?.some((entry) => entry.data.answer),
+			),
+		),
+	),
 	'a watching socket hears the answer land',
 )
 

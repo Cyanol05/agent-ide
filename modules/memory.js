@@ -89,7 +89,8 @@ The memory is yours. A person's latest word on a thing is the truth; an agent's 
 
 export function server(core) {
 	const name = process.env.MEMORY_MODEL || core.config?.memory?.model
-	if (name && !name.includes('@')) throw new Error('memory\'s model is model@runner, or leave it out')
+	if (name && !name.includes('@'))
+		throw new Error("memory's model is model@runner, or leave it out")
 	const override = name && agentTo(name)
 
 	/** Who writes a thread's lines: MEMORY_MODEL, else its agent as it runs now, else a bot there, else nobody yet */
@@ -99,7 +100,9 @@ export function server(core) {
 			return core.address(override)
 		}
 		const { agents } = await core.thread(threadId)
-		const [slot, recipient] = agents[AGENT] ? [AGENT, agents[AGENT]] : (Object.entries(agents)[0] ?? [])
+		const [slot, recipient] = agents[AGENT]
+			? [AGENT, agents[AGENT]]
+			: (Object.entries(agents)[0] ?? [])
 		const to = recipient && (await core.agentOf(recipient.conversation, slot))
 		if (to) await core.runners.online(to.runner, signal)
 		return to
@@ -175,7 +178,8 @@ export function server(core) {
 						)
 					).filter((message) => message.kind === 'agent-ide.message' && message.id < input.entry)
 					for (const [i, message] of earlier.entries())
-						if (!have.has(key(0, i))) await tx.createTask(Line, { entry: message.id }, background(threadId))
+						if (!have.has(key(0, i)))
+							await tx.createTask(Line, { entry: message.id }, background(threadId))
 					for (const { l, i } of have.values())
 						if (!(i & 1) && have.has(key(l, i + 1)) && !have.has(key(l + 1, i >> 1)))
 							await tx.createTask(Line, { l: l + 1, i: i >> 1 }, background(threadId))
@@ -255,7 +259,8 @@ export function server(core) {
 		const most = await budget(agent)
 		let first = held.length - 1,
 			size = bytes(said(held[first]))
-		while (first > 0 && size + bytes(said(held[first - 1])) + 2 <= most) size += bytes(said(held[--first])) + 2
+		while (first > 0 && size + bytes(said(held[first - 1])) + 2 <= most)
+			size += bytes(said(held[--first])) + 2
 		const whole = held.slice(first).map(said).join('\n\n')
 		if (!first) return whole
 		const at = (entry) => all.findIndex((message) => message.id === entry.id)
@@ -276,7 +281,9 @@ export function server(core) {
 		if (n === 1) return said(all[id])
 		const have = await core.commit((tx) => lines(tx, thread))
 		const half = (index) => have.get(key(l - 1, index)) ?? unwritten(l - 1, index)
-		return [half(2 * (id / n)), half(2 * (id / n) + 1)].filter((line) => (line.i * n) / 2 < all.length)
+		return [half(2 * (id / n)), half(2 * (id / n) + 1)].filter(
+			(line) => (line.i * n) / 2 < all.length,
+		)
 	}
 
 	const zoom = defineTool({
@@ -320,7 +327,11 @@ export function server(core) {
 			!override &&
 			entry.data.to?.length > 0 &&
 			!Object.keys((await core.threadIn(tx, threadId)).agents).length
-		await tx.createTask(Line, { entry: entry.id, ...(first ? { backfill: true } : {}) }, background(threadId))
+		await tx.createTask(
+			Line,
+			{ entry: entry.id, ...(first ? { backfill: true } : {}) },
+			background(threadId),
+		)
 	}
 
 	return {
