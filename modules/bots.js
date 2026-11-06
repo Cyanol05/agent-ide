@@ -19,15 +19,8 @@ const HANDS_OFF = ['-write', '-edit', '-bash']
 
 export function server(core) {
 	const bots = () => core.commit(async (tx) => JSON.parse(JSON.stringify(await tx.doc(Bots))))
-	/** Each bot with its status: the busiest of its agents, in any thread */
-	const list = async () => {
-		const all = await core.work()
-		return Object.entries(await bots()).map(([name, bot]) => ({
-			name,
-			...bot,
-			status: core.busiest(all.filter((job) => job.row === name).map((job) => job.status)),
-		}))
-	}
+	/** Each bot; whether it's busy is its home thread's family's status, on the thread list */
+	const list = async () => Object.entries(await bots()).map(([name, bot]) => ({ name, ...bot }))
 
 	async function change({ name, to, instructions }) {
 		if (typeof name !== 'string' || !/^[\w.-]{1,40}$/.test(name))

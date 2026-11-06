@@ -100,7 +100,7 @@ Four ideas carry it:
 
 - A thread has one agent, plus any bots. A message's `to` says whom it asks: an agent like `sonnet:high@laptop` or `{runner, model, thinkingLevel?, dir?}` for the thread's agent, a bot's name, or `null` for nobody. Left out, it asks whom the thread asked last. Naming an agent starts the thread's, or switches the one there in place, keeping its conversation; it's told when it moves runner or folder. `ada=sonnet@laptop` switches the bot ada the same way. A message's `author` is a person's or bot's name, or the agent written out the same way. From another thread, `12` reaches thread 12's agent and `12/ada` a bot there.
 - A message is a Pi entry, `{id, kind: "agent-ide.message", conversationId, byTaskId?, data}`, with `data` as `{author, body, to?, images?, from?, re?, answer?, error?, shell?}`. A body starting with `$ ` runs a command on the runner it's sent to, and `shell` holds what it printed.
-- Threads, agents, runners and bots each carry one `status`: `working`, `blocked` while its runner is offline, or `idle`. An idle thread says `done` or `error` until you read its answer.
+- Threads, agents and runners each carry one `status`: `working`, `blocked` while its runner is offline, or `idle`. An idle thread says `done` or `error` until you read its answer.
 - Send the same `requestId` again after a dropped response and you get the first result back.
 
 ```

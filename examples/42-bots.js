@@ -10,19 +10,15 @@ import {
 	scriptedRunner,
 	server,
 	text,
-	until,
 } from './lib.js'
 
 await server({ MODULES: '+bots' })
 /** Pi carries the system prompt in system messages: what each runner was last asked with */
 const prompt = {}
-let release
-const held = new Promise((resolve) => (release = resolve))
 const route = (runner) => (request) => {
 	prompt[runner] = JSON.stringify(request.messages.filter((m) => m.role === 'system'))
 	const last = request.messages.findLast((m) => m.role !== 'system')
 	const t = text(last)
-	if (t.includes('hold the answer')) return held.then(() => say('finished'))
 	if (last.role === 'toolResult') return say(`tool: ${t}`)
 	if (t.includes('be a pirate')) return call('bot', { instructions: 'Answer like a pirate.' })
 	if (t.includes('make wren')) return call('bot', { name: 'wren', instructions: 'Review diffs.' })
@@ -50,18 +46,6 @@ check(
 	'one call makes ada and her home, hands off; asked there, she joins as her model and knows she is new',
 	JSON.stringify([made.json, homeRow, prompt.laptop]),
 )
-
-const busyThread = await thread('busy bot')
-await post(busyThread, 'hold the answer', 'ada')
-await until(async () => (await api('GET', `/api/threads/${busyThread}`)).json.status === 'working')
-check(
-	(await bots()).find((bot) => bot.name === 'ada')?.status === 'working',
-	'a busy bot reports working across its threads',
-	JSON.stringify(await bots()),
-)
-release()
-await answered(busyThread)
-await until(async () => (await bots()).find((bot) => bot.name === 'ada')?.status === 'idle')
 
 await post(home, 'be a pirate', 'ada')
 await answered(home, 2)
