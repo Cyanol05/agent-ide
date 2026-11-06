@@ -2631,23 +2631,37 @@ body.resizing {
 	}
 }
 
-/* The memory popover keeps its frame and nothing else: no rules, no boxed button. */
+/* The memory popover keeps its frame and nothing else: no rules, and the title lines up with the content. */
 .recall {
-	.panes .pane > header {
+	.panes .pane:not(.detail) > header {
+		grid-template-columns: 1fr auto;
+		border-bottom: 0;
+
+		> span[aria-hidden] {
+			display: none;
+		}
+	}
+
+	.panes .detail > header {
 		border-bottom: 0;
 	}
 
-	.pane-body > button {
-		display: block;
-		border: 0;
-		background: none;
-		padding: 0.3rem 0;
-		text-align: left;
+	.compact button {
+		white-space: nowrap;
+	}
 
-		small {
-			display: block;
-			color: var(--mute);
-		}
+	.compact {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.2rem 0 0.4rem;
+		font-size: 12px;
+	}
+
+	.modules > li {
+		cursor: pointer;
+		align-items: center;
+		padding-inline: 0;
 	}
 
 	.pane-body > p {
