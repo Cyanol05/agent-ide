@@ -157,11 +157,11 @@ export function Settings() {
 													title="Each thread's own agent writes its lines"
 													onClick=${() => setDraft((store) => void (store.model = ''))}
 												>
-													×
+													Use each thread's agent
 												</button>
 											<//>
 										</div>
-										<div class="option">
+										<div class="option compact-option">
 											<span>Compacts past</span>
 											<input
 												type="number"
