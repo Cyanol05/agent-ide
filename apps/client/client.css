@@ -1473,6 +1473,7 @@ body.chat {
 	}
 
 	.thread {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		height: 100%;
@@ -1526,6 +1527,15 @@ body.chat .thread > header span:first-child {
 
 /* On a big screen the head is no bar, just the pill and, beside it, its own quiet close. */
 body.chat .thread > header {
+	position: absolute;
+	inset: 0 0 auto;
+	z-index: 1;
+	pointer-events: none;
+
+	button {
+		pointer-events: auto;
+	}
+
 	justify-content: center;
 	gap: 0.4rem;
 	margin: 0.5rem 0.9rem;
@@ -1570,9 +1580,21 @@ body.chat {
 	.thread {
 		--chat-width: 50rem;
 
+		> p.from {
+			position: absolute;
+			inset: 3.125rem 0 auto;
+			z-index: 1;
+
+			&:empty {
+				display: none;
+			}
+		}
+
 		> ul {
 			flex: 1;
+			min-height: 0;
 			max-height: none;
+			padding-block: max(3.4rem, var(--thread-top, 0px)) calc(var(--compose-height, 7rem) + 1rem);
 			/* Keep the scrollbar at the edge, with messages aligned to the composer. */
 			padding-inline: max(0.6rem, calc((100% - var(--chat-width)) / 2));
 		}
@@ -1582,10 +1604,12 @@ body.chat {
 			max-width: var(--chat-width);
 			margin-inline: auto;
 
-			/* The composer sits at the bottom, even in a new thread with no messages above it. */
+			/* Its own height reserves room in the list, even as the draft grows. */
 			&.compose {
-				margin-top: auto;
-				flex: none;
+				position: absolute;
+				inset: auto 0 0;
+				z-index: 1;
+				margin-top: 0;
 			}
 		}
 	}
@@ -1886,8 +1910,12 @@ button[data-danger]:focus-visible:not(:disabled) {
 				display: none;
 			}
 
+			> p.from {
+				top: calc(3.4rem + env(safe-area-inset-top));
+			}
+
 			> ul {
-				padding-top: calc(3.4rem + env(safe-area-inset-top));
+				padding-top: calc(3.4rem + env(safe-area-inset-top) + var(--thread-top, 0px));
 				overscroll-behavior: contain;
 			}
 
@@ -2508,15 +2536,6 @@ ol.promises li {
 	margin: 0.35rem 0;
 }
 
-/* Keep a fork's origin below the phone's overlaid app bar. */
-@media (max-width: 700px) {
-	body.chat .thread > p.from:not(:empty) {
-		margin-top: 3.4rem;
-	}
-	body.chat .thread:has(> p.from:not(:empty)) > ul {
-		padding-top: 0.4rem;
-	}
-}
 /* The same details sheet is reachable beside the story, not just in chat. */
 body:not(.chat) .thread-details {
 	display: block;

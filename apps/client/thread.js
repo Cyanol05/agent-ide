@@ -244,7 +244,29 @@ export function Thread(props) {
 			if (stuck) list.scrollTop = list.scrollHeight
 			followed = list.scrollHeight
 		}
-		const sizes = new ResizeObserver(bottom)
+		const sizes = new ResizeObserver(() => {
+			const column = list.parentElement
+			const height = (element) => {
+				if (!element) return 0
+				sizes.observe(element)
+				if (!element.getClientRects().length) return 0
+				const style = getComputedStyle(element)
+				return (
+					element.getBoundingClientRect().height +
+					parseFloat(style.marginTop) +
+					parseFloat(style.marginBottom)
+				)
+			}
+			column.style.setProperty(
+				'--thread-top',
+				`${height(column.querySelector(':scope > header')) + height(column.querySelector(':scope > p.from'))}px`,
+			)
+			column.style.setProperty(
+				'--compose-height',
+				`${height(column.querySelector(':scope > form.compose'))}px`,
+			)
+			bottom()
+		})
 		sizes.observe(list)
 		new MutationObserver((changes) => {
 			for (const change of changes)
