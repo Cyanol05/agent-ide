@@ -14,6 +14,8 @@
 - New features are modules, off by default.
 - A thread's contract (its entries, their data, what the API returns) and how the client shows it are two decisions. A UI wish is solved in the client from existing entries; change the contract only on purpose, in its own commit, with the README and an example.
 - Don't over-fix. A rare failure that would need a new store, task layer or journal stays a known gap, written on its issue.
+- Hold the bar of Apple restraint and Bret Victor's directness: show the thing itself, make the invisible visible, keep people in control.
+- A new panel, popover, row or button reuses its siblings' markup and styles (header, rows, buttons); nothing custom.
 - Keep client.html and the README saying what the code does. Docs and UI copy read like a person talking.
 
 ## Words and names
