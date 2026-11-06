@@ -310,7 +310,7 @@ function Message(props) {
 								fallback=${() => html`→ <span style=${() => colorOf(data().author)}>${() => authorLabel(data().author)}</span> asked from
 									<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>`}
 							>
-								→ <span style=${() => colorOf(data().author)}><${ThreadLink} id=${() => data().from}>${() => authorLabel(data().author)}<//></span> asked
+								→ asked from <span style=${() => colorOf(data().author)}><${ThreadLink} id=${() => data().from}>${() => authorLabel(data().author)}<//></span>
 							<//>
 						</small>
 					<//>
