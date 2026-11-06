@@ -453,7 +453,7 @@ export function serveRunner({
 	async function stream({ id, model: ref, context, options }, signal) {
 		const messages = [...(context.since ? kept.get(options.sessionId) : []), ...context.messages]
 		if (options.sessionId) keep(kept, options.sessionId, messages)
-		context = { messages }
+		context = { messages: messages.filter((message) => !saidNothing(message)) }
 		let { model } = await resolve(ref)
 		if (model.provider === 'echo') {
 			echo.appendResponses([
@@ -556,10 +556,23 @@ export function serveRunner({
 	}
 }
 
-export const messageText = (message) =>
+const text = (message) =>
 	typeof message?.content === 'string'
 		? message.content
 		: (message?.content ?? [])
 				.filter((part) => part.type === 'text')
 				.map((part) => part.text)
 				.join('')
+
+/**
+ * Claude Code writes `(no content)` for a reply with no text, then drops that reply when the history comes back,
+ * so pi-claude-code finds one user message fewer than pi has and refuses every later turn
+ * (earendil-works/pi-claude-code#30). It means the agent said nothing.
+ */
+const saidNothing = (message) =>
+	message?.role === 'assistant' &&
+	Array.isArray(message.content) &&
+	message.content.every((part) => part.type === 'text') &&
+	text(message) === '(no content)'
+
+export const messageText = (message) => (saidNothing(message) ? '' : text(message))

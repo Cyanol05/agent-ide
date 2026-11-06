@@ -351,7 +351,6 @@ const browserPackages = new Map([
 	['@solidjs/signals', new URL('./dist/', import.meta.resolve('@solidjs/signals/package.json'))],
 	['mermaid', new URL('./', import.meta.resolve('mermaid'))],
 	['marked', new URL('./', import.meta.resolve('marked'))],
-	['dompurify', new URL('./', import.meta.resolve('dompurify'))],
 ])
 async function servePackage(res, pathname) {
 	for (const [name, root] of browserPackages) {

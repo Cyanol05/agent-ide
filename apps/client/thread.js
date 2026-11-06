@@ -52,11 +52,12 @@ export function Thread(props) {
 			const close = watch(
 				(message) => {
 					if (message.thread !== id) return
-					// Your own send always shows; others' entries follow only a view already at the bottom.
-					if (!first && message.entries?.some((entry) => entry.data.author === me)) stuck = true
 					if (message.entries) {
 						const snapshot = first
 						first = false
+						// Your own send always shows, live or in a reconnect's snapshot; others' entries follow only a view already at the bottom.
+						const shown = new Set((entries[id] ?? []).map((entry) => entry.id))
+						if (message.entries.some((entry) => entry.data.author === me && !shown.has(entry.id))) stuck = true
 						setEntries((all) => {
 							all[id] ??= []
 							if (snapshot) reconcile(message.entries, 'id')(all[id])

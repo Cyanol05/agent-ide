@@ -1,13 +1,23 @@
-/** A message's markdown as safe HTML: marked writes it, DOMPurify strips anything that could run. */
+/** A message's markdown as HTML. Raw HTML in it shows as written, and links go only to the web or mail. */
 import { marked } from 'marked'
-import DOMPurify from 'dompurify'
 
-marked.use({ gfm: true, breaks: true })
+const escape = (text) =>
+	text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
+const SAFE = /^(https?:|mailto:|#|\/(?!\/))/i
 
-DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-	if (node.tagName !== 'A') return
-	node.setAttribute('target', '_blank')
-	node.setAttribute('rel', 'noopener noreferrer')
+marked.use({
+	gfm: true,
+	breaks: true,
+	renderer: {
+		html: ({ text, block }) => (block ? `<p>${escape(text.trim())}</p>\n` : escape(text)),
+		link({ href, title, tokens }) {
+			const label = this.parser.parseInline(tokens)
+			if (!SAFE.test(href.trim())) return label
+			return `<a href="${escape(href)}"${title ? ` title="${escape(title)}"` : ''} target="_blank" rel="noopener noreferrer">${label}</a>`
+		},
+		image: ({ href, text }) =>
+			/^https?:/i.test(href.trim()) ? `<img src="${escape(href)}" alt="${escape(text)}">` : escape(text),
+	},
 })
 
-export const markdown = (text) => DOMPurify.sanitize(marked.parse(text ?? '', { async: false }))
+export const markdown = (text) => marked.parse(text ?? '', { async: false })
