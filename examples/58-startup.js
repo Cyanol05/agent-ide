@@ -11,7 +11,7 @@ for (const [modules, host, expected] of [
 ]) {
 	let output = ''
 	const child = spawn(process.execPath, [path.join(repo, 'server.js')], {
-		cwd: repo,
+		cwd: path.dirname(db),
 		env: { ...process.env, DB_PATH: db, PORT: '0', HOST: host, RUNNER: '0', MODULES: modules },
 		stdio: ['ignore', 'pipe', 'pipe'],
 	})

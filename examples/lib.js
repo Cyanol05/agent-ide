@@ -38,7 +38,8 @@ process.on('exit', () => {
 })
 process.on('SIGINT', () => process.exit(130))
 
-function start(file, args = [], env = {}, cwd = repo) {
+/** Servers start in the example's own folder, so the checkout's agent-ide.json stays out too */
+function start(file, args = [], env = {}, cwd = tmp) {
 	const p = spawn(process.execPath, [path.join(repo, file), ...args], {
 		cwd,
 		env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DB_PATH: db, ...env },
