@@ -1,6 +1,6 @@
 /**
- * A bot is one name in many threads: a home thread, a recipe and instructions. Ask `ada` anywhere and an agent named ada
- * joins from its recipe; at home, hands off, it rewrites its own instructions with the `bot` tool. MODULES=+bots
+ * A bot is one name in many threads: a home thread, the agent it joins as, and instructions. Ask `ada` anywhere and an
+ * agent named ada joins as that; at home, hands off, it rewrites its own instructions with the `bot` tool. MODULES=+bots
  */
 import { obj, opt, str } from '@earendil-works/pi-schema'
 import { defineDoc, defineExtension, defineTool } from '@earendil-works/pi-durable'
@@ -37,15 +37,15 @@ export function server(core) {
 		if (instructions !== undefined && typeof instructions !== 'string')
 			throw new Error('instructions is text')
 		if (to !== undefined) {
-			const { name: _, ...recipe } = await core.address(typeof to === 'string' ? agentTo(to) : to)
-			to = recipe
+			const { name: _, ...agent } = await core.address(typeof to === 'string' ? agentTo(to) : to)
+			to = agent
 		}
 		return { name, to, instructions }
 	}
 	async function write(tx, author, { name, to, instructions }) {
 		const all = await tx.doc(Bots)
 		if (!all[name]) {
-			if (!to) throw new Error(`${name} is new: give it a recipe, to: model@runner`)
+			if (!to) throw new Error(`${name} is new: say what it runs as, to: model@runner`)
 			const home = await core.startThread(tx, author, name, null, HANDS_OFF)
 			all[name] = { home, to, instructions: instructions ?? '' }
 		} else {
@@ -75,7 +75,7 @@ export function server(core) {
 		if (name) throw new Error(`Thread ${threadId} is ${name}'s home; forget ${name} first`)
 	}
 
-	async function recipe(name) {
+	async function botAgent(name) {
 		const bot = (await bots())[name]
 		return bot && { ...bot.to, name }
 	}
@@ -157,7 +157,7 @@ export function server(core) {
 		serve,
 		remove,
 		hiding,
-		recipe,
+		botAgent,
 		extension: defineExtension({ name: 'agent-ide.bots', tools: [bot], sections: [section] }),
 	}
 }

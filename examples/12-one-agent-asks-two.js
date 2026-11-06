@@ -53,7 +53,7 @@ const children = (await api('GET', '/api/threads')).json.filter((t) => t.parent 
 check(
 	children.length === 2 &&
 		children.every((t) => t.agents.length === 1) &&
-		children.map((t) => t.agents[0].name).sort().join() === 'echo/echo@ann,echo/echo@bob',
+		children.map((t) => t.agents[0].name).sort().join() === 'echo@ann,echo@bob',
 	'the agent posts two child threads, one agent in each, side by side as its family',
 	JSON.stringify(children.map((t) => [t.id, t.title, t.agents.map((a) => a.name)])),
 )

@@ -4,7 +4,7 @@ import { createEffect, createRoot, createSignal, createStore, createUniqueId, Fo
 import { api, connected, runners, server } from './server.js'
 import { ModelPicker } from './model-picker.js'
 import { Panes } from './panes.js'
-import { agentLabel, agentTo, formatAgent } from './agent.js'
+import { agentTo, formatAgent, writtenTo } from './agent.js'
 import { report } from './notice.js'
 import { placePopover } from './popover.js'
 import { Dot } from './dot.js'
@@ -131,7 +131,7 @@ export function Settings() {
 											title=${() => model() || "Each thread's own agent writes its lines"}
 											onClick=${pickModel}
 										>
-											${() => (model() ? agentLabel(agentTo(model())) : "the thread's agent")}
+											${() => (model() ? writtenTo(agentTo(model())) : "the thread's agent")}
 										</button>
 										<${Show} when=${() => model() && editable() && !overridden('MEMORY_MODEL')}>
 											<button

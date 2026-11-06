@@ -48,7 +48,7 @@ check(
 	brief(fv),
 )
 check(
-	fv.entries[0]?.data.author === 'oskar' && answers(fv)[0]?.data.author === 'echo/echo@laptop',
+	fv.entries[0]?.data.author === 'oskar' && answers(fv)[0]?.data.author === 'echo:off@laptop',
 	'inherited messages keep their authors',
 	brief(fv),
 )
@@ -56,7 +56,7 @@ const [sourceAgent] = source.agents
 const [forkAgent] = fv.agents
 const forkOwn = await conversationOf(fv, 'echo/echo@laptop')
 check(
-	forkAgent?.name === 'echo/echo@laptop' &&
+	forkAgent?.name === 'echo:off@laptop' &&
 		forkAgent.to?.model === 'echo/echo' &&
 		forkAgent.conversation !== sourceAgent.conversation,
 	'the fork has its own conversation for the agent',
@@ -189,7 +189,7 @@ const earlyInputs = (await conversationOf(settled ?? (await view(early.id)), 'ec
 	.filter((e) => e.kind === 'agent-ide.delivery')
 	.map((e) => text(e.model[0]))
 check(
-	routed.json.to?.[0] === 'echo/echo@bot' &&
+	routed.json.to?.[0] === 'echo@bot' &&
 		JSON.stringify(earlyInputs) ===
 			JSON.stringify(['oskar: try this\n\noskar: @echo/echo@bot try another way']),
 	'the director reaches it, and its first input carries the inherited question exactly once',

@@ -1,4 +1,4 @@
-/** MODULES=+director: an @mention asks a bot here, from a person or an agent's post; a recipe is never a mention */
+/** MODULES=+director: an @mention asks a bot here, from a person or an agent's post; an agent written out is never a mention */
 import { answered, api, call, check, done, say, scriptedRunner, server, text, until, view } from './lib.js'
 
 await server({ MODULES: '+bots,+director' })
@@ -19,11 +19,11 @@ await answered(garden)
 await post(garden, 'what grows?', 'echo/echo@laptop')
 await answered(garden, 2)
 
-const recipe = await post(garden, '@echo/echo@laptop and in shade?', 'Kira')
+const written = await post(garden, '@echo/echo@laptop and in shade?', 'Kira')
 check(
-	JSON.stringify(recipe.json.to) === '["Kira"]',
-	"a recipe after @ is no mention: the message asks its own `to`",
-	JSON.stringify(recipe.json),
+	JSON.stringify(written.json.to) === '["Kira"]',
+	"an agent written out after @ is no mention: the message asks its own `to`",
+	JSON.stringify(written.json),
 )
 await answered(garden, 3)
 

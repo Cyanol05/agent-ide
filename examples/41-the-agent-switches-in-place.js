@@ -79,7 +79,7 @@ check(
 check(
 	answers(v)
 		.map((e) => e.data.author)
-		.join() === 'echo/one@laptop,echo/two@laptop' && v.entries[2].data.to.join() === 'echo/two@laptop',
+		.join() === 'one@laptop,two:high@laptop' && v.entries[2].data.to.join() === 'two:high@laptop',
 	'each answer names the model that wrote it',
 	brief(v),
 )
@@ -95,7 +95,7 @@ check(
 await post('and now?')
 v = await answered(id, 3)
 check(
-	answers(v).at(-1).data.author === 'echo/two@laptop' &&
+	answers(v).at(-1).data.author === 'two:high@laptop' &&
 		!(await deliveries(v)).at(-1).startsWith('[') &&
 		requests.at(-1).thinking === 'high',
 	'with no pick, the thread asks its agent as it is, and nothing new is said about it',
@@ -106,7 +106,7 @@ await post('same model, no level', { runner: 'laptop', model: 'echo/two' })
 v = await answered(id, 4)
 check(
 	requests.at(-1).thinking === 'high' && v.agents[0].to.thinkingLevel === 'high',
-	'a recipe that names no level keeps the level it has',
+	'an agent named without a level keeps the level it has',
 	JSON.stringify(v.agents[0].to),
 )
 
@@ -130,7 +130,7 @@ const fv = await answered(f, answers(v).length + 1)
 const forked = await conversationOf(fv, 'echo/two@laptop')
 check(
 	fv.agents.length === 1 &&
-		answers(fv).at(-1).data.author === 'echo/two@laptop' &&
+		answers(fv).at(-1).data.author === 'two:high@laptop' &&
 		forked.conversation?.parent?.conversationId === first.conversation,
 	'a fork carries the agent as it runs now, forked from its conversation',
 	brief(fv),

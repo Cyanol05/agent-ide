@@ -42,7 +42,7 @@ check(!read.includes('said: found a problem'), 'query narrows it to what matches
 
 const wrong = await ask(laptopThread, 'and someone else?', 'laptop', 2)
 check(
-	wrong.includes('No agents in thread') && wrong.includes('echo/echo@vps'),
+	wrong.includes('No agents in thread') && wrong.includes('echo@vps'),
 	"an agent that isn't there is an error naming who is",
 	wrong,
 )

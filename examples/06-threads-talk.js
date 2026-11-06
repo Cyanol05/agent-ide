@@ -79,8 +79,8 @@ const kid = await view(child.id)
 const asks = kid.entries.filter((e) => e.data.from === parent)
 check(
 	asks.length === 1 &&
-		asks[0].data.author === 'echo/echo@bot' &&
-		asks[0].data.to?.join() === 'echo/echo@bot',
+		asks[0].data.author === 'echo@bot' &&
+		asks[0].data.to?.join() === 'echo@bot',
 	'one post in the child, by the parent agent',
 	brief(kid),
 )
@@ -88,7 +88,7 @@ check(answers(kid).length === 1, 'the child answered once', brief(kid))
 const p = await view(parent)
 const replies = p.entries.filter((e) => e.data.from === child.id && e.data.re)
 check(
-	replies.length === 1 && replies[0].data.to?.join() === 'echo/echo@bot',
+	replies.length === 1 && replies[0].data.to?.join() === 'echo@bot',
 	"one reply in the parent, from the child's agent, asking the parent's",
 	brief(p),
 )
@@ -134,7 +134,7 @@ await api('POST', `/api/threads/${parent}/entries`, { body: `read child ${child.
 const read = await until(async () => (await results()).find((t) => t.includes('compute 2+2')))
 check(
 	Boolean(read) &&
-		/echo\/echo@bot from thread \d+ to echo\/echo@bot: compute 2\+2/.test(read) &&
+		/echo@bot from thread \d+ to echo@bot: compute 2\+2/.test(read) &&
 		read.includes('4, after'),
 	"threads shows a thread's messages",
 	read,

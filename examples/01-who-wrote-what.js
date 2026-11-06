@@ -33,12 +33,12 @@ const view = await answered(id)
 const input = view?.entries.find((e) => e.id === posted.json.entry)
 const answer = answers(view ?? { entries: [] })[0]
 check(
-	input?.data.author === 'oskar' && input.data.to?.join() === 'echo/echo@laptop',
+	input?.data.author === 'oskar' && input.data.to?.join() === 'echo:off@laptop',
 	'the message says who wrote it and whom it asks',
 	JSON.stringify(input),
 )
 check(
-	answer?.data.author === 'echo/echo@laptop',
+	answer?.data.author === 'echo:off@laptop',
 	'answer author is the agent',
 	JSON.stringify(answer),
 )
@@ -49,7 +49,7 @@ check(
 )
 const agent = view?.agents[0]
 check(
-	view?.agents.length === 1 && agent.name === 'echo/echo@laptop' && agent.to?.model === 'echo/echo',
+	view?.agents.length === 1 && agent.name === 'echo:off@laptop' && agent.to?.model === 'echo/echo',
 	'the thread records its agent',
 	JSON.stringify(view?.agents),
 )
@@ -77,7 +77,7 @@ await api('POST', `/api/threads/${id}/entries`, { body: 'me too' }, 'ana')
 const v2 = await answered(id, 2)
 const ana = v2?.entries.find((e) => e.data.author === 'ana')
 check(
-	ana?.data.to?.join() === 'echo/echo@laptop',
+	ana?.data.to?.join() === 'echo:off@laptop',
 	'no `to` asks whom the thread last asked',
 	JSON.stringify(ana),
 )
@@ -97,7 +97,7 @@ await api(
 const v3 = await answered(id, 3)
 const cy = v3?.entries.find((e) => e.data.author === 'cy')
 check(
-	cy?.data.to?.join() === 'echo/echo@laptop' && v3.agents[0].to.thinkingLevel === 'high',
+	cy?.data.to?.join() === 'echo:high@laptop' && v3.agents[0].to.thinkingLevel === 'high',
 	"pi resolves a pattern to a model, and the thread's agent thinks as hard as it now asks",
 	JSON.stringify([cy?.data.to, v3?.agents]),
 )
@@ -122,7 +122,7 @@ const {
 await api('POST', `/api/threads/${id2}/entries`, { body: 'hi', to: { runner: 'desk' } }, 'dee')
 const v4 = await answered(id2)
 check(
-	answers(v4 ?? { entries: [] })[0]?.data.author === 'echo/echo@desk',
+	answers(v4 ?? { entries: [] })[0]?.data.author === 'echo:off@desk',
 	"no model asks the runner's default",
 	JSON.stringify(v4?.entries.at(-1)),
 )

@@ -23,7 +23,7 @@ await until(async () => heard.length)
 await api('POST', `/api/threads/${id}/entries`, { body: 'what machine is this?', to: 'echo/one@laptop' })
 const first = await answered(id)
 check(
-	first?.people.join() === 'oskar' && answers(first)[0]?.data.author === 'echo/one@laptop',
+	first?.people.join() === 'oskar' && answers(first)[0]?.data.author === 'one:off@laptop',
 	'asking a model on a runner gets its answer, and the thread knows who is in it',
 	JSON.stringify(first?.entries.map((entry) => entry.data)),
 )
@@ -38,7 +38,7 @@ const second = await answered(id, 2)
 check(
 	second?.agents.length === 1 &&
 		second.agents[0].conversation === agent &&
-		answers(second)[1]?.data.author === 'echo/two@laptop',
+		answers(second)[1]?.data.author === 'two:off@laptop',
 	'another model is the same agent, switched in place',
 	JSON.stringify(second?.agents),
 )

@@ -93,7 +93,7 @@ const child = await until(async () =>
 const reached =
 	child &&
 	(await until(async () =>
-		answers(await view(child.id)).find((e) => e.data.author === 'echo/echo@laptop'),
+		answers(await view(child.id)).find((e) => e.data.author === 'echo:off@laptop'),
 	))
 check(
 	Boolean(reached),

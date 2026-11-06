@@ -1,4 +1,4 @@
-/** A retried request gets its receipt even when its runner can no longer resolve the recipe. */
+/** A retried request gets its receipt even when its runner can no longer resolve its model. */
 import { answered, api, check, done, say, scriptedRunner, server, until, view } from './lib.js'
 
 let srv = await server({ MODULES: 'talk' })

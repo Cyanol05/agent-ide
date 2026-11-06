@@ -59,7 +59,7 @@ check(
 	JSON.stringify(reports),
 )
 check(
-	record(id)?.title === `#${id} Status test` && record(id)?.msg === 'echo/echo@laptop',
+	record(id)?.title === `#${id} Status test` && record(id)?.msg === 'echo:off@laptop',
 	'title is the thread, msg its agents on this runner',
 	JSON.stringify(record(id)),
 )

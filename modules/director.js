@@ -1,4 +1,4 @@
-/** Asks the bots a message @mentions, by name in any case, instead of whom the thread asked last. A recipe is never a mention. MODULES=+director */
+/** Asks the bots a message @mentions, by name in any case, instead of whom the thread asked last. An agent written out, model@runner, is never a mention. MODULES=+director */
 
 /** The thread's bots a message @mentions; none, and the message asks as it would without the director */
 export const server = () => ({ route })

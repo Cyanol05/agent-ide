@@ -11,20 +11,29 @@ export async function collect(scan) {
 	return items
 }
 
-/** How a `to` is written: a bot's name, or the thread's agent as its recipe `model@runner` */
-export const writtenTo = (to) => to && (to.name ?? `${to.model}@${to.runner}`)
+/** How a `to` is written, shown and typed alike: a bot's name, or the thread's agent as `model:thinking@runner`, the
+ * model by its own name without its provider */
+export const writtenTo = (to) =>
+	to && (to.name ?? `${to.model.split('/').pop()}${to.thinkingLevel ? `:${to.thinkingLevel}` : ''}@${to.runner}`)
 /** The thread's own agent's key among its agents; bots are keyed by name */
 export const AGENT = 'agent'
 /** Bot names have no `@`, so any name with one is the thread's agent, whatever model it had */
 export const keyOf = (name) => (name.includes('@') ? AGENT : name)
-/** `model@runner`, or a bare runner for its default model; `ada=model@runner` asks the bot ada as that */
+export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+/** `model:thinking@runner`, each part but the runner optional; `ada=model@runner` asks the bot ada as that */
 export const agentTo = (name) => {
 	const eq = name.indexOf('=')
-	const recipe = name.slice(eq + 1)
-	const at = recipe.lastIndexOf('@')
+	const agent = name.slice(eq + 1)
+	const at = agent.lastIndexOf('@')
+	let model = at < 0 ? '' : agent.slice(0, at),
+		thinkingLevel
+	const colon = model.lastIndexOf(':')
+	if (colon >= 0 && THINKING_LEVELS.includes(model.slice(colon + 1)))
+		[model, thinkingLevel] = [model.slice(0, colon), model.slice(colon + 1)]
 	return {
-		runner: recipe.slice(at + 1),
-		model: at < 0 ? '' : recipe.slice(0, at),
+		runner: agent.slice(at + 1),
+		model,
+		...(thinkingLevel ? { thinkingLevel } : {}),
 		...(eq > 0 ? { name: name.slice(0, eq) } : {}),
 	}
 }

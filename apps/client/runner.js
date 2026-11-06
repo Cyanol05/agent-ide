@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { createSignal, For, Show } from 'solid-js'
 import { api, minted, runners, server, setMinted, threads } from './server.js'
-import { writtenTo, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
+import { rowOf, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
 import { choose, configure, recipients, toFor } from './composer.js'
 import { report } from './notice.js'
 import { Sure } from './sure.js'
@@ -16,8 +16,8 @@ export function Runner(props) {
 		...new Set([to().model, runner().model, ...(runner().offers ?? [])].filter(Boolean)),
 	]
 	const others = () =>
-		[...new Map(agents().map((agent) => [writtenTo(agent.to), agent.to])).values()].filter(
-			(other) => writtenTo(other) !== writtenTo(to()),
+		[...new Map(agents().map((agent) => [rowOf(agent.to), agent.to])).values()].filter(
+			(other) => rowOf(other) !== rowOf(to()),
 		)
 	const stop = (event) => event.stopPropagation()
 	const pick = () => choose(to())
@@ -92,14 +92,14 @@ const dotOf = (runner) =>
 	runner.status && runner.status !== 'idle' ? runner.status : runner.online ? 'on' : ''
 
 function AgentRow(props) {
-	const status = () => props.runner.agents?.[writtenTo(props.to)] ?? 'idle'
-	const agents = () => props.agents.filter((agent) => writtenTo(agent.to) === writtenTo(props.to))
+	const agents = () => props.agents.filter((agent) => rowOf(agent.to) === rowOf(props.to))
+	const status = () => props.runner.agents?.[rowOf(props.to)] ?? 'idle'
 	const call = () =>
 		agents()
 			.map((agent) => lastToolCall(doing[agent.thread]?.[agent.conversation]))
 			.find(Boolean)
 	return html`
-		<li data-agent=${() => writtenTo(props.to)}>
+		<li data-agent=${() => rowOf(props.to)}>
 			${() => props.children}
 			<${Show} when=${() => agents().length}
 				><${Dot} state=${status} title=${status}

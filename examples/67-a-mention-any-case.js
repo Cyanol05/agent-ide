@@ -21,7 +21,7 @@ const asked = await answered(thread, 3)
 await post(thread, '@kira: and in shade?')
 let v = await answered(thread, 4)
 check(
-	author(asked) === 'echo/echo@laptop' && author(v) === 'Kira',
+	author(asked) === 'echo@laptop' && author(v) === 'Kira',
 	'@kira, in the case the person typed, asks Kira, whoever the thread asked last',
 	JSON.stringify(v?.entries.at(-1)?.data),
 )

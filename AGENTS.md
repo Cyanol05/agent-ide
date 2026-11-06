@@ -34,3 +34,4 @@
 - Solid batches navigation, so walkthrough actions pass their new-thread target explicitly, and post-await navigation checks use `latest(current)`.
 - Examples drop the shell's agent-ide settings (`MODULES`, `MEMORY_MODEL`, …) in `examples/lib.js`; when one fails at every old commit, suspect the environment before bisecting.
 - Scratch servers start a local runner unless RUNNER=0; use a scripted runner to prove sends without calling a real model.
+- You can use `ast-grep`, `ast-grep outline` and `jq` to your advantage

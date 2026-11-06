@@ -34,7 +34,7 @@ const v =
 		const v = await view(id)
 		return v.entries.some((e) => e.data.answer) && v.status !== 'working' ? v : null
 	})) ?? (await view(id))
-const posts = v.entries.filter((e) => e.data.author === 'echo/echo@bot').map((e) => e.data.body)
+const posts = v.entries.filter((e) => e.data.author === 'echo@bot').map((e) => e.data.body)
 check(
 	posts.some((b) => b.startsWith('gave no answer')),
 	'the failed run says so',

@@ -1,4 +1,4 @@
-/** A bot's name, home, recipe and instructions. */
+/** A bot's name, home, the agent it joins as, and instructions. */
 import html from '@solidjs/html'
 import { createEffect, createMemo, createSignal, For, onSettled, refresh, Show, snapshot } from 'solid-js'
 import { api, bots, colorOf, current, followThread, hrefOf, openThread, threads } from './server.js'

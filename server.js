@@ -37,9 +37,9 @@ import {
 
 /**
  * @typedef {{ runner: string, model: string, thinkingLevel?: string, dir?: string, name?: string }} To  An agent as it runs:
- *   the thread's own, or with `name`, a bot. Asking one with another recipe changes it in place.
+ *   the thread's own, or with `name`, a bot. Asking one as another model, thinking or runner changes it in place.
  * @typedef {object} Message  The data of every thread entry.
- * @property {string} author  A human's name, a bot's, or the thread's agent as `provider/id@runner` when it wrote.
+ * @property {string} author  A human's name, a bot's, or the thread's agent as `model:thinking@runner` when it wrote.
  * @property {string} body
  * @property {{ type: 'image', mimeType: string, data: string }[]} [images]  As pi's ImageContent, base64; the agent sees them with the words.
  * @property {string[]} [to]  Whom it asks, named as `author` names them.
@@ -451,7 +451,7 @@ async function address(to, command = false, signal, useDefaultThinking = true) {
 	for (const key of ['thinkingLevel', 'dir'])
 		if (typeof to[key] === 'string' && to[key].trim()) clean[key] = to[key].trim()
 	if (to.name !== undefined) {
-		if (typeof to.name !== 'string' || !(await recipe?.(to.name)))
+		if (typeof to.name !== 'string' || !(await botAgent?.(to.name)))
 			throw new Error(`${to.name} is no bot: only bots have names, and a thread's agent has none`)
 		clean.name = to.name
 	}
@@ -469,7 +469,7 @@ async function whom(threadId, to, command = false, signal) {
 	const agents = threadId !== undefined ? (await thread(threadId))?.agents : undefined
 	if (typeof text === 'string' && agents?.[text]) return agentOf(agents[text].conversation, text)
 	if (text === AGENT) throw new Error(`Thread ${threadId} has no agent yet`)
-	const bot = typeof text === 'string' && !/[@=]/.test(text) && (await recipe?.(text))
+	const bot = typeof text === 'string' && !/[@=]/.test(text) && (await botAgent?.(text))
 	if (bot) return address(bot, command, signal)
 	const asked = typeof text === 'string' ? agentTo(text) : text
 	const key = !command && (asked?.name ?? AGENT)
@@ -487,10 +487,12 @@ async function whom(threadId, to, command = false, signal) {
 
 /** What `pi --model asked` makes of it on the runner, kept with its models */
 async function modelOn(name, runner, asked, signal, useDefaultThinking) {
-	const had = runner.models?.[asked]
+	// A model by its own name, as an agent is written, is the one model of that id it has run
+	const ids = Object.keys(runner.models ?? {}).filter((ref) => ref.split('/').pop() === asked)
+	const had = runner.models?.[asked] ?? (ids.length === 1 ? runner.models[ids[0]] : undefined)
 	if (had && (!useDefaultThinking || !runners.isOnline(name))) return { model: `${had.provider}/${had.id}` }
 	if (!runners.isOnline(name))
-		throw new Error(`${name} is offline; name a model it has run, as provider/id`)
+		throw new Error(`${name} is offline; name a model it has run`)
 	const { model, thinkingLevel, defaultThinkingLevel } = await runners.call(name, { op: 'resolve', model: asked }, { signal })
 	const ref = `${model.provider}/${model.id}`
 	if (!runner.models?.[ref]) {
@@ -548,7 +550,7 @@ const STATUSES = ['idle', 'blocked', 'working']
 const busiest = (statuses) => STATUSES[Math.max(0, ...statuses.map((status) => STATUSES.indexOf(status)))]
 /**
  * Whatever works right now, from Pi's live tasks: each agent answering and each `$ cmd` running, once for every list
- * @returns {Promise<{ thread: number, conversation?: number, runner: string, name?: string, status: string }[]>}
+ * @returns {Promise<{ thread: number, conversation?: number, runner: string, row?: string, status: string }[]>}
  */
 async function work() {
 	const live = (await liveTasks()).filter((task) =>
@@ -560,7 +562,7 @@ async function work() {
 			const to = shell ? task.input.to : await agentOf(task.input.agent)
 			return {
 				thread: task.conversationId,
-				...(shell ? {} : { conversation: task.input.agent, name: writtenTo(to) }),
+				...(shell ? {} : { conversation: task.input.agent, row: to && (to.name ?? `${to.model}@${to.runner}`) }),
 				runner: to?.runner,
 				status: to && runners.isOnline(to.runner) ? 'working' : 'blocked',
 			}
@@ -1153,7 +1155,7 @@ const hook = (name) => {
 }
 const posted = modules.flatMap((module) => module.posted ?? [])
 const hiding = modules.flatMap((module) => module.hiding ?? [])
-const [route, reply, catchUp, recipe] = ['route', 'reply', 'catchUp', 'recipe'].map(hook)
+const [route, reply, catchUp, botAgent] = ['route', 'reply', 'catchUp', 'botAgent'].map(hook)
 
 for (const [name, runner] of Object.entries(await known()))
 	models.setProvider(runnerProvider(runners, name, runner.models))
@@ -1227,9 +1229,9 @@ const routes = [
 			return Object.keys(await keys()).map((name) => {
 				const { models, offers, ...runner } = last[name] ?? {}
 				const here = all.filter((job) => job.runner === name)
-				/** Its agents' statuses, by name, as a message names them */
+				/** Its agents' statuses, by row: a bot's name, or `provider/id@runner` whatever its thinking */
 				const agents = {}
-				for (const job of here) if (job.name) agents[job.name] = busiest([agents[job.name], job.status].filter(Boolean))
+				for (const job of here) if (job.row) agents[job.row] = busiest([agents[job.row], job.status].filter(Boolean))
 				return {
 					name,
 					...runner,

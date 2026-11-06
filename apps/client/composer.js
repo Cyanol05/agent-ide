@@ -27,7 +27,7 @@ import {
 	runners,
 	threads,
 } from './server.js'
-import { agentLabel, agentTo, formatAgent } from './agent.js'
+import { agentTo, formatAgent, writtenTo } from './agent.js'
 import { placePopover } from './popover.js'
 import { ModelPicker } from './model-picker.js'
 import { Dot } from './dot.js'
@@ -64,13 +64,13 @@ const askedBots = (thread = current()) =>
 				.map((agent) => agent.to)
 				.filter((to) => to?.name && lastTo(thread)?.includes(to.name)))
 export const recipients = (thread = current()) => [agent(thread), ...askedBots(thread)].filter(Boolean)
-/** A recipe without thinking keeps the running level, or uses the runner's known pi default. */
+/** An agent asked without thinking keeps the running level, or uses the runner's known pi default. */
 const recipientLabel = (to, thread) => {
 	const running = here(thread).find(
 		(agent) => agent.to?.name === to.name && agent.to?.model === to.model && agent.to?.runner === to.runner,
 	)?.to
 	const runner = runners.find((runner) => runner.name === to.runner)
-	return agentLabel({ ...to, thinkingLevel: to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel) })
+	return writtenTo({ ...to, thinkingLevel: to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel) })
 }
 /** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
 export const toFor = (runner, thread = current()) =>

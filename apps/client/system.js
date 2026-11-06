@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { createMemo, For } from 'solid-js'
 import { columns, connected, current, runners, threads, url } from './server.js'
-import { writtenTo } from './agent.js'
+import { rowOf } from './agent.js'
 import { recipients } from './composer.js'
 import { Dot } from './dot.js'
 import { Runner } from './runner.js'
@@ -19,7 +19,7 @@ export function System() {
 		const asking = recipients()
 		const down = { fromSide: 'bottom', toSide: 'top', fromAt: 'to' }
 		const row = (to) =>
-			`[data-runner="${CSS.escape(to.runner)}"] [data-agent="${CSS.escape(writtenTo(to))}"]`
+			`[data-runner="${CSS.escape(to.runner)}"] [data-agent="${CSS.escape(rowOf(to))}"]`
 		const state = (status) => (['working', 'blocked'].includes(status) ? status : '')
 		const edges = [
 			{
@@ -43,7 +43,7 @@ export function System() {
 					state: connected() && runner.online ? '' : 'off',
 				})
 		for (const agent of agents()) {
-			if (agent.thread === current() && asking.some((to) => writtenTo(to) === writtenTo(agent.to))) continue
+			if (agent.thread === current() && asking.some((to) => rowOf(to) === rowOf(agent.to))) continue
 			edges.push({
 				...down,
 				from: `[data-thread="${agent.thread}"]`,
@@ -59,7 +59,7 @@ export function System() {
 				to: row(to),
 				toAt: -20,
 				state:
-					state(agents().find((agent) => agent.thread === current() && writtenTo(agent.to) === writtenTo(to))?.status) ||
+					state(agents().find((agent) => agent.thread === current() && rowOf(agent.to) === rowOf(to))?.status) ||
 					'route',
 			})
 		return edges

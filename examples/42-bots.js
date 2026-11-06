@@ -43,7 +43,7 @@ check(
 		homeRow.tools.join() === '-write,-edit,-bash' &&
 		v.agents.map((a) => a.name).join() === 'ada' &&
 		prompt.laptop.includes("You're new"),
-	'one call makes ada and her home, hands off; asked there, she joins from her recipe and knows she is new',
+	'one call makes ada and her home, hands off; asked there, she joins as her model and knows she is new',
 	JSON.stringify([made.json, homeRow, prompt.laptop]),
 )
 
@@ -83,7 +83,7 @@ check(
 		y.agents.find((a) => a.name === 'ada')?.to.runner === 'desk' &&
 		(await api('GET', `/api/threads/${shed}`)).json.agents.find((a) => a.name === 'ada')?.to
 			.runner === 'laptop',
-	'ada=model@runner gives one thread another model; a new recipe counts in the threads she joins next',
+	'ada=model@runner gives one thread another model; a new model counts in the threads she joins next',
 	JSON.stringify([v.agents, y.agents]),
 )
 
@@ -97,8 +97,8 @@ check(
 		wren.to.runner === 'laptop' &&
 		wren.home !== home &&
 		runnerName.status === 400 &&
-		/give it a recipe/.test(nameless.json.error),
-	"a bot makes a bot with its own home, on her model; a runner's name is no bot's, and a new bot needs a recipe",
+		/say what it runs as/.test(nameless.json.error),
+	"a bot makes a bot with its own home, on her model; a runner's name is no bot's, and a new bot needs a model",
 	JSON.stringify([await bots(), runnerName.json, nameless.json]),
 )
 
@@ -126,7 +126,7 @@ check(
 		v.agents[0].to.runner === 'desk' &&
 		answers(v).at(-1).data.author === 'ada' &&
 		told.startsWith('[You now run as echo/echo on desk,'),
-	'asked as her recipe says, a bot switches in place like any agent, keeps her name and is told',
+	'asked as another model, a bot switches in place like any agent, keeps her name and is told',
 	JSON.stringify([atHome, v.agents, told]),
 )
 
@@ -160,8 +160,8 @@ const handed = (await api('GET', `/api/conversations/${plain?.conversation}`)).j
 	?.filter((e) => e.kind === 'agent-ide.delivery')
 	.map((e) => text(e.model[0]))
 check(
-	v.agents.map((a) => a.name).join() === 'ada,echo/echo@desk' &&
-		answers(v).at(-1).data.author === 'echo/echo@desk' &&
+	v.agents.map((a) => a.name).join() === 'ada,echo@desk' &&
+		answers(v).at(-1).data.author === 'echo@desk' &&
 		handed?.[0].includes('\n\nada (agent): laptop: oskar: build it?'),
 	"a thread holds one agent and any bots; the agent reads a bot's words marked as an agent's",
 	JSON.stringify([v.agents, handed]),

@@ -10,7 +10,7 @@ const usage = `node cli.js [--server url] [--as name] <command>
                                  (left out: whom the thread last asked)
                    --thinking t  how hard they think: off, minimal, low, medium, high, xhigh, max
                    --dir d       a folder inside the runner's
-                                 --thinking and --dir require a model@runner recipe, not a bot's name
+                                 --thinking and --dir require a model@runner, not a bot's name
                    --title t     the new thread's title (the message's start by default)
                    --steer       join the answer being written
                    --no-wait     post and return
@@ -58,7 +58,7 @@ async function api(method, route, body) {
 	return json
 }
 
-/** Names belong to the API; only explicit recipe options need an object. */
+/** Names belong to the API; only --thinking and --dir need an object. */
 function agent(name) {
 	if (!flags.thinking && !flags.dir) return name
 	const at = name.lastIndexOf('@')

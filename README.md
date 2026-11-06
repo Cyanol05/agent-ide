@@ -46,16 +46,18 @@ One word per thing: each names something you can point at in the code or the API
 
 - **Server**: the one process you start, on any box you own. It connects the folder it starts in as its first runner, and keeps every thread and every agent's conversation in one SQLite file. What you might call a workspace, or the cloud. One server is one world.
 - **Runner**: a program that connects a machine to the server, offering its folders and the model logins pi has there. Each `--dir` adds a folder, and `--discover-dirs` offers the git and jj checkouts beneath them. Not a machine: a machine is where runners run, one per folder if you like, and a cloud sandbox is just another machine.
-- **Agent**: a model, how hard it thinks, and the runner it works on: `sonnet:high@laptop`. Each thread has one, and it knows its folder the way pi does there, AGENTS.md and skills. Without a thinking level, a new agent uses pi's settings on its runner. Change its model, thinking or runner whenever you like; it keeps the conversation and is told when it moves. Not a bot: it has no name.
-- **Thread**: a conversation on the server between you and one agent, and any bots. Its tools are its agent's, as `pi --tools` takes them; *hands off* is `-write,-edit,-bash`. Threads don't live on runners: to work on two machines at once, start a thread on each, or have one agent post a child thread to the other.
+- **Agent**: a model, how hard it thinks, and the runner it works on, written `sonnet:high@laptop` wherever it's shown or typed. Each thread has one, and it knows its folder the way pi does there, AGENTS.md and skills. Without a thinking level, a new agent uses pi's settings on its runner. Change its model, thinking or runner whenever you like; it keeps the conversation and is told when it moves. Not a bot: it has no name.
+- **Thread**: what people, one agent and any bots write to each other, kept on the server. Its tools are its agent's, as `pi --tools` takes them; *hands off* is `-write,-edit,-bash`. Threads don't live on runners: to work on two machines at once, start a thread on each, or have one agent post a child thread to the other.
 - **Client**: whatever you look through: the web client, the CLI, or a Matrix room through the matrix module. All speak the same API and store nothing.
-- **Bot**: one name in many threads, with a home thread, a recipe and instructions (the bots module). Only bots have names.
+- **Bot**: one name in many threads, with a home thread, the agent it joins as, and instructions (the bots module). Only bots have names.
 
-Each part of `sonnet:high@laptop` is optional and falls back to pi's defaults on that runner; `laptop` alone is its default model.
+Each part of `sonnet:high@laptop` is optional and falls back to pi's defaults on that runner; `laptop` alone is its default model. The model goes by its own name; `anthropic/sonnet` picks a provider when two have it.
+
+A **conversation** is one agent's own context: what it was handed, its tool calls and its answers.
 
 ## Principles
 
-Pi Durable does the storage, tasks, ordering, retries, restarts, stops and forks. agent-ide adds three things on top: a **thread** is a Pi conversation that never runs a model, with its title, parent, agent and bots beside it as a Pi doc; a **runner** is, to the server, a Pi model provider and the execution environment of every conversation on it; and its **tasks** (Admit, Deliver, Shell, Anchor) hand agents their messages, bring answers back, run `$ cmd` and let a stop reach an agent.
+Pi Durable does the storage, tasks, ordering, retries, restarts, stops and forks. agent-ide adds three things on top: a **thread** is stored the way Pi stores a conversation, one that never runs a model, with its title, parent, agent and bots beside it as a Pi doc; a **runner** is, to the server, a Pi model provider and the execution environment of every conversation on it; and its **tasks** (Admit, Deliver, Shell, Anchor) hand agents their messages, bring answers back, run `$ cmd` and let a stop reach an agent.
 
 Messages:
 
@@ -96,7 +98,7 @@ To watch a thread live, open `/ws` and send `{"watch": 3}`. You get its new mess
 
 Four ideas carry it:
 
-- A thread has one agent, plus any bots. A message's `to` says whom it asks: a recipe like `sonnet:high@laptop` or `{runner, model, thinkingLevel?, dir?}` for the thread's agent, a bot's name, or `null` for nobody. Left out, it asks whom the thread asked last. A recipe starts the agent, or switches the one there in place, keeping its conversation; it's told when it moves runner or folder. `ada=sonnet@laptop` switches the bot ada the same way. From another thread, `12` reaches thread 12's agent and `12/ada` a bot there.
+- A thread has one agent, plus any bots. A message's `to` says whom it asks: an agent like `sonnet:high@laptop` or `{runner, model, thinkingLevel?, dir?}` for the thread's agent, a bot's name, or `null` for nobody. Left out, it asks whom the thread asked last. Naming an agent starts the thread's, or switches the one there in place, keeping its conversation; it's told when it moves runner or folder. `ada=sonnet@laptop` switches the bot ada the same way. A message's `author` is a person's or bot's name, or the agent written out the same way. From another thread, `12` reaches thread 12's agent and `12/ada` a bot there.
 - A message is a Pi entry, `{id, kind: "agent-ide.message", conversationId, byTaskId?, data}`, with `data` as `{author, body, to?, images?, from?, re?, answer?, error?, shell?}`. A body starting with `$ ` runs a command on the runner it's sent to, and `shell` holds what it printed.
 - Threads, agents, runners and bots each carry one `status`: `working`, `blocked` while its runner is offline, or `idle`. An idle thread says `done` or `error` until you read its answer.
 - Send the same `requestId` again after a dropped response and you get the first result back.

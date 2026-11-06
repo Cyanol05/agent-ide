@@ -35,7 +35,7 @@ await runner('desk')
 const first = await cli('post', '--to', 'echo/echo@laptop', 'hello')
 const id = /thread (\d+)/.exec(first)?.[1]
 check(
-	id && first.includes('echo/echo@laptop') && first.includes('echo@laptop heard: oskar: hello'),
+	id && first.includes('echo:off@laptop') && first.includes('echo@laptop heard: oskar: hello'),
 	'post starts a thread and prints the answer',
 	first,
 )
@@ -47,7 +47,7 @@ check(/one agent/.test(both), 'two models in one message are refused: a thread h
 
 const again = await cli('post', '--thread', id, 'and again')
 check(
-	/#\d+ echo\/echo@laptop\n/.test(again),
+	/#\d+ echo:off@laptop\n/.test(again),
 	'no --to asks whom the thread last asked',
 	again,
 )
@@ -61,7 +61,7 @@ check(
 
 const threads = await cli('threads')
 check(
-	threads.includes(`#${id} hello`) && threads.includes('echo/echo@laptop'),
+	threads.includes(`#${id} hello`) && threads.includes('echo:off@laptop'),
 	'threads lists it with its agents',
 	threads,
 )
@@ -82,7 +82,7 @@ const named = await cli('post', '--to', 'reviewer=echo/echo@desk', 'review this'
 )
 check(/only bots have names/.test(named), "--to can't name a thread's agent: only bots have names", named)
 const reply = await cli('post', '--thread', id, '--to', id, 'by number')
-check(/#\d+ echo\/echo@laptop\n/.test(reply), "--to with the thread's number reaches its agent", reply)
+check(/#\d+ echo:off@laptop\n/.test(reply), "--to with the thread's number reaches its agent", reply)
 const nobody = await cli('post', '--thread', id, '--to', 'nobody', 'just a note')
 check(!nobody, '--to nobody posts without waiting for an answer', nobody)
 
@@ -91,11 +91,11 @@ const options = await cli(
 	'post', '--to', 'echo/echo@desk', '--thinking', 'low', '--dir', 'review', 'with options',
 )
 const optionsId = /thread (\d+)/.exec(options)?.[1]
-const recipe = optionsId && (await view(optionsId)).agents[0]?.to
+const asked = optionsId && (await view(optionsId)).agents[0]?.to
 check(
-	recipe?.thinkingLevel === 'low' && recipe?.dir === 'review',
-	'--thinking and --dir still set a model@runner recipe',
-	JSON.stringify(recipe),
+	asked?.thinkingLevel === 'low' && asked?.dir === 'review',
+	'--thinking and --dir still set a model@runner',
+	JSON.stringify(asked),
 )
 
 /** A stop posts no answer, so waiting must end on the thread's status alone. */

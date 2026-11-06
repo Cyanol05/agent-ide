@@ -464,6 +464,10 @@ export function serveRunner({
 			])
 			model = echo.getModel()
 		}
+		const said = messages.findLast((message) => message.role === 'assistant' && message.stopReason !== 'error')
+		// Without a session id pi-claude-code starts a fresh Claude Code process instead of the warm one.
+		// Delete this, with `quiet`, once earendil-works/pi-claude-code#30 is fixed.
+		if (model.provider === 'claude-code' && said && quiet(said)) options = { ...options, sessionId: undefined }
 		let sentAt = 0
 		for await (const event of models.streamSimple(model, context, { ...options, signal })) {
 			const due =
@@ -576,3 +580,11 @@ const saidNothing = (message) =>
 	text(message) === '(no content)'
 
 export const messageText = (message) => (saidNothing(message) ? '' : text(message))
+
+/**
+ * A reply with no text and no tool call. A warm Claude Code process folds the next message into the one before such
+ * a reply, so pi-claude-code again counts one user message fewer than pi; a fresh process replays it right.
+ */
+const quiet = (message) =>
+	saidNothing(message) ||
+	!message.content.some((part) => (part.type === 'text' && part.text.trim()) || part.type === 'toolCall')

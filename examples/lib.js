@@ -89,10 +89,14 @@ export async function api(method, route, body, user = 'oskar') {
 	return { status: res.status, json: await res.json() }
 }
 export const view = async (id) => (await api('GET', `/api/threads/${id}`)).json
-/** An agent's own Pi conversation in a thread: its entries and docs */
+/** An agent's own conversation, found by its name or by `provider/id@runner`, whatever it thinks */
 export const conversationOf = async (v, name) =>
-	(await api('GET', `/api/conversations/${v.agents.find((a) => a.name === name)?.conversation}`))
-		.json
+	(
+		await api(
+			'GET',
+			`/api/conversations/${v.agents.find((a) => a.name === name || `${a.to?.model}@${a.to?.runner}` === name)?.conversation}`,
+		)
+	).json
 /** A thread's memory lines, from its raw Pi conversation */
 export const linesOf = async (id) =>
 	(await api('GET', `/api/conversations/${id}`)).json.entries
