@@ -21,7 +21,8 @@ import {
 	titleOf,
 	watch,
 } from './server.js'
-import { authorLabel, doing, lastToolCall, messageText, setDoing, toolLine } from './agent.js'
+import { authorLabel, doing, messageText, setDoing } from './agent.js'
+import { answerOf, readConversation, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -40,6 +41,53 @@ export const ThreadLink = (props) => html`
 export function Thread(props) {
 	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
 	const messages = () => entries[props.id] ?? []
+	/** Each agent's turns from its own conversation, read again when it starts, calls a tool or ends, and as the thread moves */
+	createEffect(
+		() =>
+			(thread()?.agents ?? []).map((agent) => {
+				const live = doing[props.id]?.[agent.conversation]
+				return [
+					agent.conversation,
+					agent.status,
+					live?.run,
+					live?.tools.map((tool) => `${tool.callId}${tool.status}`).join(),
+					messages().length,
+				]
+			}),
+		(agents) => {
+			for (const [conversation] of agents) readConversation(conversation)
+		},
+	)
+	/**
+	 * The thread's messages with each agent turn after the last message it was handed, and a live one while it works.
+	 * A turn that only answered is its answer; an answer to a post shows in the post.
+	 */
+	const rows = createMemo(() => {
+		const all = messages()
+		const turns = (thread()?.agents ?? []).flatMap((agent) => {
+			const turns = turnsOf(agent.conversation).map((turn) => ({
+				key: turn.key,
+				agent,
+				turn,
+				at: turn.after + 0.5,
+			}))
+			const last = turns.at(-1)
+			if (agent.status !== 'idle') {
+				if (last && !last.turn.ended) last.live = true
+				// A turn that ended waits for the server to say so; a new one shows before its first entry is read
+				else if (!last || agent.status === 'blocked' || doing[props.id]?.[agent.conversation]?.run)
+					turns.push({ key: `${agent.conversation}:next`, agent, live: true, at: Infinity })
+			}
+			return turns.filter((row) => row.live || row.turn.steps.length)
+		})
+		const steps = turns.flatMap((row) => row.turn?.steps ?? [])
+		const shown = all.filter((entry) => !steps.some((step) => answerOf(all, step)?.id === entry.id))
+		const said = shown.map((entry) => ({ key: entry.id, entry, at: entry.id }))
+		const rows = [...said, ...turns].sort((one, other) => one.at - other.at)
+		// A message after a turn's line says who wrote it again
+		for (const [index, row] of rows.entries()) if (row.entry) row.previous = rows[index - 1]?.entry
+		return rows
+	})
 	const titleClick = () => (current() !== props.id ? openThread(props.id) : drawer('side'))
 	let list,
 		stuck = true
@@ -57,7 +105,8 @@ export function Thread(props) {
 						first = false
 						// Your own send always shows, live or in a reconnect's snapshot; others' entries follow only a view already at the bottom.
 						const shown = new Set((entries[id] ?? []).map((entry) => entry.id))
-						if (message.entries.some((entry) => entry.data.author === me && !shown.has(entry.id))) stuck = true
+						if (message.entries.some((entry) => entry.data.author === me && !shown.has(entry.id)))
+							stuck = true
 						setEntries((all) => {
 							all[id] ??= []
 							if (snapshot) reconcile(message.entries, 'id')(all[id])
@@ -155,18 +204,25 @@ export function Thread(props) {
 								`Talk to ${homeBot(props.id).name} and find out who it is.`}
 						</li>
 					<//>
-					<${For} each=${() => messages()}
-						>${(message, index) => html`
-							<${Message}
-								thread=${() => props.id}
-								entry=${() => message}
-								previous=${() => messages()[index() - 1]}
-							/>
-						`}<//
-					>
-					<${For} each=${() => thread()?.agents ?? []}
-						>${(agent) => html`
-							<${Writing} agent=${() => agent} live=${() => doing[props.id]?.[agent.conversation]} />
+					<${For} each=${() => rows()} keyed=${(row) => row.key}
+						>${(row) => html`
+							<${Show}
+								when=${() => row().turn || row().live}
+								fallback=${() => html`
+									<${Message}
+										thread=${() => props.id}
+										entry=${() => row().entry}
+										previous=${() => row().previous}
+									/>
+								`}
+							>
+								<${Turn}
+									thread=${() => props.id}
+									agent=${() => row().agent}
+									turn=${() => row().turn}
+									live=${() => row().live}
+								/>
+							<//>
 						`}<//
 					>
 				</ul>
@@ -176,55 +232,15 @@ export function Thread(props) {
 	`
 }
 
-/** While the server says the agent works or waits for its runner: one line, and what it has done so far behind it */
-function Writing(props) {
-	return html`
-		<${Show} when=${() => props.agent.status !== 'idle'}>
-			<${Working} agent=${() => props.agent} live=${() => props.live} />
-		<//>
-	`
-}
-
-/** A turn's row, made afresh each time the agent starts, so what it has run belongs to this turn */
-function Working(props) {
-	// The live doc holds only the tool running now, so keep the calls as they come and go
-	const called = []
-	const calls = () => {
-		for (const tool of props.live?.tools ?? []) {
-			const known = called.find((call) => call.callId === tool.callId)
-			if (known) known.line = toolLine(tool)
-			else called.push({ callId: tool.callId, line: toolLine(tool) })
-		}
-		return called.map((call) => call.line).join('\n')
-	}
-	return html`
-		<li class="writing">
-			<details>
-				<summary title=${() => lastToolCall(props.live)}>
-					<small>
-						<${Dot} state=${() => props.agent.status} />
-						${() =>
-							`${authorLabel(props.agent.name)} · ` +
-							(lastToolCall(props.live) ||
-								(props.agent.status === 'blocked' ? 'blocked' : 'writing'))}
-					</small>
-				</summary>
-				<${Show} when=${() => calls()}>
-					<div class="calls">${() => calls()}</div>
-				<//>
-				<div class="body">${() => messageText(props.live?.message)}</div>
-			</details>
-		</li>
-	`
-}
-
 function Message(props) {
 	const data = () => props.entry.data
 	const elsewhere = () => data().from && data().from !== props.thread
 	const forks = () =>
 		threads.filter(
 			(thread) =>
-				!thread.hidden && forkedFrom(thread) === props.thread && thread.conversation.parent.at === props.entry.id,
+				!thread.hidden &&
+				forkedFrom(thread) === props.thread &&
+				thread.conversation.parent.at === props.entry.id,
 		)
 	return html`
 		<li

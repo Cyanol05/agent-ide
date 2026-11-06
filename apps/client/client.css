@@ -839,8 +839,8 @@ agent-memory {
 				}
 			}
 
-			/* One line while it works; open, the calls so far and the words, each in its own quiet block */
-			&.writing {
+			/* A turn: one line of what the agent did, live while it works; open, each step in order, as a transcript. */
+			&.turn {
 				color: var(--mute);
 
 				summary > small {
@@ -848,21 +848,80 @@ agent-memory {
 					margin: 0;
 				}
 
-				> details > :is(.calls, .body) {
-					margin-top: 0.35rem;
-					padding: 0;
-					border: 0;
+				.steps {
+					list-style: none;
+					margin: 0.35rem 0 0;
+					padding: 0 0 0 0.2rem;
 					font-size: 13px;
 					line-height: 1.45;
-					white-space: pre-wrap;
-					overflow-wrap: anywhere;
-				}
 
-				> details > .calls {
-					font-size: 12px;
-					max-height: 6rem;
-					overflow-y: auto;
-					opacity: 0.8;
+					> li {
+						margin: 0.25rem 0 0;
+					}
+
+					> li.said {
+						white-space: pre-wrap;
+						color: var(--ink);
+					}
+
+					> li.call > details > summary {
+						white-space: normal;
+						overflow: visible;
+
+						&::before {
+							content: '⏺ ';
+						}
+
+						&::after {
+							content: '';
+						}
+
+						.tool {
+							font-weight: 600;
+						}
+
+						.out {
+							display: block;
+							padding-left: 1.4rem;
+							white-space: pre-wrap;
+							font-size: 12px;
+							opacity: 0.8;
+
+							&::before {
+								content: '⎿ ';
+								margin-left: -1rem;
+							}
+						}
+					}
+
+					> li.call.running > details > summary::before {
+						animation: blink 1s ease-in-out infinite;
+					}
+
+					> li.call.failed > details > summary::before {
+						color: var(--danger);
+					}
+
+					> li.call.ask .dot {
+						margin-right: 0.3rem;
+					}
+
+					.whole {
+						padding-left: 1.4rem;
+
+						pre {
+							margin: 0.3rem 0 0;
+							font-size: 12px;
+							white-space: pre-wrap;
+							overflow-wrap: anywhere;
+							max-height: 20rem;
+							overflow-y: auto;
+						}
+
+						.body {
+							margin-top: 0.3rem;
+						}
+					}
 				}
 			}
 
