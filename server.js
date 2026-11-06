@@ -322,28 +322,18 @@ const runners = createRunners({ onChange: notify })
 /** What each running `$ cmd` has printed so far */
 const shells = new Map()
 /** The client: apps/client/client.html at /, and every module and stylesheet beside it */
-const page = await readFile(new URL('./apps/client/client.html', import.meta.url))
 const types = {
 	'.js': 'text/javascript; charset=utf-8',
 	'.css': 'text/css; charset=utf-8',
 	'.woff2': 'font/woff2',
 }
-const files = (await readdir(new URL('./apps/client/', import.meta.url), { recursive: true })).map(
-	(file) => file.split(path.sep).join('/'),
-)
-const clientFiles = new Map(
-	await Promise.all(
-		files
-			.filter((file) => types[path.extname(file)])
-			.map(async (file) => [
-				`/${file}`,
-				{
-					type: types[path.extname(file)],
-					body: await readFile(new URL(`./apps/client/${file}`, import.meta.url)),
-				},
-			]),
-	),
-)
+async function clientFile(pathname) {
+	if (!/^\/(?:[\w-]+\/)*[\w.-]+$/.test(pathname)) return null
+	const type = types[path.extname(pathname)]
+	if (!type) return null
+	const body = await readFile(new URL(`./apps/client${pathname}`, import.meta.url)).catch(() => null)
+	return body ? { type, body } : null
+}
 /** Browser packages resolve through Node, so npm's hoisted installs work too. */
 const browserPackages = new Map([
 	['solid-js', new URL('./', import.meta.resolve('solid-js'))],
@@ -1408,15 +1398,18 @@ async function handleRequest(req, res) {
 		return res.end()
 	}
 	if (req.method === 'GET' && url.pathname === '/') {
+		const page = await readFile(new URL('./apps/client/client.html', import.meta.url))
 		res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
 		return res.end(page)
 	}
 	if (req.method === 'GET' && url.pathname.startsWith('/packages/'))
 		return servePackage(res, url.pathname)
-	if (req.method === 'GET' && clientFiles.has(url.pathname)) {
-		const { type, body } = clientFiles.get(url.pathname)
-		res.writeHead(200, { 'Content-Type': type })
-		return res.end(body)
+	if (req.method === 'GET') {
+		const file = await clientFile(url.pathname)
+		if (file) {
+			res.writeHead(200, { 'Content-Type': file.type })
+			return res.end(file.body)
+		}
 	}
 	if (req.method === 'GET' && url.pathname === '/runner/updater.js') {
 		res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' })
