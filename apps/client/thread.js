@@ -1,6 +1,6 @@
 /** A thread owns its message subscription while it is on screen. */
 import html from '@solidjs/html'
-import { createEffect, createMemo, createProjection, createSignal, For, reconcile, Show } from 'solid-js'
+import { createEffect, createMemo, createProjection, createSignal, For, latest, reconcile, Show } from 'solid-js'
 import {
 	closeColumn,
 	colorOf,
@@ -48,7 +48,7 @@ export function Thread(props) {
 	 */
 	const rows = createProjection(() => {
 		const all = messages()
-		const turns = (thread()?.agents ?? []).flatMap((agent) => {
+		const turns = (latest(thread)?.agents ?? []).flatMap((agent) => {
 			const live = doing[props.id]?.[agent.conversation]
 			const turns = turnsOf(agent.conversation).map((turn) => ({
 				key: turn.key,
@@ -85,7 +85,7 @@ export function Thread(props) {
 		}
 		const boxed = new Set(runs.values())
 		const said = shown.map((entry) => ({ key: entry.id, entry, at: entry.id, reply: replies.get(entry.id), run: runs.get(entry.id) }))
-		const cuts = (thread()?.agents ?? []).flatMap((agent) =>
+		const cuts = (latest(thread)?.agents ?? []).flatMap((agent) =>
 			cutsOf(agent.conversation).map((cut) => ({ ...cut, cut: true })),
 		)
 		// What the agent reads as lines folds into them, unless opened from the newest cut's line
