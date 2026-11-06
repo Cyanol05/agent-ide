@@ -55,10 +55,10 @@ function CompactionOf(props) {
 		<p class="mute">
 			${() =>
 				cut() === null
-					? 'Not compacted yet: the agent still reads every message in full.'
+					? 'Not compacted yet.'
 					: cut() === 0
-						? "Compacted with Pi's own summary, not these lines."
-						: `Compacted: the agent reads messages 0 to ${cut() - 1} only as lines, the rest in full.`}
+						? "Compacted with Pi's summary."
+						: `Messages 0 to ${cut() - 1} are read as memory lines.`}
 		</p>
 	`
 }

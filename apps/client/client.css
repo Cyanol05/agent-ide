@@ -2633,22 +2633,9 @@ body.resizing {
 
 /* The memory popover keeps its frame and nothing else: no rules. */
 .recall {
-	.compact button {
-		white-space: nowrap;
-	}
-
-	.compact {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
-		padding: 0.2rem 0 0.4rem;
-		font-size: 12px;
-	}
-
 	.modules > li {
 		cursor: pointer;
 		align-items: center;
-		padding-inline: 0;
 	}
 
 	.pane-body > p {
