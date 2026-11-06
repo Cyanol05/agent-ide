@@ -5,7 +5,7 @@ import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
 import { createModels } from '@earendil-works/pi-ai/models'
 import {
@@ -25,7 +25,17 @@ import { createCodemodeExtension } from '@earendil-works/pi-durable/codemode'
 import { CodemodeSandbox } from '@earendil-works/pi-codemode'
 import { about, load, readConfig } from './modules.js'
 import { WebSocketServer } from 'ws'
-import { AGENT, writtenTo, agentTo, collect, field, keyOf, said, speaker } from './util.js'
+import {
+	AGENT,
+	writtenTo,
+	agentTo,
+	collect,
+	field,
+	keyOf,
+	said,
+	speaker,
+	finished,
+} from './util.js'
 import {
 	createRunners,
 	messageText,
@@ -138,10 +148,6 @@ const Receipts = defineDocFamily({
 const now = () => new Date().toISOString()
 const ownerless = { ownership: { kind: 'ownerless' } }
 const own = { ownership: { kind: 'conversation' } }
-const finished = (status = 'completed', result = null) => ({
-	status: 'terminal',
-	outcome: { status, result },
-})
 const waiting = (on, phase) => ({
 	status: 'waiting',
 	on,

@@ -13,7 +13,7 @@
 //      ROOMS and USERS take several, comma-separated. AGENT is model@runner, or a runner for its default model.
 //   4. Write `@BOT …` in the room. Its thread shows up in the client, titled `matrix #room:matrix.org: …`.
 import { defineDoc, defineExtension, defineTask } from '@earendil-works/pi-durable'
-import { agentTo, speaker } from '../util.js'
+import { agentTo, speaker, finished, background } from '../util.js'
 
 // `threads` keys a room by its id and a Matrix thread by its root event; `last` is each room's newest send.
 const MatrixBridge = defineDoc({
@@ -23,25 +23,12 @@ const MatrixBridge = defineDoc({
 	checkpointWhen: () => true,
 	initial: () => ({ since: '', threads: {}, last: {}, salt: '' }),
 })
-const finished = (status = 'completed') => ({
-	status: 'terminal',
-	outcome: { status, result: null },
-})
-const background = (threadId) => ({
-	ownership: { kind: 'conversation' },
-	conversationId: threadId,
-	background: true,
-})
 const list = (name) =>
 	(process.env[name] ?? '')
 		.split(',')
 		.map((item) => item.trim())
 		.filter(Boolean)
-const sleep = (ms, signal) =>
-	new Promise((resolve) => {
-		const timer = setTimeout(resolve, ms)
-		signal?.addEventListener('abort', () => (clearTimeout(timer), resolve()))
-	})
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 /** A no that asking again won't change */
 const refused = (error) => error.status >= 400 && error.status < 500 && error.status !== 429
 /** Anyone in a room can write */

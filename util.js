@@ -1,4 +1,17 @@
-/** Pure helpers the server and its modules share */
+/** Helpers the server and its modules share */
+
+/** A durable task's terminal result */
+export const finished = (status = 'completed', result = null) => ({
+	status: 'terminal',
+	outcome: { status, result },
+})
+
+/** A background task owned by its thread */
+export const background = (threadId) => ({
+	ownership: { kind: 'conversation' },
+	conversationId: threadId,
+	background: true,
+})
 
 export async function collect(scan) {
 	const items = []

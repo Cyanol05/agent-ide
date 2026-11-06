@@ -16,7 +16,7 @@ import {
 	hook,
 } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
-import { AGENT, agentTo, collect, said } from '../util.js'
+import { AGENT, agentTo, collect, said, finished, background } from '../util.js'
 
 const KIND = 'agent-ide.line'
 const RETRY = { enabled: true, maxRetries: 10, baseDelayMs: 2000 }
@@ -43,15 +43,6 @@ const rendered = (line) => {
 	const { id, n, text } = span(line)
 	return `${id}+${n}|${text}`
 }
-const finished = (status = 'completed') => ({
-	status: 'terminal',
-	outcome: { status, result: null },
-})
-const background = (threadId) => ({
-	ownership: { kind: 'conversation' },
-	conversationId: threadId,
-	background: true,
-})
 
 const WRITER = `# Lines
 
@@ -364,7 +355,6 @@ export function memory(lines, T, budget, from = 0) {
 			const [left, right] = [list[index], list[index + 1]]
 			if (left.l !== right.l || left.i % 2 || right.i !== left.i + 1) continue
 			const last = (right.i + 1) * 2 ** right.l - 1
-			if (last >= T) continue
 			const parent = lines.get(key(left.l + 1, left.i >> 1)),
 				due = (T - last) / 2 ** left.l
 			if (parent && (!best || due > best.due)) best = { index, parent, due }
