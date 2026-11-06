@@ -1688,6 +1688,14 @@ body.chat {
 			min-height: 0;
 			max-height: none;
 			padding-block: max(3.4rem, var(--thread-top, 0px)) calc(var(--compose-height, 7rem) + 1rem);
+			/* Messages fade out under the title and the composer instead of showing through. */
+			mask-image: linear-gradient(
+				to bottom,
+				transparent,
+				#000 3.4rem,
+				#000 calc(100% - var(--compose-height, 7rem)),
+				transparent calc(100% - 2.2rem)
+			);
 			/* Keep the scrollbar at the edge, with messages aligned to the composer. */
 			padding-inline: max(0.6rem, calc((100% - var(--chat-width)) / 2));
 		}
