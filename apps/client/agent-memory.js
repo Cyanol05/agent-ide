@@ -13,7 +13,7 @@ import {
 	untrack,
 } from 'solid-js'
 import { api, connected, current, entries, server, threads } from './server.js'
-import { cutsOf } from './run.js'
+import { cutsOf, newestCut, plural } from './run.js'
 
 const bytes = (text) => new TextEncoder().encode(text).length
 const sizeOf = (lines) =>
@@ -40,14 +40,15 @@ export function Compaction() {
 function CompactionOf(props) {
 	/** The newest cut across the thread's agents, null before any */
 	const cut = createMemo(() =>
-		(threads.find((thread) => thread.id === props.thread)?.agents ?? [])
-			.flatMap((agent) => cutsOf(agent.conversation))
-			.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null),
+		newestCut(
+			(threads.find((thread) => thread.id === props.thread)?.agents ?? []).flatMap((agent) =>
+				cutsOf(agent.conversation),
+			),
+		),
 	)
 	const messages = () => entries[props.thread] ?? []
 	const older = () => (cut() ? messages().filter((entry) => entry.id < cut().at).length : 0)
 	const newer = () => messages().length - older()
-	const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
 	return html`
 		<div class="tape">
 			<div class="reel" aria-hidden="true">

@@ -11,7 +11,7 @@ import {
 } from 'solid-js'
 import { colorOf, entries, homeBot, threads, titleOf } from './server.js'
 import { Message, ThreadLink } from './thread.js'
-import { agentTo, authorLabel, doing, messageText } from './agent.js'
+import { agentTo, authorLabel, doing, messageText, touched } from './agent.js'
 import { Dot } from './dot.js'
 
 /**
@@ -135,20 +135,16 @@ const argsLine = ({ name, args }) =>
 		? args.thread
 			? `#${args.thread}`
 			: (args.title ?? '')
-		: (
-				args.command ??
-				args.path ??
-				args.pattern ??
-				args.query ??
-				args.code ??
-				JSON.stringify(args)
-			).split('\n')[0]
+		: (touched(args) ?? JSON.stringify(args)).split('\n')[0]
 
 const seconds = (ms) => {
 	const s = Math.max(0, Math.round(ms / 1000))
 	return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
 }
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+/** The newest of some cuts, null before any */
+export const newestCut = (cuts) =>
+	cuts.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null)
 
 /** A post's ask: the thread it went to, or for an answer, the thread it answered */
 const askedThread = (step) => step.result?.details?.thread ?? step.args.thread

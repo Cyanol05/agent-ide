@@ -33,7 +33,7 @@ import {
 	watch,
 } from './server.js'
 import { authorLabel, doing, setDoing } from './agent.js'
-import { answersIn, asksOf, conversations, cutsOf, Exchange, heard, Turn, turnsOf } from './run.js'
+import { answersIn, asksOf, conversations, cutsOf, Exchange, heard, newestCut, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -165,7 +165,7 @@ export function Thread(props) {
 					.map((cut) => ({ ...cut, cut: true })),
 			)
 			// One cut line, the newest compaction's; what the agent reads as lines folds into them, unless opened from it
-			const newest = cuts.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null)
+			const newest = newestCut(cuts)
 			const folded = newest && !unfolded() ? newest : null
 			const above = (row) => folded && row.at < folded.at
 			const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
@@ -427,6 +427,32 @@ export function Thread(props) {
 	`
 }
 
+/**
+ * Who crossed threads: a bot answering from its own thread is named by a link to it; anyone else is named, then the thread.
+ * `home` is the word beside a bot's link, before it unless `after`; `other` the words between a name and its thread.
+ */
+function Crossing(props) {
+	const data = () => props.data
+	const name = () => authorLabel(data().author)
+	return html`
+		<span class="cross">${() => `${props.arrow} `}</span>
+		<${Show}
+			when=${() => homeBot(data().from)?.name === data().author}
+			fallback=${() => html`
+				<span style=${() => colorOf(data().author)}>${name}</span>
+				${() => ` ${props.other} `}
+				<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
+			`}
+		>
+			${() => (props.after ? '' : `${props.home} `)}
+			<span style=${() => colorOf(data().author)}>
+				<${ThreadLink} id=${() => data().from}>${name}<//>
+			</span>
+			${() => (props.after ? ` ${props.home}` : '')}
+		<//>
+	`
+}
+
 export function Message(props) {
 	const data = () => props.entry.data
 	const elsewhere = () => !props.embedded && data().from && data().from !== props.thread
@@ -458,23 +484,7 @@ export function Message(props) {
 						>`}
 					>
 						<small title=${() => data().author}>
-							<${Show}
-								when=${() => homeBot(data().from)?.name === data().author}
-								fallback=${() =>
-									html`<span class="cross">→ </span
-										><span style=${() => colorOf(data().author)}
-											>${() => authorLabel(data().author)}</span
-										>
-										asked from
-										<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>`}
-							>
-								<span class="cross">→ </span>asked from
-								<span style=${() => colorOf(data().author)}
-									><${ThreadLink} id=${() => data().from}
-										>${() => authorLabel(data().author)}<//
-									></span
-								>
-							<//>
+							<${Crossing} data=${() => data()} arrow="→" home="asked from" other="asked from" />
 						</small>
 					<//>
 					<${Body} data=${() => data()} />
@@ -507,22 +517,7 @@ export function Message(props) {
 			>
 				<details>
 					<summary>
-						<${Show}
-							when=${() => homeBot(data().from)?.name === data().author}
-							fallback=${() => html`
-								<span class="cross">← </span>
-								<span style=${() => colorOf(data().author)}
-									>${() => authorLabel(data().author)}</span
-								>
-								answered in <${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
-							`}
-						>
-							<span class="cross">← </span>
-							<span style=${() => colorOf(data().author)}>
-								<${ThreadLink} id=${() => data().from}>${() => authorLabel(data().author)}<//>
-							</span>
-							answered
-						<//>
+						<${Crossing} data=${() => data()} arrow="←" home="answered" other="answered in" after />
 					</summary>
 					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />

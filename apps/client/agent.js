@@ -43,10 +43,10 @@ export const messageText = (message) =>
 		.map((block) => block.text)
 		.join('')
 /** A tool call as one line: its name and the argument that says what it touches */
-const toolLine = (tool) => {
-	const args = tool.args ?? {}
-	return `${tool.name} ${args.command ?? args.path ?? args.pattern ?? args.query ?? args.body ?? ''}`.trim()
-}
+/** The argument that says what a tool call touches, if it has one */
+export const touched = (args = {}) =>
+	args.command ?? args.path ?? args.pattern ?? args.query ?? args.code ?? args.body
+const toolLine = (tool) => `${tool.name} ${touched(tool.args) ?? ''}`.trim()
 export const lastToolCall = (doing) => {
 	const tool = doing?.run && doing.tools.at(-1)
 	return tool ? toolLine(tool) : ''
