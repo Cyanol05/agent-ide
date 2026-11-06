@@ -81,7 +81,7 @@ function Client() {
 				</header>
 				<${ThreadDetails} />
 				<${System} />
-				<${Tutorial} />
+				<${Tutorial} story=${() => !chat()} />
 			<//>
 		<//>
 	`

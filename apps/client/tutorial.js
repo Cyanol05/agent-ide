@@ -1,7 +1,7 @@
 /** The story's buttons use the same server and picker as the chat. */
 import html from '@solidjs/html'
 import { Portal } from '@solidjs/web'
-import { onSettled, snapshot } from 'solid-js'
+import { onSettled, Show, snapshot } from 'solid-js'
 import { api, current, createThread, entries, fork, openThread, runners, url } from './server.js'
 import { choose, toFor } from './composer.js'
 import { formatAgent } from './agent.js'
@@ -138,7 +138,7 @@ const TRIES = {
 	},
 }
 
-export function Tutorial() {
+export function Tutorial(props) {
 	onSettled(() => {
 		const stage = document.getElementById('stage')
 		const sections = new IntersectionObserver(
@@ -168,7 +168,7 @@ export function Tutorial() {
 		}
 	})
 	return html`
-		<${Portal} mount=${document.getElementById('memory')}><${Memory} /><//>
+		<${Show} when=${() => props.story}><${Portal} mount=${document.getElementById('memory')}><${Memory} /><//><//>
 		<${Portal} mount=${document.getElementById('connect-runner')}
 			><${ConnectRunner} name="laptop"
 		/><//>

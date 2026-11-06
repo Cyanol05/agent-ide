@@ -390,7 +390,7 @@ export function Composer(props) {
 						actions=${html`<button type="button" onClick=${() => recall.hidePopover()}>Done</button>`}
 						open=${() => lines()}
 						onBack=${() => setLines(false)}
-						detail=${html`<${Memory} />`}
+						detail=${html`<${Show} when=${() => lines()}><${Memory} /><//>`}
 					>
 						<${Compaction} />
 						<button
