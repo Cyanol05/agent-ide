@@ -34,7 +34,7 @@ export const writtenTo = (to) =>
 export const AGENT = 'agent'
 /** Bot names have no `@`, so any name with one is the thread's agent, whatever model it had */
 export const keyOf = (name) => (name.includes('@') ? AGENT : name)
-export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 /** `model:thinking@runner`, each part but the runner optional; `ada=model@runner` asks the bot ada as that */
 export const agentTo = (name) => {
 	const eq = name.indexOf('=')

@@ -216,7 +216,7 @@ export function server(core) {
 		)
 
 	async function keep(tx, bridge, key, room, root, title) {
-		const thread = await core.startThread(tx, 'matrix', title, null)
+		const thread = await core.startThread(tx, title, null)
 		bridge.threads[key] = { thread, room, root }
 		return thread
 	}

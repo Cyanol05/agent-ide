@@ -1000,18 +1000,18 @@ function imageList(images) {
 }
 
 /** Inside the caller's commit */
-async function startThread(tx, author, title, parent, tools = null) {
+async function startThread(tx, title, parent, tools = null) {
 	const { id } = await tx.createConversation(ownerless)
 	Object.assign(await tx.doc(Thread, id), { title, parent, createdAt: now(), tools })
 	return id
 }
 
-async function createThread(author, { title, parent = null, tools = null, requestId }) {
+async function createThread({ title, parent = null, tools = null, requestId }) {
 	if (parent !== null) await conversation((parent = Number(parent)))
 	title = field(title, 'title')
 	tools = toolList(tools)
 	return once(requestId, 'create thread', async (tx) => ({
-		id: await startThread(tx, author, title, parent, tools),
+		id: await startThread(tx, title, parent, tools),
 	}))
 }
 
@@ -1177,7 +1177,6 @@ const core = {
 	startThread,
 	post,
 	seenBy,
-	compact,
 	commit,
 	once,
 	receipt,
@@ -1337,7 +1336,7 @@ const routes = [
 	['DELETE /api/runners/:name', (req, name) => revoke(name)],
 	['GET /runner/bundle', () => bundle],
 	['GET /api/threads', (req) => threadList(user(req))],
-	['POST /api/threads', async (req) => createThread(user(req), await input(req))],
+	['POST /api/threads', async (req) => createThread(await input(req))],
 	['GET /api/threads/:id', (req, id) => threadView(id, user(req))],
 	['DELETE /api/threads/:id', (req, id) => hideThread(id)],
 	['POST /api/threads/:id/entries', async (req, id) => postEntry(id, user(req), await input(req))],

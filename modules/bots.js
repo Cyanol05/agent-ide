@@ -36,11 +36,11 @@ export function server(core) {
 		}
 		return { name, to, instructions }
 	}
-	async function write(tx, author, { name, to, instructions }) {
+	async function write(tx, { name, to, instructions }) {
 		const all = await tx.doc(Bots)
 		if (!all[name]) {
 			if (!to) throw new Error(`${name} is new: say what it runs as, to: model@runner`)
-			const home = await core.startThread(tx, author, name, null, HANDS_OFF)
+			const home = await core.startThread(tx, name, null, HANDS_OFF)
 			all[name] = { home, to, instructions: instructions ?? '' }
 		} else {
 			if (to) all[name].to = to
@@ -53,7 +53,7 @@ export function server(core) {
 		if (id !== undefined) throw new Error('Bots live at /api/bots')
 		if (body === undefined) return list()
 		const asked = await change(body)
-		return core.once(body.requestId, `bot ${asked.name}`, (tx) => write(tx, 'anon', asked))
+		return core.once(body.requestId, `bot ${asked.name}`, (tx) => write(tx, asked))
 	}
 	async function remove(name) {
 		return core.commit(async (tx) => {
@@ -104,7 +104,7 @@ export function server(core) {
 				instructions: args.instructions,
 				to: args.model ?? (name === at.name ? undefined : { ...own, name: undefined }),
 			})
-			const made = await core.once(`bot ${api.taskId}`, 'bot', (tx) => write(tx, at.name, asked))
+			const made = await core.once(`bot ${api.taskId}`, 'bot', (tx) => write(tx, asked))
 			return {
 				output: [
 					{

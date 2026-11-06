@@ -73,7 +73,7 @@ export function server(core) {
 								: await core.lastAsked(thread)
 			return core.once(`post ${api.taskId}`, 'post', async (tx) => {
 				context.abortSignal?.throwIfAborted()
-				const id = thread ?? (await core.startThread(tx, name, title, from))
+				const id = thread ?? (await core.startThread(tx, title, from))
 				await core.post(
 					tx,
 					id,

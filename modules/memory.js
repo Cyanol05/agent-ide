@@ -342,7 +342,7 @@ export function server(core) {
 }
 
 /** Lines over messages from..T-1, merging the most due pair, (T - last) / 2^l, until they fit the budget */
-export function memory(lines, T, budget, from = 0) {
+function memory(lines, T, budget, from = 0) {
 	const list = Array.from(
 		{ length: T - from },
 		(_, offset) => lines.get(key(0, from + offset)) ?? unwritten(0, from + offset),
@@ -381,4 +381,4 @@ function page(text, id, at) {
 		: text.slice(at)
 }
 
-export const render = (list) => `<chat>\n${list.map(rendered).join('\n')}\n</chat>`
+const render = (list) => `<chat>\n${list.map(rendered).join('\n')}\n</chat>`
