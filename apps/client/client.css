@@ -1347,7 +1347,8 @@ ul.thread-family > li > .row {
 
 /* The thread's name is a pill at the top, sized like the new-thread button, its light first: in each thread's head on a big screen, in the bar on a phone. */
 .thread-pill,
-body.chat .thread > header {
+body.chat .thread > header > h2.title,
+body.chat .thread > header > button.close {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
@@ -1373,10 +1374,30 @@ body.chat .thread > header span:first-child {
 	white-space: nowrap;
 }
 
+/* On a big screen the head is no bar, just the pill and, beside it, its own quiet close. */
 body.chat .thread > header {
-	flex: none;
-	width: fit-content;
-	margin: 0.5rem auto;
+	justify-content: center;
+	gap: 0.4rem;
+	margin: 0.5rem 0.9rem;
+	padding: 0;
+	border: 0;
+
+	> h2.title {
+		flex: 0 1 auto;
+	}
+
+	> button.close {
+		flex: none;
+		justify-content: center;
+		width: 2.125rem;
+		margin: 0;
+		padding: 0;
+		color: var(--mute);
+
+		&:hover {
+			color: var(--ink);
+		}
+	}
 
 	.dot {
 		order: -1;
@@ -1384,7 +1405,7 @@ body.chat .thread > header {
 }
 
 /* Hands off, its agents touch nothing: the pill goes dashed, as the thread's box does on the page. */
-body.chat .thread.hands-off > header,
+body.chat .thread.hands-off > header > h2.title,
 .thread-pill.hands-off {
 	border-style: dashed;
 }

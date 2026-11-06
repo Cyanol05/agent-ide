@@ -12,6 +12,10 @@ import {
 } from '@earendil-works/pi-ai/providers/faux'
 import { messageText as text, serveRunner } from '../remote.js'
 
+/** The shell's agent-ide settings stay out of every server and runner an example starts: a dev shell's MODULES=+director routes posts with no `to` to nobody */
+for (const name of ['MODULES', 'MEMORY_MODEL', 'SEARCH_URL', 'STATUS', 'AGENT_IDE_KEY', 'AGENT_IDE_LENT', 'AGENT_IDE_SERVER'])
+	delete process.env[name]
+
 export const repo = path.resolve(import.meta.dirname, '..')
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 

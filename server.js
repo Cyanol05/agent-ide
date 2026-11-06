@@ -23,7 +23,7 @@ import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite
 import { CodingTools } from '@earendil-works/pi-durable/tools'
 import { createCodemodeExtension } from '@earendil-works/pi-durable/codemode'
 import { CodemodeSandbox } from '@earendil-works/pi-codemode'
-import { load, readConfig } from './modules.js'
+import { about, load, readConfig } from './modules.js'
 import { WebSocketServer } from 'ws'
 import { AGENT, agentName, agentTo, collect, field, keyOf, said, speaker } from './util.js'
 import {
@@ -1141,6 +1141,13 @@ const settings = await readConfig()
 core.config = settings.config
 const modules = await load('server', defaults, core, settings)
 for (const module of modules) if (module.extension) registry.install(module.extension)
+/** Each module's name → what it does, from its own file */
+const aboutModules = Object.fromEntries(
+	await Promise.all(
+		[...Object.keys(defaults), ...(settings.config.modules ?? []).map((entry) => entry.replace(/^[+-]/, '')).filter((entry) => entry.includes('/'))]
+			.map(async (entry) => [entry.includes('/') ? path.basename(entry, '.js') : entry, await about(entry)]),
+	),
+)
 /** One module answers each of these; two claiming one is a mistake, not an order */
 const hook = (name) => {
 	const [first, second] = modules.filter((module) => module[name])
@@ -1204,6 +1211,7 @@ const routes = [
 			local: local(req),
 			modules: modules.map((module) => module.name),
 			off: Object.keys(defaults).filter((name) => !modules.some((module) => module.name === name)),
+			about: aboutModules,
 			threads: (await threadIds()).length,
 			runners: Object.keys(await keys()).length,
 			work: await harness.inspect(context),

@@ -16,6 +16,19 @@ export async function readConfig() {
 	}
 }
 
+/** What a module does: the first sentence of its file's opening comment, or nothing */
+export async function about(name) {
+	const file = name.includes('/') ? path.resolve(name) : new URL(`./modules/${name}.js`, import.meta.url)
+	const text = await readFile(file, 'utf8').catch(() => '')
+	const comment = text.match(/^\s*(\/\*\*?[\s\S]*?\*\/|(?:\/\/.*\n?)+)/)?.[1] ?? ''
+	return comment
+		.replace(/^\s*(\/\*\*?|\*\/|\*|\/\/) ?/gm, '')
+		.replace(/\*\/$/, '')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.match(/^.*?\.(?=\s|$)/)?.[0]
+}
+
 /** A module exports `server(core)` and/or `runner(core)`, which return its hooks */
 export async function load(end, defaults, core, settings) {
 	const { file, config } = settings ?? (await readConfig())

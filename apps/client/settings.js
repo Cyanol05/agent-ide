@@ -9,14 +9,6 @@ import { report } from './notice.js'
 import { placePopover } from './popover.js'
 import { Dot } from './dot.js'
 
-/** What a module does: the first sentence client.html says about it; a module of your own has none there */
-const about = (name) =>
-	[...document.querySelectorAll('#modules ~ dl.words > dt')]
-		.find((dt) => dt.firstChild?.textContent.trim() === `${name}.js`)
-		?.nextElementSibling?.textContent.replace(/\s+/g, ' ')
-		.trim()
-		.match(/^.*?\.(?=\s|$)/)?.[0]
-
 /** Changes not saved yet, kept if the settings close before saving */
 const [draft, setDraft] = createRoot(() => createStore({ modules: {}, model: undefined, state: '' }))
 const changed = () => Object.keys(draft.modules).length > 0 || draft.model !== undefined
@@ -126,7 +118,7 @@ export function Settings() {
 							<${Dot} state=${() => (module.on ? 'on' : '')} />
 							<div>
 								<b>${() => module.name}</b>
-								<small>${() => about(module.name) ?? 'Your own module.'}</small>
+								<small>${() => server().about?.[module.name] ?? 'Your own module.'}</small>
 								<${Show} when=${() => module.name === 'memory' && on(module)}>
 									<div class="option">
 										<span>Writes its lines</span>

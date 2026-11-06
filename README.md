@@ -102,7 +102,7 @@ Four ideas carry it:
 - Send the same `requestId` again after a dropped response and you get the first result back.
 
 ```
-GET    /api/server                         its modules, those off, and whether you may add runners
+GET    /api/server                         its modules, those off, what each does, and whether you may add runners
 GET    /api/runners                        every runner holding a key, connected or not
 POST   /api/runners {name}                 a key, and the command that connects it
 DELETE /api/runners/:name                  takes its key away
