@@ -1,7 +1,8 @@
 /** A scratch agent-ide to click through: its own store and port, a scripted runner `bot`, and one thread it has already answered.
  * `node scripts/try.js &`, open the address it prints, stop it with the `kill` line it prints. Every server it starts goes with it.
- * The bot's model, echo/echo, writes, reads, edits and runs a command in its folder, then answers in markdown.
+ * The bot's model, echo/echo, thinks, writes, reads, edits and runs a command in its folder, then answers in markdown.
  * A message with "post" in it makes it post to a new thread too; "slow" makes the command take five seconds, to watch live work. */
+import { fauxAssistantMessage, fauxThinking, fauxToolCall } from '@earendil-works/pi-ai/providers/faux'
 import { api, base, call, dir, say, scriptedRunner, server, text } from '../examples/lib.js'
 
 process.on('SIGTERM', () => process.exit(0))
@@ -11,7 +12,14 @@ const step = (request) => {
 	const last = request.messages.findLastIndex((m) => m.role === 'user')
 	const asked = text(request.messages[last])
 	const n = request.messages.slice(last).filter((m) => m.role === 'toolResult').length
-	if (n === 0) return call('write', { path: 'notes.md', content: `# Notes\n\nasked: ${asked.slice(0, 80)}\n` })
+	if (n === 0)
+		return fauxAssistantMessage(
+			[
+				fauxThinking(`They said "${asked.slice(0, 80)}".\nI'll start a notes file, then look around.`),
+				fauxToolCall('write', { path: 'notes.md', content: `# Notes\n\nasked: ${asked.slice(0, 80)}\n` }),
+			],
+			{ stopReason: 'toolUse' },
+		)
 	if (n === 1) return call('read', { path: 'notes.md' })
 	if (n === 2) return call('edit', { path: 'notes.md', edits: [{ oldText: '# Notes', newText: '# Notes, edited' }] })
 	if (n === 3) return call('bash', { command: `${asked.includes('slow') ? 'sleep 5; ' : ''}ls -la; cat notes.md` })

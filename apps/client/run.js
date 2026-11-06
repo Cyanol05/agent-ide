@@ -73,6 +73,10 @@ export function hear(conversation, live) {
 	})
 }
 
+/** A delivery's words, whether Pi kept them as a string or as blocks beside images */
+const handedText = (message) =>
+	typeof message?.content === 'string' ? message.content : messageText(message)
+
 /** A conversation cut into turns: each begins with a delivery and holds the calls, results and words that follow it */
 export function turnsOf(conversation) {
 	const turns = []
@@ -85,7 +89,8 @@ export function turnsOf(conversation) {
 				after: Math.max(0, ...(entry.data?.held ?? [])),
 				start: message?.timestamp,
 				end: message?.timestamp,
-				steps: [],
+				// What the agent was handed opens its steps
+				steps: [{ key: `${entry.id}:handed`, label: 'handed', text: handedText(message) }],
 				ended: false,
 			})
 			continue
@@ -103,6 +108,8 @@ export function turnsOf(conversation) {
 						args: block.arguments ?? {},
 						result: null,
 					})
+				else if (block.type === 'thinking' && block.thinking?.trim())
+					turn.steps.push({ key: `${entry.id}:thought:${turn.steps.length}`, label: 'thought', text: block.thinking })
 				// The last words are the answer, which the thread shows itself
 				else if (block.type === 'text' && block.text.trim() && message.stopReason === 'toolUse')
 					turn.steps.push({ key: `${entry.id}:said`, said: block.text })
@@ -248,12 +255,13 @@ export function Turn(props) {
 		if (props.agent.status === 'blocked') return 'waiting for its runner'
 		return messageText(live()?.message) ? 'writing' : 'thinking'
 	}
+	const calls = () => steps().filter((step) => step.name)
 	const line = () => {
 		if (!props.live) return summary({ ...props.turn, steps: steps() }, entries[props.thread] ?? [])
 		const start = props.turn?.start ?? props.since
 		return [
 			now(),
-			steps().length && plural(steps().length, 'step'),
+			calls().length && plural(calls().length, 'step'),
 			start && clock() - start >= 1000 && seconds(clock() - start),
 		]
 			.filter(Boolean)
@@ -299,7 +307,10 @@ function Step(props) {
 	return html`
 		<${Show}
 			when=${() => step().name}
-			fallback=${() => html`<li class="said">${() => step().said}</li>`}
+			fallback=${() =>
+				step().label
+					? html`<${Told} step=${() => step()} />`
+					: html`<li class="said">${() => step().said}</li>`}
 		>
 			<${Show}
 				when=${() => step().name === 'post' && askedThread(step())}
@@ -329,6 +340,24 @@ function Call(props) {
 						<pre>${() => JSON.stringify(props.step.args, null, 2)}</pre>
 						<${Show} when=${() => result()?.text}><pre>${() => result().text}</pre><//>
 					</div>
+				<//>
+			</details>
+		</li>
+	`
+}
+
+/** What the agent was handed, or what it thought: closed, its first line; opened, whole */
+function Told(props) {
+	const [open, setOpen] = createSignal(false)
+	return html`
+		<li class=${() => `call told ${props.step.label}`}>
+			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
+				<summary>
+					<span class="tool">${() => props.step.label}</span>
+					<span class="out">${() => preview(props.step.text ?? '')}</span>
+				</summary>
+				<${Show} when=${open}>
+					<div class="whole"><pre>${() => props.step.text}</pre></div>
 				<//>
 			</details>
 		</li>

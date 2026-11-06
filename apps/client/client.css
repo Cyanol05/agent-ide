@@ -898,6 +898,14 @@ agent-memory {
 						}
 					}
 
+					> li.told.handed > details > summary::before {
+						content: '→ ';
+					}
+
+					> li.told.thought > details > summary::before {
+						content: '∴ ';
+					}
+
 					> li.call.running > details > summary::before {
 						animation: blink 1s ease-in-out infinite;
 					}
