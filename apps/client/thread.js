@@ -101,7 +101,8 @@ export function Thread(props) {
 			)
 		})
 		const steps = turns.flatMap((row) => row.turn?.steps ?? [])
-		const shown = all.filter((entry) => !steps.some((step) => answerOf(all, step)?.id === entry.id))
+		const answers = new Set(steps.map((step) => answerOf(all, step)?.id))
+		const shown = all.filter((entry) => !answers.has(entry.id))
 		const said = shown.map((entry) => ({ key: entry.id, entry, at: entry.id }))
 		const rows = [...said, ...turns].sort((one, other) => one.at - other.at)
 		// A message after a turn's line says who wrote it again
