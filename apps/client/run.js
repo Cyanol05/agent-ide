@@ -11,7 +11,7 @@ import {
 } from 'solid-js'
 import { colorOf, entries, homeBot, threads, titleOf } from './server.js'
 import { Message, ThreadLink } from './thread.js'
-import { authorLabel, doing, messageText } from './agent.js'
+import { agentTo, authorLabel, doing, messageText } from './agent.js'
 import { Dot } from './dot.js'
 import { markdown } from './markdown.js'
 
@@ -389,17 +389,26 @@ function Ask(props) {
 }
 
 /**
- * An ask, from the thread that asked: one quiet line, "→ who · answered · 6s", its dot pulsing while the answer is out.
+ * An ask, from the thread that asked: one quiet line with who and the question, pulsing while the answer is out.
  * Opened, the question and answer as ordinary messages.
  */
 export function Exchange(props) {
 	const asked = () => askedThread(props.step)
-	const state = () => !props.answer && threads.find((thread) => thread.id === asked())?.status
-	const out = () => state() === 'working' || state() === 'blocked'
 	const who = () =>
 		props.answer?.data.author ??
 		homeBot(asked())?.name ??
-		threads.find((thread) => thread.id === asked())?.agents?.[0]?.name
+		threads.find((thread) => thread.id === asked())?.agents?.[0]?.name ??
+		props.step.args.to
+	const name = () => {
+		const author = who()
+		if (!author) return titleOf(asked())
+		const to = agentTo(author)
+		return to.name ?? to.model?.split('/').pop() ?? author
+	}
+	const question = () => {
+		const first = (props.step.args.body ?? '').split(/\r?\n/)[0]
+		return first.length > 60 ? `${first.slice(0, 59)}…` : first
+	}
 	createEffect(
 		() => !props.answer,
 		(waiting) => (waiting ? tick() : undefined),
@@ -416,17 +425,13 @@ export function Exchange(props) {
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<small>
-						<${Show} when=${out}><${Dot} state=${() => state()} /> <//>
 						<span class="cross">→ </span
 						><span style=${() => colorOf(who() ?? '')}
-							><${ThreadLink} id=${() => asked()}
-								>${() => (who() ? authorLabel(who()) : titleOf(asked()))}<//
-							></span
-						>${() =>
-							[props.answer ? 'answered' : out() ? 'asking' : 'asked', took()]
-								.filter(Boolean)
-								.map((part) => ` · ${part}`)
-								.join('')}
+							><${ThreadLink} id=${() => asked()}>${name}<//></span
+						>${() => `: "${question()}" · `}<span
+							class=${() => ({ waiting: !props.answer })}
+							>${() => props.answer ? ['answered', took()].filter(Boolean).join(' ') : 'asking…'}</span
+						>
 					</small>
 				</summary>
 				<${Show} when=${open}>

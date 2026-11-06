@@ -992,6 +992,10 @@ agent-memory {
 
 			/* An ask is one quiet line in the flow; opened, the exchange in the same box a question gets over there. */
 			&.exchange {
+				summary .waiting {
+					animation: blink 1s ease-in-out infinite;
+				}
+
 				summary > small {
 					display: inline;
 					margin: 0;
@@ -2212,6 +2216,20 @@ button[data-danger]:focus-visible:not(:disabled) {
 			color: var(--ink);
 			white-space: nowrap;
 			padding: 0.15rem 0.5rem;
+		}
+	}
+
+	.compact-option {
+		flex-wrap: nowrap;
+
+		> span {
+			flex-shrink: 0;
+			white-space: nowrap;
+		}
+
+		> input {
+			width: 4rem;
+			min-width: 0;
 		}
 	}
 
