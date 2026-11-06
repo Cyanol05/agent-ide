@@ -1555,7 +1555,7 @@ body.chat .thread > header span:first-child {
 body.chat .thread > header {
 	position: absolute;
 	inset: 0 0 auto;
-	z-index: 1;
+	z-index: 2;
 	pointer-events: none;
 
 	button {
@@ -1608,10 +1608,32 @@ body.chat {
 	.thread {
 		--chat-width: 50rem;
 
+		/* Messages fade out under the title and the composer: a wash of the page's own colour above the list and below the pill and composer. Not a mask on the list, which iOS paints over the pill. */
+		&::before,
+		&::after {
+			content: '';
+			position: absolute;
+			inset-inline: 0;
+			z-index: 1;
+			pointer-events: none;
+		}
+
+		&::before {
+			top: 0;
+			height: var(--fade-top, 3.4rem);
+			background: linear-gradient(Canvas, transparent);
+		}
+
+		&::after {
+			bottom: 0;
+			height: var(--compose-height, 7rem);
+			background: linear-gradient(transparent, Canvas calc(100% - 2.2rem));
+		}
+
 		> p.from {
 			position: absolute;
 			inset: 3.125rem 0 auto;
-			z-index: 1;
+			z-index: 2;
 
 			&:empty {
 				display: none;
@@ -1623,14 +1645,6 @@ body.chat {
 			min-height: 0;
 			max-height: none;
 			padding-block: max(3.4rem, var(--thread-top, 0px)) calc(var(--compose-height, 7rem) + 2.5rem);
-			/* Messages fade out under the title and the composer instead of showing through. */
-			mask-image: linear-gradient(
-				to bottom,
-				transparent,
-				#000 3.4rem,
-				#000 calc(100% - var(--compose-height, 7rem)),
-				transparent calc(100% - 2.2rem)
-			);
 			/* Keep the scrollbar at the edge, with messages aligned to the composer. */
 			padding-inline: max(0.6rem, calc((100% - var(--chat-width)) / 2));
 		}
@@ -1644,7 +1658,7 @@ body.chat {
 			&.compose {
 				position: absolute;
 				inset: auto 0 0;
-				z-index: 1;
+				z-index: 2;
 				margin-top: 0;
 			}
 		}
@@ -1936,6 +1950,8 @@ button[data-danger]:focus-visible:not(:disabled) {
 			> header {
 				display: none;
 			}
+
+			--fade-top: calc(3.4rem + env(safe-area-inset-top));
 
 			> p.from {
 				top: calc(3.4rem + env(safe-area-inset-top));
