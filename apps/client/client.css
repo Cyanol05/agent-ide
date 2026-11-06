@@ -766,6 +766,23 @@ agent-memory {
 		}
 	}
 
+	/* A family member's column closes quietly, in this page only. */
+	> header > button.close {
+		flex: none;
+		margin: 0 -0.3rem 0 0.4rem;
+		padding: 0 0.3rem;
+		border: 0;
+		background: none;
+		color: var(--mute);
+		font: inherit;
+		font-weight: 400;
+		line-height: 1;
+
+		&:hover {
+			color: var(--ink);
+		}
+	}
+
 	/* The chat: agents write on the page, you write in a soft bubble on the right; who's talking is said once, small. */
 	> ul {
 		list-style: none;

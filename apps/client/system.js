@@ -1,7 +1,7 @@
 /** The client, server, threads and runners, with the routes between them. */
 import html from '@solidjs/html'
 import { createMemo, For } from 'solid-js'
-import { connected, current, family, runners, threads, url } from './server.js'
+import { columns, connected, current, runners, threads, url } from './server.js'
 import { agentName } from './agent.js'
 import { recipients } from './composer.js'
 import { Dot } from './dot.js'
@@ -11,7 +11,7 @@ import { ThreadList } from './thread-list.js'
 import { Wires } from './wires.js'
 
 export function System() {
-	const shown = createMemo(() => threads.filter((thread) => family().includes(thread.id)))
+	const shown = createMemo(() => threads.filter((thread) => columns().includes(thread.id)))
 	const agents = createMemo(() =>
 		shown().flatMap((thread) => thread.agents.map((agent) => ({ ...agent, thread: thread.id }))),
 	)
@@ -75,7 +75,7 @@ export function System() {
 					<${ThreadList} />
 					<${ListEdge} />
 					<div class="threads">
-						<${For} each=${() => family()}>${(id) => html`<${Thread} id=${() => id} />`}<//>
+						<${For} each=${() => columns()}>${(id) => html`<${Thread} id=${() => id} />`}<//>
 					</div>
 				</div>
 			</div>

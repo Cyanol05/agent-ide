@@ -83,6 +83,8 @@ export function server(core) {
 					},
 					{ empty: thread === undefined },
 				)
+				// An answer was said here too: its own thread shows it, and its agent never reads it back
+				if (asked) await core.post(tx, from, { author: name, body: args.body, re: [asked.id] })
 				const who = to.map(agentName).join(', ') || 'nobody'
 				if (asked)
 					return {

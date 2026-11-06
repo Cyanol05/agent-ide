@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 import { fauxProvider } from '@earendil-works/pi-ai/providers/faux'
+import { clampThinkingLevel } from '@earendil-works/pi-ai/models'
 import {
 	createAgentSessionServices,
 	resolveCliModel,
@@ -11,6 +12,11 @@ import {
 } from '@earendil-works/pi-coding-agent'
 import { load } from './modules.js'
 import { runnerBundle, serveRunner } from './remote.js'
+
+// Prefer the installed pi's default; an internal path change must not stop the runner.
+const { DEFAULT_THINKING_LEVEL } = await import(
+	new URL('./core/defaults.js', import.meta.resolve('@earendil-works/pi-coding-agent'))
+).catch(() => ({ DEFAULT_THINKING_LEVEL: 'medium' }))
 
 const { values: args } = parseArgs({
 	options: {
@@ -75,14 +81,16 @@ function resolve(pattern) {
 	if (!found.model) throw new Error(found.error ?? `${name} has no default model in pi; name one`)
 	return {
 		model: found.model,
-		thinkingLevel:
-			found.thinkingLevel ?? (pattern ? undefined : settings.getDefaultThinkingLevel()),
+		...(found.thinkingLevel ? { thinkingLevel: found.thinkingLevel } : {}),
+		defaultThinkingLevel: clampThinkingLevel(found.model,
+			settings.getModelThinkingLevel(found.model.provider, found.model.id) ??
+			settings.getDefaultThinkingLevel() ?? DEFAULT_THINKING_LEVEL),
 	}
 }
 const defaultModel = () => {
 	try {
-		const { model } = resolve('')
-		return { model: `${model.provider}/${model.id}` }
+		const { model, thinkingLevel, defaultThinkingLevel } = resolve('')
+		return { model: `${model.provider}/${model.id}`, thinkingLevel: thinkingLevel ?? defaultThinkingLevel }
 	} catch (error) {
 		return { error: error.message }
 	}
@@ -124,7 +132,7 @@ function folders() {
 }
 
 async function connect() {
-	const { model, error } = defaultModel()
+	const { model, thinkingLevel, error } = defaultModel()
 	const query = new URLSearchParams({
 		runner: name,
 		alias: args.alias,
@@ -132,6 +140,7 @@ async function connect() {
 		host: os.hostname(),
 		dir,
 		model: model ?? '',
+		thinkingLevel: thinkingLevel ?? '',
 		modelError: error ?? '',
 		version,
 		...(args['read-only'] ? { readOnly: '1' } : {}),

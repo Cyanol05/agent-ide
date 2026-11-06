@@ -30,7 +30,7 @@ export const formatAgent = ({ model, thinkingLevel, runner, name }) =>
 /** In the composer: its name or its model's own name, how hard it thinks, where it runs */
 export const agentLabel = (to) =>
 	`${to.name ?? (to.model ?? '').split('/').pop()}` +
-	`${to.thinkingLevel ? ` · ${to.thinkingLevel}` : ''} · ${to.runner}`
+	`${to.thinkingLevel ? `:${to.thinkingLevel}` : ''} · ${to.runner}`
 /** An author as a message shows it */
 export const authorLabel = (author) =>
 	author?.replace(/^(?:[^@]*\/)?([^/@:]+)(?::[^@]*)?@(.+)$/, '$1 · $2') ?? ''

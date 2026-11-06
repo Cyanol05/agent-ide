@@ -2,6 +2,7 @@
 import html from '@solidjs/html'
 import { createEffect, createMemo, For, reconcile, Show } from 'solid-js'
 import {
+	closeColumn,
 	colorOf,
 	current,
 	drawer,
@@ -114,6 +115,17 @@ export function Thread(props) {
 						<${Dot} state=${() => thread()?.status} />
 					</button>
 				</h2>
+				<${Show} when=${() => current() !== props.id}>
+					<button
+						type="button"
+						class="close"
+						title="Close here; the thread details still list it"
+						aria-label="Close"
+						onClick=${() => closeColumn(props.id)}
+					>
+						×
+					</button>
+				<//>
 			</header>
 			<p class="from">
 				<${Show} when=${() => forkedFrom(thread())}

@@ -441,8 +441,13 @@ export function serveRunner({
 		const {
 			model: { headers, ...model },
 			thinkingLevel,
+			defaultThinkingLevel,
 		} = await resolve(pattern)
-		return { model, ...(thinkingLevel ? { thinkingLevel } : {}) }
+		return {
+			model,
+			...(thinkingLevel ? { thinkingLevel } : {}),
+			...(defaultThinkingLevel ? { defaultThinkingLevel } : {}),
+		}
 	}
 
 	async function stream({ id, model: ref, context, options }, signal) {

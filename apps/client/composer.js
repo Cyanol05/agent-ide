@@ -9,6 +9,7 @@ import {
 	createStore,
 	For,
 	latest,
+	onSettled,
 	refresh,
 	Show,
 	snapshot,
@@ -43,7 +44,7 @@ const here = (thread = current()) => threads.find((row) => row.id === thread)?.a
 const lastTo = (thread = current()) =>
 	(entries[thread] ?? []).findLast((event) => event.data.to?.length)?.data.to
 const fallback = (runner) =>
-	compose.settings[runner.name] ?? { runner: runner.name, model: runner.model, thinkingLevel: 'low' }
+	compose.settings[runner.name] ?? { runner: runner.name, model: runner.model }
 /** Whom the next message asks as the agent: in a bot's home the bot, else the pick, else the thread's agent as it runs */
 export const agent = (thread = current()) => {
 	const bot = homeBot(thread)
@@ -63,6 +64,14 @@ const askedBots = (thread = current()) =>
 				.map((agent) => agent.to)
 				.filter((to) => to?.name && lastTo(thread)?.includes(to.name)))
 export const recipients = (thread = current()) => [agent(thread), ...askedBots(thread)].filter(Boolean)
+/** A recipe without thinking keeps the running level, or uses the runner's known pi default. */
+const recipientLabel = (to, thread) => {
+	const running = here(thread).find(
+		(agent) => agent.to?.name === to.name && agent.to?.model === to.model && agent.to?.runner === to.runner,
+	)?.to
+	const runner = runners.find((runner) => runner.name === to.runner)
+	return agentLabel({ ...to, thinkingLevel: to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel) })
+}
 /** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
 export const toFor = (runner, thread = current()) =>
 	(agent(thread)?.runner === runner.name ? agent(thread) : fallback(runner))
@@ -91,9 +100,16 @@ export const openPicker = (anchor) => lend?.(anchor)
 
 export function Composer(props) {
 	let input, picker, button, chooser, anchor
-	const touch = () => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0
+	const touch = () => matchMedia('(pointer: coarse)').matches
 	const active = () => current() === props.thread
 	const busy = () => threads.find((thread) => thread.id === props.thread)?.status === 'working'
+	createEffect(() => [compose.draft, active()], () => {
+		if (CSS.supports('field-sizing', 'content')) return
+		onSettled(() => {
+			input.style.height = 'auto'
+			input.style.height = `${input.scrollHeight}px`
+		})
+	})
 	createEffect(active, (on) => {
 		if (!on) return
 		input.focus()
@@ -308,7 +324,7 @@ export function Composer(props) {
 					}}
 				>
 					<${Dot} state=${() => (recipients(props.thread).length ? (busy() ? 'working' : 'on') : '')} />
-					<span>${() => recipients(props.thread).map(agentLabel).join(' + ') || 'Pick a model'}</span>
+					<span>${() => recipients(props.thread).map((to) => recipientLabel(to, props.thread)).join(' + ') || 'Pick a model'}</span>
 				</button>
 			</div>
 			<div

@@ -1,5 +1,6 @@
 /** The server, as this client sees it: lists over HTTP, changes over /ws */
 import {
+	createEffect,
 	createMemo,
 	createProjection,
 	createRoot,
@@ -8,6 +9,7 @@ import {
 	latest,
 	onSettled,
 	refresh,
+	untrack,
 } from 'solid-js'
 
 export const params = new URLSearchParams(location.search)
@@ -75,7 +77,7 @@ export function followThread(event, id) {
 	openThread(id)
 }
 
-export const { threads, runners, server, bots, family } = createRoot(() => {
+export const { threads, runners, server, bots, family, columns, closeColumn } = createRoot(() => {
 	const server = createMemo(() => api('/api/server'))
 	const bots = createProjection(
 		() => (server().modules.includes('bots') ? api('/api/bots') : []),
@@ -106,7 +108,25 @@ export const { threads, runners, server, bots, family } = createRoot(() => {
 			? (threads.find((thread) => thread.id === current())?.family.map((member) => member.id) ?? [current()])
 			: [null],
 	)
-	return { threads, runners, server, bots, family }
+	/** Family members open in this page: what you visited, and any member since working or waiting for its runner; closing forgets one */
+	const [open, setOpen] = createSignal(new Set())
+	const statusOf = (id) => threads.find((thread) => thread.id === id)?.status
+	createEffect(
+		() => [current(), family().filter((id) => ['working', 'blocked'].includes(statusOf(id)))],
+		([here, working], [, before] = [null, []]) => {
+			const woke = [here, ...working.filter((id) => !before.includes(id))].filter(Boolean)
+			if (woke.some((id) => !untrack(open).has(id))) setOpen((ids) => new Set([...ids, ...woke]))
+		},
+	)
+	/** The columns on screen: the thread you're in and the open members of its family, in the family's order */
+	const columns = createMemo(() => family().filter((id) => id === current() || open().has(id)))
+	const closeColumn = (id) =>
+		setOpen((ids) => {
+			const next = new Set(ids)
+			next.delete(id)
+			return next
+		})
+	return { threads, runners, server, bots, family, columns, closeColumn }
 })
 
 export function drawer(which) {

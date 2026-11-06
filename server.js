@@ -438,7 +438,7 @@ const threadIds = async () =>
 const user = (req) => speaker(req.headers['x-user'])
 
 /** A command needs no model */
-async function address(to, command = false, signal) {
+async function address(to, command = false, signal, useDefaultThinking = true) {
 	const name = field(to?.runner, 'to.runner')
 	if (!(await keys())[name]) throw new Error(`No runner named ${name}`)
 	const runner = (await known())[name]
@@ -447,7 +447,7 @@ async function address(to, command = false, signal) {
 		runner: name,
 		...(command
 			? {}
-			: await modelOn(name, runner, typeof to.model === 'string' ? to.model.trim() : '', signal)),
+			: await modelOn(name, runner, typeof to.model === 'string' ? to.model.trim() : '', signal, useDefaultThinking)),
 	}
 	for (const key of ['thinkingLevel', 'dir'])
 		if (typeof to[key] === 'string' && to[key].trim()) clean[key] = to[key].trim()
@@ -473,26 +473,26 @@ async function whom(threadId, to, command = false, signal) {
 	const bot = typeof text === 'string' && !/[@=]/.test(text) && (await recipe?.(text))
 	if (bot) return address(bot, command, signal)
 	const asked = typeof text === 'string' ? agentTo(text) : text
-	const resolved = await address(asked, command, signal)
-	const key = !command && (resolved.name ?? AGENT)
-	if (!key || !agents?.[key]) return resolved
+	const key = !command && (asked?.name ?? AGENT)
+	const agent = key && agents?.[key] ? await agentOf(agents[key].conversation, key) : null
+	const resolved = await address(asked, command, signal, !agent?.thinkingLevel)
+	if (!agent) return resolved
 	// The agent is there already, so this switches it from this message on. What the ask leaves out stays as it was:
 	// its thinking, as a runner alone resolves to pi's default thinking there, which no one asked for, and on the same
 	// runner its folder.
-	const agent = await agentOf(agents[key].conversation, key)
 	const { thinkingLevel, dir, ...model } = resolved
-	const level = asked?.thinkingLevel || (asked?.model && thinkingLevel) || agent.thinkingLevel
+	const level = asked?.thinkingLevel || (asked?.model && thinkingLevel) || agent.thinkingLevel || thinkingLevel
 	const into = dir ?? (resolved.runner === agent.runner ? agent.dir : undefined)
 	return { ...model, ...(level ? { thinkingLevel: level } : {}), ...(into ? { dir: into } : {}) }
 }
 
 /** What `pi --model asked` makes of it on the runner, kept with its models */
-async function modelOn(name, runner, asked, signal) {
+async function modelOn(name, runner, asked, signal, useDefaultThinking) {
 	const had = runner.models?.[asked]
-	if (had) return { model: `${had.provider}/${had.id}` }
+	if (had && (!useDefaultThinking || !runners.isOnline(name))) return { model: `${had.provider}/${had.id}` }
 	if (!runners.isOnline(name))
 		throw new Error(`${name} is offline; name a model it has run, as provider/id`)
-	const { model, thinkingLevel } = await runners.call(name, { op: 'resolve', model: asked }, { signal })
+	const { model, thinkingLevel, defaultThinkingLevel } = await runners.call(name, { op: 'resolve', model: asked }, { signal })
 	const ref = `${model.provider}/${model.id}`
 	if (!runner.models?.[ref]) {
 		await commit(async (tx) => {
@@ -500,7 +500,8 @@ async function modelOn(name, runner, asked, signal) {
 		})
 		models.setProvider(runnerProvider(runners, name, (await known())[name].models))
 	}
-	return { model: ref, ...(thinkingLevel ? { thinkingLevel } : {}) }
+	const level = thinkingLevel ?? (useDefaultThinking ? defaultThinkingLevel : undefined)
+	return { model: ref, ...(level ? { thinkingLevel: level } : {}) }
 }
 
 /** A runner with an owner takes work from its owner and the names it allows */
@@ -603,9 +604,9 @@ async function lastAsked(id) {
 	)
 }
 
-/** An agent's own answer, which it never reads back */
+/** An agent's own answer, which it never reads back: its turn's last words, or what it posted to its asker */
 const ownAnswer = ({ data: message }, key) =>
-	keyOf(message.author) === key && !message.from && Boolean(message.answer || message.error)
+	keyOf(message.author) === key && !message.from && Boolean(message.answer || message.error || message.re)
 
 /**
  * Writes a message, inside the caller's commit, and gives each agent it asks a Deliver task with all it hasn't seen.
@@ -1585,6 +1586,7 @@ async function upgrade(req, raw, head) {
 		readOnly: query('readOnly') === '1',
 		version: query('version'),
 		model: query('model'),
+		...(query('thinkingLevel') && { thinkingLevel: query('thinkingLevel') }),
 		modelError: query('modelError'),
 		offers: url.searchParams.getAll('offer'),
 		models: resolved,
