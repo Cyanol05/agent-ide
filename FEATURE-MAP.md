@@ -64,7 +64,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   runner.js              runner list, a runner's agents, ConnectRunner
   bot.js                 a bot's settings, new bot
   thread-list.js         the thread list, its family rows
-  thread-details.js      title, people, family, tools for the open thread; ThreadMembers popover in the chat header
+  thread-details.js      title, people, family, tools for the open thread
   agent-memory.js        memory popover and compaction view for the visible thread
   settings.js            server settings: modules on/off, memory's model
   system.js, wires.js    the live system diagram and the wires between boxes
