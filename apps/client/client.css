@@ -1623,7 +1623,7 @@ body.chat {
 			flex: 1;
 			min-height: 0;
 			max-height: none;
-			padding-block: max(3.4rem, var(--thread-top, 0px)) calc(var(--compose-height, 7rem) + 1rem);
+			padding-block: max(3.4rem, var(--thread-top, 0px)) calc(var(--compose-height, 7rem) + 2.5rem);
 			/* Messages fade out under the title and the composer instead of showing through. */
 			mask-image: linear-gradient(
 				to bottom,
