@@ -38,74 +38,6 @@ import { Panes } from './panes.js'
 import { report } from './notice.js'
 import { imageContent, imageUrl } from './images.js'
 
-const [compose, setCompose] = createRoot(() => createStore({ drafts: {}, picks: {}, settings: {} }))
-const emptyDraft = { draft: '', images: [], sending: false }
-/** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
-const pick = (thread = current()) => compose.picks[thread ?? 'new'] ?? null
-const here = (thread = current()) => threads.find((row) => row.id === thread)?.agents ?? []
-/** The names the thread asked last */
-const lastTo = (thread = current()) =>
-	(entries[thread] ?? []).findLast((event) => event.data.to?.length)?.data.to
-const fallback = (runner) =>
-	compose.settings[runner.name] ?? { runner: runner.name, model: runner.model }
-/** Whom the next message asks as the agent: in a bot's home the bot, else the pick, else the thread's agent as it runs */
-export const agent = (thread = current()) => {
-	const bot = homeBot(thread)
-	if (bot) return botAgent(bot)
-	if (pick(thread)) return pick(thread).agent
-	if (lastTo(thread) && !lastTo(thread).some((name) => name.includes('@'))) return null
-	const own = here(thread).find((agent) => agent.to && !agent.to.name)?.to
-	const first = runners.find((runner) => runner.online) ?? runners[0]
-	return own ?? (first?.model ? fallback(first) : null)
-}
-/** The bots it asks beside it: those picked, or those the thread asked last, as they run */
-const askedBots = (thread = current()) =>
-	homeBot(thread)
-		? []
-		: (pick(thread)?.bots ??
-			here(thread)
-				.map((agent) => agent.to)
-				.filter((to) => to?.name && lastTo(thread)?.includes(to.name)))
-export const recipients = (thread = current()) =>
-	[agent(thread), ...askedBots(thread)].filter(Boolean)
-/** An agent asked without thinking keeps the running level, or uses the runner's known pi default. */
-const recipientLabel = (to, thread) => {
-	const running = here(thread).find(
-		(agent) =>
-			agent.to?.name === to.name && agent.to?.model === to.model && agent.to?.runner === to.runner,
-	)?.to
-	const runner = runners.find((runner) => runner.name === to.runner)
-	return writtenTo({
-		...to,
-		thinkingLevel: to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel),
-	})
-}
-/** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
-export const toFor = (runner, thread = current()) =>
-	agent(thread)?.runner === runner.name ? agent(thread) : fallback(runner)
-const setPick = (to, bots, typed = null, thread = current()) =>
-	setCompose((store) => {
-		store.picks[thread ?? 'new'] = { agent: to, bots, typed }
-		if (to && !to.name) store.settings[to.runner] = to
-	})
-/** Choosing a model replaces the agent's pick and keeps the bots; in a bot's home, it is the bot's own model */
-export function choose(to, always = true, thread = current()) {
-	const bot = homeBot(thread)
-	if (bot)
-		return api('/api/bots', { name: bot.name, to: { ...to, name: undefined } })
-			.then(() => refresh(bots))
-			.catch(report)
-	if (always || agent(thread)?.runner === to.runner)
-		setPick(to, snapshot(askedBots(thread)), null, thread)
-	else setCompose((store) => void (store.settings[to.runner] = to))
-}
-/** A runner's settings change the agent's pick only when the agent is on that runner */
-export const configure = (to, thread = current()) => choose(to, false, thread)
-
-/** A bot's settings open the current composer's picker, which already edits that bot's agent. */
-let lend
-export const openPicker = (anchor) => lend?.(anchor)
-
 export function Composer(props) {
 	let input, picker, button, chooser, anchor, recall, recallButton
 	const [lines, setLines] = createSignal(false)
@@ -532,3 +464,71 @@ function PickerBot(bot, close, thread) {
 		</li>
 	`
 }
+
+const [compose, setCompose] = createRoot(() => createStore({ drafts: {}, picks: {}, settings: {} }))
+const emptyDraft = { draft: '', images: [], sending: false }
+/** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
+const pick = (thread = current()) => compose.picks[thread ?? 'new'] ?? null
+const here = (thread = current()) => threads.find((row) => row.id === thread)?.agents ?? []
+/** The names the thread asked last */
+const lastTo = (thread = current()) =>
+	(entries[thread] ?? []).findLast((event) => event.data.to?.length)?.data.to
+const fallback = (runner) =>
+	compose.settings[runner.name] ?? { runner: runner.name, model: runner.model }
+/** Whom the next message asks as the agent: in a bot's home the bot, else the pick, else the thread's agent as it runs */
+export const agent = (thread = current()) => {
+	const bot = homeBot(thread)
+	if (bot) return botAgent(bot)
+	if (pick(thread)) return pick(thread).agent
+	if (lastTo(thread) && !lastTo(thread).some((name) => name.includes('@'))) return null
+	const own = here(thread).find((agent) => agent.to && !agent.to.name)?.to
+	const first = runners.find((runner) => runner.online) ?? runners[0]
+	return own ?? (first?.model ? fallback(first) : null)
+}
+/** The bots it asks beside it: those picked, or those the thread asked last, as they run */
+const askedBots = (thread = current()) =>
+	homeBot(thread)
+		? []
+		: (pick(thread)?.bots ??
+			here(thread)
+				.map((agent) => agent.to)
+				.filter((to) => to?.name && lastTo(thread)?.includes(to.name)))
+export const recipients = (thread = current()) =>
+	[agent(thread), ...askedBots(thread)].filter(Boolean)
+/** An agent asked without thinking keeps the running level, or uses the runner's known pi default. */
+const recipientLabel = (to, thread) => {
+	const running = here(thread).find(
+		(agent) =>
+			agent.to?.name === to.name && agent.to?.model === to.model && agent.to?.runner === to.runner,
+	)?.to
+	const runner = runners.find((runner) => runner.name === to.runner)
+	return writtenTo({
+		...to,
+		thinkingLevel: to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel),
+	})
+}
+/** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
+export const toFor = (runner, thread = current()) =>
+	agent(thread)?.runner === runner.name ? agent(thread) : fallback(runner)
+const setPick = (to, bots, typed = null, thread = current()) =>
+	setCompose((store) => {
+		store.picks[thread ?? 'new'] = { agent: to, bots, typed }
+		if (to && !to.name) store.settings[to.runner] = to
+	})
+/** Choosing a model replaces the agent's pick and keeps the bots; in a bot's home, it is the bot's own model */
+export function choose(to, always = true, thread = current()) {
+	const bot = homeBot(thread)
+	if (bot)
+		return api('/api/bots', { name: bot.name, to: { ...to, name: undefined } })
+			.then(() => refresh(bots))
+			.catch(report)
+	if (always || agent(thread)?.runner === to.runner)
+		setPick(to, snapshot(askedBots(thread)), null, thread)
+	else setCompose((store) => void (store.settings[to.runner] = to))
+}
+/** A runner's settings change the agent's pick only when the agent is on that runner */
+export const configure = (to, thread = current()) => choose(to, false, thread)
+
+/** A bot's settings open the current composer's picker, which already edits that bot's agent. */
+let lend
+export const openPicker = (anchor) => lend?.(anchor)

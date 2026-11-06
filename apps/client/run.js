@@ -15,196 +15,6 @@ import { agentTo, authorLabel, doing, messageText, touched } from './agent.js'
 import { Dot } from './dot.js'
 
 /**
- * Each agent conversation on screen, its entries as Pi keeps them.
- * Entries never change once written, so the store is shallow: a read tracks the conversation, not each entry's fields.
- */
-export const [conversations, setConversations] = createRoot(() =>
-	createStore({}, { shallow: true }),
-)
-/** Takes an agent's entries off the socket: whole on each new watch, then each one once, as it's written */
-export function heard(conversation, entries, whole) {
-	const shown = entries.filter((entry) => entry.kind !== 'pi.system')
-	setConversations((all) => {
-		all[conversation] = whole || !all[conversation] ? shown : [...all[conversation], ...shown]
-	})
-}
-
-/** A delivery's words, whether Pi kept them as a string or as blocks beside images */
-const handedText = (message) =>
-	typeof message?.content === 'string' ? message.content : messageText(message)
-
-/**
- * Where an agent's newest compaction cuts, as the thread's message ids: the first message of the first delivery the agent still reads whole.
- * Older compactions are history the agent no longer reads, so they don't show. `memory` is whether the summary is the thread's memory lines, or Pi's own.
- */
-export function cutsOf(conversation) {
-	const all = conversations[conversation] ?? []
-	return all
-		.filter((entry) => entry.kind === 'pi.compaction')
-		.slice(-1)
-		.flatMap((entry) => {
-			const kept = all.find(
-				(other) => other.kind === 'agent-ide.delivery' && other.id >= entry.head,
-			)
-			const first = Math.min(...(kept?.data?.held ?? []))
-			if (!Number.isFinite(first)) return []
-			const summary = messageText(entry.model?.[0]) || ''
-			// With memory the summary is its lines, `id+n|text`; otherwise it is Pi's own text
-			const lines = [...summary.matchAll(/^(\d+)\+(\d+)\|(.*)$/gm)].map((line) => ({
-				key: `${conversation}:${line[1]}+${line[2]}`,
-				at: Number(line[1]),
-				n: Number(line[2]),
-				text: line[3],
-			}))
-			return [
-				{
-					key: `${conversation}:cut:${entry.id}`,
-					id: entry.id,
-					at: first - 0.5,
-					memory: lines.length > 0,
-					lines: lines.length
-						? lines
-						: [{ key: `${conversation}:summary:${entry.id}`, at: 0, n: first, text: summary }],
-				},
-			]
-		})
-}
-
-/** A conversation cut into turns: each begins with a delivery and holds the calls, results and words that follow it */
-export function turnsOf(conversation, list = conversations[conversation]) {
-	const turns = []
-	for (const entry of list ?? []) {
-		const message = entry.model?.[0]
-		if (entry.kind === 'agent-ide.delivery') {
-			turns.push({
-				key: `${conversation}:${entry.id}`,
-				conversation,
-				delivery: entry.id,
-				held: entry.data?.held ?? [],
-				after: Math.max(0, ...(entry.data?.held ?? [])),
-				start: message?.timestamp,
-				end: message?.timestamp,
-				// What the agent was handed opens its steps
-				steps: [{ key: `${entry.id}:handed`, label: 'handed', text: handedText(message) }],
-				ended: false,
-			})
-			continue
-		}
-		const turn = turns.at(-1)
-		if (!turn || !message) continue
-		turn.end = message.timestamp ?? turn.end
-		if (message.role === 'assistant') {
-			turn.ended = !['toolUse'].includes(message.stopReason)
-			for (const block of message.content ?? []) {
-				if (block.type === 'toolCall')
-					turn.steps.push({
-						key: block.id,
-						name: block.name,
-						args: block.arguments ?? {},
-						result: null,
-					})
-				else if (block.type === 'thinking' && block.thinking?.trim())
-					turn.steps.push({
-						key: `${entry.id}:thought:${turn.steps.length}`,
-						label: 'thought',
-						text: block.thinking,
-					})
-				// The last words are the answer, which the thread shows itself
-				else if (block.type === 'text' && block.text.trim() && message.stopReason === 'toolUse')
-					turn.steps.push({ key: `${entry.id}:said`, said: block.text })
-			}
-		}
-		if (message.role === 'toolResult') {
-			const step = turn.steps.find((step) => step.key === message.toolCallId)
-			if (step)
-				step.result = {
-					at: entry.id,
-					time: message.timestamp,
-					text: messageText(message),
-					error: message.isError,
-					details: message.details,
-				}
-		}
-	}
-	return turns
-}
-
-/** A step's arguments in one line, what it touches first */
-const argsLine = ({ name, args }) =>
-	name === 'post'
-		? args.thread
-			? `#${args.thread}`
-			: (args.title ?? '')
-		: (touched(args) ?? JSON.stringify(args)).split('\n')[0]
-
-const seconds = (ms) => {
-	const s = Math.max(0, Math.round(ms / 1000))
-	return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
-}
-export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
-/** The newest of some cuts, null before any */
-export const newestCut = (cuts) =>
-	cuts.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null)
-
-/** A post's ask: the thread it went to, or for an answer, the thread it answered */
-const askedThread = (step) => step.result?.details?.thread ?? step.args.thread
-const answered = (step) => /^Answered /.test(step.result?.text ?? '')
-/** The posts a turn made that ask another thread, rather than answer one */
-export const asksOf = (steps) =>
-	steps.filter((step) => step.name === 'post' && !answered(step) && askedThread(step))
-
-/** Each post's answer, looked up by the thread it asked instead of scanning every message per post */
-export function answersIn(messages) {
-	const byThread = new Map()
-	for (const entry of messages)
-		if (entry.data.from && entry.data.re)
-			byThread.set(entry.data.from, [...(byThread.get(entry.data.from) ?? []), entry])
-	return (step) =>
-		step.name === 'post' &&
-		step.result &&
-		!answered(step) &&
-		byThread.get(askedThread(step))?.find((entry) => entry.id > step.result.at)
-}
-
-/** What a turn did, in a few words; its asks have their own lines */
-function summary(turn) {
-	const tools = turn.steps.filter((step) => step.name)
-	const edited = [
-		...new Set(
-			tools
-				.filter(
-					(step) => ['edit', 'write'].includes(step.name) && step.result && !step.result.error,
-				)
-				.map((step) => step.args.path?.split('/').pop()),
-		),
-	].filter(Boolean)
-	const commands = tools.filter((step) => step.name === 'bash').length
-	const posts = (word, list) =>
-		list.length && `${word} ${list.map((step) => titleOf(askedThread(step))).join(', ')}`
-	const parts = [
-		edited.length && `edited ${edited.join(', ')}`,
-		commands && plural(commands, 'command'),
-		posts(
-			'answered',
-			tools.filter((step) => step.name === 'post' && answered(step)),
-		),
-		tools.length && plural(tools.length, 'step'),
-		turn.end - turn.start >= 1000 && seconds(turn.end - turn.start),
-	]
-	// A turn with no call only thought, before its answer or instead of one
-	return parts.filter(Boolean).join(' · ') || 'thought'
-}
-
-/** One clock for every live turn, ticking only while one is on screen */
-const [clock, setClock] = createRoot(() => createSignal(Date.now()))
-let ticking = 0,
-	timer
-const tick = () => {
-	if (!ticking++) timer = setInterval(() => setClock(Date.now()), 1000)
-	return () => --ticking || clearInterval(timer)
-}
-
-/**
  * A turn's line. While its agent works, the step it's in now, and below it the last few steps and the words coming in;
  * when the turn ends, its summary. Open, every step in order.
  */
@@ -260,54 +70,6 @@ export function Turn(props) {
 						>
 						<${Show} when=${said}><li class="said">${said}</li><//>
 					</ol>
-				<//>
-			</details>
-		</li>
-	`
-}
-
-function Step(props) {
-	const step = () => props.step
-	return html`
-		<${Show}
-			when=${() => step().name || step().label}
-			fallback=${() => html`<li class="said">${() => step().said}</li>`}
-		>
-			<${Call} step=${() => step()} />
-		<//>
-	`
-}
-
-/** The widest label among a turn's steps, so their inputs start at one column */
-const labelWidth = (steps) =>
-	Math.max(
-		...steps.map((step) => (step.name ?? step.label ?? '').length),
-	)
-
-/** A step's input as it was stored, on one line */
-const input = (step) => (step.name ? JSON.stringify(step.args) : (step.text ?? ''))
-
-/** • tool and its input, or what the agent was handed or thought; opened, whole */
-function Call(props) {
-	const result = () => props.step.result
-	const [open, setOpen] = createSignal(false)
-	return html`
-		<li
-			class=${() =>
-				props.step.name
-					? { call: true, failed: result()?.error, running: !result() }
-					: `call told ${props.step.label}`}
-		>
-			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
-				<summary>
-					<span class="tool">${() => props.step.name ?? props.step.label}</span>
-					<span class="in">${() => input(props.step)}</span>
-				</summary>
-				<${Show} when=${open}>
-					<div class="whole">
-						<pre>${() => (props.step.name ? JSON.stringify(props.step.args, null, 2) : props.step.text)}</pre>
-						<${Show} when=${() => result()?.text}><pre>${() => result().text}</pre><//>
-					</div>
 				<//>
 			</details>
 		</li>
@@ -380,4 +142,246 @@ export function Exchange(props) {
 			</details>
 		</li>
 	`
+}
+
+function Step(props) {
+	const step = () => props.step
+	return html`
+		<${Show}
+			when=${() => step().name || step().label}
+			fallback=${() => html`<li class="said">${() => step().said}</li>`}
+		>
+			<${Call} step=${() => step()} />
+		<//>
+	`
+}
+
+/** The widest label among a turn's steps, so their inputs start at one column */
+const labelWidth = (steps) =>
+	Math.max(
+		...steps.map((step) => (step.name ?? step.label ?? '').length),
+	)
+
+/** • tool and its input, or what the agent was handed or thought; opened, whole */
+function Call(props) {
+	const result = () => props.step.result
+	const [open, setOpen] = createSignal(false)
+	return html`
+		<li
+			class=${() =>
+				props.step.name
+					? { call: true, failed: result()?.error, running: !result() }
+					: `call told ${props.step.label}`}
+		>
+			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
+				<summary>
+					<span class="tool">${() => props.step.name ?? props.step.label}</span>
+					<span class="in">${() => input(props.step)}</span>
+				</summary>
+				<${Show} when=${open}>
+					<div class="whole">
+						<pre>${() => (props.step.name ? JSON.stringify(props.step.args, null, 2) : props.step.text)}</pre>
+						<${Show} when=${() => result()?.text}><pre>${() => result().text}</pre><//>
+					</div>
+				<//>
+			</details>
+		</li>
+	`
+}
+
+/** A step's input as it was stored, on one line */
+const input = (step) => (step.name ? JSON.stringify(step.args) : (step.text ?? ''))
+
+/** What a turn did, in a few words; its asks have their own lines */
+function summary(turn) {
+	const tools = turn.steps.filter((step) => step.name)
+	const edited = [
+		...new Set(
+			tools
+				.filter(
+					(step) => ['edit', 'write'].includes(step.name) && step.result && !step.result.error,
+				)
+				.map((step) => step.args.path?.split('/').pop()),
+		),
+	].filter(Boolean)
+	const commands = tools.filter((step) => step.name === 'bash').length
+	const posts = (word, list) =>
+		list.length && `${word} ${list.map((step) => titleOf(askedThread(step))).join(', ')}`
+	const parts = [
+		edited.length && `edited ${edited.join(', ')}`,
+		commands && plural(commands, 'command'),
+		posts(
+			'answered',
+			tools.filter((step) => step.name === 'post' && answered(step)),
+		),
+		tools.length && plural(tools.length, 'step'),
+		turn.end - turn.start >= 1000 && seconds(turn.end - turn.start),
+	]
+	// A turn with no call only thought, before its answer or instead of one
+	return parts.filter(Boolean).join(' · ') || 'thought'
+}
+
+/** A step's arguments in one line, what it touches first */
+const argsLine = ({ name, args }) =>
+	name === 'post'
+		? args.thread
+			? `#${args.thread}`
+			: (args.title ?? '')
+		: (touched(args) ?? JSON.stringify(args)).split('\n')[0]
+
+/** A post's ask: the thread it went to, or for an answer, the thread it answered */
+const askedThread = (step) => step.result?.details?.thread ?? step.args.thread
+const answered = (step) => /^Answered /.test(step.result?.text ?? '')
+
+const seconds = (ms) => {
+	const s = Math.max(0, Math.round(ms / 1000))
+	return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`
+}
+export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/** One clock for every live turn, ticking only while one is on screen */
+const [clock, setClock] = createRoot(() => createSignal(Date.now()))
+let ticking = 0,
+	timer
+const tick = () => {
+	if (!ticking++) timer = setInterval(() => setClock(Date.now()), 1000)
+	return () => --ticking || clearInterval(timer)
+}
+
+/**
+ * Each agent conversation on screen, its entries as Pi keeps them.
+ * Entries never change once written, so the store is shallow: a read tracks the conversation, not each entry's fields.
+ */
+export const [conversations, setConversations] = createRoot(() =>
+	createStore({}, { shallow: true }),
+)
+
+/** Takes an agent's entries off the socket: whole on each new watch, then each one once, as it's written */
+export function heard(conversation, entries, whole) {
+	const shown = entries.filter((entry) => entry.kind !== 'pi.system')
+	setConversations((all) => {
+		all[conversation] = whole || !all[conversation] ? shown : [...all[conversation], ...shown]
+	})
+}
+
+/** A delivery's words, whether Pi kept them as a string or as blocks beside images */
+const handedText = (message) =>
+	typeof message?.content === 'string' ? message.content : messageText(message)
+
+/**
+ * Where an agent's newest compaction cuts, as the thread's message ids: the first message of the first delivery the agent still reads whole.
+ * Older compactions are history the agent no longer reads, so they don't show. `memory` is whether the summary is the thread's memory lines, or Pi's own.
+ */
+export function cutsOf(conversation) {
+	const all = conversations[conversation] ?? []
+	return all
+		.filter((entry) => entry.kind === 'pi.compaction')
+		.slice(-1)
+		.flatMap((entry) => {
+			const kept = all.find(
+				(other) => other.kind === 'agent-ide.delivery' && other.id >= entry.head,
+			)
+			const first = Math.min(...(kept?.data?.held ?? []))
+			if (!Number.isFinite(first)) return []
+			const summary = messageText(entry.model?.[0]) || ''
+			// With memory the summary is its lines, `id+n|text`; otherwise it is Pi's own text
+			const lines = [...summary.matchAll(/^(\d+)\+(\d+)\|(.*)$/gm)].map((line) => ({
+				key: `${conversation}:${line[1]}+${line[2]}`,
+				at: Number(line[1]),
+				n: Number(line[2]),
+				text: line[3],
+			}))
+			return [
+				{
+					key: `${conversation}:cut:${entry.id}`,
+					id: entry.id,
+					at: first - 0.5,
+					memory: lines.length > 0,
+					lines: lines.length
+						? lines
+						: [{ key: `${conversation}:summary:${entry.id}`, at: 0, n: first, text: summary }],
+				},
+			]
+		})
+}
+
+
+/** A conversation cut into turns: each begins with a delivery and holds the calls, results and words that follow it */
+export function turnsOf(conversation, list = conversations[conversation]) {
+	const turns = []
+	for (const entry of list ?? []) {
+		const message = entry.model?.[0]
+		if (entry.kind === 'agent-ide.delivery') {
+			turns.push({
+				key: `${conversation}:${entry.id}`,
+				conversation,
+				delivery: entry.id,
+				held: entry.data?.held ?? [],
+				after: Math.max(0, ...(entry.data?.held ?? [])),
+				start: message?.timestamp,
+				end: message?.timestamp,
+				// What the agent was handed opens its steps
+				steps: [{ key: `${entry.id}:handed`, label: 'handed', text: handedText(message) }],
+				ended: false,
+			})
+			continue
+		}
+		const turn = turns.at(-1)
+		if (!turn || !message) continue
+		turn.end = message.timestamp ?? turn.end
+		if (message.role === 'assistant') {
+			turn.ended = !['toolUse'].includes(message.stopReason)
+			for (const block of message.content ?? []) {
+				if (block.type === 'toolCall')
+					turn.steps.push({
+						key: block.id,
+						name: block.name,
+						args: block.arguments ?? {},
+						result: null,
+					})
+				else if (block.type === 'thinking' && block.thinking?.trim())
+					turn.steps.push({
+						key: `${entry.id}:thought:${turn.steps.length}`,
+						label: 'thought',
+						text: block.thinking,
+					})
+				// The last words are the answer, which the thread shows itself
+				else if (block.type === 'text' && block.text.trim() && message.stopReason === 'toolUse')
+					turn.steps.push({ key: `${entry.id}:said`, said: block.text })
+			}
+		}
+		if (message.role === 'toolResult') {
+			const step = turn.steps.find((step) => step.key === message.toolCallId)
+			if (step)
+				step.result = {
+					at: entry.id,
+					time: message.timestamp,
+					text: messageText(message),
+					error: message.isError,
+					details: message.details,
+				}
+		}
+	}
+	return turns
+}
+
+/** The newest of some cuts, null before any */
+export const newestCut = (cuts) =>
+	cuts.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null)
+
+/** The posts a turn made that ask another thread, rather than answer one */
+export const asksOf = (steps) =>
+	steps.filter((step) => step.name === 'post' && !answered(step) && askedThread(step))
+
+/** Each post's answer, looked up by the thread it asked instead of scanning every message per post */
+export function answersIn(messages) {
+	const byThread = new Map()
+	for (const entry of messages)
+		if (entry.data.from && entry.data.re)
+			byThread.set(entry.data.from, [...(byThread.get(entry.data.from) ?? []), entry])
+	return (step) =>
+		step.name === 'post' &&
+		step.result &&
+		!answered(step) &&
+		byThread.get(askedThread(step))?.find((entry) => entry.id > step.result.at)
 }

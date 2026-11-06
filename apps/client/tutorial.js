@@ -9,6 +9,46 @@ import { ConnectRunner } from './runner.js'
 import { report } from './notice.js'
 import { Memory } from './agent-memory.js'
 
+export function Tutorial(props) {
+	onSettled(() => {
+		const stage = document.getElementById('stage')
+		const sections = new IntersectionObserver(
+			(list) => {
+				for (const entry of list)
+					if (entry.isIntersecting) stage.dataset.focus = entry.target.dataset.focus
+			},
+			{ rootMargin: '-45% 0px -45% 0px' },
+		)
+		document.querySelectorAll('.page > section').forEach((section) => sections.observe(section))
+		const buttons = [...document.querySelectorAll('[data-try]')]
+		const run = async (event) => {
+			const button = event.currentTarget
+			if (matchMedia('(max-width: 1000px)').matches) stage.scrollIntoView({ behavior: 'smooth' })
+			button.disabled = true
+			try {
+				await TRIES[button.dataset.try]()
+			} catch (error) {
+				report(error)
+			} finally {
+				button.disabled = false
+			}
+		}
+		buttons.forEach((button) => button.addEventListener('click', run))
+		return () => {
+			sections.disconnect()
+			buttons.forEach((button) => button.removeEventListener('click', run))
+		}
+	})
+	return html`
+		<${Show} when=${() => props.story}
+			><${Portal} mount=${document.getElementById('memory')}><${Memory} /><//
+		><//>
+		<${Portal} mount=${document.getElementById('connect-runner')}
+			><${ConnectRunner} name="laptop"
+		/><//>
+	`
+}
+
 const defaults = () =>
 	runners.filter((runner) => runner.online && toFor(runner).model).map((runner) => toFor(runner))
 async function ask(body, to, was = current()) {
@@ -17,6 +57,7 @@ async function ask(body, to, was = current()) {
 	const id = was ?? (await createThread(body.slice(0, 60)))
 	await api(`/api/threads/${id}/entries`, { body, to: snapshot(to) })
 }
+
 const fresh = () => openThread(null)
 const SHED = [
 	[
@@ -136,44 +177,4 @@ const TRIES = {
 			null,
 		)
 	},
-}
-
-export function Tutorial(props) {
-	onSettled(() => {
-		const stage = document.getElementById('stage')
-		const sections = new IntersectionObserver(
-			(list) => {
-				for (const entry of list)
-					if (entry.isIntersecting) stage.dataset.focus = entry.target.dataset.focus
-			},
-			{ rootMargin: '-45% 0px -45% 0px' },
-		)
-		document.querySelectorAll('.page > section').forEach((section) => sections.observe(section))
-		const buttons = [...document.querySelectorAll('[data-try]')]
-		const run = async (event) => {
-			const button = event.currentTarget
-			if (matchMedia('(max-width: 1000px)').matches) stage.scrollIntoView({ behavior: 'smooth' })
-			button.disabled = true
-			try {
-				await TRIES[button.dataset.try]()
-			} catch (error) {
-				report(error)
-			} finally {
-				button.disabled = false
-			}
-		}
-		buttons.forEach((button) => button.addEventListener('click', run))
-		return () => {
-			sections.disconnect()
-			buttons.forEach((button) => button.removeEventListener('click', run))
-		}
-	})
-	return html`
-		<${Show} when=${() => props.story}
-			><${Portal} mount=${document.getElementById('memory')}><${Memory} /><//
-		><//>
-		<${Portal} mount=${document.getElementById('connect-runner')}
-			><${ConnectRunner} name="laptop"
-		/><//>
-	`
 }

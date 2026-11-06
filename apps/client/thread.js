@@ -40,15 +40,6 @@ import { report } from './notice.js'
 import { imageUrl } from './images.js'
 import { markdown } from './markdown.js'
 
-export const ThreadLink = (props) => html`
-	<a
-		class="thread-link"
-		href=${() => hrefOf(props.id)}
-		onClick=${(event) => followThread(event, props.id)}
-		>${() => props.children}</a
-	>
-`
-
 export function Thread(props) {
 	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
 	const messages = () => entries[props.id] ?? []
@@ -427,32 +418,6 @@ export function Thread(props) {
 	`
 }
 
-/**
- * Who crossed threads: a bot answering from its own thread is named by a link to it; anyone else is named, then the thread.
- * `home` is the word beside a bot's link, before it unless `after`; `other` the words between a name and its thread.
- */
-function Crossing(props) {
-	const data = () => props.data
-	const name = () => authorLabel(data().author)
-	return html`
-		<span class="cross">${() => `${props.arrow} `}</span>
-		<${Show}
-			when=${() => homeBot(data().from)?.name === data().author}
-			fallback=${() => html`
-				<span style=${() => colorOf(data().author)}>${name}</span>
-				${() => ` ${props.other} `}
-				<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
-			`}
-		>
-			${() => (props.after ? '' : `${props.home} `)}
-			<span style=${() => colorOf(data().author)}>
-				<${ThreadLink} id=${() => data().from}>${name}<//>
-			</span>
-			${() => (props.after ? ` ${props.home}` : '')}
-		<//>
-	`
-}
-
 export function Message(props) {
 	const data = () => props.entry.data
 	const elsewhere = () => !props.embedded && data().from && data().from !== props.thread
@@ -543,6 +508,32 @@ export function Message(props) {
 	`
 }
 
+/**
+ * Who crossed threads: a bot answering from its own thread is named by a link to it; anyone else is named, then the thread.
+ * `home` is the word beside a bot's link, before it unless `after`; `other` the words between a name and its thread.
+ */
+function Crossing(props) {
+	const data = () => props.data
+	const name = () => authorLabel(data().author)
+	return html`
+		<span class="cross">${() => `${props.arrow} `}</span>
+		<${Show}
+			when=${() => homeBot(data().from)?.name === data().author}
+			fallback=${() => html`
+				<span style=${() => colorOf(data().author)}>${name}</span>
+				${() => ` ${props.other} `}
+				<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
+			`}
+		>
+			${() => (props.after ? '' : `${props.home} `)}
+			<span style=${() => colorOf(data().author)}>
+				<${ThreadLink} id=${() => data().from}>${name}<//>
+			</span>
+			${() => (props.after ? ` ${props.home}` : '')}
+		<//>
+	`
+}
+
 /** What a message says: markdown, except a `$ cmd` and an error, which stay as written */
 export const Body = (props) => html`
 	<${Show}
@@ -562,4 +553,13 @@ const Images = (props) => html`
 			>
 		</div>
 	<//>
+`
+
+export const ThreadLink = (props) => html`
+	<a
+		class="thread-link"
+		href=${() => hrefOf(props.id)}
+		onClick=${(event) => followThread(event, props.id)}
+		>${() => props.children}</a
+	>
 `

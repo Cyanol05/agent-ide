@@ -2,35 +2,6 @@
 import html from '@solidjs/html'
 import { createEffect, createSignal, For, onSettled } from 'solid-js'
 
-const directions = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] }
-const point = (rect, side, at = 0.5) => {
-	const horizontal = side === 'left' || side === 'right'
-	const size = horizontal ? rect.height : rect.width
-	const offset = at === 'to' ? size / 2 : at >= 0 && at <= 1 ? at * size : at < 0 ? size + at : at
-	return horizontal
-		? [side === 'left' ? rect.left : rect.right, rect.top + offset]
-		: [rect.left + offset, side === 'top' ? rect.top : rect.bottom]
-}
-/** A wire must not reach through a clipped or scrolled-away endpoint. */
-function visible(node) {
-	if (!node?.isConnected) return false
-	let { left, right, top, bottom, width, height } = node.getBoundingClientRect()
-	if (!width || !height) return false
-	for (let parent = node.parentElement; parent; parent = parent.parentElement) {
-		const style = getComputedStyle(parent),
-			rect = parent.getBoundingClientRect()
-		if (style.overflowX !== 'visible') {
-			left = Math.max(left, rect.left + parent.clientLeft)
-			right = Math.min(right, rect.left + parent.clientLeft + parent.clientWidth)
-		}
-		if (style.overflowY !== 'visible') {
-			top = Math.max(top, rect.top + parent.clientTop)
-			bottom = Math.min(bottom, rect.top + parent.clientTop + parent.clientHeight)
-		}
-	}
-	return right > left && bottom > top
-}
-
 export function Wires(props) {
 	const [paths, setPaths] = createSignal([])
 	let svg,
@@ -124,4 +95,34 @@ export function Wires(props) {
 			`}<//>
 		</svg>
 	`
+}
+
+const directions = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] }
+const point = (rect, side, at = 0.5) => {
+	const horizontal = side === 'left' || side === 'right'
+	const size = horizontal ? rect.height : rect.width
+	const offset = at === 'to' ? size / 2 : at >= 0 && at <= 1 ? at * size : at < 0 ? size + at : at
+	return horizontal
+		? [side === 'left' ? rect.left : rect.right, rect.top + offset]
+		: [rect.left + offset, side === 'top' ? rect.top : rect.bottom]
+}
+/** A wire must not reach through a clipped or scrolled-away endpoint. */
+
+function visible(node) {
+	if (!node?.isConnected) return false
+	let { left, right, top, bottom, width, height } = node.getBoundingClientRect()
+	if (!width || !height) return false
+	for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+		const style = getComputedStyle(parent),
+			rect = parent.getBoundingClientRect()
+		if (style.overflowX !== 'visible') {
+			left = Math.max(left, rect.left + parent.clientLeft)
+			right = Math.min(right, rect.left + parent.clientLeft + parent.clientWidth)
+		}
+		if (style.overflowY !== 'visible') {
+			top = Math.max(top, rect.top + parent.clientTop)
+			bottom = Math.min(bottom, rect.top + parent.clientTop + parent.clientHeight)
+		}
+	}
+	return right > left && bottom > top
 }

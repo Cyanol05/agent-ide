@@ -15,12 +15,6 @@ import {
 import { api, connected, current, entries, server, threads } from './server.js'
 import { cutsOf, newestCut, plural } from './run.js'
 
-const bytes = (text) => new TextEncoder().encode(text).length
-const sizeOf = (lines) =>
-	lines.reduce((sum, line) => sum + bytes(`${line.id}+${line.n}|${line.text}`) + 1, 0)
-const inside = (line, id, n) => line.id >= id && line.id + line.n <= id + n
-const key = (line) => `${line.id}+${line.n}`
-
 /**
  * What compaction did to this thread's agent, as a tape of the thread: the part before the newest cut faint, one segment per memory line,
  * the part the agent reads word for word solid.
@@ -256,6 +250,7 @@ function ThreadMemory(props) {
 }
 
 /** The same cut an agent reads, opened from the top down. All reads use the captured thread. */
+
 async function openTree(read, id, n, cut) {
 	const halves = n > 1 ? (await read(`?zoom=${id},${n}`)).lines : null
 	if (!halves?.length)
@@ -271,3 +266,9 @@ async function openTree(read, id, n, cut) {
 		}),
 	)
 }
+
+const bytes = (text) => new TextEncoder().encode(text).length
+const sizeOf = (lines) =>
+	lines.reduce((sum, line) => sum + bytes(`${key(line)}|${line.text}`) + 1, 0)
+const inside = (line, id, n) => line.id >= id && line.id + line.n <= id + n
+const key = (line) => `${line.id}+${line.n}`

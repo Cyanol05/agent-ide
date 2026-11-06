@@ -19,15 +19,6 @@ import { report } from './notice.js'
 import { placePopover } from './popover.js'
 import { Dot } from './dot.js'
 
-/** Changes not saved yet, kept if the settings close before saving */
-const [draft, setDraft] = createRoot(() =>
-	createStore({ modules: {}, model: undefined, compactAt: undefined, state: '' }),
-)
-const changed = () =>
-	Object.keys(draft.modules).length > 0 ||
-	draft.model !== undefined ||
-	draft.compactAt !== undefined
-
 export function Settings() {
 	let button, panel
 	const id = createUniqueId()
@@ -224,3 +215,12 @@ export function Settings() {
 		</div>
 	`
 }
+
+/** Changes not saved yet, kept if the settings close before saving */
+const [draft, setDraft] = createRoot(() =>
+	createStore({ modules: {}, model: undefined, compactAt: undefined, state: '' }),
+)
+const changed = () =>
+	Object.keys(draft.modules).length > 0 ||
+	draft.model !== undefined ||
+	draft.compactAt !== undefined
