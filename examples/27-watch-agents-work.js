@@ -1,9 +1,10 @@
 /** A browser watching a thread hears its messages, every one first and then each as it lands, and what each agent is doing as it changes */
+import { fauxAssistantMessage, fauxThinking, fauxToolCall } from '@earendil-works/pi-ai/providers/faux'
 import {
 	answered,
 	api,
 	base,
-	call,
+	conversationOf,
 	check,
 	done,
 	say,
@@ -11,6 +12,8 @@ import {
 	server,
 	sleep,
 	until,
+	view,
+	text,
 } from './lib.js'
 
 let srv = await server()
@@ -18,7 +21,10 @@ const long = `done ${'and more '.repeat(60)}`
 const bot = await scriptedRunner('bot', (request) =>
 	request.messages.some((m) => m.role === 'toolResult')
 		? say(long)
-		: call('bash', { command: 'sleep 1; echo slept' }),
+		: fauxAssistantMessage([
+				fauxThinking('first the folder'),
+				fauxToolCall('bash', { command: 'sleep 1; echo slept' }),
+			], { stopReason: 'toolUse' }),
 )
 const {
 	json: { id },
@@ -39,11 +45,6 @@ function watch(thread) {
 const lives = (heard) => heard.filter((m) => m.live).map((m) => m.live)
 const said = (heard) =>
 	heard.flatMap((m) => (m.agent ? [] : (m.entries ?? []))).map((e) => e.data.body)
-const text = (message) =>
-	(message?.content ?? [])
-		.filter((b) => b.type === 'text')
-		.map((b) => b.text)
-		.join('')
 
 const first = watch(id)
 await until(async () => first.heard.length)
@@ -52,7 +53,7 @@ check(
 	'a new thread says first that it has no messages, no people and no agents',
 	JSON.stringify(first.heard),
 )
-await api('POST', `/api/threads/${id}/entries`, {
+const { json: { entry } } = await api('POST', `/api/threads/${id}/entries`, {
 	body: 'work',
 	to: { runner: 'bot', model: 'echo/echo' },
 })
@@ -98,6 +99,44 @@ check(
 	JSON.stringify(lives(first.heard).at(-1))?.slice(0, 200),
 )
 
+// Conversation entries arrive once, with thinking and tool output before the run ends.
+const streamed = []
+let working = false
+for (const message of first.heard) {
+	if (message.live) working = message.live.run
+	if (message.agent && message.entries)
+		streamed.push(...message.entries.map((entry) => ({ entry, working })))
+}
+check(
+	streamed.some(({ entry, working }) => working && entry.model?.[0]?.content?.some((block) => block.type === 'thinking')),
+	'its thinking arrives while it still works',
+)
+check(
+	streamed.some(({ entry, working }) => working && entry.model?.[0]?.role === 'toolResult' && /slept/.test(JSON.stringify(entry.model))),
+	"the tool's output arrives before the turn ends",
+)
+check(new Set(streamed.map(({ entry }) => entry.id)).size === streamed.length, 'each conversation entry comes once')
+const delivery = streamed.find(({ entry }) => entry.kind === 'agent-ide.delivery')?.entry
+check(
+	delivery && heard.filter((live) => live.run).every((live) => live.delivery?.id === delivery.id && live.delivery.held.includes(entry)),
+	'every working update names its delivery and the messages it held',
+)
+check(heard.filter((live) => !live.run).every((live) => live.delivery === undefined), 'an idle agent names no delivery')
+
+const from = first.heard.length
+await api('POST', `/api/threads/${id}/entries`, { body: 'again' })
+await answered(id, 2)
+await until(async () => {
+	const last = lives(first.heard.slice(from)).at(-1)
+	return last && !last.run
+})
+const next = (await conversationOf(await view(id), 'echo/echo@bot')).entries.findLast((entry) => entry.kind === 'agent-ide.delivery')
+const nextLives = lives(first.heard.slice(from)).filter((live) => live.run)
+check(
+	next.id > delivery.id && nextLives.length > 0 && nextLives.every((live) => live.delivery?.id === next.id),
+	'the next turn names its own delivery',
+)
+
 /** A burst bigger than Pi's window still arrives whole, in order, each message once */
 const burst = Array.from({ length: 250 }, (_, i) => `note ${i}`)
 await Promise.all(
@@ -122,8 +161,8 @@ const restarted = watch(id)
 const now = await until(async () => lives(restarted.heard)[0], 8000, 20)
 const whole = said(restarted.heard.slice(0, 1))
 check(
-	JSON.stringify(whole.slice(0, 2)) === JSON.stringify(['work', long]) &&
-		JSON.stringify(whole.slice(2).sort()) === JSON.stringify([...burst].sort()),
+	JSON.stringify(whole.slice(0, 4)) === JSON.stringify(['work', long, 'again', long]) &&
+		JSON.stringify(whole.slice(4).sort()) === JSON.stringify([...burst].sort()),
 	'after a restart, watching again starts with the whole thread',
 	JSON.stringify(restarted.heard[0])?.slice(0, 200),
 )

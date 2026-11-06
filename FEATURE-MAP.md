@@ -10,7 +10,7 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   post, append, postEntry           write a message and hand it to each agent it asks
   reconfigure, newAgent, setUp      an agent switching model/thinking/runner/folder in place, or starting
   outcome, tell, restore, faulted   what a finished delivery posts back, or a failure says
-  work, status, busiest, agentsIn   working / blocked / idle for agents, threads, runners, bots
+  work, status, busiest, agentsIn   working / blocked / idle for agents, threads, runners
   threadList, threadRow, threadView, people   what GET /api/threads returns
   forkThread, seenBy                forks
   compact, compactingAt             compaction now, or early
@@ -25,7 +25,8 @@ runner-updater.js        what `curl <server>/connect-runner | sh` starts; keeps 
 remote.js                the runner protocol, both ends: createRunners (server), serveRunner (runner),
                          runnerProvider (a model over the wire), remoteEnv (tools in the runner's folder)
 cli.js                   the API from a terminal
-util.js                  helpers server and modules share: agentTo, writtenTo, keyOf, speaker, said
+util.js                  helpers server and modules share: agentTo, writtenTo, keyOf, speaker, said,
+                         finished (task result), background (thread-owned task)
 modules.js               agent-ide.json, MODULES, and loading each module's server/runner half
 modules/
   talk.js                `post` and `threads` tools; reply sends answers back to askers
@@ -84,6 +85,8 @@ scripts/
   page-spy.js            browser init script: fetches, socket frames, stalls
   replay-pi.js           replays pi sessions into a thread, to try memory
 examples/lib.js          what examples share: start (owned child processes), server, runner, scriptedRunner, api, view, until, check
+examples/17-memory-compaction.js   automatic and manual cuts, memory coverage and budget at small and large windows
+examples/27-watch-agents-work.js   socket snapshots, streaming entries, delivery identity and reconnects
 examples/all.js          suite queue, per-example timeout and interruption cleanup
 examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
 ```

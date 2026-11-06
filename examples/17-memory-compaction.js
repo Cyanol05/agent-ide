@@ -1,4 +1,4 @@
-/** With memory, when Pi compacts an agent's conversation, its summary is the thread's memory up to the cut */
+/** Automatic and manual compaction use the thread's memory, bounded even with a million-token window. */
 import {
 	answered,
 	api,
@@ -13,77 +13,61 @@ import {
 	until,
 } from './lib.js'
 
-const requests = []
-const route = (request) => {
-	const all = request.messages.map((m) => text(m)).join('\n')
-	requests.push(all)
-	const first = text(request.messages.find((m) => m.role === 'user'))
-	return say(first.includes('<input>') ? `L ${'x'.repeat(298)}` : 'ok')
+await server({ MODULES: '+memory' })
+for (const [runner, contextWindow, count, half, lineSize] of [
+	['automatic', 40000, 310, 140, 300],
+	['manual', 1000000, 330, 160, 492],
+]) {
+	const requests = []
+	await scriptedRunner(runner, (request) => {
+		requests.push(request.messages.map(text).join('\n'))
+		const first = text(request.messages.find((message) => message.role === 'user'))
+		return say(first.includes('<input>') ? `L ${'x'.repeat(lineSize - 2)}` : 'ok')
+	}, { model: { contextWindow } })
+	const agent = { runner, model: 'echo/echo' }
+	const { json: { id } } = await api('POST', '/api/threads', { title: runner })
+	const post = (body, to = null) => api('POST', `/api/threads/${id}/entries`, { body, to })
+	let position = 0
+	const fill = async (end) => {
+		for (; position < end; position++)
+			await post(`filler ${position} ${'z'.repeat(500 - `filler ${position} `.length)}`)
+	}
+	await fill(half)
+	await post('go A', agent)
+	await answered(id, 1, 20000)
+	await fill(count)
+	check(Boolean(await until(async () => {
+		const lines = await linesOf(id)
+		return lines.filter((line) => line.l === 0).length === count + 2 &&
+			lines.filter((line) => line.l === 1 && line.i < half / 2).length === half / 2
+	}, 60000, 500)), `${runner}: every message has its line, and old lines their merges`)
+	await post('go B', agent)
+	const view = await answered(id, 2, 60000)
+	check(view.agents[0].contextWindow === contextWindow, `${runner}: the thread reports its context window`)
+	const conversation = () => conversationOf(view, `echo/echo@${runner}`)
+	if (runner === 'manual') {
+		check(!(await conversation()).entries.some((entry) => entry.kind === 'pi.compaction'),
+			'with room to spare, nothing is compacted')
+		const { status, json } = await api('POST', `/api/threads/${id}/compact`, {})
+		check(status < 300 && json.compacted?.length === 1, 'compacting by hand answers for the thread’s agent')
+	}
+	const compaction = (await conversation()).entries.find((entry) => entry.kind === 'pi.compaction')
+	const summary = text(compaction?.model?.[0] ?? {})
+	check(summary.includes('<chat>'), `${runner}: the conversation is compacted with memory as its summary`)
+	const chat = summary.slice(summary.indexOf('<chat>\n') + 7, summary.indexOf('\n</chat>'))
+	const heads = chat.split('\n')
+		.map((line) => line.match(/^(\d+)\+(\d+)\|/)).filter(Boolean)
+		.map((match) => [Number(match[1]), Number(match[2])])
+	check(
+		heads.length > 0 && heads.every(([at, size], index) => at === (index ? heads[index - 1][0] + heads[index - 1][1] : 0)) &&
+			heads.reduce((sum, [, size]) => sum + size, 0) === half + 1,
+		`${runner}: memory covers the cut exactly, from position 0`, JSON.stringify(heads),
+	)
+	check(heads[0]?.[1] > 1 && heads.at(-1)?.[1] === 1,
+		`${runner}: old lines are merged, recent messages stay whole`, JSON.stringify(heads))
+	check(Buffer.byteLength(chat) <= Math.min(contextWindow, 64 * 1024),
+		`${runner}: memory fits its budget, capped at 64 KiB`, Buffer.byteLength(chat))
+	check(!requests.some((request) => request.includes('context summarization assistant')),
+		`${runner}: Pi's summariser never ran`)
 }
-const filler = (k) => `filler ${k} ${'z'.repeat(500 - `filler ${k} `.length)}`
-const agent = { runner: 'bot', model: 'echo/echo' }
-
-const srv = await server({ MODULES: '+memory' })
-await scriptedRunner('bot', route, { model: { contextWindow: 40000 } })
-const {
-	json: { id },
-} = await api('POST', '/api/threads', { title: 'long' })
-
-let k = 0
-for (; k < 140; k++) await api('POST', `/api/threads/${id}/entries`, { body: filler(k), to: null })
-await api('POST', `/api/threads/${id}/entries`, { body: 'go A', to: agent })
-await answered(id, 1, 20000)
-for (; k < 310; k++) await api('POST', `/api/threads/${id}/entries`, { body: filler(k), to: null })
-/** 312 messages with A's answer */
-const built = await until(
-	async () => {
-		const ls = await linesOf(id)
-		return (
-			ls.filter((x) => x.l === 0).length === 312 &&
-			ls.filter((x) => x.l === 1 && x.i < 70).length === 70
-		)
-	},
-	60000,
-	500,
-)
-check(Boolean(built), 'every message has its line')
-await api('POST', `/api/threads/${id}/entries`, { body: 'go B', to: agent })
-const v = await answered(id, 2, 60000)
-
-const conversation = await conversationOf(v, 'echo/echo@bot')
-const compaction = conversation?.entries.find((e) => e.kind === 'pi.compaction')
-const summary = compaction ? text(compaction.model?.[0]) || JSON.stringify(compaction.data) : ''
-check(
-	summary.includes('<chat>'),
-	"the agent's conversation is compacted, with the memory as its summary",
-	JSON.stringify(compaction)?.slice(0, 300),
-)
-const chat = summary.slice(summary.indexOf('<chat>\n') + 7, summary.indexOf('\n</chat>'))
-const heads = chat
-	.split('\n')
-	.map((l) => l.match(/^(\d+)\+(\d+)\|/))
-	.filter(Boolean)
-	.map((m) => [Number(m[1]), Number(m[2])])
-const contiguous = heads.every(([at, n], j) => at === (j ? heads[j - 1][0] + heads[j - 1][1] : 0))
-check(
-	contiguous && heads.reduce((s, [, n]) => s + n, 0) === 141,
-	'its lines cover positions 0 to 140 exactly',
-	JSON.stringify(heads.slice(0, 5)) + '…' + JSON.stringify(heads.slice(-3)),
-)
-check(
-	heads.length > 0 && heads[0][1] > heads.at(-1)[1],
-	'old lines are coarser than recent ones',
-	JSON.stringify([heads[0], heads.at(-1)]),
-)
-check(
-	Buffer.byteLength(chat) <= 40000,
-	'the memory fits the budget its 40000-token window gives',
-	Buffer.byteLength(chat),
-)
-check(
-	!requests.some((r) => r.includes('context summarization assistant')),
-	"Pi's summariser never ran",
-)
-
-srv.kill()
 done()
