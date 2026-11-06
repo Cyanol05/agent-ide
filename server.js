@@ -1429,10 +1429,23 @@ async function rewatch(socket, id) {
 		for (const { conversation: agent } of Object.values(agents)) {
 			if (followed.has(agent)) continue
 			followed.add(agent)
-			const watch = await (await harness.conversation(agent, context)).watch(context, { min: 20 })
+			const handle = await harness.conversation(agent, context)
+			const watch = await handle.watch(context, { min: 20 })
 			if (!keep(watch)) return
-			send({ agent, live: doing(watch.value) })
-			watch.start(async ({ value }) => send({ agent, live: doing(value) }))
+			let delivery
+			/** The delivery the agent answers now: its run's newest, a steer's once it steered */
+			const live = async (value) => {
+				const { run } = value.docs['pi.live'] ?? {}
+				const newest = value.entries.findLast((entry) => entry.kind === DELIVERY)
+				if (!run) delivery = undefined
+				else if (newest && newest.id >= (run.first ?? 0)) delivery = newest
+				else if (!delivery || delivery.id < (run.first ?? 0))
+					delivery = await lastDelivery(handle, run.first)
+				const named = delivery ? { delivery: { id: delivery.id, held: delivery.data.held } } : {}
+				return { ...doing(value), ...named }
+			}
+			send({ agent, live: await live(watch.value) })
+			watch.start(async ({ value }) => send({ agent, live: await live(value) }))
 		}
 	}
 	await follow(row.value.agents)
@@ -1461,6 +1474,15 @@ async function told(handle, watch, send, also) {
 	}
 	await tell(watch.value)
 	watch.start(async ({ value }) => tell(value))
+}
+/** An agent's newest delivery entry from `first` on, for a run longer than its watch's window */
+async function lastDelivery(handle, first) {
+	for (let cursor; ;) {
+		const page = await handle.entries({ minEntryId: first, order: 'descending' }, 100, cursor, context)
+		const found = page.items.find((entry) => entry.kind === DELIVERY)
+		if (found || !page.next) return found
+		cursor = page.next
+	}
 }
 /** What an agent is doing, from Pi's live doc */
 function doing({ entries, docs }) {
