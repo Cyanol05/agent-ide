@@ -12,8 +12,8 @@ import {
 	Show,
 	untrack,
 } from 'solid-js'
-import { api, connected, current, server, threads } from './server.js'
-import { conversations } from './run.js'
+import { api, connected, current, entries, server, threads } from './server.js'
+import { cutsOf } from './run.js'
 
 const bytes = (text) => new TextEncoder().encode(text).length
 const sizeOf = (lines) =>
@@ -21,7 +21,10 @@ const sizeOf = (lines) =>
 const inside = (line, id, n) => line.id >= id && line.id + line.n <= id + n
 const key = (line) => `${line.id}+${line.n}`
 
-/** What compaction did to this thread's agent: where its newest cut fell, from the agent's own conversation */
+/**
+ * What compaction did to this thread's agent, as a tape of the thread: the part before the newest cut faint, one segment per memory line,
+ * the part the agent reads word for word solid.
+ */
 export function Compaction() {
 	return html`
 		<${Show} when=${() => current()} keyed>
@@ -35,30 +38,37 @@ export function Compaction() {
 }
 
 function CompactionOf(props) {
-	/** Where the newest cut fell: the end of the lines its summary holds, 0 for Pi's own summary, null before any */
-	const cut = () => {
-		const row = threads.find((thread) => thread.id === props.thread)
-		let found = null
-		for (const { conversation } of row?.agents ?? [])
-			for (const entry of (conversations[conversation] ?? []).filter(
-				(entry) => entry.kind === 'pi.compaction',
-			)) {
-				const ends = [...JSON.stringify(entry).matchAll(/(\d+)\+(\d+)\|/g)].map(
-					(line) => Number(line[1]) + Number(line[2]),
-				)
-				found = ends.length ? Math.max(...ends) : (found ?? 0)
-			}
-		return found
-	}
+	/** The newest cut across the thread's agents, null before any */
+	const cut = createMemo(() =>
+		(threads.find((thread) => thread.id === props.thread)?.agents ?? [])
+			.flatMap((agent) => cutsOf(agent.conversation))
+			.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null),
+	)
+	const messages = () => entries[props.thread] ?? []
+	const older = () => (cut() ? messages().filter((entry) => entry.id < cut().at).length : 0)
+	const newer = () => messages().length - older()
+	const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
 	return html`
-		<p class="mute">
-			${() =>
-				cut() === null
-					? 'Not compacted yet.'
-					: cut() === 0
-						? "Compacted with Pi's summary."
-						: `Messages 0 to ${cut() - 1} are read as memory lines.`}
-		</p>
+		<div class="tape">
+			<div class="reel" aria-hidden="true">
+				<${Show} when=${() => cut() && older()}>
+					<span class="old" style=${() => ({ flex: older() })}>
+						<${For} each=${() => (cut().memory ? cut().lines : [])}
+							>${(line) => html`<span style=${{ flex: line.n }}></span>`}<//
+						>
+					</span>
+				<//>
+				<span class="new" style=${() => ({ flex: Math.max(newer(), 1) })}></span>
+			</div>
+			<small
+				>${() =>
+					!cut()
+						? 'Not compacted yet'
+						: `Older ${plural(older(), 'message')} → ${
+								cut().memory ? plural(cut().lines.length, 'memory line') : "Pi's summary"
+							} · last ${newer()} word for word`}</small
+			>
+		</div>
 	`
 }
 

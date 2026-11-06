@@ -386,6 +386,7 @@ export function Thread(props) {
 										<${Exchange}
 											thread=${() => props.id}
 											step=${() => row().ask}
+											agent=${() => row().agent}
 											answer=${() => row().answer}
 											back=${() => row().back}
 										/>

@@ -265,7 +265,8 @@ export function Turn(props) {
 					<small>
 						<${Show} when=${() => props.live}><${Dot} state=${() => props.agent.status} /><//>
 						<${Show} when=${() => props.above !== props.agent.name}
-							><span>${() => authorLabel(props.agent.name)}</span> · <//
+							><span>${() => authorLabel(props.agent.name)}</span>${() =>
+								props.lead ? ` ${props.lead} ` : ' · '}<//
 						><span class="now">${line}</span>
 					</small>
 				</summary>
@@ -389,7 +390,7 @@ function Ask(props) {
 
 /**
  * An ask, from the thread that asked: one quiet line, "→ who · answered · 6s", its dot pulsing while the answer is out.
- * Opened, the exchange in time order: the question, the run that answered it over there, the answer.
+ * Opened, the exchange in time order: the question under its author, the run that answered it over there, the answer.
  */
 export function Exchange(props) {
 	const asked = () => askedThread(props.step)
@@ -455,6 +456,13 @@ export function Exchange(props) {
 				</summary>
 				<${Show} when=${open}>
 					<div class="box">
+						<small
+							><span class="cross">→ </span
+							><span style=${() => colorOf(props.agent?.name ?? '')}
+								>${() => authorLabel(props.agent?.name)}</span
+							>
+							asked</small
+						>
 						<${Body} data=${() => props.step.args} />
 						<${Show} when=${other}>
 							<ul class="run">
@@ -462,6 +470,7 @@ export function Exchange(props) {
 									thread=${() => asked()}
 									agent=${() => other().agent}
 									turn=${() => other().turn}
+									lead="worked:"
 									handed=${() => other().turn.held.length !== 1}
 								/>
 							</ul>

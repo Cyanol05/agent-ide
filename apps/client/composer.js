@@ -421,6 +421,22 @@ export function Composer(props) {
 						detail=${html`<${Show} when=${() => lines()}><${Memory} /><//>`}
 					>
 						<${Compaction} />
+						<${Show} when=${() => server().modules?.includes('memory')}>
+							<ul class="modules">
+								<li
+									role="button"
+									tabindex="0"
+									onClick=${() => setLines(true)}
+									onKeyDown=${(event) => event.key === 'Enter' && setLines(true)}
+								>
+									<div>
+										<b>Inspect memory</b>
+										<small>The lines the agent reads instead of its old messages.</small>
+									</div>
+									<span aria-hidden="true">›</span>
+								</li>
+							</ul>
+						<//>
 						<button
 							type="button"
 							class="save"
@@ -433,21 +449,6 @@ export function Composer(props) {
 						>
 							${() => (compacting() ? 'Compacting…' : 'Compact now')}
 						</button>
-						<${Show} when=${() => server().modules?.includes('memory')}>
-							<ul class="modules">
-								<li
-									role="button"
-									tabindex="0"
-									onClick=${() => setLines(true)}
-									onKeyDown=${(event) => event.key === 'Enter' && setLines(true)}
-								>
-									<div>
-										<b>Inspect memory</b>
-									</div>
-									<span aria-hidden="true">›</span>
-								</li>
-							</ul>
-						<//>
 					<//>
 				<//>
 			</div>
