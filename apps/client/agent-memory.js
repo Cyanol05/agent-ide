@@ -13,6 +13,7 @@ import {
 	untrack,
 } from 'solid-js'
 import { api, connected, current, server, threads } from './server.js'
+import { conversations } from './run.js'
 
 const bytes = (text) => new TextEncoder().encode(text).length
 const sizeOf = (lines) => lines.reduce((sum, line) => sum + bytes(`${line.id}+${line.n}|${line.text}`) + 1, 0)
@@ -33,24 +34,19 @@ export function Compaction() {
 }
 
 function CompactionOf(props) {
-	const cut = createMemo(async () => {
+	/** Where the newest cut fell: the end of the lines its summary holds, 0 for Pi's own summary, null before any */
+	const cut = () => {
 		const row = threads.find((thread) => thread.id === props.thread)
 		let found = null
-		for (const { conversation } of row?.agents ?? []) {
-			const { entries } = await api(`/api/conversations/${conversation}`)
-			for (const entry of entries.filter((entry) => entry.kind === 'pi.compaction')) {
+		for (const { conversation } of row?.agents ?? [])
+			for (const entry of (conversations[conversation] ?? []).filter((entry) => entry.kind === 'pi.compaction')) {
 				const ends = [...JSON.stringify(entry).matchAll(/(\d+)\+(\d+)\|/g)].map(
 					(line) => Number(line[1]) + Number(line[2]),
 				)
 				found = ends.length ? Math.max(...ends) : (found ?? 0)
 			}
-		}
 		return found
-	})
-	onSettled(() => {
-		const timer = setInterval(() => refresh(cut), 3000)
-		return () => clearInterval(timer)
-	})
+	}
 	return html`
 		<p class="mute">
 			${() =>

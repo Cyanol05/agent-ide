@@ -9,7 +9,7 @@ import {
 	For,
 	Show,
 } from 'solid-js'
-import { api, entries, threads, titleOf } from './server.js'
+import { entries, threads, titleOf } from './server.js'
 import { ThreadLink } from './thread.js'
 import { authorLabel, doing, messageText } from './agent.js'
 import { Dot } from './dot.js'
@@ -17,64 +17,12 @@ import { markdown } from './markdown.js'
 
 /** Each agent conversation on screen, its entries as Pi keeps them */
 export const [conversations, setConversations] = createRoot(() => createStore({}))
-/** Tool calls heard on the live stream since the conversation was last read, oldest first */
-export const [streamed, setStreamed] = createRoot(() => createStore({}))
-const asking = new Map()
-
-/** Reads a conversation, one request at a time, and once more if asked meanwhile; what it read replaces what was streamed */
-export function readConversation(id) {
-	if (asking.has(id)) return void asking.set(id, true)
-	asking.set(id, false)
-	api(`/api/conversations/${id}`)
-		.then(({ entries: all }) => {
-			setConversations((read) => {
-				read[id] = all
-					.filter((entry) => entry.kind !== 'pi.system')
-					.map(({ id, kind, model, data, head }) => ({ id, kind, model, data, head }))
-			})
-			setStreamed((heard) => {
-				delete heard[id]
-			})
-		})
-		// A conversation that can't be read shows as read and empty, so its thread doesn't wait on it
-		.catch(() =>
-			setConversations((read) => {
-				read[id] ??= []
-			}),
-		)
-		.finally(() => {
-			const again = asking.get(id)
-			asking.delete(id)
-			if (again) readConversation(id)
-		})
-}
-
-/** The deliveries each agent was heard answering, `{id, held, since}`, oldest first, so a turn keeps its row before it is read */
-export const [delivered, setDelivered] = createRoot(() => createStore({}))
-
-/** Keeps each tool call the live stream names, which holds only the round running now, and the delivery it answers */
-export function hear(conversation, live) {
-	const heard = delivered[conversation] ?? []
-	if (live.delivery && !heard.some((delivery) => delivery.id === live.delivery.id)) {
-		setDelivered((all) => {
-			;(all[conversation] ??= []).push({ ...live.delivery, since: Date.now() })
-		})
-		// A turn that ended into the next without a pause is read now, so its steps leave the live one
-		if (heard.length) readConversation(conversation)
-	}
-	setStreamed((heard) => {
-		const calls = (heard[conversation] ??= [])
-		for (const tool of live.tools ?? []) {
-			const known = calls.find((call) => call.key === tool.callId)
-			if (known) Object.assign(known, { status: tool.status, args: tool.args ?? known.args })
-			else
-				calls.push({
-					key: tool.callId,
-					name: tool.name,
-					args: tool.args ?? {},
-					status: tool.status,
-				})
-		}
+/** Takes an agent's entries off the socket: whole on each new watch, then each one once, as it's written */
+export function heard(conversation, entries, whole) {
+	const shown = entries.filter((entry) => entry.kind !== 'pi.system')
+	setConversations((all) => {
+		if (whole || !all[conversation]) all[conversation] = shown
+		else all[conversation].push(...shown)
 	})
 }
 
@@ -122,6 +70,7 @@ export function turnsOf(conversation) {
 			turns.push({
 				key: `${conversation}:${entry.id}`,
 				conversation,
+				delivery: entry.id,
 				after: Math.max(0, ...(entry.data?.held ?? [])),
 				start: message?.timestamp,
 				end: message?.timestamp,
@@ -269,18 +218,7 @@ export function Turn(props) {
 		() => props.live,
 		(on) => (on ? tick() : undefined),
 	)
-	/** The steps read so far, then those heard live since; a heard step that's done has no output until the turn is read */
-	const steps = createMemo(() => {
-		const known = props.turn?.steps ?? []
-		if (props.turn && !props.live && !props.latest) return known
-		const heard = (streamed[props.agent.conversation] ?? [])
-			.filter((call) => !known.some((step) => step.key === call.key))
-			.map((call) => ({
-				...call,
-				result: call.status === 'done' ? { text: '', heard: true } : null,
-			}))
-		return [...known, ...heard]
-	})
+	const steps = () => props.turn?.steps ?? []
 	const now = () => {
 		const running = steps().findLast((step) => step.name && !step.result)
 		if (running)
@@ -293,7 +231,7 @@ export function Turn(props) {
 	const calls = () => steps().filter((step) => step.name)
 	const line = () => {
 		if (!props.live) return summary({ ...props.turn, steps: steps() }, entries[props.thread] ?? [])
-		const start = props.turn?.start ?? props.since
+		const start = props.turn?.start
 		return [
 			now(),
 			calls().length && plural(calls().length, 'step'),
