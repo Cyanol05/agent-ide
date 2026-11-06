@@ -1,6 +1,6 @@
 /** A thread owns its message subscription while it is on screen. */
 import html from '@solidjs/html'
-import { createEffect, createMemo, For, reconcile, Show } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, reconcile, Show } from 'solid-js'
 import {
 	closeColumn,
 	colorOf,
@@ -107,12 +107,18 @@ export function Thread(props) {
 		const cuts = (thread()?.agents ?? []).flatMap((agent) =>
 			cutsOf(agent.conversation).map((cut) => ({ ...cut, cut: true })),
 		)
-		const rows = [...said, ...turns, ...cuts].sort((one, other) => one.at - other.at)
+		// What the agent reads as lines folds into them, unless opened from the newest cut's line
+		const newest = cuts.reduce((best, cut) => (!best || cut.at > best.at ? cut : best), null)
+		const folded = newest && !unfolded() ? newest : null
+		const above = (row) => folded && row.at < folded.at
+		const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
+		const rows = [...said.filter((row) => !above(row)), ...turns.filter((row) => !above(row)), ...lines, ...cuts].sort((one, other) => one.at - other.at)
 		// A message after a turn's line says who wrote it again
 		for (const [index, row] of rows.entries()) if (row.entry) row.previous = rows[index - 1]?.entry
 		return rows
 	})
 	const titleClick = () => (current() !== props.id ? openThread(props.id) : drawer('side'))
+	const [unfolded, setUnfolded] = createSignal(false)
 	let list,
 		stuck = true
 	createEffect(
@@ -232,14 +238,27 @@ export function Thread(props) {
 					<${For} each=${() => rows()} keyed=${(row) => row.key}
 						>${(row) => html`
 							<${Show}
-								when=${() => !row().cut}
+								when=${() => !row().cut && !row().line}
 								fallback=${() => html`
-									<li class="cut mute">
-										${() =>
-											row().memory
-												? 'above here the agent reads the memory lines'
-												: 'above here the agent reads a summary'}
-									</li>
+									<${Show}
+										when=${() => row().cut}
+										fallback=${() => html`
+											<li class="line mute" title=${() => `messages ${row().at} to ${row().at + row().n - 1}`}>
+												<small>${() => `${row().at}+${row().n}`}</small>
+												<span>${() => row().text}</span>
+											</li>
+										`}
+									>
+										<li class="cut mute">
+											<button type="button" onClick=${() => setUnfolded((on) => !on)}>
+												${() =>
+													(unfolded() ? 'fold again: ' : 'unfold: ') +
+													(row().memory
+														? 'above here the agent reads the memory lines'
+														: 'above here the agent reads a summary')}
+											</button>
+										</li>
+									<//>
 								`}
 							>
 							<${Show}

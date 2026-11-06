@@ -2651,3 +2651,14 @@ body.resizing {
 	text-align: center;
 	padding: 0.4rem 0;
 }
+
+/* A message folded into the memory line the agent reads instead. */
+.thread > ul > li.line {
+	display: flex;
+	gap: 0.6rem;
+	font-size: 12px;
+
+	small {
+		flex: none;
+	}
+}

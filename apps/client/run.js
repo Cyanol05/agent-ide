@@ -88,9 +88,23 @@ export function cutsOf(conversation) {
 		.flatMap((entry) => {
 			const kept = all.find((other) => other.kind === 'agent-ide.delivery' && other.id >= entry.head)
 			const first = Math.min(...(kept?.data?.held ?? []))
-			return Number.isFinite(first)
-				? [{ key: `${conversation}:cut:${entry.id}`, at: first - 0.5, memory: JSON.stringify(entry.model).includes('<chat>') }]
-				: []
+			if (!Number.isFinite(first)) return []
+			const summary = messageText(entry.model?.[0]) || ''
+			// With memory the summary is its lines, `id+n|text`; otherwise it is Pi's own text
+			const lines = [...summary.matchAll(/^(\d+)\+(\d+)\|(.*)$/gm)].map((line) => ({
+				key: `${conversation}:${line[1]}+${line[2]}`,
+				at: Number(line[1]),
+				n: Number(line[2]),
+				text: line[3],
+			}))
+			return [
+				{
+					key: `${conversation}:cut:${entry.id}`,
+					at: first - 0.5,
+					memory: lines.length > 0,
+					lines: lines.length ? lines : [{ key: `${conversation}:summary:${entry.id}`, at: 0, n: first, text: summary }],
+				},
+			]
 		})
 }
 
