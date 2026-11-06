@@ -3,7 +3,8 @@
  * instead of every word and zooms back down with `zoom`. MODULES=+memory. The thread's own agent writes its lines, as
  * it runs now, so the runner that works for a thread pays for its memory; with no agent there yet, a bot there writes
  * them, and with neither, the lines wait for the first one asked. A model in the settings, `memory.model` in
- * agent-ide.json or MEMORY_MODEL=model@runner, has that one agent write every thread's lines instead.
+ * agent-ide.json or MEMORY_MODEL=model@runner, has that one agent write every thread's lines instead. Past
+ * `memory.compactAt` tokens, 100k unless set, an agent's context is compacted into the lines.
  */
 import { retryAssistantCall } from '@earendil-works/pi-ai'
 import { num, obj, opt } from '@earendil-works/pi-schema'
@@ -333,6 +334,8 @@ export function server(core) {
 		posted,
 		catchUp,
 		serve,
+		/** Past this many tokens an agent's context is compacted into the lines, so it never carries a full window */
+		compactAt: Number(core.config?.memory?.compactAt) || 100000,
 	}
 }
 

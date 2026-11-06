@@ -22,7 +22,7 @@ node server.js
 
 Its settings live in `agent-ide.json` in the folder you start it in, and the page changes them: open settings with the runner count, switch modules on or off, pick memory's model, and save. The server writes the file and restarts itself, losing nothing; where the runtime can't restart in place, the page says it stopped and you start it again. Only the server's own machine can change them; elsewhere the page shows them read-only.
 
-talk, status and context are on by default, the rest off; each module file's first lines say what it does. Memory has each thread's own agent write its lines, unless you pick one model for all. In the file that reads `{"modules": ["+memory", "-status"], "memory": {"model": "haiku@desk"}}`; bare names replace the whole list.
+talk, status and context are on by default, the rest off; each module file's first lines say what it does. Memory has each thread's own agent write its lines, unless you pick one model for all. Once an agent's context passes 100k tokens, memory compacts it into the lines, keeping about the last 25k word for word; it waits for a model call, so a tool call and its result stay together. Memory's `compactAt` moves that line. In the file that reads `{"modules": ["+memory", "-status"], "memory": {"model": "haiku@desk", "compactAt": 100000}}`; bare names replace the whole list. Without memory, Pi compacts only when a window is nearly full.
 
 Environment variables override the file:
 

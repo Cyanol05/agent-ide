@@ -372,6 +372,8 @@ const bundle = await runnerBundle(import.meta.dirname)
 const updater = await readFile(new URL('./runner-updater.js', import.meta.url))
 
 const models = createModels()
+/** Tokens past which a module compacts each agent early; Pi reads it from the start, before the modules load */
+let compactAt
 const registry = createRegistry()
 registry.install(CodingTools)
 // Scripts that call the other tools, so a run of calls costs the model one turn
@@ -394,7 +396,7 @@ const harness = await Harness.open(
 			return runner ? remoteEnv(runners, runner, cwd) : undefined
 		},
 		/** A failed run doesn't strand the messages queued behind it: the next run takes them */
-		settings: { afterFailedRun: 'continue' },
+		settings: () => ({ afterFailedRun: 'continue', ...(compactAt && { compaction: compactingAt(compactAt) }) }),
 		onReport: (report) => {
 			console.error(`pi-durable: ${report.kind}:`, report.error)
 			if (report.kind === 'task_faulted') faulted(report).catch((error) => console.error(error))
@@ -1170,6 +1172,24 @@ const hook = (name) => {
 const posted = modules.flatMap((module) => module.posted ?? [])
 const hiding = modules.flatMap((module) => module.hiding ?? [])
 const [route, reply, catchUp, botAgent] = ['route', 'reply', 'catchUp', 'botAgent'].map(hook)
+compactAt = hook('compactAt')
+/**
+ * Pi's own compaction, started early: each model's background compaction begins once its context passes `tokens`,
+ * between model calls and never between a call and its result, keeping about the last 25k word for word.
+ */
+function compactingAt(tokens) {
+	// Pi's default room for the answer, set here too so the start lands at `tokens` whatever Pi's default becomes
+	const reserveTokens = 16384
+	const modelOverrides = {}
+	for (const model of models.getModels())
+		if (model.provider.startsWith('runner:') && model.contextWindow > tokens + reserveTokens)
+			modelOverrides[`${model.provider}/${model.id}`] = {
+				reserveTokens,
+				keepRecentTokens: 25000,
+				backgroundTokens: model.contextWindow - reserveTokens - tokens,
+			}
+	return { modelOverrides }
+}
 
 for (const [name, runner] of Object.entries(await known()))
 	models.setProvider(runnerProvider(runners, name, runner.models))
@@ -1228,7 +1248,7 @@ const routes = [
 			runners: Object.keys(await keys()).length,
 			work: await harness.inspect(context),
 			settings: {
-				memory: { model: settings.config.memory?.model ?? '' },
+				memory: { model: settings.config.memory?.model ?? '', compactAt: compactAt ?? null },
 				/** Set in the environment, these win over agent-ide.json */
 				overrides: ['MODULES', 'MEMORY_MODEL'].filter((name) => process.env[name]),
 				restarts: typeof process.execve === 'function',
@@ -1693,7 +1713,8 @@ async function saveSettings({ modules: wanted = {}, memory }) {
 		const model = typeof memory.model === 'string' ? memory.model.trim() : ''
 		if (model && !model.includes('@')) throw new Error('A memory model is model@runner, or empty for each thread\'s agent')
 		if (model) next.memory = { ...next.memory, model }
-		else delete next.memory
+		else if (next.memory) delete next.memory.model
+		if (next.memory && !Object.keys(next.memory).length) delete next.memory
 	}
 	writeFileSync(settings.file, `${JSON.stringify(next, null, '\t')}\n`)
 	const restarts = typeof process.execve === 'function'

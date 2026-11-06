@@ -143,6 +143,10 @@ export function Settings() {
 											</button>
 										<//>
 									</div>
+									<div class="option">
+										<span>Compacts past</span>
+										<span>${() => `${Math.round((server().settings?.memory.compactAt ?? 100000) / 1000)}k tokens`}</span>
+									</div>
 								<//>
 							</div>
 							<input
