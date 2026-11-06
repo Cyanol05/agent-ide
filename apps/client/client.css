@@ -54,6 +54,16 @@
 html {
 	-webkit-tap-highlight-color: transparent;
 	-webkit-text-size-adjust: 100%;
+	overscroll-behavior-y: none;
+	scrollbar-gutter: stable;
+}
+
+/* Only the mouse gets the page's scrollbar gutter reserved; touch scrollbars overlay. */
+@media (any-pointer: coarse) {
+	html {
+		overscroll-behavior-y: auto;
+		scrollbar-gutter: auto;
+	}
 }
 
 button,
@@ -79,6 +89,21 @@ body {
 	margin: 0;
 	color: var(--ink);
 	background: Canvas;
+	text-wrap: pretty;
+	font-synthesis: none;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Keyboard users get a ring on anything the controls above don't already outline. */
+:focus-visible {
+	outline: 2px solid var(--pick);
+	outline-offset: 2px;
+}
+
+/* A list that scrolls keeps its bounce to itself. */
+.thread > ul,
+.thread-list > ul {
+	overscroll-behavior: contain;
 }
 
 h1 {
