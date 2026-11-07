@@ -22,7 +22,8 @@ export function server(core) {
 		description:
 			'Ask someone. Leave out `thread` for a side question: a new child thread that holds only what you write. ' +
 			'Give a `thread` to ask whoever is there, with all they already know there. Posting to a thread that asked you something answers it. ' +
-			"Whoever answers, their answer comes to you here as a message, even mid-turn; don't read the thread to check for it.",
+			"Whoever answers, their answer comes to you here as a message, even mid-turn; don't read the thread to check for it. " +
+			"A bot posting to a thread it's in speaks there as itself instead, and replies stay there.",
 		parameters: obj({
 			thread: opt(num({ description: 'The thread to post to. Leave out to start a new one.' })),
 			title: opt(str({ description: "The new thread's title" })),
@@ -47,6 +48,44 @@ export function server(core) {
 				throw new Error('Run commands with your own bash tool, not as a post')
 			const title = thread === undefined ? field(args.title, 'title') : ''
 			if (thread !== undefined) await core.conversation(thread)
+			/** A bot that's in the thread speaks there as itself, like a person in the room: no question from home, no answer back */
+			const member =
+				thread !== undefined &&
+				keyOf(name) !== AGENT &&
+				Boolean((await core.thread(thread)).agents[keyOf(name)])
+			if (member) {
+				const directed = await core.direct(thread, { author: name, body: args.body }, args.to === undefined)
+				const to = directed
+					? directed.to
+					: args.to === 'nobody'
+						? []
+						: args.to !== undefined
+							? [await core.whom(thread, args.to, false, context.abortSignal)]
+							: (await core.lastAsked(thread)).filter((agent) => agent?.name !== name)
+				return core.once(`post ${api.taskId}`, 'post', async (tx) => {
+					context.abortSignal?.throwIfAborted()
+					await core.post(
+						tx,
+						thread,
+						{
+							author: name,
+							body: args.body,
+							...(to.length ? { to } : {}),
+							...(directed?.picked ? { picked: directed.picked } : {}),
+						},
+						{ steer: true, member: true },
+					)
+					return {
+						output: [
+							{
+								type: 'text',
+								text: `Said in thread ${thread}, where you're a member${to.length ? `, for ${to.map(writtenTo).join(', ')}` : ''}. Replies stay there, with your run in that thread; read it when you need them.`,
+							},
+						],
+						details: { thread },
+					}
+				})
+			}
 			const done = thread !== undefined && (await answered(thread, from))
 			const asked =
 				thread === undefined

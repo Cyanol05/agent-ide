@@ -650,8 +650,9 @@ const ownAnswer = ({ data: message }, key) =>
  */
 async function post(tx, threadId, message, options = {}) {
 	let by = message.author
-	if (message.from) {
-		const recipient = (await tx.doc(Thread, message.from)).agents[keyOf(message.author)]
+	/** An agent writes from another thread, or as a bot in its own room (`member`), and works with its runner's rights */
+	if (message.from || options.member) {
+		const recipient = (await tx.doc(Thread, message.from ?? threadId)).agents[keyOf(message.author)]
 		if (!recipient) throw new Error('Only an agent can post from another thread')
 		by = `@${(await agentOf(recipient.conversation, message.author, tx)).runner}`
 	}
