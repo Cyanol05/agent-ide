@@ -22,8 +22,10 @@ const route = (runner) => (request) => {
 	if (last.role === 'toolResult') return say(`tool: ${t}`)
 	if (t.includes('be a pirate')) return call('bot', { instructions: 'Answer like a pirate.' })
 	if (t.includes('make wren')) return call('bot', { name: 'wren', instructions: 'Review diffs.' })
-	if (t.includes('ask wren'))
+	if (t.includes('ask wren')) {
+		prompt.asking = prompt[runner]
 		return call('post', { to: 'wren', title: 'a diff', body: 'look at this' })
+	}
 	return say(`${runner}: ${t}`)
 }
 await scriptedRunner('laptop', route('laptop'))
@@ -104,19 +106,20 @@ check(
 
 await post(home, 'ask wren', 'ada')
 await answered(home, 5)
+const knows = prompt.asking
 const side = (await api('GET', '/api/threads')).json.find((t) => t.parent === home)
 check(
-	prompt.laptop.includes('The other bot is wren') &&
-		side?.agents.map((a) => a.name).join() === 'wren' &&
-		answers(await (await api('GET', `/api/threads/${side.id}`)).json)[0]?.data.author === 'wren',
-	'a bot knows the other bots by name, and asks one with post',
-	JSON.stringify([side, prompt.laptop]),
+	knows.includes('The other bot is wren') &&
+		side?.agents.map((a) => a.name).sort().join() === 'ada,wren' &&
+		answers(await answered(side.id))[0]?.data.author === 'wren',
+	'a bot knows the other bots by name, and asks one with post in a thread it starts and is in',
+	JSON.stringify([side, knows]),
 )
 
 // In her home, the composer asks her with her settings: a new runner there moves her, in place, and she is told
 const atHome = (await api('GET', `/api/threads/${home}`)).json.agents[0]
 await post(home, 'where are you now?', { runner: 'desk', model: 'echo/echo', name: 'ada' })
-v = await answered(home, 6)
+v = await answered(home, 5)
 const own = (await api('GET', `/api/conversations/${atHome.conversation}`)).json.entries
 const told = text(own.filter((e) => e.kind === 'agent-ide.delivery').at(-1)?.model[0])
 check(

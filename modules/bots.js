@@ -76,6 +76,7 @@ export function server(core) {
 
 	/** What a bot is, in its own words; empty until it writes them */
 	const instructionsOf = async (name) => (await bots())[name]?.instructions
+	const botNames = async () => Object.keys(await bots())
 
 	const bot = defineTool({
 		name: 'bot',
@@ -159,6 +160,7 @@ export function server(core) {
 		hiding,
 		botAgent,
 		instructionsOf,
+		botNames,
 		extension: defineExtension({ name: 'agent-ide.bots', tools: [bot], sections: [section] }),
 	}
 }

@@ -651,13 +651,21 @@ const ownAnswer = ({ data: message }, key) =>
 async function post(tx, threadId, message, options = {}) {
 	let by = message.author
 	/** An agent writes from another thread, or as a bot in its own room (`member`), and works with its runner's rights */
-	if (message.from || options.member) {
+	if (options.opener) by = `@${options.opener.runner}`
+	else if (message.from || options.member) {
 		const recipient = (await tx.doc(Thread, message.from ?? threadId)).agents[keyOf(message.author)]
 		if (!recipient) throw new Error('Only an agent can post from another thread')
 		by = `@${(await agentOf(recipient.conversation, message.author, tx)).runner}`
 	}
 	await reach(message.to ?? [], by, await tx.doc(Runners))
-	return append(tx, threadId, message, options)
+	const entry = await append(tx, threadId, message, options)
+	/** A bot that opens a thread joins it after its first message, which it has said and so never reads back */
+	if (options.opener) {
+		const row = await tx.doc(Thread, threadId)
+		row.agents[options.opener.name] = await newAgent(tx, threadId, [])
+		await setUp(tx, row.agents[options.opener.name].conversation, threadId, options.opener)
+	}
+	return entry
 }
 
 /** Already-authorized answers return to their askers; new requests enter through post. */
@@ -1200,6 +1208,8 @@ const core = {
 	lastAsked,
 	direct: (...args) => direct?.(...args),
 	instructionsOf: (name) => instructionsOf?.(name),
+	botAgent: (name) => botAgent?.(name),
+	botNames: () => botNames?.() ?? [],
 	startThread,
 	post,
 	seenBy,
@@ -1245,13 +1255,14 @@ const hook = (name) => {
 }
 const posted = modules.flatMap((module) => module.posted ?? [])
 const hiding = modules.flatMap((module) => module.hiding ?? [])
-const [direct, turns, reply, catchUp, botAgent, instructionsOf] = [
+const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames] = [
 	'direct',
 	'turns',
 	'reply',
 	'catchUp',
 	'botAgent',
 	'instructionsOf',
+	'botNames',
 ].map(hook)
 compactAt = hook('compactAt')
 /**

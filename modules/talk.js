@@ -20,7 +20,7 @@ export function server(core) {
 	const post = defineTool({
 		name: 'post',
 		description:
-			'Ask someone. Leave out `thread` for a side question: a new child thread that holds only what you write. ' +
+			'Ask someone. Leave out `thread` for a side question: a new child thread that holds only what you write; a bot starting one for other bots is in it and speaks there as itself. ' +
 			'Give a `thread` to ask whoever is there, with all they already know there. Posting to a thread that asked you something answers it. ' +
 			"Whoever answers, their answer comes to you here as a message, even mid-turn; don't read the thread to check for it. " +
 			"A bot posting to a thread it's in speaks there as itself instead, and replies stay there.",
@@ -54,7 +54,11 @@ export function server(core) {
 				keyOf(name) !== AGENT &&
 				Boolean((await core.thread(thread)).agents[keyOf(name)])
 			if (member) {
-				const directed = await core.direct(thread, { author: name, body: args.body }, args.to === undefined)
+				const directed = await core.direct(
+					thread,
+					{ author: name, body: args.body },
+					args.to === undefined,
+				)
 				const to = directed
 					? directed.to
 					: args.to === 'nobody'
@@ -83,6 +87,44 @@ export function server(core) {
 							},
 						],
 						details: { thread },
+					}
+				})
+			}
+			/**
+			 * A bot that starts a thread for other bots, named by `to` or @mention, is in it from the first message, as
+			 * someone opening a group chat; a side question to a model, or to itself, still asks from home.
+			 */
+			const bots = thread === undefined && keyOf(name) !== AGENT ? await core.botNames() : []
+			const botNamed = (text) =>
+				bots.find(
+					(bot) => bot.toLowerCase() === text.replace(/^@/, '').replace(/\.+$/, '').toLowerCase(),
+				)
+			const named = [
+				...(args.to !== undefined ? [botNamed(args.to)] : []),
+				...[...args.body.matchAll(/@([\w.-]+)/g)].map(([, mention]) => botNamed(mention)),
+			].filter((bot) => bot && bot !== name)
+			if (named.length && (args.to === undefined || botNamed(args.to))) {
+				const to = await Promise.all(
+					[...new Set(named)].map((bot) => core.whom(undefined, bot, false, context.abortSignal)),
+				)
+				const opener = await core.botAgent(name)
+				return core.once(`post ${api.taskId}`, 'post', async (tx) => {
+					context.abortSignal?.throwIfAborted()
+					const id = await core.startThread(tx, title, from)
+					await core.post(
+						tx,
+						id,
+						{ author: name, body: args.body, ...(to.length ? { to } : {}) },
+						{ empty: true, steer: true, opener },
+					)
+					return {
+						output: [
+							{
+								type: 'text',
+								text: `Started thread ${id}, where you're a member${to.length ? `, for ${to.map(writtenTo).join(', ')}` : ''}. Replies stay there, with your run in that thread; read it when you need them.`,
+							},
+						],
+						details: { thread: id },
 					}
 				})
 			}

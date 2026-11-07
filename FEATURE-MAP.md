@@ -30,7 +30,8 @@ util.js                  helpers server and modules share: agentTo, writtenTo, k
 modules.js               agent-ide.json, MODULES, and loading each module's server/runner half
 modules/
   talk.js                `post` and `threads` tools; reply sends answers back to askers; a bot in the
-                         thread it posts to speaks there as itself (member)
+                         thread it posts to speaks there as itself (member), and so does a bot that
+                         starts a thread for other bots (opener in server.js's post)
   memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut; render, memory
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
   context.js             AGENTS.md and skills from the runner's folder; listed skills stay readable outside it
