@@ -371,7 +371,9 @@ export const newestCut = (cuts) =>
 
 /** The posts a turn made that ask another thread, rather than answer one */
 export const asksOf = (steps) =>
-	steps.filter((step) => step.name === 'post' && !answered(step) && askedThread(step))
+	steps.filter(
+		(step) => step.name === 'post' && !step.result?.error && !answered(step) && askedThread(step),
+	)
 
 /** Each post's answer, looked up by the thread it asked instead of scanning every message per post */
 export function answersIn(messages) {
@@ -382,6 +384,7 @@ export function answersIn(messages) {
 	return (step) =>
 		step.name === 'post' &&
 		step.result &&
+		!step.result.error &&
 		!answered(step) &&
 		byThread.get(askedThread(step))?.find((entry) => entry.id > step.result.at)
 }
