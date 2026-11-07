@@ -1,5 +1,6 @@
 threads*.db*
 *.sqlite*
+agent-ide.json
 node_modules/
 .mull/
 .env*
