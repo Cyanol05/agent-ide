@@ -53,6 +53,38 @@ export const [newThreadTools, setNewThreadTools] = createSignal(null)
 export const [minted, setMinted] = createSignal(null)
 /** Each thread's messages. They never change once written, so the store is shallow: a read tracks the thread's list, not each message's fields */
 export const [entries, setEntries] = createStore({}, { shallow: true })
+/** Your message shows the moment you send it, marked `sending`, after the thread's last, until its socket brings the server's copy; `drop` takes it back when the send failed */
+export function sending(thread, data) {
+	const entry = {
+		id: (entries[thread]?.at(-1)?.id ?? 0) + 0.9,
+		sending: true,
+		data: { author: me, ...data },
+	}
+	setEntries((all) => {
+		all[thread] = [...(all[thread] ?? []), entry]
+	})
+	return () =>
+		setEntries((all) => {
+			if (all[thread]?.includes(entry)) all[thread] = all[thread].filter((one) => one !== entry)
+		})
+}
+/** New messages into a thread's list, each once and after it; each of yours that came back replaces the oldest one you were sending with that text */
+export const merged = (list, more) => {
+	const have = new Set(list.map((entry) => entry.id))
+	const back = more.filter((entry) => entry.data.author === me).map((entry) => entry.data.body)
+	const waiting = list.filter((entry) => {
+		if (!entry.sending) return false
+		const at = back.indexOf(entry.data.body.trim())
+		if (at === -1) return true
+		back.splice(at, 1)
+		return false
+	})
+	return [
+		...list.filter((entry) => !entry.sending),
+		...more.filter((entry) => !have.has(entry.id)),
+		...waiting,
+	]
+}
 /** Who's in each thread on screen, as its socket says */
 export const [people, setPeople] = createStore({})
 export const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)

@@ -26,6 +26,7 @@ import {
 	homeBot,
 	openThread,
 	runners,
+	sending,
 	server,
 	threads,
 } from './server.js'
@@ -178,6 +179,9 @@ export function Composer(props) {
 			draft.draft = ''
 			draft.images = []
 		}, key)
+		// Your message shows at once; a `$ command` waits for its run
+		const drop =
+			id && !/^\$\s/.test(body) ? sending(id, { body, ...(images.length && { images }) }) : () => {}
 		try {
 			id ??= await createThread(body.slice(0, 60) || 'An image')
 			await api(`/api/threads/${id}/entries`, {
@@ -187,6 +191,7 @@ export function Composer(props) {
 				...(images.length && { images }),
 			})
 		} catch (error) {
+			drop()
 			changeDraft((draft) => {
 				if (draft.draft || draft.images.length) return
 				draft.draft = body

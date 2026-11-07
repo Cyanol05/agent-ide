@@ -18,6 +18,7 @@ import {
 	current,
 	drawer,
 	entries,
+	merged,
 	fork,
 	followThread,
 	forkedFrom,
@@ -218,7 +219,10 @@ export function Thread(props) {
 						if (message.entries.some((entry) => entry.data.author === me && !shown.has(entry.id)))
 							stuck = true
 						setEntries((all) => {
-							all[id] = snapshot || !all[id] ? message.entries : [...all[id], ...message.entries]
+							all[id] = merged(
+								snapshot ? (all[id] ?? []).filter((entry) => entry.sending) : (all[id] ?? []),
+								message.entries,
+							)
 						})
 					}
 					if (message.people)
@@ -249,6 +253,13 @@ export function Thread(props) {
 					delete work[id]
 				})
 			}
+		},
+	)
+	// What you send follows the bottom, as it shows before the server has it
+	createEffect(
+		() => messages().at(-1)?.sending,
+		(mine) => {
+			if (mine) stuck = true
 		},
 	)
 	/** Following the bottom watches the list's real size: a row added or growing, an image loading, the list itself resized */
@@ -503,7 +514,7 @@ export function Message(props) {
 					</div>
 				`}<//
 			>
-			<${Show} when=${() => !props.embedded}>
+			<${Show} when=${() => !props.embedded && !props.entry.sending}>
 				<button
 					class="fork"
 					title="A new thread from this message"
