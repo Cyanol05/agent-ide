@@ -30,16 +30,15 @@ Answer with one line and nothing else: the candidate's name or nobody, a colon, 
 Kira: she knows roses
 nobody: they're talking to each other`
 
-/** The bots a message @mentions among those here; none, and the message asks as it would without the director */
-function route({ body }, agents) {
-	/** Bot names are written as they read, but people type them in any case */
+/** The bots a message @mentions among those here, by name in any case: bot names are written as they read, but people type them in any case */
+function mentioned(body, here) {
 	const bots = new Map(
-		agents.filter((agent) => agent.name).map((bot) => [bot.name.toLowerCase(), bot]),
+		here.filter((agent) => agent.name).map((bot) => [bot.name.toLowerCase(), bot]),
 	)
-	const mentioned = [...body.matchAll(/@([\w.-]+)/g)]
+	const named = [...body.matchAll(/@([\w.-]+)/g)]
 		.map(([, name]) => bots.get(name.replace(/\.+$/, '').toLowerCase()))
 		.filter(Boolean)
-	return [...new Set(mentioned)]
+	return [...new Set(named)]
 }
 
 export function server(core) {
@@ -84,14 +83,8 @@ export function server(core) {
 		return known && { name: known, reason: reason.split('\n')[0].trim() }
 	}
 
-	/** Whom a message that names no one asks: `{to, reason}`, or undefined to ask whom the thread asked last */
-	async function pick(threadId, message) {
-		const { agents } = await core.thread(threadId)
-		const here = (
-			await Promise.all(
-				Object.entries(agents).map(([key, agent]) => core.agentOf(agent.conversation, key)),
-			)
-		).filter(Boolean)
+	/** Whom a message that names no one asks: `{to, picked}` with the reason, or undefined to ask whom the thread asked last */
+	async function pick(threadId, message, here) {
 		if (here.filter((agent) => agent.name).length < 2) return undefined
 		const candidates = await Promise.all(
 			here.map(async (agent) => {
@@ -120,11 +113,27 @@ export function server(core) {
 			AbortSignal.timeout(LIMIT),
 		).catch((error) => console.error(`director: ${error.message}`))
 		if (!decided) return undefined
-		const agent = here.find((agent) => !agent.name)
+		const agent = decided.name === AGENT ? here.find((agent) => !agent.name) : undefined
 		const to =
-			decided.name === 'nobody' ? [] : [decided.name === AGENT ? writtenTo(agent) : decided.name]
-		return { to, reason: decided.reason }
+			decided.name === 'nobody' ? [] : [agent ?? here.find((bot) => bot.name === decided.name)]
+		return { to, picked: decided.reason }
 	}
 
-	return { route, turns: true, ...(chooser ? { pick, picking: name } : {}) }
+	/**
+	 * Whom a message asks, `{to, picked?}`, or undefined to leave it to its own `to` or whom the thread asked last.
+	 * `free` is a person's message that names no one, which picks may answer.
+	 */
+	async function direct(threadId, message, free) {
+		const { agents } = await core.thread(threadId)
+		const here = (
+			await Promise.all(
+				Object.entries(agents).map(([key, agent]) => core.agentOf(agent.conversation, key)),
+			)
+		).filter(Boolean)
+		const named = mentioned(message.body, here)
+		if (named.length) return { to: named }
+		return free && chooser ? pick(threadId, message, here) : undefined
+	}
+
+	return { direct, turns: true, settings: { picks: name || null } }
 }

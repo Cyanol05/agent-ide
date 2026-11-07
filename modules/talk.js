@@ -59,9 +59,12 @@ export function server(core) {
 				asked &&
 				(await agentOf((await core.thread(thread)).agents[askerKey]?.conversation, askerKey))
 			/** An answer goes back to its asker; any other post to a thread asks the bots it @mentions there */
-			const mentioned = thread === undefined || asked ? [] : await core.mentions(thread, args.body)
-			const to = mentioned.length
-				? mentioned
+			const directed =
+				thread !== undefined &&
+				!asked &&
+				(await core.direct(thread, { author: name, body: args.body }))
+			const to = directed
+				? directed.to
 				: args.to === 'nobody'
 					? []
 					: args.to !== undefined

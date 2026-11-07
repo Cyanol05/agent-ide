@@ -678,7 +678,7 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 	for (const hook of posted) await hook(tx, threadId, entry)
 	for (const [key, agent] of Object.entries(row.agents))
 		if (!ownAnswer({ data }, key)) agent.unseen.push(entry.id)
-	/** With the director, those it asks answer one after another, in the order named */
+	/** With `turns`, those it asks answer one after another, in the order named */
 	let turn
 	for (const [index, name] of names.entries()) {
 		const key = keyOf(name)
@@ -949,17 +949,7 @@ const once = (requestId, command, work) =>
 		return result
 	})
 
-/** With the director, the bots here a message @mentions; none without it */
-async function mentions(id, body) {
-	if (!route) return []
-	const { agents } = await thread(id)
-	const here = await Promise.all(
-		Object.entries(agents).map(([key, agent]) => agentOf(agent.conversation, key)),
-	)
-	return addresses(route({ body }, here.filter(Boolean)), false, id)
-}
-
-/** No `to` asks whom the thread last asked; with the director, an @mention of a bot here asks that bot */
+/** No `to` asks whom the thread last asked, unless the director says otherwise */
 async function postEntry(id, author, input) {
 	const saved = await receipt(input.requestId, `post ${id}`)
 	if (saved) return saved.result
@@ -967,20 +957,12 @@ async function postEntry(id, author, input) {
 	const images = imageList(input.images)
 	const body = images ? (input.body ?? '').trim() : field(input.body, 'body')
 	const command = !images && body.match(/^\$\s+([\s\S]+)/)?.[1]
-	const mentioned = command ? [] : await mentions(id, body)
-	/** With the director picking, a message that names no one in a thread of bots asks whom it picks, or nobody */
-	const picked =
-		!command && !mentioned.length && !('to' in input) && pick
-			? await pick(id, { author, body })
-			: undefined
-	/** A mention of no one asks as a message without one: its own `to`, else whom the thread asked last */
-	const to = mentioned.length
-		? mentioned
-		: picked
-			? await addresses(picked.to, false, id)
-			: 'to' in input
-				? await addresses(input.to, Boolean(command), id)
-				: await lastAsked(id)
+	const directed = !command && (await direct?.(id, { author, body }, !('to' in input)))
+	const to = directed
+		? directed.to
+		: 'to' in input
+			? await addresses(input.to, Boolean(command), id)
+			: await lastAsked(id)
 	if (command && !to.length) throw new Error('Pick a runner to run the command on')
 	if (command) await reach(to, author, await known())
 	if (!command && to.filter((to) => !to.name).length > 1)
@@ -997,7 +979,7 @@ async function postEntry(id, author, input) {
 						body,
 						...(images ? { images } : {}),
 						...(to.length ? { to } : {}),
-						...(picked ? { picked: picked.reason } : {}),
+						...(directed?.picked ? { picked: directed.picked } : {}),
 					},
 					{ steer: input.steer === true },
 				),
@@ -1194,7 +1176,7 @@ const core = {
 	entries,
 	messages,
 	lastAsked,
-	mentions,
+	direct: (...args) => direct?.(...args),
 	instructionsOf: (name) => instructionsOf?.(name),
 	startThread,
 	post,
@@ -1241,11 +1223,9 @@ const hook = (name) => {
 }
 const posted = modules.flatMap((module) => module.posted ?? [])
 const hiding = modules.flatMap((module) => module.hiding ?? [])
-const [route, turns, pick, picking, reply, catchUp, botAgent, instructionsOf] = [
-	'route',
+const [direct, turns, reply, catchUp, botAgent, instructionsOf] = [
+	'direct',
 	'turns',
-	'pick',
-	'picking',
 	'reply',
 	'catchUp',
 	'botAgent',
@@ -1328,8 +1308,12 @@ const routes = [
 			work: await harness.inspect(context),
 			settings: {
 				memory: { model: settings.config.memory?.model ?? '', compactAt: compactAt ?? null },
-				/** The model the director picks with, when it picks */
-				director: { picks: picking ?? null },
+				/** What modules say of their own settings, by name */
+				...Object.fromEntries(
+					modules
+						.filter((module) => module.settings)
+						.map((module) => [module.name, module.settings]),
+				),
 				/** Set in the environment, these win over agent-ide.json */
 				overrides: ['MODULES', 'MEMORY_MODEL'].filter((name) => process.env[name]),
 				restarts: typeof process.execve === 'function',
