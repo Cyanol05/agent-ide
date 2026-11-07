@@ -995,10 +995,6 @@ agent-memory {
 			&.elsewhere > .reply,
 			/* An ask is one quiet line in the flow; opened, the exchange in the same box a question gets over there. */
 			&.exchange {
-				summary .waiting {
-					animation: blink 1s ease-in-out infinite;
-				}
-
 				summary > small {
 					display: inline;
 					margin: 0;

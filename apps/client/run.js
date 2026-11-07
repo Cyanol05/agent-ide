@@ -77,8 +77,8 @@ export function Turn(props) {
 }
 
 /**
- * An ask, from the thread that asked: one quiet line with who and the question, pulsing while the answer is out.
- * Opened, the question and answer as ordinary messages.
+ * A post, from the thread that sent it: one quiet line saying whom it messaged and what, with that thread's dot while it works;
+ * a reply, if one comes, says so. Opened, the message and its reply as ordinary messages.
  */
 export function Exchange(props) {
 	const asked = () => askedThread(props.step)
@@ -97,15 +97,13 @@ export function Exchange(props) {
 		const first = (props.step.args.body ?? '').split(/\r?\n/)[0]
 		return first.length > 60 ? `${first.slice(0, 59)}…` : first
 	}
-	createEffect(
-		() => !props.answer,
-		(waiting) => (waiting ? tick() : undefined),
-	)
 	const took = () => {
 		const start = props.step.result?.time
-		const end = props.back ?? (props.answer ? undefined : clock())
+		const end = props.back
 		return start && end && end - start >= 1000 ? seconds(end - start) : ''
 	}
+	const working = () =>
+		!props.answer && threads.find((thread) => thread.id === asked())?.status === 'working'
 	const [open, setOpen] = createSignal(false)
 
 	return html`
@@ -113,13 +111,12 @@ export function Exchange(props) {
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<small>
-						<span class="cross">→ </span
-						><span style=${() => colorOf(who() ?? '')}
+						<span class="cross">→ </span>Messaged
+						<span style=${() => colorOf(who() ?? '')}
 							><${ThreadLink} id=${() => asked()}>${name}<//></span
-						>${() => `: "${question()}" · `}<span
-							class=${() => ({ waiting: !props.answer })}
-							>${() => props.answer ? ['answered', took()].filter(Boolean).join(' ') : 'asking…'}</span
-						>
+						>${() => `: "${question()}"`}<${Show} when=${() => props.answer}
+							>${() => ` · ${['answered', took()].filter(Boolean).join(' ')}`}<//
+						><${Show} when=${working}> <${Dot} state="working" /><//>
 					</small>
 				</summary>
 				<${Show} when=${open}>
