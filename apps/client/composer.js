@@ -250,14 +250,25 @@ export function Composer(props) {
 					</button>
 				<//>
 			</div>
-			<${For} each=${() => missingBots(draft().draft, props.thread)}
-				>${(bot) => html`
-					<div class="links">
-						<span style=${() => colorOf(bot.name)}>${() => bot.name}</span> isn't in this thread ·
-						<button type="button" class="join" onClick=${() => addBot(bot, props.thread)}>Add</button>
-					</div>
-				`}<//
-			>
+			<${Show} when=${() => missingBots(draft().draft, props.thread).length}>
+				<div class="links missing">
+					<${For} each=${() => missingBots(draft().draft, props.thread)}
+						>${(bot, index) => html`${() =>
+							index() ? (index() === missingBots(draft().draft, props.thread).length - 1 ? ' and ' : ', ') : ''}<span
+								style=${() => colorOf(bot.name)}
+								>${() => bot.name}</span
+							>`}<//
+					>
+					${() => (missingBots(draft().draft, props.thread).length > 1 ? " aren't" : " isn't")} in this thread ·
+					<button
+						type="button"
+						class="join"
+						onClick=${() => addBots(missingBots(draft().draft, props.thread), props.thread)}
+					>
+						${() => (missingBots(draft().draft, props.thread).length > 1 ? 'Add all' : 'Add')}
+					</button>
+				</div>
+			<//>
 			<div class="bar">
 				<button
 					type="button"
@@ -512,8 +523,9 @@ export const missingBots = (body, thread = current()) => {
 		askedBots(thread).some((to) => to.name === bot.name)
 	return bots.filter((bot) => mentioned.includes(bot.name.toLowerCase()) && !inside(bot))
 }
-/** Bringing a mentioned bot in is picking her in the picker: the next message asks her */
-export const addBot = (bot, thread = current()) => setPick(null, [botAgent(bot)], null, thread)
+/** Bringing mentioned bots in is picking them in the picker: the next message asks them */
+export const addBots = (list, thread = current()) =>
+	setPick(null, list.map(botAgent), null, thread)
 export const recipients = (thread = current()) =>
 	[agent(thread), ...askedBots(thread)].filter(Boolean)
 /** An agent asked without thinking keeps the running level, or uses the runner's known pi default. */
