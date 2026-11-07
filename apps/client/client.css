@@ -1896,16 +1896,27 @@ button[data-danger]:focus-visible:not(:disabled) {
 			z-index: 4;
 		}
 
+		/* Fixed, full width and a plain colour: iOS 26 then tints the status bar with it. Anything else at the top edge (absolute, a gradient) gets the system's own blurred fade, drawn over the page and its buttons. */
 		.app-bar {
 			display: grid;
 			grid-template-columns: 1fr auto 1fr;
 			align-items: center;
 			gap: 0.5rem;
-			position: absolute;
+			position: fixed;
 			inset: 0 0 auto;
 			z-index: 6;
 			padding: calc(0.5rem + env(safe-area-inset-top)) 0.7rem 0.5rem;
-			background: linear-gradient(Canvas 55%, transparent);
+			background-color: Canvas;
+
+			/* Messages fade out under the bar. */
+			&::after {
+				content: '';
+				position: absolute;
+				inset: 100% 0 auto;
+				height: 1.25rem;
+				background: linear-gradient(Canvas, transparent);
+				pointer-events: none;
+			}
 		}
 	}
 
@@ -1951,7 +1962,10 @@ button[data-danger]:focus-visible:not(:disabled) {
 				display: none;
 			}
 
-			--fade-top: calc(3.4rem + env(safe-area-inset-top));
+			/* The app bar carries the top fade. */
+			&::before {
+				display: none;
+			}
 
 			> p.from {
 				top: calc(3.4rem + env(safe-area-inset-top));
