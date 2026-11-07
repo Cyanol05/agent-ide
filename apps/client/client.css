@@ -1084,18 +1084,6 @@ agent-memory {
 		padding: 0 0 0.35rem;
 	}
 
-	.links.missing {
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.links button.join {
-		all: unset;
-		cursor: pointer;
-		text-decoration: underline;
-	}
-
 	> ul > li > .links:not(:first-child) {
 		padding: 0.4rem 0 0;
 	}
@@ -2526,6 +2514,20 @@ body.chat {
 			opacity: 0;
 			translate: 0 8px;
 		}
+	}
+}
+
+/* The bots an @ can mention: a small popover over the message box, on phones too, never a sheet. */
+.model-picker.mentions {
+	inset: auto;
+	width: min(20rem, calc(100vw - 1rem));
+	max-height: min(40dvh, 20rem);
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	padding: 0.4rem;
+
+	.model[aria-selected='true'] {
+		background: var(--tint);
 	}
 }
 

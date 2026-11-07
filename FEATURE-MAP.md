@@ -56,10 +56,10 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     Turn, Step, Call, Told, Ask   a turn's line, opened into steps; Ask is the post step
   composer.js            the box you type in
     pick, agent, askedBots, recipients   whom the next message asks, per thread
-    missingBots, addBots the "isn't in this thread · Add" line under the composer while the draft @mentions an absent bot
+    mention, pickMention, mentionsFor   typing @ lists bots (a combobox); picking one asks it, which is how it joins
     choose, configure, toFor             model picker and runner controls changing that pick
     Composer: submit, add, typeRecipients, filled, compactNow   send, images, typed recipients, context meter
-    PickerBot            bots in the picker
+    PickerBot            bots in the picker, and as @mention options
   agent.js               agents' labels and live work (doing); client's agentTo, formatAgent, toolLine
   model-picker.js        model, thinking and folder controls (composer and settings share them)
   runner.js              runner list, a runner's agents, ConnectRunner

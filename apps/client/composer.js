@@ -39,7 +39,53 @@ import { report } from './notice.js'
 import { imageContent, imageUrl } from './images.js'
 
 export function Composer(props) {
-	let input, picker, button, chooser, anchor, recall, recallButton
+	let input, picker, button, chooser, anchor, recall, recallButton, mentionList
+	/** The @ being typed: where it starts, what follows it, and which bot is highlighted */
+	const [mention, setMention] = createSignal(null)
+	const [highlighted, setHighlighted] = createSignal(0)
+	const mentionable = () => (mention() ? mentionsFor(mention().query, props.thread) : [])
+	const findMention = () => {
+		const before = input.value.slice(0, input.selectionStart)
+		const found =
+			input.selectionStart === input.selectionEnd && before.match(/(?:^|[\s(])@([\w.-]*)$/)
+		const next =
+			found && bots.length && !homeBot(props.thread)
+				? { start: before.length - found[1].length - 1, query: found[1] }
+				: null
+		if (next?.query !== mention()?.query || next?.start !== mention()?.start) setHighlighted(0)
+		setMention(next)
+	}
+	/** Picking a bot writes @name and asks it with this message, the way a bot joins a thread */
+	const pickMention = (bot) => {
+		const { start } = mention()
+		const text = `${input.value.slice(0, start)}@${bot.name} `
+		const value = text + input.value.slice(input.selectionStart).replace(/^\s/, '')
+		changeDraft((draft) => {
+			draft.draft = value
+		})
+		input.value = value
+		input.setSelectionRange(text.length, text.length)
+		// It asks the bots the draft mentions, as a mention of bots already here does
+		const named = value.toLowerCase()
+		const kept = askedBots(props.thread).filter(
+			(to) => to.name !== bot.name && named.includes(`@${to.name.toLowerCase()}`),
+		)
+		setPick(null, [...snapshot(kept), botAgent(bot)], null, props.thread)
+		setMention(null)
+		input.focus()
+	}
+	createEffect(
+		() => mentionable().length > 0,
+		(open) => {
+			if (!mentionList) return
+			if (!open) {
+				if (mentionList.matches(':popover-open')) mentionList.hidePopover()
+				return
+			}
+			if (!mentionList.matches(':popover-open')) mentionList.showPopover()
+			onSettled(() => placePopover(mentionList, input, false))
+		},
+	)
 	const [lines, setLines] = createSignal(false)
 	const [compacting, setCompacting] = createSignal(false)
 	/** How full the agent's context was at its last answer: tokens, and the share of its window */
@@ -204,7 +250,36 @@ export function Composer(props) {
 					rows="1"
 					autocomplete="off"
 					enterkeyhint=${() => (touch() ? 'enter' : 'send')}
+					role="combobox"
+					aria-autocomplete="list"
+					aria-controls=${() => `mentions-${props.thread ?? 'new'}`}
+					aria-expanded=${() => String(mentionable().length > 0)}
+					aria-activedescendant=${() =>
+						mentionable().length
+							? `mention-${props.thread ?? 'new'}-${mentionable()[highlighted()]?.name}`
+							: undefined}
+					onBlur=${() => setMention(null)}
+					onClick=${findMention}
+					onKeyUp=${(event) => {
+						if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) findMention()
+					}}
 					onKeyDown=${(event) => {
+						const list = mentionable()
+						if (list.length && !event.isComposing) {
+							const step = { ArrowDown: 1, ArrowUp: -1 }[event.key]
+							if (step) {
+								event.preventDefault()
+								return setHighlighted((highlighted() + step + list.length) % list.length)
+							}
+							if (event.key === 'Enter' || event.key === 'Tab') {
+								event.preventDefault()
+								return pickMention(list[highlighted()] ?? list[0])
+							}
+							if (event.key === 'Escape') {
+								event.preventDefault()
+								return setMention(null)
+							}
+						}
 						if (event.key !== 'Enter' || event.isComposing || event.shiftKey || touch()) return
 						submit(event)
 					}}
@@ -237,6 +312,7 @@ export function Composer(props) {
 						changeDraft((draft) => {
 							draft.draft = event.currentTarget.value
 						})
+						findMention()
 					}}
 				></textarea>
 				<${Show} when=${() => active()}>
@@ -250,25 +326,6 @@ export function Composer(props) {
 					</button>
 				<//>
 			</div>
-			<${Show} when=${() => missingBots(draft().draft, props.thread).length}>
-				<div class="links missing">
-					<${For} each=${() => missingBots(draft().draft, props.thread)}
-						>${(bot, index) => html`${() =>
-							index() ? (index() === missingBots(draft().draft, props.thread).length - 1 ? ' and ' : ', ') : ''}<span
-								style=${() => colorOf(bot.name)}
-								>${() => bot.name}</span
-							>`}<//
-					>
-					${() => (missingBots(draft().draft, props.thread).length > 1 ? " aren't" : " isn't")} in this thread ·
-					<button
-						type="button"
-						class="join"
-						onClick=${() => addBots(missingBots(draft().draft, props.thread), props.thread)}
-					>
-						${() => (missingBots(draft().draft, props.thread).length > 1 ? 'Add all' : 'Add')}
-					</button>
-				</div>
-			<//>
 			<div class="bar">
 				<button
 					type="button"
@@ -329,7 +386,12 @@ export function Composer(props) {
 				<button
 					type="button"
 					class="pick"
-					aria-label="Model"
+					aria-label=${() =>
+						`Asks ${
+							recipients(props.thread)
+								.map((to) => recipientLabel(to, props.thread))
+								.join(' + ') || 'no one yet; pick a model'
+						}`}
 					ref=${(el) => (button = el)}
 					aria-expanded="false"
 					title=${() =>
@@ -352,6 +414,29 @@ export function Composer(props) {
 								.join(' + ') || 'Pick a model'}</span
 					>
 				</button>
+			</div>
+			<div class="model-picker mentions" popover="manual" ref=${(el) => (mentionList = el)}>
+				<div class="model-controls">
+					<ul
+						role="listbox"
+						id=${() => `mentions-${props.thread ?? 'new'}`}
+						aria-label="Bots to mention"
+					>
+						<${For} each=${() => mentionable()}>
+							${(bot, index) =>
+								PickerBot(
+									bot,
+									() => setMention(null),
+									() => props.thread,
+									{
+										id: () => `mention-${props.thread ?? 'new'}-${bot.name}`,
+										highlighted: () => highlighted() === index(),
+										pick: () => pickMention(bot),
+									},
+								)}
+						<//>
+					</ul>
+				</div>
 			</div>
 			<div
 				class="settings recall"
@@ -458,9 +543,32 @@ export function Composer(props) {
 	`
 }
 
-/** A click asks only the bot; shift-click adds it beside the agent, or takes it off */
-function PickerBot(bot, close, thread) {
+/**
+ * A click asks only the bot; shift-click adds it beside the agent, or takes it off.
+ * As an @mention option, the row is highlighted by the keys, says whether the bot is here yet, and a tap picks it.
+ */
+function PickerBot(bot, close, thread, mention) {
 	const selected = () => askedBots(thread()).some((to) => to.name === bot.name)
+	if (mention)
+		return html`
+			<li role="presentation">
+				<button
+					type="button"
+					role="option"
+					id=${mention.id}
+					tabindex="-1"
+					aria-selected=${() => String(mention.highlighted())}
+					class="model"
+					onMouseDown=${(event) => event.preventDefault()}
+					onClick=${(_event) => mention.pick()}
+				>
+					<span style=${() => colorOf(bot.name)}>${() => bot.name}</span>
+					<small
+						>${() => (isHere(bot, thread()) ? formatAgent(bot.to) : 'not in this thread yet')}</small
+					>
+				</button>
+			</li>
+		`
 	return html`
 		<li>
 			<button
@@ -512,20 +620,18 @@ const askedBots = (thread = current()) =>
 			here(thread)
 				.map((agent) => agent.to)
 				.filter((to) => to?.name && lastTo(thread)?.includes(to.name)))
-/** The bots a message @mentions that exist but aren't in the thread, and aren't picked to be */
-export const missingBots = (body, thread = current()) => {
-	const mentioned = [...String(body).matchAll(/@([\w.-]+)/g)].map(([, name]) =>
-		name.replace(/\.+$/, '').toLowerCase(),
-	)
-	if (!mentioned.length || homeBot(thread)) return []
-	const inside = (bot) =>
-		here(thread).some((agent) => agent.to?.name === bot.name) ||
-		askedBots(thread).some((to) => to.name === bot.name)
-	return bots.filter((bot) => mentioned.includes(bot.name.toLowerCase()) && !inside(bot))
+const isHere = (bot, thread) =>
+	here(thread).some((agent) => agent.to?.name === bot.name) ||
+	askedBots(thread).some((to) => to.name === bot.name)
+/** The bots an @ could mention, by the start of their name: those in the thread first */
+const mentionsFor = (query, thread) => {
+	const typed = query.toLowerCase()
+	const matching = bots.filter((bot) => bot.name.toLowerCase().startsWith(typed))
+	return [
+		...matching.filter((bot) => isHere(bot, thread)),
+		...matching.filter((bot) => !isHere(bot, thread)),
+	]
 }
-/** Bringing mentioned bots in is picking them in the picker: the next message asks them */
-export const addBots = (list, thread = current()) =>
-	setPick(null, list.map(botAgent), null, thread)
 export const recipients = (thread = current()) =>
 	[agent(thread), ...askedBots(thread)].filter(Boolean)
 /** An agent asked without thinking keeps the running level, or uses the runner's known pi default. */
