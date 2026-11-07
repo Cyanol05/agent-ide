@@ -208,6 +208,8 @@ export function Thread(props) {
 			/** Agents whose whole conversation came on this watch; the next batch from each is appended */
 			const followed = new Set()
 			stuck = true
+			sent = null
+			if (room) room.style.height = '0px'
 			const close = watch(
 				(message) => {
 					if (message.thread !== id) return
@@ -255,16 +257,38 @@ export function Thread(props) {
 			}
 		},
 	)
-	// What you send follows the bottom, as it shows before the server has it
+	/** Where your last message starts in the list; the room under it is what the answer hasn't filled yet */
+	let sent = null,
+		room,
+		bottom = () => {}
+	// What you send goes to the top of the view with the room under it free, so the answer fills it without moving anything
 	createEffect(
 		() => messages().at(-1)?.sending,
 		(mine) => {
-			if (mine) stuck = true
+			if (!mine || !list) return
+			stuck = true
+			const row = [...list.querySelectorAll(':scope > li.mine')].at(-1)
+			sent = row
+				? row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
+				: null
+			bottom()
 		},
 	)
 	/** Following the bottom watches the list's real size: a row added or growing, an image loading, the list itself resized */
 	const follow = (list) => {
-		const bottom = () => {
+		const fill = () => {
+			if (sent === null) return
+			const style = getComputedStyle(list)
+			const top = parseFloat(style.paddingTop),
+				under = parseFloat(style.paddingBottom)
+			const end =
+				room.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
+			const free = Math.max(0, sent - top + list.clientHeight - under - end)
+			room.style.height = `${free}px`
+			if (!free) sent = null
+		}
+		bottom = () => {
+			fill()
 			if (stuck) list.scrollTop = list.scrollHeight
 			followed = list.scrollHeight
 		}
@@ -422,6 +446,7 @@ export function Thread(props) {
 							<//>
 						`}<//
 					>
+					<li class="room" aria-hidden="true" ref=${(el) => (room = el)}></li>
 				</ul>
 			<//>
 			<${Composer} thread=${() => props.id} />

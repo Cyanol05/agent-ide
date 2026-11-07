@@ -824,6 +824,11 @@ agent-memory {
 				margin-top: 0.6rem;
 			}
 
+			/* The room under what you just sent, which the answer fills. */
+			&.room {
+				margin: 0;
+			}
+
 			&.same {
 				margin-top: 0.8rem;
 
