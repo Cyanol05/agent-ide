@@ -124,43 +124,63 @@ export function NewBot(props) {
 	const [name, setName] = createSignal('')
 	const [saving, setSaving] = createSignal(false)
 	onSettled(() => input.focus())
+	const submit = async (event) => {
+		event.preventDefault()
+		if (saving()) return
+		const entered = name().trim()
+		if (!entered) return setError('Required')
+		if (bots.some((bot) => bot.name === entered)) return setError('Taken')
+		if (!/^[\w.-]{1,40}$/.test(entered)) return setError('Invalid')
+		setSaving(true)
+		try {
+			const pick = snapshot(agent() ?? agent(null))
+			if (!pick) throw new Error('Pick a model first in New thread')
+			const { home } = await api('/api/bots', {
+				name: entered,
+				to: { ...pick, name: undefined },
+			})
+			refresh(bots)
+			openThread(home)
+			props.onDone()
+		} catch (failure) {
+			setError(failure.message)
+		} finally {
+			setSaving(false)
+		}
+	}
 	return html`
 		<li>
-			<input
-				ref=${(el) => {
-					input = el
-				}}
-				placeholder="a name"
-				spellcheck="false"
-				class=${() => ({ bad: !!error() })}
-				title=${() => error() || 'How anyone asks it, in any thread'}
-				value=${() => name()}
-				onInput=${(event) => setName(event.currentTarget.value)}
-				onBlur=${() => {
-					if (!saving()) props.onDone()
-				}}
-				onKeyDown=${async (event) => {
-					if (event.key === 'Escape') return props.onDone()
-					if (event.key !== 'Enter' || saving()) return
-					event.preventDefault()
-					setSaving(true)
-					try {
-						const pick = snapshot(agent())
-						if (!pick) throw new Error('Pick a model first: a new bot starts on it')
-						const { home } = await api('/api/bots', {
-							name: name().trim(),
-							to: { ...pick, name: undefined },
-						})
-						refresh(bots)
-						openThread(home)
-						props.onDone()
-					} catch (error) {
-						setError(error.message)
-					} finally {
-						setSaving(false)
-					}
-				}}
-			/>
+			<form class="row" onSubmit=${submit}>
+				<input
+					ref=${(el) => {
+						input = el
+					}}
+					aria-label="Bot name"
+					placeholder="a name"
+					enterkeyhint="go"
+					autocomplete="off"
+					autocapitalize="none"
+					spellcheck="false"
+					class=${() => ({ bad: !!error() })}
+					aria-invalid=${() => !!error()}
+					title=${() => error() || 'How anyone asks it, in any thread'}
+					value=${() => name()}
+					onInput=${(event) => {
+						setName(event.currentTarget.value)
+						setError('')
+					}}
+					onBlur=${() => {
+						if (!saving() && !name().trim()) props.onDone()
+					}}
+					onKeyDown=${(event) => {
+						if (event.key === 'Escape') props.onDone()
+					}}
+				/>
+				<button type="submit" disabled=${() => saving()}>Create</button>
+				<${Show} when=${() => error()}>
+					<small role="alert">${() => error()}</small>
+				<//>
+			</form>
 		</li>
 	`
 }
