@@ -27,7 +27,7 @@ const RULES = `You choose who answers a new message in a group chat: one or more
 
 - Silence is the default once the person has what they need. Pick someone only if the person still needs an answer that candidate can give; never for agreement, a paraphrase, a nicer version or a goodbye.
 - Pushing back on what a candidate said ("I disagree", "that's wrong", "no, because…") invites that candidate to answer.
-- If the new message is for another person in the chat and asks nothing of the candidates, pick nobody.
+- If the new message is for another person in the chat and asks nothing of the candidates, pick nobody. It's for that person only when it names them or plainly answers them; an open question that names no one is for the candidates.
 - A plain name without @ is at most a hint about the topic, never a summons.
 - A message addressed to the whole group ("what do you all think?", "you two", "both of you", "everyone") picks every candidate, in the order they should speak, even one who answered something like it before: they asked everyone.
 - Otherwise pick the one candidate whose persona fits best, or the best generalist.
