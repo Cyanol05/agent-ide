@@ -1084,7 +1084,7 @@ agent-memory {
 		padding: 0 0 0.35rem;
 	}
 
-	.links button.add {
+	.links button.join {
 		all: unset;
 		cursor: pointer;
 		text-decoration: underline;

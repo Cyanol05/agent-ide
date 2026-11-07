@@ -34,7 +34,7 @@ import {
 } from './server.js'
 import { authorLabel, doing, setDoing } from './agent.js'
 import { answersIn, asksOf, conversations, cutsOf, Exchange, heard, newestCut, Turn, turnsOf } from './run.js'
-import { addBot, Composer, missingBots } from './composer.js'
+import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageUrl } from './images.js'
@@ -488,15 +488,6 @@ export function Message(props) {
 					<${Images} images=${() => data().images} />
 				</details>
 			<//>
-			<${For}
-				each=${() => (props.embedded || elsewhere() || data().author !== me ? [] : missingBots(data().body, props.thread))}
-				>${(bot) => html`
-					<div class="links">
-						<span style=${() => colorOf(bot.name)}>${() => bot.name}</span> isn't in this thread ·
-						<button type="button" class="add" onClick=${() => addBot(bot, props.thread)}>Add</button>
-					</div>
-				`}<//
-			>
 			<${For} each=${() => (props.embedded ? [] : forks())}
 				>${(fork) => html`
 					<div class="links">

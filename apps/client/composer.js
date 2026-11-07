@@ -250,6 +250,14 @@ export function Composer(props) {
 					</button>
 				<//>
 			</div>
+			<${For} each=${() => missingBots(draft().draft, props.thread)}
+				>${(bot) => html`
+					<div class="links">
+						<span style=${() => colorOf(bot.name)}>${() => bot.name}</span> isn't in this thread ·
+						<button type="button" class="join" onClick=${() => addBot(bot, props.thread)}>Add</button>
+					</div>
+				`}<//
+			>
 			<div class="bar">
 				<button
 					type="button"
