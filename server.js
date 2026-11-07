@@ -1224,7 +1224,7 @@ const defaults = {
 	memory: false,
 	matrix: false,
 	context: true,
-	search: false,
+	'web-search': false,
 	bots: false,
 }
 /** agent-ide.json, as it started; the page changes it, and a restart takes it up */

@@ -59,12 +59,12 @@ export async function load(end, defaults, core, settings) {
 
 function pick(on, list, where) {
 	if (!Array.isArray(list))
-		throw new Error(`${where}: modules is a list, like ["+search", "-talk"]`)
+		throw new Error(`${where}: modules is a list, like ["+web-search", "-talk"]`)
 	const changes = list.filter((name) => /^[+-]/.test(name))
 	if (!changes.length) return list
 	if (changes.length < list.length)
 		throw new Error(
-			`${where}: put + or - before every name to change defaults (like +bots,+search,+director), or use only bare names to replace them (like bots,search,director)`,
+			`${where}: put + or - before every name to change defaults (like +bots,+web-search,+director), or use only bare names to replace them (like bots,web-search,director)`,
 		)
 	return changes.reduce(
 		(on, change) =>

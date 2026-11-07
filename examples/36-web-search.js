@@ -1,4 +1,4 @@
-/** MODULES=+search gives agents `web_search` */
+/** MODULES=+web-search gives agents `web_search` */
 import http from 'node:http'
 import { rmSync } from 'node:fs'
 import { getCurrentTools } from '@earendil-works/pi-ai/utils/transcript'
@@ -60,8 +60,8 @@ check(
 	'by default agents have no web_search',
 	JSON.stringify(off.offered),
 )
-const on = await round({ MODULES: '+search', SEARCH_URL })
-check(on.offered.includes('web_search'), 'MODULES=+search offers it')
+const on = await round({ MODULES: '+web-search', SEARCH_URL })
+check(on.offered.includes('web_search'), 'MODULES=+web-search offers it')
 check(
 	asked[0]?.query === 'pi durable' && on.answer.includes('https://earendil.com/posts/pi-durable/'),
 	'a search goes out, and the agent reads the pages it found',

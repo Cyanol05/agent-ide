@@ -29,7 +29,7 @@ Environment variables override the file:
 ```sh
 HOST=0.0.0.0 PORT=3001 node server.js   # reachable from other machines
 RUNNER=~/code node server.js            # agents work in another folder; RUNNER=0 connects none
-MODULES=+search,-talk node server.js    # modules on (+name) or off (-name)
+MODULES=+web-search,-talk node server.js    # modules on (+name) or off (-name)
 MEMORY_MODEL=haiku@desk node server.js  # one model writes every thread's memory
 DB_PATH=other.sqlite node server.js     # another store
 ```

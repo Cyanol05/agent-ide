@@ -18,7 +18,7 @@ const rebound = await fetch(`${base}/api/settings`, {
 		host: 'evil.example',
 		origin: 'http://evil.example',
 	},
-	body: JSON.stringify({ modules: { search: true } }),
+	body: JSON.stringify({ modules: { 'web-search': true } }),
 })
 check(
 	rebound.status === 403 && !existsSync(file),
@@ -27,7 +27,7 @@ check(
 
 const pid = srv.pid
 const on = await api('POST', '/api/settings', {
-	modules: { search: true, status: false },
+	modules: { 'web-search': true, status: false },
 	memory: { model: 'echo/echo:high@bot', compactAt: 60000 },
 })
 check(
@@ -36,13 +36,13 @@ check(
 	JSON.stringify(on.json),
 )
 check(
-	JSON.stringify(JSON.parse(readFileSync(file, 'utf8')).modules) === '["-status","+search"]',
+	JSON.stringify(JSON.parse(readFileSync(file, 'utf8')).modules) === '["-status","+web-search"]',
 	'agent-ide.json says what changed from the defaults',
 	readFileSync(file, 'utf8'),
 )
 const back = await until(async () => {
 	const now = await modules().catch(() => [])
-	return now.includes('search') && !now.includes('status') && now
+	return now.includes('web-search') && !now.includes('status') && now
 }, 15000)
 check(
 	Boolean(back) && srv.exitCode === null && srv.pid === pid,
@@ -62,12 +62,12 @@ check(
 )
 
 await api('POST', '/api/settings', {
-	modules: { search: false, status: true },
+	modules: { 'web-search': false, status: true },
 	memory: { model: '' },
 })
 const again = await until(async () => {
 	const now = await modules().catch(() => [])
-	return !now.includes('search') && now.includes('status') && now
+	return !now.includes('web-search') && now.includes('status') && now
 }, 15000)
 check(
 	Boolean(again) && !('modules' in JSON.parse(readFileSync(file, 'utf8'))),

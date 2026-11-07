@@ -2,10 +2,10 @@
 import { check, done, start, until } from './lib.js'
 
 for (const [modules, host, expected] of [
-	['+bots,+search,+director', '', 'talk,status,context,bots,search,director'],
-	['bots,search,director', '', 'bots,search,director'],
+	['+bots,+web-search,+director', '', 'talk,status,context,bots,web-search,director'],
+	['bots,web-search,director', '', 'bots,web-search,director'],
 	['-talk,-status', '::1', 'context'],
-	['+bots,search,director', '', null],
+	['+bots,web-search,director', '', null],
 ]) {
 	let output = ''
 	const child = start('server.js', [], { PORT: '0', HOST: host, RUNNER: '0', MODULES: modules })
@@ -21,7 +21,7 @@ for (const [modules, host, expected] of [
 		check(ready, `${modules}: starts or explains the error`, output)
 		if (!expected) {
 			check(
-				output.includes('+bots,+search,+director'),
+				output.includes('+bots,+web-search,+director'),
 				'mixed prefixes show the corrected command',
 				output,
 			)

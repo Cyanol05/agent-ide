@@ -1,4 +1,4 @@
-/** Gives agents `web_search`, through Exa's free search. MODULES=+search; SEARCH_URL points it at another MCP endpoint. */
+/** Web search through Exa's free search, with the `web_search` tool. MODULES=+web-search; SEARCH_URL points it at another MCP endpoint. */
 import { num, obj, opt, str } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 
@@ -51,5 +51,5 @@ export function server() {
 			return { output: [{ type: 'text', text: text || 'Nothing found.' }] }
 		},
 	})
-	return { extension: defineExtension({ name: 'agent-ide.search', tools: [search] }) }
+	return { extension: defineExtension({ name: 'agent-ide.web-search', tools: [search] }) }
 }
