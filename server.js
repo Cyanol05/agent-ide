@@ -167,19 +167,22 @@ const Anchor = defineTask({
 /**
  * Admissions are ordered by Pi task dependencies, independently of how long the answers take. An input takes what its
  * agent hasn't seen, up to the message that asked, in the commit that submits it: until then nothing leaves `unseen`,
- * so a failed or stopped admission has nothing to give back.
+ * so a failed or stopped admission has nothing to give back. With `turn`, the Deliver of the agent named before it, it
+ * starts once that answer has landed and takes all it hasn't seen.
  */
 const Admit = defineTask({
 	name: 'agent-ide.admit',
 	version: 1,
-	initial: ({ after }) => ({ phase: after ? 'wait' : 'ask' }),
+	initial: ({ after, turn }) => ({ phase: after || turn ? 'wait' : 'ask' }),
 	phases: {
-		wait: ({ input: { after } }, rt, ctx) => rt.commit(() => waiting([after.admit], 'ask'), ctx),
-		async ask({ id, conversationId: threadId, input: { agent, upTo, steer } }, rt, ctx) {
+		wait: ({ input: { after, turn } }, rt, ctx) =>
+			rt.commit(() => waiting([after?.admit, turn].filter(Boolean), 'ask'), ctx),
+		async ask({ id, conversationId: threadId, input: { agent, upTo, steer, turn } }, rt, ctx) {
 			const to = await agentOf(agent)
 			await runners.online(to.runner, rt.signal)
 			const { unseen, note } = recipientOf(await thread(threadId), agent)
-			const held = unseen.filter((id) => id <= upTo)
+			/** Its turn comes after the answer before it, so it takes that answer, and whatever was said meanwhile */
+			const held = turn ? unseen : unseen.filter((id) => id <= upTo)
 			if (!held.length) return rt.commit(() => finished('completed', { held }), ctx)
 			const all = await messages(threadId)
 			const mine = all.filter((entry) => held.includes(entry.id))
@@ -675,6 +678,8 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 	for (const hook of posted) await hook(tx, threadId, entry)
 	for (const [key, agent] of Object.entries(row.agents))
 		if (!ownAnswer({ data }, key)) agent.unseen.push(entry.id)
+	/** With the director, those it asks answer one after another, in the order named */
+	let turn
 	for (const [index, name] of names.entries()) {
 		const key = keyOf(name)
 		if (!row.agents[key]) {
@@ -687,7 +692,7 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 		const upTo = entry.id
 		const admit = await tx.createTask(
 			Admit,
-			{ agent, upTo, steer, ...(after ? { after } : {}) },
+			{ agent, upTo, steer, ...(after ? { after } : {}), ...(turn ? { turn } : {}) },
 			{ ...own, conversationId: threadId },
 		)
 		const deliver = await tx.createTask(
@@ -696,6 +701,7 @@ async function append(tx, threadId, { to, ...message }, { steer = false, empty =
 			{ ...own, conversationId: threadId },
 		)
 		recipient.admission = { admit, deliver }
+		if (turns) turn = deliver
 	}
 	return { entry: entry.id, to: names }
 }
@@ -1235,8 +1241,9 @@ const hook = (name) => {
 }
 const posted = modules.flatMap((module) => module.posted ?? [])
 const hiding = modules.flatMap((module) => module.hiding ?? [])
-const [route, pick, reply, catchUp, botAgent, instructionsOf] = [
+const [route, turns, pick, reply, catchUp, botAgent, instructionsOf] = [
 	'route',
+	'turns',
 	'pick',
 	'reply',
 	'catchUp',

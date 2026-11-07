@@ -1,6 +1,7 @@
 /**
  * Asks the bots a message @mentions, by name in any case, instead of whom the thread asked last. An agent written out,
- * model@runner, is never a mention, and a mention reaches only bots already in the thread. With `picks` on, a person's
+ * model@runner, is never a mention, and a mention reaches only bots already in the thread. Those a message asks answer
+ * one after another, in the order named, each handed the answers before it. With `picks` on, a person's
  * message that names no one, in a thread with two or more bots, asks the one a model picks, or nobody. MODULES=+director
  *
  * In agent-ide.json `{"director": {"picks": true, "model": "gpt-6-luna:low@oskar"}}`, the model optional;
@@ -125,5 +126,5 @@ export function server(core) {
 		return { to, reason: decided.reason }
 	}
 
-	return { route, ...(chooser ? { pick, picking: name } : {}) }
+	return { route, turns: true, ...(chooser ? { pick, picking: name } : {}) }
 }

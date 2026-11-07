@@ -33,7 +33,7 @@ modules/
   memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut; render, memory
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
   context.js             AGENTS.md and skills from the runner's folder; listed skills stay readable outside it
-  director.js            @mentions ask that bot; with picks, a model picks a bot or nobody (decide)
+  director.js            @mentions ask that bot, those asked take turns (`turns`); with picks, a model picks a bot or nobody (decide)
   search.js              `web_search`
   status.js              OSC 7501 status on the runner's terminal
   matrix.js              Matrix rooms as threads (MatrixSend, relay, sync)
