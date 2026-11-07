@@ -91,8 +91,8 @@ export function server(core) {
 				})
 			}
 			/**
-			 * A bot that starts a thread for other bots, named by `to` or @mention, is in it from the first message, as
-			 * someone opening a group chat; a side question to a model, or to itself, still asks from home.
+			 * A bot that starts a thread for two or more other bots, named by `to` or @mention, is in it from the first
+			 * message, as someone opening a group chat; a side question to one bot, a model or itself still asks from home.
 			 */
 			const bots = thread === undefined && keyOf(name) !== AGENT ? await core.botNames() : []
 			const botNamed = (text) =>
@@ -103,7 +103,7 @@ export function server(core) {
 				...(args.to !== undefined ? [botNamed(args.to)] : []),
 				...[...args.body.matchAll(/@([\w.-]+)/g)].map(([, mention]) => botNamed(mention)),
 			].filter((bot) => bot && bot !== name)
-			if (named.length && (args.to === undefined || botNamed(args.to))) {
+			if (new Set(named).size > 1 && (args.to === undefined || botNamed(args.to))) {
 				const to = await Promise.all(
 					[...new Set(named)].map((bot) => core.whom(undefined, bot, false, context.abortSignal)),
 				)
