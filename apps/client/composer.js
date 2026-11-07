@@ -493,6 +493,19 @@ const askedBots = (thread = current()) =>
 			here(thread)
 				.map((agent) => agent.to)
 				.filter((to) => to?.name && lastTo(thread)?.includes(to.name)))
+/** The bots a message @mentions that exist but aren't in the thread, and aren't picked to be */
+export const missingBots = (body, thread = current()) => {
+	const mentioned = [...String(body).matchAll(/@([\w.-]+)/g)].map(([, name]) =>
+		name.replace(/\.+$/, '').toLowerCase(),
+	)
+	if (!mentioned.length || homeBot(thread)) return []
+	const inside = (bot) =>
+		here(thread).some((agent) => agent.to?.name === bot.name) ||
+		askedBots(thread).some((to) => to.name === bot.name)
+	return bots.filter((bot) => mentioned.includes(bot.name.toLowerCase()) && !inside(bot))
+}
+/** Bringing a mentioned bot in is picking her in the picker: the next message asks her */
+export const addBot = (bot, thread = current()) => setPick(null, [botAgent(bot)], null, thread)
 export const recipients = (thread = current()) =>
 	[agent(thread), ...askedBots(thread)].filter(Boolean)
 /** An agent asked without thinking keeps the running level, or uses the runner's known pi default. */
