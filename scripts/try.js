@@ -1,4 +1,6 @@
 /** A scratch agent-ide to click through: its own store and port, a scripted runner `bot`, and one thread it has already answered.
+ * The bots and director modules are on, with three bots, ada, bram and cleo, that answer at once, each naming itself, its
+ * persona and what it was shown last, so who answered and what they saw read off the reply. Send to one by name (`--to ada`).
  * `node scripts/try.js &`, open the address it prints, stop it with the `kill` line it prints. Every server it starts goes with it.
  * The bot's model, echo/echo, thinks, writes, reads, edits and runs a command in its folder, then answers in markdown.
  * A message with "post" in it makes it post to a new thread too; "slow" makes the command take five seconds, to watch live work. */
@@ -9,8 +11,26 @@ import {
 } from '@earendil-works/pi-ai/providers/faux'
 import { api, base, call, dir, say, scriptedRunner, server, text } from '../examples/lib.js'
 
-await server()
+await server({ MODULES: '+bots,+director' })
+const personas = {
+	ada: 'a careful reviewer',
+	bram: 'a blunt engineer',
+	cleo: 'a curious designer',
+}
+/** A bot's reply: its name and persona, how many messages it was just handed, and the newest of them */
+const bots = (request) => {
+	const system = JSON.stringify(request.messages.filter((m) => m.role === 'system'))
+	const name = /You are the bot (\w+)/.exec(system)?.[1]
+	if (!name || request.messages.at(-1).role !== 'user') return undefined
+	const handed = text(request.messages.at(-1))
+		.split('\n')
+		.filter((line) => /^[\w.@/:-]+( \(agent\))?: /.test(line))
+	const newest = (handed.at(-1) ?? '').slice(0, 120)
+	return say(`${name} (${personas[name]}) got ${handed.length}, newest "${newest}"`)
+}
 const step = (request) => {
+	const bot = bots(request)
+	if (bot) return bot
 	const last = request.messages.findLastIndex((m) => m.role === 'user')
 	const asked = text(request.messages[last])
 	const n = request.messages.slice(last).filter((m) => m.role === 'toolResult').length
@@ -45,6 +65,8 @@ const step = (request) => {
 }
 await scriptedRunner('bot', step)
 
+for (const name of Object.keys(personas))
+	await api('POST', '/api/bots', { name, to: 'echo/echo@bot', instructions: `You are ${personas[name]}.` })
 const { json: thread } = await api('POST', '/api/threads', { title: 'try me' })
 await api('POST', `/api/threads/${thread.id}/entries`, {
 	body: 'look around',
@@ -53,4 +75,5 @@ await api('POST', `/api/threads/${thread.id}/entries`, {
 
 console.log(`agent-ide at ${base}/?thread=${thread.id}
 the bot works in ${dir}; send to echo/echo@bot, "post" or "slow" in a message for more
+bots: ${Object.keys(personas).join(', ')}; from a terminal: export AGENT_IDE_SERVER=${base}; node cli.js post --to ada hi
 stop: kill ${process.pid}`)

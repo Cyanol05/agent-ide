@@ -16,7 +16,8 @@ const usage = `node cli.js [--server url] [--as name] <command>
                    --no-wait     post and return
                    A message starting with "$ " runs a command on the runner.
   threads          every thread, with its status and agents
-  read <thread>    a thread's messages, or its --last N
+  read <thread>    a thread's messages, or its --last N, or those --after id
+  wait <thread>    wait until its agents are done, then print the answers to the latest ask, or all --after id
   runners          every runner holding a key, online or not, and its models
   key <runner>     a new key for a runner, replacing its old one, and the line that connects it
   revoke <runner>  take its key away: it goes offline and leaves the list
@@ -44,6 +45,7 @@ const {
 	steer: { type: 'boolean' },
 	'no-wait': { type: 'boolean' },
 	last: { type: 'string' },
+	after: { type: 'string' },
 	help: { type: 'boolean', short: 'h' },
 })
 
@@ -142,7 +144,30 @@ const commands = {
 	},
 	async read() {
 		const { entries } = await api('GET', `/api/threads/${Number(rest[0])}`)
-		for (const entry of entries.slice(-(Number(flags.last) || entries.length))) show(entry)
+		for (const entry of entries
+			.filter((entry) => entry.id > Number(flags.after ?? 0))
+			.slice(-(Number(flags.last) || entries.length)))
+			show(entry)
+	},
+	async wait() {
+		const id = Number(rest[0])
+		const socket = new WebSocket(flags.server.replace(/^http/, 'ws') + '/ws')
+		const changes = on(socket, 'message', { close: ['close'] })
+		try {
+			await once(socket, 'open')
+			for (;;) {
+				const view = await api('GET', `/api/threads/${id}`)
+				if (!['working', 'blocked'].includes(view.status)) {
+					const asked = view.entries.findLast((entry) => entry.data.to?.length)?.id ?? 0
+					const after = flags.after ? Number(flags.after) : asked
+					return view.entries.filter((entry) => entry.id > after).forEach(show)
+				}
+				if ((await changes.next()).done) throw new Error('Server disconnected while waiting')
+			}
+		} finally {
+			await changes.return()
+			socket.close()
+		}
 	},
 	async runners() {
 		for (const runner of await api('GET', '/api/runners')) {

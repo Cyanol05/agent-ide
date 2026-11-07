@@ -129,7 +129,8 @@ The CLI is the same API from a terminal:
 ```sh
 node cli.js post "hello" --to sonnet@laptop    # prints the answer as it lands; --thread 3 to continue one
 node cli.js threads
-node cli.js read 3
+node cli.js read 3                             # --after 12 for only what came after message 12
+node cli.js wait 3                             # waits for its agents, then prints the answers
 node cli.js stop 3
 node cli.js key desk                           # a runner key, on the server's machine
 node cli.js revoke desk
