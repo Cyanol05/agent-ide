@@ -149,6 +149,7 @@ export function server(core) {
 					agent.tools.some((tool) => tool.name === 'post') &&
 					`The other bot${others.length > 1 ? 's are' : ' is'} ${others.join(', ')}: post with \`to\` set to a name to ask one.`,
 				home && 'This is your home. Ask before you change your model.',
+				'When you start a thread, say in its first message what it is about and name anything you settled elsewhere, so people who were not there can follow. Before you ask what someone means, read the thread you came from or the one they point to.',
 			]
 				.filter(Boolean)
 				.join('\n\n')
