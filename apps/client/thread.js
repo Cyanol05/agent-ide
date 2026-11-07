@@ -257,11 +257,11 @@ export function Thread(props) {
 			}
 		},
 	)
-	/** Where your last message starts in the list; the room under it is what the answer hasn't filled yet */
+	/** Where your last message ends in the list; the room under it is what the answer hasn't filled yet */
 	let sent = null,
 		room,
 		bottom = () => {}
-	// What you send goes to the top of the view with the room under it free, so the answer fills it without moving anything
+	// What you send keeps some of the view free under it, so the answer fills that without moving anything, and what came before stays in sight
 	createEffect(
 		() => messages().at(-1)?.sending,
 		(mine) => {
@@ -269,7 +269,7 @@ export function Thread(props) {
 			stuck = true
 			const row = [...list.querySelectorAll(':scope > li.mine')].at(-1)
 			sent = row
-				? row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
+				? row.getBoundingClientRect().bottom - list.getBoundingClientRect().top + list.scrollTop
 				: null
 			bottom()
 		},
@@ -279,11 +279,12 @@ export function Thread(props) {
 		const fill = () => {
 			if (sent === null) return
 			const style = getComputedStyle(list)
-			const top = parseFloat(style.paddingTop),
-				under = parseFloat(style.paddingBottom)
+			const top = parseFloat(style.paddingTop)
+			const seen = list.clientHeight - top - parseFloat(style.paddingBottom)
 			const end =
 				room.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
-			const free = Math.max(0, sent - top + list.clientHeight - under - end)
+			// A short thread already has the room, below the view's own end
+			const free = sent + 0.4 * seen <= top + seen ? 0 : Math.max(0, sent + 0.4 * seen - end)
 			room.style.height = `${free}px`
 			if (!free) sent = null
 		}
