@@ -32,7 +32,7 @@ export function server(core) {
 					description:
 						"Who should answer. A bot by its name. From anywhere, 12 is thread 12's agent and 12/ada a bot there, which also picks the thread. " +
 						"Or model@runner, where model is anything `pi --model` takes, or a runner alone for its default model: it starts the thread's agent as that, or switches the one there, which keeps its conversation. " +
-						'Or "nobody". Leave out for whom the thread last asked; in a new thread, yourself.',
+						'Or "nobody". Leave out for whom the thread last asked, or whom its director picks; in a new thread, yourself.',
 				}),
 			),
 		}),
@@ -58,11 +58,11 @@ export function server(core) {
 			const asker =
 				asked &&
 				(await agentOf((await core.thread(thread)).agents[askerKey]?.conversation, askerKey))
-			/** An answer goes back to its asker; any other post to a thread asks the bots it @mentions there */
+			/** An answer goes back to its asker; any other post to a thread asks the bots it @mentions there, or with no `to`, whom the director picks */
 			const directed =
 				thread !== undefined &&
 				!asked &&
-				(await core.direct(thread, { author: name, body: args.body }))
+				(await core.direct(thread, { author: name, body: args.body }, args.to === undefined))
 			const to = directed
 				? directed.to
 				: args.to === 'nobody'
@@ -86,6 +86,7 @@ export function server(core) {
 						...(to.length ? { to } : {}),
 						from,
 						...(asked ? { re: [asked.id] } : {}),
+						...(directed?.picked ? { picked: directed.picked } : {}),
 					},
 					// Like a person's Enter, a post joins the run its agent is in, as answers coming back do
 					{ empty: thread === undefined, steer: true },

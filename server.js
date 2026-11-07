@@ -797,8 +797,29 @@ async function outcome(threadId, agent, settled, mine) {
 		: `gave no answer: ${settled.reason}${settled.detail ? ` (${JSON.stringify(settled.detail)})` : ''}`
 	if (done && !body.trim()) return []
 	const result = done ? { answer: { conversation: agent, entry: settled.answer } } : { error: true }
+	/** A bot's answer that @mentions another bot here asks it, as the director allows, if its runner takes work from this one */
+	const directed =
+		done && key !== AGENT && (await direct?.(threadId, { author: name, body, answer: true }, false))
+	const runners = directed && (await known())
+	const by = directed && `@${(await agentOf(agent, key)).runner}`
+	const to = (directed?.to ?? []).filter((to) => {
+		try {
+			return (reach([to], by, runners), true)
+		} catch {
+			return false
+		}
+	})
 	const told = [
-		{ thread: threadId, data: { author: name, body, ...(re.length ? { re } : {}), ...result } },
+		{
+			thread: threadId,
+			data: {
+				author: name,
+				body,
+				...(to.length ? { to } : {}),
+				...(re.length ? { re } : {}),
+				...result,
+			},
+		},
 	]
 	const posts = held.filter((entry) => entry.data.from && !entry.data.re)
 	if (posts.length && reply)

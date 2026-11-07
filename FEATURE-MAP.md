@@ -9,7 +9,7 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   address, whom, modelOn, reach     whom a `to` asks, on which runner and model
   post, append, postEntry           write a message and hand it to each agent it asks
   reconfigure, newAgent, setUp      an agent switching model/thinking/runner/folder in place, or starting
-  outcome, tell, restore, faulted   what a finished delivery posts back, or a failure says
+  outcome, tell, restore, faulted   what a finished delivery posts back (a bot's answer asks whom direct says), or a failure says
   work, status, busiest, agentsIn   working / blocked / idle for agents, threads, runners
   threadList, threadRow, threadView, people   what GET /api/threads returns
   forkThread, seenBy                forks
@@ -33,8 +33,9 @@ modules/
   memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut; render, memory
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
   context.js             AGENTS.md and skills from the runner's folder; listed skills stay readable outside it
-  director.js            the `direct` hook: @mentions ask that bot, with picks a model picks a bot or nobody (decide);
-                         those asked take turns (`turns`)
+  director.js            the `direct` hook: @mentions ask that bot, with picks a model picks bots or nobody (decide);
+                         those asked take turns (`turns`); a bot's answer @mentioning a bot asks it, resting
+                         after three bot answers in a row (botTurns); tells bots to @mention, not post (section)
   search.js              `web_search`
   status.js              OSC 7501 status on the runner's terminal
   matrix.js              Matrix rooms as threads (MatrixSend, relay, sync)
