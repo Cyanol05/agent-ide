@@ -22,7 +22,7 @@ node server.js
 
 Its settings live in `agent-ide.json` in the folder you start it in, and the page changes them: open settings beside the runners, switch modules on or off, pick memory's model, and save. The server writes the file and restarts itself, losing nothing; where the runtime can't restart in place, the page says it stopped and you start it again. Only the server's own machine can change them; elsewhere the page shows them read-only.
 
-talk, status and context are on by default, the rest off; each module file's first lines say what it does. Memory has each thread's own agent write its lines, unless you pick one model for all. Once an agent's context passes 100k tokens, memory compacts it into the lines, keeping about the last 25k word for word; it waits for a model call, so a tool call and its result stay together. Memory's `compactAt` moves that line. In the file that reads `{"modules": ["+memory", "-status"], "memory": {"model": "haiku@desk", "compactAt": 100000}}`; bare names replace the whole list. Without memory, Pi compacts only when a window is nearly full. The director asks the bots a message @mentions, one after another in the order written; mentioning a bot that isn't in the thread asks no one new, since bots join only when you add them. With `{"director": {"picks": true, "model": "gpt-6-luna:low@oskar"}}`, a person's message that names no one, in a thread with two or more bots, asks the one that model picks, or nobody.
+talk, status and context are on by default, the rest off; each module file's first lines say what it does. Memory has each thread's own agent write its lines, unless you pick one model for all. Once an agent's context passes 100k tokens, memory compacts it into the lines, keeping about the last 25k word for word; it waits for a model call, so a tool call and its result stay together. Memory's `compactAt` moves that line. In the file that reads `{"modules": ["+memory", "-status"], "memory": {"model": "haiku@desk", "compactAt": 100000}}`; bare names replace the whole list. Without memory, Pi compacts only when a window is nearly full. The director asks the bots a message @mentions, one after another in the order written; mentioning a bot that isn't in the thread asks no one new, since bots join only when you add them. With `{"director": {"picks": true, "model": "gpt-6-luna:low@oskar"}}`, a person's message that names no one, in a thread with two or more bots, asks the one that model picks, or nobody. The page then leaves out `to` unless you choose someone, and the model button reads "Director picks".
 
 Environment variables override the file:
 
@@ -104,7 +104,7 @@ Four ideas carry it:
 - Send the same `requestId` again after a dropped response and you get the first result back.
 
 ```
-GET    /api/server                         its modules, those off, what each does, and whether you may add runners
+GET    /api/server                         its modules, those off, what each does, whether you may add runners, and the director's model when it picks
 GET    /api/runners                        every runner holding a key, connected or not
 POST   /api/runners {name}                 a key, and the command that connects it
 DELETE /api/runners/:name                  takes its key away

@@ -1,6 +1,7 @@
 /**
  * Each thread keeps its draft, images and pick when you move away; a new thread keeps its own.
  * Asking a thread's agent as another model switches it. A pick is one model plus any bots; in a bot's home, it is the bot's model.
+ * In a thread of bots with the director picking, a message whose sender chose no one goes without `to`, and a choice holds for one message.
  */
 import html from '@solidjs/html'
 import {
@@ -155,11 +156,14 @@ export function Composer(props) {
 			.filter((file) => file?.type.startsWith('image/'))
 	const submit = async (event) => {
 		event.preventDefault()
-		if (draft().sending || !recipients(props.thread).length) return
+		const free = directed(props.thread)
+		if (draft().sending || (!free && !recipients(props.thread).length)) return
 		if (!draft().draft.trim() && !draft().images.length) return
 		const body = draft().draft,
 			images = snapshot(draft().images),
 			to = snapshot(recipients(props.thread))
+		// In a thread of bots, a choice holds for one message; the next is the director's again
+		if (directing(props.thread)) setCompose((store) => void delete store.picks[props.thread])
 		let id = props.thread
 		const key = id ?? 'new'
 		changeDraft((draft) => {
@@ -171,7 +175,7 @@ export function Composer(props) {
 			id ??= await createThread(body.slice(0, 60) || 'An image')
 			await api(`/api/threads/${id}/entries`, {
 				body,
-				to,
+				...(free ? {} : { to }),
 				steer: true,
 				...(images.length && { images }),
 			})
@@ -302,7 +306,7 @@ export function Composer(props) {
 					}}
 					onInput=${(event) => {
 						// What it asks stays as it was when the typing started
-						if (!pick(props.thread) && !homeBot(props.thread))
+						if (!pick(props.thread) && !homeBot(props.thread) && !directing(props.thread))
 							setPick(
 								snapshot(agent(props.thread)),
 								snapshot(askedBots(props.thread)),
@@ -320,7 +324,8 @@ export function Composer(props) {
 						class="icon send"
 						title="Send"
 						aria-label="Send"
-						disabled=${() => draft().sending || !recipients(props.thread).length}
+						disabled=${() =>
+							draft().sending || (!directed(props.thread) && !recipients(props.thread).length)}
 					>
 						↑
 					</button>
@@ -388,16 +393,20 @@ export function Composer(props) {
 					class="pick"
 					aria-label=${() =>
 						`Asks ${
-							recipients(props.thread)
-								.map((to) => recipientLabel(to, props.thread))
-								.join(' + ') || 'no one yet; pick a model'
+							directed(props.thread)
+								? 'whom the director picks'
+								: recipients(props.thread)
+										.map((to) => recipientLabel(to, props.thread))
+										.join(' + ') || 'no one yet; pick a model'
 						}`}
 					ref=${(el) => (button = el)}
 					aria-expanded="false"
 					title=${() =>
 						homeBot(props.thread)
 							? `The model ${homeBot(props.thread).name} runs as`
-							: recipients(props.thread).map(formatAgent).join(', ')}
+							: directed(props.thread)
+								? 'The director picks a bot, or nobody; pick one here to choose'
+								: recipients(props.thread).map(formatAgent).join(', ')}
 					onClick=${() => {
 						openThread(props.thread)
 						anchor = button
@@ -405,13 +414,20 @@ export function Composer(props) {
 					}}
 				>
 					<${Dot}
-						state=${() => (recipients(props.thread).length ? (busy() ? 'working' : 'on') : '')}
+						state=${() =>
+							directed(props.thread) || recipients(props.thread).length
+								? busy()
+									? 'working'
+									: 'on'
+								: ''}
 					/>
 					<span
 						>${() =>
-							recipients(props.thread)
-								.map((to) => recipientLabel(to, props.thread))
-								.join(' + ') || 'Pick a model'}</span
+							directed(props.thread)
+								? 'Director picks'
+								: recipients(props.thread)
+										.map((to) => recipientLabel(to, props.thread))
+										.join(' + ') || 'Pick a model'}</span
 					>
 				</button>
 			</div>
@@ -632,6 +648,16 @@ const mentionsFor = (query, thread) => {
 		...matching.filter((bot) => !isHere(bot, thread)),
 	]
 }
+/** A thread of two or more bots, with the director picking: a message whose sender chose no one goes without `to` */
+const directing = (thread) =>
+	Boolean(
+		thread &&
+			server().settings?.director?.picks &&
+			!homeBot(thread) &&
+			here(thread).filter((agent) => agent.to?.name).length > 1,
+	)
+/** Nobody chosen for the next message, so the director picks */
+const directed = (thread) => directing(thread) && !pick(thread)
 export const recipients = (thread = current()) =>
 	[agent(thread), ...askedBots(thread)].filter(Boolean)
 /** An agent asked without thinking keeps the running level, or uses the runner's known pi default. */

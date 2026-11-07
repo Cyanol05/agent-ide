@@ -1241,10 +1241,11 @@ const hook = (name) => {
 }
 const posted = modules.flatMap((module) => module.posted ?? [])
 const hiding = modules.flatMap((module) => module.hiding ?? [])
-const [route, turns, pick, reply, catchUp, botAgent, instructionsOf] = [
+const [route, turns, pick, picking, reply, catchUp, botAgent, instructionsOf] = [
 	'route',
 	'turns',
 	'pick',
+	'picking',
 	'reply',
 	'catchUp',
 	'botAgent',
@@ -1327,6 +1328,8 @@ const routes = [
 			work: await harness.inspect(context),
 			settings: {
 				memory: { model: settings.config.memory?.model ?? '', compactAt: compactAt ?? null },
+				/** The model the director picks with, when it picks */
+				director: { picks: picking ?? null },
 				/** Set in the environment, these win over agent-ide.json */
 				overrides: ['MODULES', 'MEMORY_MODEL'].filter((name) => process.env[name]),
 				restarts: typeof process.execve === 'function',

@@ -37,6 +37,10 @@ await api('POST', '/api/bots', {
 	instructions: 'A gardener.',
 })
 await api('POST', '/api/bots', { name: 'Ada', to: 'echo/echo@laptop' })
+check(
+	(await api('GET', '/api/server')).json.settings.director.picks === 'echo/echo@laptop',
+	'the server says the director picks, and with which model, so the page can leave a message to it',
+)
 const solo = (await api('POST', '/api/threads', { title: 'solo' })).json.id
 await post(solo, 'hello', 'Kira')
 await answered(solo)
