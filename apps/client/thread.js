@@ -488,6 +488,14 @@ export function Message(props) {
 					<${Images} images=${() => data().images} />
 				</details>
 			<//>
+			<${Show} when=${() => !props.embedded && data().picked}>
+				<div class="links" title="The director chose whom this asks">
+					${() => (data().to?.length ? 'director picked ' : 'director picked nobody: ')}
+					<${For} each=${() => data().to ?? []}
+						>${(name) => html`<span style=${() => colorOf(name)}>${() => authorLabel(name)}</span>: `}<//
+					>${() => data().picked}
+				</div>
+			<//>
 			<${For} each=${() => (props.embedded ? [] : forks())}
 				>${(fork) => html`
 					<div class="links">

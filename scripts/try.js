@@ -1,6 +1,8 @@
 /** A scratch agent-ide to click through: its own store and port, a scripted runner `bot`, and one thread it has already answered.
  * The bots and director modules are on, with three bots, ada, bram and cleo, that answer at once, each naming itself, its
  * persona and what it was shown last, so who answered and what they saw read off the reply. Send to one by name (`--to ada`).
+ * The director picks too: in a thread of bots, a message naming no one goes to whoever's persona it mentions (review,
+ * engineer, design), else nobody.
  * `node scripts/try.js &`, open the address it prints, stop it with the `kill` line it prints. Every server it starts goes with it.
  * The bot's model, echo/echo, thinks, writes, reads, edits and runs a command in its folder, then answers in markdown.
  * A message with "post" in it makes it post to a new thread too; "slow" makes the command take five seconds, to watch live work. */
@@ -11,7 +13,7 @@ import {
 } from '@earendil-works/pi-ai/providers/faux'
 import { api, base, call, dir, say, scriptedRunner, server, text } from '../examples/lib.js'
 
-await server({ MODULES: '+bots,+director' })
+await server({ MODULES: '+bots,+director', DIRECTOR_MODEL: 'echo/echo@bot' })
 const personas = {
 	ada: 'a careful reviewer',
 	bram: 'a blunt engineer',
@@ -28,7 +30,20 @@ const bots = (request) => {
 	const newest = (handed.at(-1) ?? '').slice(0, 120)
 	return say(`${name} (${personas[name]}) got ${handed.length}, newest "${newest}"`)
 }
+/** The director's pick: the bot whose persona's last word the message uses, else nobody */
+const director = (request) => {
+	const ask = text(request.messages.at(-1))
+	const message = ask.match(/New message: \[[^\]]+\] (.*)/)?.[1]?.toLowerCase() ?? ''
+	const name = Object.keys(personas).find((name) =>
+		message.includes(personas[name].split(' ').pop().slice(0, 6)),
+	)
+	return say(
+		name ? `${name}: it's about ${personas[name].split(' ').pop()}s` : 'nobody: nothing for them',
+	)
+}
 const step = (request) => {
+	if (text(request.messages[0] ?? { content: '' }).startsWith('You choose who answers'))
+		return director(request)
 	const bot = bots(request)
 	if (bot) return bot
 	const last = request.messages.findLastIndex((m) => m.role === 'user')
@@ -66,7 +81,11 @@ const step = (request) => {
 await scriptedRunner('bot', step)
 
 for (const name of Object.keys(personas))
-	await api('POST', '/api/bots', { name, to: 'echo/echo@bot', instructions: `You are ${personas[name]}.` })
+	await api('POST', '/api/bots', {
+		name,
+		to: 'echo/echo@bot',
+		instructions: `You are ${personas[name]}.`,
+	})
 const { json: thread } = await api('POST', '/api/threads', { title: 'try me' })
 await api('POST', `/api/threads/${thread.id}/entries`, {
 	body: 'look around',

@@ -87,6 +87,13 @@ export function Composer(props) {
 			onSettled(() => placePopover(mentionList, input, false))
 		},
 	)
+	/** Whom the next message asks, as the model button says it */
+	const asking = () =>
+		directed(props.thread)
+			? "director's pick"
+			: recipients(props.thread)
+					.map((to) => recipientLabel(to, props.thread))
+					.join(' + ')
 	const [lines, setLines] = createSignal(false)
 	const [compacting, setCompacting] = createSignal(false)
 	/** How full the agent's context was at its last answer: tokens, and the share of its window */
@@ -391,14 +398,7 @@ export function Composer(props) {
 				<button
 					type="button"
 					class="pick"
-					aria-label=${() =>
-						`Asks ${
-							directed(props.thread)
-								? 'whom the director picks'
-								: recipients(props.thread)
-										.map((to) => recipientLabel(to, props.thread))
-										.join(' + ') || 'no one yet; pick a model'
-						}`}
+					aria-label=${() => `Asks ${asking() || 'no one yet; pick a model'}`}
 					ref=${(el) => (button = el)}
 					aria-expanded="false"
 					title=${() =>
@@ -421,14 +421,7 @@ export function Composer(props) {
 									: 'on'
 								: ''}
 					/>
-					<span
-						>${() =>
-							directed(props.thread)
-								? 'Director picks'
-								: recipients(props.thread)
-										.map((to) => recipientLabel(to, props.thread))
-										.join(' + ') || 'Pick a model'}</span
-					>
+					<span>${() => asking() || 'Pick a model'}</span>
 				</button>
 			</div>
 			<div class="model-picker mentions" popover="manual" ref=${(el) => (mentionList = el)}>
