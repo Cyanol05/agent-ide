@@ -8,6 +8,7 @@ import {
 	For,
 	getOwner,
 	latest,
+	onSettled,
 	reconcile,
 	runWithOwner,
 	Show,
@@ -557,7 +558,15 @@ const Images = (props) => html`
 	<${Show} when=${() => props.images?.length}>
 		<div class="images">
 			<${For} each=${() => props.images}
-				>${(image) => html`<img src=${() => imageUrl(image)} alt="" loading="lazy" />`}<//
+				>${(image) => {
+					// Data URLs display inline, but browsers block opening them as pages.
+					const bytes = Uint8Array.from(atob(image.data), (char) => char.charCodeAt(0))
+					const url = URL.createObjectURL(new Blob([bytes], { type: image.mimeType }))
+					onSettled(() => () => URL.revokeObjectURL(url))
+					return html`<a href=${url} target="_blank" rel="noopener noreferrer" aria-label="Open image full size">
+						<img src=${() => imageUrl(image)} alt="" loading="lazy" />
+					</a>`
+				}}<//
 			>
 		</div>
 	<//>

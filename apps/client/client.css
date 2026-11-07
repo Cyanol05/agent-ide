@@ -2735,6 +2735,10 @@ body.resizing {
 	gap: 0.4rem;
 	margin-top: 0.4rem;
 
+	a {
+		max-width: 100%;
+	}
+
 	img {
 		display: block;
 		max-width: 100%;
