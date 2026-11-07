@@ -83,6 +83,16 @@ check(
 	'read --last 1 prints only the last message',
 	read,
 )
+const before = (await view(id)).entries.at(-1).id
+await cli('post', '--thread', id, '--to', 'echo/echo@laptop', '--no-wait', 'later please')
+const waited = await cli('wait', id, '--after', String(before))
+const after = await cli('read', id, '--after', String(before))
+check(
+	waited.includes('later please') && /heard:[\s\S]*oskar: later please/.test(waited) && waited === after,
+	'post --no-wait returns at once; wait prints what landed once the agents are idle, read --after the same',
+	JSON.stringify([waited, after]),
+)
+
 const runners = await cli('runners')
 check(
 	runners.includes('laptop online') && runners.includes('desk online'),
