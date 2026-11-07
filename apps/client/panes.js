@@ -33,6 +33,7 @@ export function Panes(props) {
 				<header>
 					<span aria-hidden="true"></span>
 					<h2>${() => props.title}</h2>
+					${() => props.close}
 				</header>
 				<div class="pane-body">${() => props.children}</div>
 			</section>

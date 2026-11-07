@@ -94,6 +94,9 @@ export function Settings() {
 				title="Settings"
 				detailTitle="Memory’s agent"
 				open=${() => selection() !== null}
+				close=${html`<button type="button" class="close" aria-label="Close" onClick=${() => panel.hidePopover()}>
+					×
+				</button>`}
 				onBack=${(event) => back()}
 				actions=${html`<button type="button" onClick=${done}>Done</button>`}
 				detail=${html` <div class="memory-model">

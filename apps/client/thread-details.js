@@ -28,6 +28,7 @@ export function ThreadDetails() {
 	return html`
 		<div class="scrim" onClick=${() => drawer(null)}></div>
 		<section class="thread-details" aria-label="Thread details">
+			<button type="button" class="close" aria-label="Close" onClick=${() => drawer(null)}>×</button>
 			<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
 			<${Show} when=${() => members().length > 1}>
 				<h2>In this thread</h2>

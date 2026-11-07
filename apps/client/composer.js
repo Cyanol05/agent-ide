@@ -459,6 +459,7 @@ export function Composer(props) {
 				<${Show} when=${() => active()}>
 					<${Panes}
 						title="Context"
+						close=${html`<button type="button" class="close" aria-label="Close" onClick=${() => recall.hidePopover()}>×</button>`}
 						detailTitle="Memory’s lines"
 						actions=${html`<button type="button" onClick=${() => recall.hidePopover()}>Done</button>`}
 						open=${() => lines()}
@@ -507,6 +508,9 @@ export function Composer(props) {
 					else anchor = button
 				}}
 			>
+				<button type="button" class="close" aria-label="Close" onClick=${() => picker.hidePopover()}>
+					×
+				</button>
 				<${ModelPicker}
 					getTo=${(runner) => toFor(runner, props.thread)}
 					selectedRunner=${() => agent(props.thread)?.runner}

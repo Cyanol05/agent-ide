@@ -138,7 +138,11 @@ export function RunnerList() {
 				if (event.newState === 'open') placePopover(panel, button)
 			}}
 		>
-			<${Panes} title="Runners" open=${() => false}>
+			<${Panes}
+				title="Runners"
+				open=${() => false}
+				close=${html`<button type="button" class="close" aria-label="Close" onClick=${() => panel.hidePopover()}>×</button>`}
+			>
 				<ul>
 					<${For} each=${() => runners}
 						>${(runner) => html`<${RunnerItem} runner=${() => runner} />`}<//
