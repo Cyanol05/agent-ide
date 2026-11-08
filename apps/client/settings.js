@@ -17,7 +17,8 @@ import { Panes } from './panes.js'
 import { agentTo, formatAgent, writtenTo } from './agent.js'
 import { report } from './notice.js'
 import { placePopover } from './popover.js'
-import { Dot } from './dot.js'
+import { Switch } from './dot.js'
+import { markdown } from './markdown.js'
 
 export function Settings() {
 	let button, panel
@@ -126,14 +127,31 @@ export function Settings() {
 						onConfigure=${(to) => setSelection(to)}
 					/>`}
 			>
-				<ul class="rows">
+				<ul class="rows modules">
 					<${For} each=${all}
 						>${(module) => html`
-							<li class=${() => ({ off: !on(module) })}>
-								<${Dot} state=${() => (module.on ? 'on' : '')} />
+							<li
+								class=${() => ({ off: !on(module) })}
+								onClick=${(event) => {
+									// The whole row switches it, but for a link or control of its own
+									if (!event.target.closest('a, button, select, input, .option'))
+										event.currentTarget.querySelector('.switch').click()
+								}}
+							>
+								<${Switch}
+									on=${() => on(module)}
+									disabled=${() => !editable() || overridden('MODULES')}
+									onToggle=${() => toggle(module)}
+									><b>${() => module.name}</b><//
+								>
 								<div>
-									<b>${() => module.name}</b>
-									<small>${() => server().about?.[module.name] ?? 'Your own module.'}</small>
+									${
+										// Its own template: the markdown it fills in would throw off the walk to the options after it
+										html`<small
+											class="markdown"
+											innerHTML=${() => markdown(server().about?.[module.name] ?? 'Your own module.')}
+										/>`
+									}
 									<${Show} when=${() => module.name === 'memory' && on(module)}>
 										<div class="option">
 											<span>Writes its lines</span>
@@ -195,14 +213,6 @@ export function Settings() {
 										</div>
 									<//>
 								</div>
-								<input
-									type="checkbox"
-									role="switch"
-									aria-label=${() => `${module.name} on`}
-									checked=${() => on(module)}
-									disabled=${() => !editable() || overridden('MODULES')}
-									onChange=${() => toggle(module)}
-								/>
 							</li>
 						`}<//
 					>

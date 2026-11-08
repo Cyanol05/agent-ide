@@ -215,20 +215,16 @@ agent-memory {
 	}
 }
 
-/* A checkbox and the list it writes; the list is a field you can read and type in. Nested inside a bot's own panel too, not only the thread-level one. */
+/* A switch and the list it writes; the list is a field you can read and type in. Nested inside a bot's own panel too, not only the thread-level one. */
 .thread-details .hands {
 	display: flex;
 	gap: var(--space-2);
 	align-items: center;
-	padding: var(--space-1) var(--space-2);
 	font-size: var(--text-ui);
 
-	label {
-		display: flex;
-		gap: var(--space-2);
-		align-items: center;
-		white-space: nowrap;
-		cursor: pointer;
+	/* Its dot where a thread row's sits, so the switch reads as one of them. */
+	> .switch {
+		flex: none;
 	}
 
 	input.tools {
@@ -1027,7 +1023,7 @@ body.side .thread-details {
 	}
 
 	.hands {
-		padding: 0 var(--space-2);
+		padding: 0 var(--space-2) 0 0;
 	}
 }
 
@@ -1266,6 +1262,22 @@ body.side .thread-details {
 		font-weight: 500;
 	}
 
+	/* The row is the switch: its dot and name on top, what it does and its options under the name. */
+	.rows.modules > li {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0;
+		cursor: pointer;
+
+		> .switch {
+			padding: 0;
+		}
+
+		> div {
+			padding-left: calc(0.55rem + var(--space-2));
+		}
+	}
+
 	/* A module's option opens its detail in the same frame. */
 	.option {
 		display: flex;
@@ -1290,10 +1302,6 @@ body.side .thread-details {
 			width: 4rem;
 			min-width: 0;
 		}
-	}
-
-	input[type='checkbox'] {
-		margin-top: var(--space-2);
 	}
 
 	.save {

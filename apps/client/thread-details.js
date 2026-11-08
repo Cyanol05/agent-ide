@@ -18,6 +18,7 @@ import {
 import { shortLabel } from './agent.js'
 import { BotSettings, botThreads } from './bot.js'
 import { ThreadItem } from './thread-list.js'
+import { Switch } from './dot.js'
 
 export function ThreadDetails() {
 	const here = () => threads.find((thread) => thread.id === current())
@@ -214,14 +215,12 @@ function Tools(props) {
 	const here = () => props.thread && threads.find((thread) => thread.id === props.thread)
 	return html`
 		<div class="hands">
-			<label title="Its agents can look things up, but every change has to go through a thread">
-				<input
-					type="checkbox"
-					checked=${() => !!tools()}
-					onChange=${(event) => apply(event.currentTarget.checked ? HANDS_OFF : null)}
-				/>
-				Hands off
-			</label>
+			<${Switch}
+				on=${() => !!tools()}
+				title="Its agents can look things up, but every change has to go through a thread"
+				onToggle=${(on) => apply(on ? HANDS_OFF : null)}
+				><span>Hands off</span><//
+			>
 			<input
 				placeholder="every tool"
 				aria-label="Thread tools"
@@ -246,16 +245,12 @@ function Tools(props) {
 		</div>
 		<${Show} when=${() => typeof here()?.memory === 'boolean'}>
 			<div class="hands">
-				<label
+				<${Switch}
+					on=${() => here().memory}
 					title="Memory writes a line for each message, so its agents remember the whole thread"
+					onToggle=${(on) => save('memory', { on })}
+					><span>Memory</span><//
 				>
-					<input
-						type="checkbox"
-						checked=${() => here().memory}
-						onChange=${(event) => save('memory', { on: event.currentTarget.checked })}
-					/>
-					Memory
-				</label>
 			</div>
 		<//>
 	`
