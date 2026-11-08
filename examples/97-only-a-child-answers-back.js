@@ -23,7 +23,8 @@ const bot = await scriptedRunner('bot', (request) => {
 	if (last.role === 'toolResult') return say('')
 	if (t.includes('answering from thread')) return say('heard the answer')
 	if (t.includes('progress note')) return say('for oskar: go')
-	if (t.includes('delegate')) return call('post', { title: 'sum', body: 'compute 2+2', to: 'echo/echo@bot' })
+	if (t.includes('delegate'))
+		return call('post', { title: 'sum', body: 'compute 2+2', to: 'echo/echo@bot' })
 	if (t.includes('compute 2+2')) return say('4')
 	if (t.includes('report to'))
 		return call('post', { thread: Number(t.match(/report to (\d+)/)[1]), body: 'progress note' })
@@ -39,7 +40,10 @@ const child = await until(
 	async () => (await api('GET', '/api/threads')).json.find((t) => t.parent === parent),
 	10000,
 )
-await until(async () => (await view(parent)).entries.some((e) => e.data.from === child?.id && e.data.re), 10000)
+await until(
+	async () => (await view(parent)).entries.some((e) => e.data.from === child?.id && e.data.re),
+	10000,
+)
 await quiet()
 
 /** The parent asked, so the child's answer goes back */
@@ -55,7 +59,9 @@ check(
 await api('POST', `/api/threads/${child.id}/entries`, { body: `report to ${parent}`, to })
 const woke = await until(async () => {
 	const v = await view(parent)
-	return answers(v).some((e) => e.data.body === 'for oskar: go') && v.status !== 'working' ? v : null
+	return answers(v).some((e) => e.data.body === 'for oskar: go') && v.status !== 'working'
+		? v
+		: null
 }, 10000)
 await quiet()
 check(Boolean(woke), "the child's note wakes the parent's agent", brief(await view(parent)))

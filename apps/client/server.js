@@ -19,7 +19,11 @@ const DEFAULT_SERVER = {
 	off: [],
 	about: {},
 	local: false,
-	settings: { overrides: [], director: {}, memory: { model: '', compactAt: null, threads: 'bots' } },
+	settings: {
+		overrides: [],
+		director: {},
+		memory: { model: '', compactAt: null, threads: 'bots' },
+	},
 }
 /** What's on screen survives a reload: read before first paint, written after every answer */
 const cached = (key, fallback) => {
@@ -42,13 +46,15 @@ export const api = (path, body, method = body === undefined ? 'GET' : 'POST') =>
 		headers: { 'Content-Type': 'application/json', 'x-user': me },
 		method,
 		...(body === undefined ? {} : { body: JSON.stringify(body) }),
-	}).catch((error) => {
-		throw error instanceof TypeError ? new Error("Can't reach the server") : error
-	}).then(async (response) => {
-		const json = await response.json()
-		if (!response.ok) throw new Error(json.error)
-		return json
 	})
+		.catch((error) => {
+			throw error instanceof TypeError ? new Error("Can't reach the server") : error
+		})
+		.then(async (response) => {
+			const json = await response.json()
+			if (!response.ok) throw new Error(json.error)
+			return json
+		})
 
 /** A socket belongs to its caller; disposing it also cancels a pending reconnect. */
 export function watch(receive, opened = () => {}, closed = () => {}) {

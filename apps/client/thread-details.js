@@ -45,7 +45,8 @@ export function ThreadDetails() {
 		const id = current()
 		if (!ids.includes(id)) return ids
 		const ancestors = new Set()
-		for (let above = parentOf(id); ids.includes(above); above = parentOf(above)) ancestors.add(above)
+		for (let above = parentOf(id); ids.includes(above); above = parentOf(above))
+			ancestors.add(above)
 		const descendants = new Set()
 		const open = [id]
 		while (open.length) {
@@ -74,7 +75,8 @@ export function ThreadDetails() {
 	}
 	// The same tools for whichever thread is on screen, mounted anew when it changes
 	const tools = () =>
-		html`<h2>Tools</h2><${For} each=${() => [current()]}>${(id) => html`<${Tools} thread=${id} />`}<//>`
+		html`<h2>Tools</h2>
+			<${For} each=${() => [current()]}>${(id) => html`<${Tools} thread=${id} />`}<//>`
 	return html`
 		<div class="scrim" onClick=${() => drawer(null)}></div>
 		<section
@@ -127,7 +129,12 @@ export function ThreadDetails() {
 			<//>
 			<${Show} when=${page}>
 				<header class="page-head">
-					<button type="button" class="ghost small" aria-label="Back to the bot" onClick=${() => setPage(false)}>
+					<button
+						type="button"
+						class="ghost small"
+						aria-label="Back to the bot"
+						onClick=${() => setPage(false)}
+					>
 						<span aria-hidden="true">←</span>
 					</button>
 					<h2>Threads</h2>

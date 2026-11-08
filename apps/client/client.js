@@ -94,13 +94,7 @@ function Client() {
 		>
 			<${Loading}>
 				<header class="app-bar">
-					<button
-						type="button"
-						aria-label="All threads"
-						onClick=${() => drawer('list')}
-					>
-						←
-					</button>
+					<button type="button" aria-label="All threads" onClick=${() => drawer('list')}>←</button>
 					<button
 						class="thread-pill"
 						type="button"

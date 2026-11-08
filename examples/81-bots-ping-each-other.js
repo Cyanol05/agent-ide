@@ -1,5 +1,16 @@
 /** MODULES=+director: a bot's answer that @mentions another bot here asks it, never itself or a bot not here, and bots rest after three answers in a row until a person writes */
-import { answered, api, check, done, quiet, say, scriptedRunner, server, text, view } from './lib.js'
+import {
+	answered,
+	api,
+	check,
+	done,
+	quiet,
+	say,
+	scriptedRunner,
+	server,
+	text,
+	view,
+} from './lib.js'
 
 await server({ MODULES: '+bots,+director' })
 /** Each bot passes the floor to the next, by @mention, and mentions itself and an outsider on the way */
@@ -16,7 +27,10 @@ await api('POST', '/api/bots', { name: 'Cleo', to: 'echo/echo@laptop' })
 const authors = (v) => v.entries.filter((e) => e.data.answer).map((e) => e.data.author)
 
 const room = (await api('POST', '/api/threads', { title: 'room' })).json.id
-await api('POST', `/api/threads/${room}/entries`, { body: 'quiet please', to: ['Kira', 'Ada', 'Bram'] })
+await api('POST', `/api/threads/${room}/entries`, {
+	body: 'quiet please',
+	to: ['Kira', 'Ada', 'Bram'],
+})
 const hello = await answered(room, 3)
 await quiet()
 check(

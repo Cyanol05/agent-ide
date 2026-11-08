@@ -81,7 +81,12 @@ export function ThreadList() {
 function ArchivedPage(props) {
 	return html`
 		<header class="page-head">
-			<button type="button" class="ghost small" aria-label="Back to threads" onClick=${() => props.onBack()}>
+			<button
+				type="button"
+				class="ghost small"
+				aria-label="Back to threads"
+				onClick=${() => props.onBack()}
+			>
 				<span aria-hidden="true">←</span>
 			</button>
 			<h2>Archived</h2>

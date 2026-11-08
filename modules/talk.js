@@ -54,11 +54,21 @@ export function server(core) {
 				keyOf(name) !== AGENT &&
 				Boolean((await core.thread(thread)).agents[keyOf(name)])
 			if (member) {
-				const { to, picked } = await core.recipients(thread, { author: name, body: args.body }, {
-					explicit: args.to === undefined ? undefined : async () => args.to === 'nobody'
-						? [] : [await core.whom(thread, args.to, false, context.abortSignal)],
-					fallback: async () => (await core.lastAsked(thread)).filter((agent) => agent?.name !== name),
-				})
+				const { to, picked } = await core.recipients(
+					thread,
+					{ author: name, body: args.body },
+					{
+						explicit:
+							args.to === undefined
+								? undefined
+								: async () =>
+										args.to === 'nobody'
+											? []
+											: [await core.whom(thread, args.to, false, context.abortSignal)],
+						fallback: async () =>
+							(await core.lastAsked(thread)).filter((agent) => agent?.name !== name),
+					},
+				)
 				return core.once(`post ${api.taskId}`, 'post', async (tx) => {
 					context.abortSignal?.throwIfAborted()
 					await core.post(
@@ -133,13 +143,26 @@ export function server(core) {
 				asked &&
 				(await agentOf((await core.thread(thread)).agents[askerKey]?.conversation, askerKey))
 			/** An answer goes back to its asker; any other post to a thread asks the bots it @mentions there, or with no `to`, whom the director picks */
-			const { to, picked } = await core.recipients(thread, { author: name, body: args.body }, {
-				director: thread !== undefined && !asked,
-				explicit: args.to === undefined ? undefined : async () => args.to === 'nobody'
-					? [] : [await core.whom(thread, args.to, false, context.abortSignal)],
-				fallback: async () => thread === undefined ? [await agentOf(api.conversationId)]
-					: asker ? [asker] : await core.lastAsked(thread),
-			})
+			const { to, picked } = await core.recipients(
+				thread,
+				{ author: name, body: args.body },
+				{
+					director: thread !== undefined && !asked,
+					explicit:
+						args.to === undefined
+							? undefined
+							: async () =>
+									args.to === 'nobody'
+										? []
+										: [await core.whom(thread, args.to, false, context.abortSignal)],
+					fallback: async () =>
+						thread === undefined
+							? [await agentOf(api.conversationId)]
+							: asker
+								? [asker]
+								: await core.lastAsked(thread),
+				},
+			)
 			/** Only a thread you started answers you on its own */
 			const child = thread === undefined || (await core.thread(thread)).parent === from
 			return core.once(`post ${api.taskId}`, 'post', async (tx) => {

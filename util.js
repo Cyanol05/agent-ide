@@ -85,7 +85,11 @@ export function said({ data: message }) {
 /** Bot names a message @mentions, in mention order, ignoring case and trailing dots. */
 export function mentioned(body, names) {
 	const bots = new Map(names.map((name) => [name.toLowerCase(), name]))
-	return [...new Set([...body.matchAll(/@([\w.-]+)/g)]
-		.map(([, name]) => bots.get(name.replace(/\.+$/, '').toLowerCase()))
-		.filter(Boolean))]
+	return [
+		...new Set(
+			[...body.matchAll(/@([\w.-]+)/g)]
+				.map(([, name]) => bots.get(name.replace(/\.+$/, '').toLowerCase()))
+				.filter(Boolean),
+		),
+	]
 }

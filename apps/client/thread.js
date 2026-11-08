@@ -37,7 +37,17 @@ import {
 	watch,
 } from './server.js'
 import { authorLabel, doing, setDoing, shortLabel } from './agent.js'
-import { answersIn, asksOf, conversations, cutsOf, Exchange, heard, newestCut, Turn, turnsOf } from './run.js'
+import {
+	answersIn,
+	asksOf,
+	conversations,
+	cutsOf,
+	Exchange,
+	heard,
+	newestCut,
+	Turn,
+	turnsOf,
+} from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -50,7 +60,11 @@ const stripSummaryTag = (text) =>
 
 /** Its first line of words, without the markdown around them, to stand for it folded */
 const firstLine = (text) =>
-	(stripSummaryTag(text).split('\n').find((line) => line.trim()) ?? '')
+	(
+		stripSummaryTag(text)
+			.split('\n')
+			.find((line) => line.trim()) ?? ''
+	)
 		.replace(/^\s*(#+|[-*>]|\d+\.)\s*/, '')
 		.replace(/[*_`]/g, '')
 		.trim()
@@ -111,7 +125,8 @@ export function Thread(props) {
 			const firstAnswer = new Map()
 			for (const entry of all)
 				if (!entry.data.from)
-					for (const id of entry.data.re ?? []) if (!firstAnswer.has(id)) firstAnswer.set(id, entry.id)
+					for (const id of entry.data.re ?? [])
+						if (!firstAnswer.has(id)) firstAnswer.set(id, entry.id)
 			const sentTo = (entry) =>
 				entry.data.from
 					? undefined
@@ -119,7 +134,9 @@ export function Thread(props) {
 							.map((id) => byId.get(id))
 							.find(
 								(question) =>
-									question?.data.from && !question.data.re && firstAnswer.get(question.id) === entry.id,
+									question?.data.from &&
+									!question.data.re &&
+									firstAnswer.get(question.id) === entry.id,
 							)
 			// An answer to an ask line shows in it; one with no line stays a message
 			const answers = new Set(
@@ -459,7 +476,10 @@ export function Thread(props) {
 											>
 												<details>
 													<summary><small>${() => firstLine(row().text)}</small></summary>
-													<div class="body markdown" innerHTML=${() => markdown(stripSummaryTag(row().text))} />
+													<div
+														class="body markdown"
+														innerHTML=${() => markdown(stripSummaryTag(row().text))}
+													/>
 												</details>
 											</li>
 										`}
@@ -542,7 +562,9 @@ export function Message(props) {
 				when=${crossed}
 				fallback=${html`
 					<small title=${() => data().author}
-						><span style=${() => colorOf(data().author)}>${() => authorLabel(data().author)}</span></small
+						><span style=${() => colorOf(data().author)}
+							>${() => authorLabel(data().author)}</span
+						></small
 					>
 					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
@@ -593,7 +615,8 @@ export function Message(props) {
 export function Cross(props) {
 	const bot = () => bots.some((bot) => bot.name === props.author)
 	const title = () => threads.find((thread) => thread.id === props.thread)?.title
-	const label = () => (bot() || !title() ? shortLabel(props.author) || titleOf(props.thread) : title())
+	const label = () =>
+		bot() || !title() ? shortLabel(props.author) || titleOf(props.thread) : title()
 	const answer = () => !!props.data.re
 	return html`
 		<li class=${() => ['call', props.sent ? 'sent' : 'received', { asked: !answer() }]}>
@@ -637,7 +660,12 @@ const Images = (props) => html`
 						return URL.createObjectURL(new Blob([bytes], { type: image.mimeType }))
 					})
 					createEffect(url, (url) => () => URL.revokeObjectURL(url))
-					return html`<a href=${() => url()} target="_blank" rel="noopener noreferrer" aria-label="Open image full size">
+					return html`<a
+						href=${() => url()}
+						target="_blank"
+						rel="noopener noreferrer"
+						aria-label="Open image full size"
+					>
 						<img src=${() => imageUrl(image)} alt="" loading="lazy" />
 					</a>`
 				}}<//

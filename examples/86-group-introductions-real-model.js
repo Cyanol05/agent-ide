@@ -16,8 +16,19 @@ const [after] = await evidence([room])
 const replies = answers(after).filter((entry) => entry.id > boundary)
 for (const name of ['Kira', 'Vera']) {
 	const own = replies.filter((entry) => entry.data.author === name)
-	check(own.length === 1 && new RegExp(`\\b${name}\\b`, 'i').test(own[0]?.data.body || ''), `${name} introduces itself exactly once`)
+	check(
+		own.length === 1 && new RegExp(`\\b${name}\\b`, 'i').test(own[0]?.data.body || ''),
+		`${name} introduces itself exactly once`,
+	)
 }
 check(replies.length === 2, 'nobody else answers')
-check(!after.calls.some((call) => call.name === 'post' && (call.arguments.thread === room || String(call.arguments.to || '').match(new RegExp(`^${room}(?:/|$)`)))), 'no post to own thread')
+check(
+	!after.calls.some(
+		(call) =>
+			call.name === 'post' &&
+			(call.arguments.thread === room ||
+				String(call.arguments.to || '').match(new RegExp(`^${room}(?:/|$)`))),
+	),
+	'no post to own thread',
+)
 done()

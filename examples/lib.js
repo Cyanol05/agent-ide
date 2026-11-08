@@ -65,7 +65,10 @@ export function start(file, args = [], env = {}, cwd = tmp) {
 		env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DB_PATH: db, ...env },
 		stdio: ['ignore', 'pipe', 'pipe'],
 	})
-	child.stdout.on('data', (chunk) => process.env.VERBOSE && process.stdout.write(`[${file}] ${chunk}`))
+	child.stdout.on(
+		'data',
+		(chunk) => process.env.VERBOSE && process.stdout.write(`[${file}] ${chunk}`),
+	)
 	child.stderr.on('data', (chunk) => process.stdout.write(`[${file} err] ${chunk}`))
 	procs.add(child)
 	child.on('exit', () => procs.delete(child))
@@ -137,7 +140,9 @@ export const linesOf = async (id) =>
 		.map((entry) => ({ id: entry.id, ...entry.data }))
 export const answers = (thread) => thread.entries.filter((entry) => entry.data.answer)
 export const brief = (thread) =>
-	JSON.stringify(thread?.entries.map((entry) => [entry.id, entry.data.author, entry.data.body.slice(0, 40)]))
+	JSON.stringify(
+		thread?.entries.map((entry) => [entry.id, entry.data.author, entry.data.body.slice(0, 40)]),
+	)
 export { text }
 
 export async function until(fn, ms = 8000, every = 100) {
@@ -177,14 +182,19 @@ export const settled = (id, { blocked = false, ms } = {}) =>
 /** A runner's row says it's online */
 export const online = (name, ms) =>
 	until(
-		() => api('GET', '/api/runners').then((response) => response.json.some((runner) => runner.name === name && runner.online)),
+		() =>
+			api('GET', '/api/runners').then((response) =>
+				response.json.some((runner) => runner.name === name && runner.online),
+			),
 		ms,
 	)
 
 export const answered = (id, count = 1, ms) =>
 	until(async () => {
 		const thread = await view(id)
-		return answers(thread).length >= count && !['working', 'blocked'].includes(thread.status) ? thread : null
+		return answers(thread).length >= count && !['working', 'blocked'].includes(thread.status)
+			? thread
+			: null
 	}, ms)
 
 let failed = 0
@@ -233,7 +243,9 @@ export async function localRunner(
 	}
 	connect()
 	await until(() =>
-		api('GET', '/api/runners').then((response) => response.json.some((runner) => runner.name === name && runner.online)),
+		api('GET', '/api/runners').then((response) =>
+			response.json.some((runner) => runner.name === name && runner.online),
+		),
 	)
 	return {
 		close: () => {

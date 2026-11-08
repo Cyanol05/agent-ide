@@ -278,7 +278,9 @@ export function ConnectRunner(props) {
 				<${Show} when=${minted}>
 					<div class="command">
 						<pre>${() => minted().connect}</pre>
-						<button type="button" class="small" onClick=${copy}>${() => (copied() ? 'Copied' : 'Copy')}</button>
+						<button type="button" class="small" onClick=${copy}>
+							${() => (copied() ? 'Copied' : 'Copy')}
+						</button>
 					</div>
 					<p class="mute">
 						${() =>

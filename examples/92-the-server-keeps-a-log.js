@@ -14,11 +14,19 @@ check(read().includes('agent-ide  http://'), 'the log has what the server printe
 const exited = new Promise((resolve) => srv.on('exit', resolve))
 srv.kill('SIGUSR2')
 await exited
-check(/uncaughtException: Error: boom\n.*at /.test(read()), 'the log has the crash and its stack', read())
+check(
+	/uncaughtException: Error: boom\n.*at /.test(read()),
+	'the log has the crash and its stack',
+	read(),
+)
 check(read().includes('exited with code 1'), 'the log says how it ended', read())
 
 srv = await server()
 srv.kill('SIGTERM')
 await until(async () => read().includes('exited with code 0'))
-check(/stopped by SIGTERM\n.*exited with code 0/.test(read()), 'a stop is logged with its signal, after the earlier run', read())
+check(
+	/stopped by SIGTERM\n.*exited with code 0/.test(read()),
+	'a stop is logged with its signal, after the earlier run',
+	read(),
+)
 done()

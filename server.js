@@ -103,7 +103,9 @@ for (const stream of [process.stdout, process.stderr]) {
 	stream.write = (chunk, ...rest) => (logged(chunk), write(chunk, ...rest))
 }
 logged(`started, process ${process.pid}`)
-process.on('uncaughtExceptionMonitor', (error, origin) => logged(`${origin}: ${error?.stack ?? error}`))
+process.on('uncaughtExceptionMonitor', (error, origin) =>
+	logged(`${origin}: ${error?.stack ?? error}`),
+)
 process.on('exit', (code) => logged(`exited with code ${code}`))
 process.on('exit', () => Number(readFileSync(lock, 'utf8')) === process.pid && rmSync(lock))
 /** PORT, or 3000 and up to the first free one */
@@ -1011,8 +1013,12 @@ const once = (requestId, command, work) =>
 	})
 
 /** The director first, then an explicit recipient, otherwise whom the caller last asked. */
-async function recipients(id, message, { explicit, fallback = () => lastAsked(id), director = true } = {}) {
-	const directed = director && await direct?.(id, message, explicit === undefined)
+async function recipients(
+	id,
+	message,
+	{ explicit, fallback = () => lastAsked(id), director = true } = {},
+) {
+	const directed = director && (await direct?.(id, message, explicit === undefined))
 	return directed || { to: await (explicit ?? fallback)() }
 }
 
@@ -1024,10 +1030,14 @@ async function postEntry(id, author, input) {
 	const images = imageList(input.images)
 	const body = images ? (input.body ?? '').trim() : field(input.body, 'body')
 	const command = !images && body.match(/^\$\s+([\s\S]+)/)?.[1]
-	const { to, picked } = await recipients(id, { author, body }, {
-		director: !command,
-		explicit: 'to' in input ? () => addresses(input.to, Boolean(command), id) : undefined,
-	})
+	const { to, picked } = await recipients(
+		id,
+		{ author, body },
+		{
+			director: !command,
+			explicit: 'to' in input ? () => addresses(input.to, Boolean(command), id) : undefined,
+		},
+	)
 	if (command && !to.length) throw new Error('Pick a runner to run the command on')
 	if (command) await reach(to, author, await known())
 	if (!command && to.filter((to) => !to.name).length > 1)
@@ -1436,7 +1446,10 @@ const routes = [
 	['GET /api/threads/archived', (req) => threadList(user(req), true)],
 	['POST /api/threads', async (req) => createThread(await input(req))],
 	['GET /api/threads/:id', (req, id) => threadView(id, user(req))],
-	['POST /api/threads/:id/archive', async (req, id) => archiveThread(id, (await input(req)).archived)],
+	[
+		'POST /api/threads/:id/archive',
+		async (req, id) => archiveThread(id, (await input(req)).archived),
+	],
 	['POST /api/threads/:id/entries', async (req, id) => postEntry(id, user(req), await input(req))],
 	['POST /api/threads/:id/fork', async (req, id) => forkThread(id, await input(req))],
 	['POST /api/threads/:id/title', async (req, id) => setTitle(id, await input(req))],
@@ -1551,8 +1564,7 @@ async function handleRequest(req, res) {
 		res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
 		return res.end(head ? undefined : page)
 	}
-	if (asGet && url.pathname.startsWith('/packages/'))
-		return servePackage(res, url.pathname, head)
+	if (asGet && url.pathname.startsWith('/packages/')) return servePackage(res, url.pathname, head)
 	if (asGet) {
 		const file = await clientFile(url.pathname)
 		if (file) {
@@ -1948,7 +1960,10 @@ async function connectSelf(url) {
 		process.execPath,
 		[new URL('./runner.js', import.meta.url).pathname, '--server', url, '--dir', dir],
 		// Its online line would repeat the server's runner row
-		{ stdio: ['inherit', 'pipe', 'pipe'], env: { ...process.env, AGENT_IDE_KEY: key, AGENT_IDE_LENT: '1' } },
+		{
+			stdio: ['inherit', 'pipe', 'pipe'],
+			env: { ...process.env, AGENT_IDE_KEY: key, AGENT_IDE_LENT: '1' },
+		},
 	)
 	// Through this process's own output, so the log has it too
 	lent.stdout.on('data', (chunk) => process.stdout.write(chunk))

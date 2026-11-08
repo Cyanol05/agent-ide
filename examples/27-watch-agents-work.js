@@ -1,5 +1,9 @@
 /** A browser watching a thread hears its messages, every one first and then each as it lands, and what each agent is doing as it changes */
-import { fauxAssistantMessage, fauxThinking, fauxToolCall } from '@earendil-works/pi-ai/providers/faux'
+import {
+	fauxAssistantMessage,
+	fauxThinking,
+	fauxToolCall,
+} from '@earendil-works/pi-ai/providers/faux'
 import {
 	answered,
 	api,
@@ -21,10 +25,13 @@ const long = `done ${'and more '.repeat(60)}`
 const bot = await scriptedRunner('bot', (request) =>
 	request.messages.some((m) => m.role === 'toolResult')
 		? say(long)
-		: fauxAssistantMessage([
-				fauxThinking('first the folder'),
-				fauxToolCall('bash', { command: 'sleep 0.5; echo slept' }),
-			], { stopReason: 'toolUse' }),
+		: fauxAssistantMessage(
+				[
+					fauxThinking('first the folder'),
+					fauxToolCall('bash', { command: 'sleep 0.5; echo slept' }),
+				],
+				{ stopReason: 'toolUse' },
+			),
 )
 const {
 	json: { id },
@@ -53,7 +60,9 @@ check(
 	'a new thread says first that it has no messages, no people and no agents',
 	JSON.stringify(first.heard),
 )
-const { json: { entry } } = await api('POST', `/api/threads/${id}/entries`, {
+const {
+	json: { entry },
+} = await api('POST', `/api/threads/${id}/entries`, {
 	body: 'work',
 	to: { runner: 'bot', model: 'echo/echo' },
 })
@@ -108,20 +117,37 @@ for (const message of first.heard) {
 		streamed.push(...message.entries.map((entry) => ({ entry, working })))
 }
 check(
-	streamed.some(({ entry, working }) => working && entry.model?.[0]?.content?.some((block) => block.type === 'thinking')),
+	streamed.some(
+		({ entry, working }) =>
+			working && entry.model?.[0]?.content?.some((block) => block.type === 'thinking'),
+	),
 	'its thinking arrives while it still works',
 )
 check(
-	streamed.some(({ entry, working }) => working && entry.model?.[0]?.role === 'toolResult' && /slept/.test(JSON.stringify(entry.model))),
+	streamed.some(
+		({ entry, working }) =>
+			working &&
+			entry.model?.[0]?.role === 'toolResult' &&
+			/slept/.test(JSON.stringify(entry.model)),
+	),
 	"the tool's output arrives before the turn ends",
 )
-check(new Set(streamed.map(({ entry }) => entry.id)).size === streamed.length, 'each conversation entry comes once')
+check(
+	new Set(streamed.map(({ entry }) => entry.id)).size === streamed.length,
+	'each conversation entry comes once',
+)
 const delivery = streamed.find(({ entry }) => entry.kind === 'agent-ide.delivery')?.entry
 check(
-	delivery && heard.filter((live) => live.run).every((live) => live.delivery?.id === delivery.id && live.delivery.held.includes(entry)),
+	delivery &&
+		heard
+			.filter((live) => live.run)
+			.every((live) => live.delivery?.id === delivery.id && live.delivery.held.includes(entry)),
 	'every working update names its delivery and the messages it held',
 )
-check(heard.filter((live) => !live.run).every((live) => live.delivery === undefined), 'an idle agent names no delivery')
+check(
+	heard.filter((live) => !live.run).every((live) => live.delivery === undefined),
+	'an idle agent names no delivery',
+)
 
 const from = first.heard.length
 await api('POST', `/api/threads/${id}/entries`, { body: 'again' })
@@ -130,10 +156,14 @@ await until(async () => {
 	const last = lives(first.heard.slice(from)).at(-1)
 	return last && !last.run
 })
-const next = (await conversationOf(await view(id), 'echo/echo@bot')).entries.findLast((entry) => entry.kind === 'agent-ide.delivery')
+const next = (await conversationOf(await view(id), 'echo/echo@bot')).entries.findLast(
+	(entry) => entry.kind === 'agent-ide.delivery',
+)
 const nextLives = lives(first.heard.slice(from)).filter((live) => live.run)
 check(
-	next.id > delivery.id && nextLives.length > 0 && nextLives.every((live) => live.delivery?.id === next.id),
+	next.id > delivery.id &&
+		nextLives.length > 0 &&
+		nextLives.every((live) => live.delivery?.id === next.id),
 	'the next turn names its own delivery',
 )
 

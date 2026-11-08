@@ -56,9 +56,7 @@ const placed = await until(
 await api('POST', `/api/threads/${stopped.id}/stop`, {})
 const after = await settled(stopped.id)
 check(
-	Boolean(placed) &&
-		Boolean(after) &&
-		after.entries.every((e) => e.data.author === 'oskar'),
+	Boolean(placed) && Boolean(after) && after.entries.every((e) => e.data.author === 'oskar'),
 	'a stopped child posts nothing in its thread',
 	JSON.stringify(after?.entries),
 )

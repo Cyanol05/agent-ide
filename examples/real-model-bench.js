@@ -22,7 +22,10 @@ export async function thread(title) {
 	return (await api('POST', '/api/threads', { title })).json.id
 }
 export async function post(id, body, to) {
-	const result = await api('POST', `/api/threads/${id}/entries`, { body, ...(to === undefined ? {} : { to }) })
+	const result = await api('POST', `/api/threads/${id}/entries`, {
+		body,
+		...(to === undefined ? {} : { to }),
+	})
 	if (result.status !== 201) throw new Error(JSON.stringify(result))
 }
 /** Wait for deliveries, including answers that wake the asker, not a fixed quiet period. */
@@ -42,7 +45,10 @@ export async function evidence(ids) {
 		console.log(`agents #${id}: ${JSON.stringify(current.agents)}`)
 		console.log(`thread #${id}: ${JSON.stringify(current.entries)}`)
 		for (const agent of current.agents) {
-			const conversation = await conversationOf(current, agent.name || `${agent.to.model}@${agent.to.runner}`)
+			const conversation = await conversationOf(
+				current,
+				agent.name || `${agent.to.model}@${agent.to.runner}`,
+			)
 			for (const entry of conversation.entries)
 				for (const message of entry.model || [])
 					if (message.role === 'assistant')

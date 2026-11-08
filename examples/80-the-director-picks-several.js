@@ -15,7 +15,11 @@ await scriptedRunner('laptop', (request) => {
 	;(handed[name] ??= []).push(text(last))
 	return say(`${name} thinks so`)
 })
-await api('POST', '/api/bots', { name: 'Kira', to: 'echo/echo@laptop', instructions: 'A gardener.' })
+await api('POST', '/api/bots', {
+	name: 'Kira',
+	to: 'echo/echo@laptop',
+	instructions: 'A gardener.',
+})
 await api('POST', '/api/bots', { name: 'Ada', to: 'echo/echo@laptop' })
 
 const garden = (await api('POST', '/api/threads', { title: 'garden' })).json.id

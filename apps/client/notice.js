@@ -15,7 +15,14 @@ export function Notice() {
 		<${Show} when=${notice}>
 			<p class="notice" role="alert">
 				<span>${() => notice()}</span>
-				<button type="button" class="ghost small" aria-label="Dismiss" onClick=${(_e) => setNotice('')}>×</button>
+				<button
+					type="button"
+					class="ghost small"
+					aria-label="Dismiss"
+					onClick=${(_e) => setNotice('')}
+				>
+					×
+				</button>
 			</p>
 		<//>
 	`

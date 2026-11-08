@@ -127,7 +127,10 @@ export function Composer(props) {
 		(key) => {
 			if (untrack(() => compose.drafts[key])) return
 			const saved = readDraft(key)
-			if (saved) setCompose((store) => void (store.drafts[key] = { draft: saved, images: [], sending: false }))
+			if (saved)
+				setCompose(
+					(store) => void (store.drafts[key] = { draft: saved, images: [], sending: false }),
+				)
 		},
 	)
 	const touch = () => matchMedia('(pointer: coarse)').matches
@@ -447,7 +450,9 @@ export function Composer(props) {
 									() => (index() ? ' + ' : ''),
 									() => recipientWords(to, props.thread)[0],
 									html`<${Show} when=${() => recipientWords(to, props.thread)[1]}
-										><span class="thinking-word"> · ${() => recipientWords(to, props.thread)[1]}</span><//
+										><span class="thinking-word">
+											· ${() => recipientWords(to, props.thread)[1]}</span
+										><//
 									>`,
 								]}<//
 							><//
@@ -536,11 +541,17 @@ export function Composer(props) {
 				onToggle=${(event) => {
 					button.setAttribute('aria-expanded', String(event.newState === 'open'))
 					// Over the composer, at the end its button sits; or at what opened it
-					if (event.newState === 'open') placePopover(picker, anchor ?? box, true, (anchor ?? box) === box)
+					if (event.newState === 'open')
+						placePopover(picker, anchor ?? box, true, (anchor ?? box) === box)
 					else anchor = box
 				}}
 			>
-				<button type="button" class="ghost close" aria-label="Close" onClick=${() => picker.hidePopover()}>
+				<button
+					type="button"
+					class="ghost close"
+					aria-label="Close"
+					onClick=${() => picker.hidePopover()}
+				>
 					×
 				</button>
 				<${ModelPicker}
@@ -595,16 +606,18 @@ export function Composer(props) {
 function PickerBot(bot, close, thread, mention) {
 	const selected = () => askedBots(thread()).some((to) => to.name === bot.name)
 	return html`
-		<li role=${() => mention ? 'presentation' : undefined}>
+		<li role=${() => (mention ? 'presentation' : undefined)}>
 			<button
 				type="button"
-				role=${() => mention ? 'option' : undefined}
+				role=${() => (mention ? 'option' : undefined)}
 				id=${mention?.id}
-				tabindex=${() => mention ? '-1' : undefined}
-				aria-selected=${() => mention ? String(mention.highlighted()) : undefined}
+				tabindex=${() => (mention ? '-1' : undefined)}
+				aria-selected=${() => (mention ? String(mention.highlighted()) : undefined)}
 				class="ghost model"
-				aria-pressed=${() => mention ? undefined : String(selected())}
-				onMouseDown=${(event) => { if (mention) event.preventDefault() }}
+				aria-pressed=${() => (mention ? undefined : String(selected()))}
+				onMouseDown=${(event) => {
+					if (mention) event.preventDefault()
+				}}
 				onClick=${(event) => {
 					if (mention) return mention.pick()
 					if (!event.shiftKey) return (setPick(null, [botAgent(bot)], null, thread()), close())
@@ -618,8 +631,12 @@ function PickerBot(bot, close, thread, mention) {
 				}}
 			>
 				<span style=${() => colorOf(bot.name)}>${() => bot.name}</span>
-				<small>${() => mention && !isHere(bot, thread())
-					? 'not in this thread yet' : formatAgent(bot.to)}</small>
+				<small
+					>${() =>
+						mention && !isHere(bot, thread())
+							? 'not in this thread yet'
+							: formatAgent(bot.to)}</small
+				>
 			</button>
 		</li>
 	`
@@ -684,9 +701,9 @@ const mentionsFor = (query, thread) => {
 const directing = (thread) =>
 	Boolean(
 		thread &&
-			server().settings?.director?.picks &&
-			!homeBot(thread) &&
-			here(thread).filter((agent) => agent.to?.name).length > 1,
+		server().settings?.director?.picks &&
+		!homeBot(thread) &&
+		here(thread).filter((agent) => agent.to?.name).length > 1,
 	)
 /** Nobody chosen for the next message, so the director picks */
 const directed = (thread) => directing(thread) && !pick(thread)
@@ -699,7 +716,8 @@ const recipientWords = (to, thread) => {
 			agent.to?.name === to.name && agent.to?.model === to.model && agent.to?.runner === to.runner,
 	)?.to
 	const runner = runners.find((runner) => runner.name === to.runner)
-	const thinkingLevel = to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel)
+	const thinkingLevel =
+		to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel)
 	if (to.name) return [to.name]
 	return [to.model?.split('/').pop(), thinkingLevel && thinkingWord(thinkingLevel)]
 }

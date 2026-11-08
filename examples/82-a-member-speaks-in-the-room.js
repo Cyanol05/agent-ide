@@ -1,5 +1,18 @@
 /** MODULES=+bots,+director: a bot that's in a thread speaks there as itself when it posts from home, and the room answers in the room */
-import { answered, api, call, check, done, quiet, say, scriptedRunner, server, text, until, view } from './lib.js'
+import {
+	answered,
+	api,
+	call,
+	check,
+	done,
+	quiet,
+	say,
+	scriptedRunner,
+	server,
+	text,
+	until,
+	view,
+} from './lib.js'
 
 await server({ MODULES: '+bots,+director' })
 await scriptedRunner('laptop', (request) => {
@@ -8,11 +21,11 @@ await scriptedRunner('laptop', (request) => {
 	if (last.role === 'toolResult') return say('')
 	const told = text(last)
 	const room = told.match(/tell room (\d+)/)?.[1]
-	if (room) return call('post', { thread: Number(room), body: 'Hello room, @Kira what do you think?' })
+	if (room)
+		return call('post', { thread: Number(room), body: 'Hello room, @Kira what do you think?' })
 	return say(`${name} heard: ${told.slice(-30)}`)
 })
-for (const name of ['Pm', 'Kira'])
-	await api('POST', '/api/bots', { name, to: 'echo/echo@laptop' })
+for (const name of ['Pm', 'Kira']) await api('POST', '/api/bots', { name, to: 'echo/echo@laptop' })
 const home = (await api('GET', '/api/bots')).json.find((bot) => bot.name === 'Pm').home
 
 const room = (await api('POST', '/api/threads', { title: 'room' })).json.id
@@ -24,7 +37,10 @@ const said = await until(async () =>
 	(await view(room)).entries.find((entry) => entry.data.body?.startsWith('Hello room')),
 )
 check(
-	said && said.data.author === 'Pm' && !said.data.from && JSON.stringify(said.data.to) === '["Kira"]',
+	said &&
+		said.data.author === 'Pm' &&
+		!said.data.from &&
+		JSON.stringify(said.data.to) === '["Kira"]',
 	'a member bot posting into its room says it there as itself, not as a question from home',
 	JSON.stringify(said?.data),
 )

@@ -1,5 +1,17 @@
 /** Retries never double */
-import { answered, answers, api, check, done, kill, quiet, runner, server, until, view } from './lib.js'
+import {
+	answered,
+	answers,
+	api,
+	check,
+	done,
+	kill,
+	quiet,
+	runner,
+	server,
+	until,
+	view,
+} from './lib.js'
 
 let srv = await server()
 await runner('laptop')

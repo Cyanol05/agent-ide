@@ -1,5 +1,17 @@
 /** MODULES=+director with picks: an agent's `post` to a thread of bots, with no `to`, asks whom the director picks, as a person's message does */
-import { answered, api, call, check, done, say, scriptedRunner, server, text, until, view } from './lib.js'
+import {
+	answered,
+	api,
+	call,
+	check,
+	done,
+	say,
+	scriptedRunner,
+	server,
+	text,
+	until,
+	view,
+} from './lib.js'
 
 await server({ MODULES: '+bots,+director', DIRECTOR_MODEL: 'echo/echo@laptop' })
 await scriptedRunner('laptop', (request) => {
@@ -15,7 +27,11 @@ await scriptedRunner('laptop', (request) => {
 	if (garden) return call('post', { thread: Number(garden), body: 'how do I prune roses?' })
 	return say(`heard: ${told.slice(-40)}`)
 })
-await api('POST', '/api/bots', { name: 'Kira', to: 'echo/echo@laptop', instructions: 'A gardener.' })
+await api('POST', '/api/bots', {
+	name: 'Kira',
+	to: 'echo/echo@laptop',
+	instructions: 'A gardener.',
+})
 await api('POST', '/api/bots', { name: 'Ada', to: 'echo/echo@laptop' })
 
 const garden = (await api('POST', '/api/threads', { title: 'garden' })).json.id

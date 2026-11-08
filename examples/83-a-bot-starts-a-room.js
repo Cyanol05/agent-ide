@@ -20,7 +20,8 @@ await scriptedRunner('laptop', (request) => {
 	const last = request.messages.at(-1)
 	if (last.role === 'toolResult') return say('')
 	const told = text(last)
-	if (told.includes('ask vera alone')) return call('post', { title: 'aside', to: 'Vera', body: 'just you, Vera' })
+	if (told.includes('ask vera alone'))
+		return call('post', { title: 'aside', to: 'Vera', body: 'just you, Vera' })
 	if (told.includes('start a room'))
 		return call('post', { title: 'dinner', to: 'Vera', body: 'Vera, @pm: where do we eat?' })
 	return say(`${name} heard: ${told.slice(-30)}`)
@@ -68,7 +69,7 @@ const aside = (await api('GET', '/api/threads')).json.find((thread) => thread.ti
 check(
 	JSON.stringify(aside.agents.map((agent) => agent.name)) === '["Vera"]' &&
 		(await view(aside.id)).entries[0].data.from === home,
-	'with one bot it stays a side question: Kira asks from home, isn\'t in the thread, and the answer comes home',
+	"with one bot it stays a side question: Kira asks from home, isn't in the thread, and the answer comes home",
 	JSON.stringify([aside.agents, back?.data]),
 )
 

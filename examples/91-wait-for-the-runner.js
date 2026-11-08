@@ -2,7 +2,10 @@
 import { api, check, done, runner, server } from './lib.js'
 await server()
 await runner('ready')
-check((await api('GET', '/api/runners')).json.some((row) => row.name === 'ready' && row.online), 'the runner is online when startup returns')
+check(
+	(await api('GET', '/api/runners')).json.some((row) => row.name === 'ready' && row.online),
+	'the runner is online when startup returns',
+)
 let rejected = false
 try {
 	await runner('broken', { args: ['--not-a-runner-option'] })

@@ -83,8 +83,7 @@ export function server(core) {
 					const messages = await core.messages(threadId)
 					const opening = messages[0]?.data.body ?? ''
 					const row = await core.thread(threadId)
-					if (row.title !== defaultTitle(opening))
-						return rt.commit(() => finished(), ctx)
+					if (row.title !== defaultTitle(opening)) return rt.commit(() => finished(), ctx)
 					const own = await core.agentOf(row.agents[AGENT]?.conversation ?? input.conversation)
 					const choice = modelName
 						? agentTo(modelName.includes('@') ? modelName : `${modelName}@${own.runner}`)
@@ -92,12 +91,20 @@ export function server(core) {
 					await core.runners.online(choice.runner, rt.signal)
 					const to = await core.address(choice, false, rt.signal)
 					const model = core.models.getModel(`runner:${to.runner}`, to.model)
-					const reply = await core.models.completeSimple(model, {
-						messages: [
-							{ role: 'system', content: SYSTEM_PROMPT, timestamp: Date.now() },
-							{ role: 'user', content: `Title this message:\n\n${opening.trim().slice(0, 2000)}`, timestamp: Date.now() },
-						],
-					}, { signal: rt.signal, ...(to.thinkingLevel ? { reasoning: to.thinkingLevel } : {}) })
+					const reply = await core.models.completeSimple(
+						model,
+						{
+							messages: [
+								{ role: 'system', content: SYSTEM_PROMPT, timestamp: Date.now() },
+								{
+									role: 'user',
+									content: `Title this message:\n\n${opening.trim().slice(0, 2000)}`,
+									timestamp: Date.now(),
+								},
+							],
+						},
+						{ signal: rt.signal, ...(to.thinkingLevel ? { reasoning: to.thinkingLevel } : {}) },
+					)
 					if (reply.stopReason === 'error' || reply.stopReason === 'aborted')
 						throw new Error(reply.errorMessage ?? reply.stopReason)
 					const title = sanitizeThreadTitle(messageText(reply))
@@ -122,9 +129,13 @@ export function server(core) {
 			const state = await tx.doc(Title, threadId)
 			if (state.scheduled) return
 			state.scheduled = true
-			await tx.createTask(AutoTitle, {
-				conversation: entry.data.answer.conversation,
-			}, background(threadId))
+			await tx.createTask(
+				AutoTitle,
+				{
+					conversation: entry.data.answer.conversation,
+				},
+				background(threadId),
+			)
 		},
 	}
 }

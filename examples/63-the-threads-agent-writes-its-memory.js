@@ -1,15 +1,5 @@
 /** With no MEMORY_MODEL, a thread's own agent writes its lines, on the runner it runs on now; before it has one, they wait */
-import {
-	api,
-	check,
-	done,
-	linesOf,
-	say,
-	scriptedRunner,
-	server,
-	text,
-	until,
-} from './lib.js'
+import { api, check, done, linesOf, say, scriptedRunner, server, text, until } from './lib.js'
 
 const asked = { a: 0, b: 0 }
 const route = (runner) => (request) => {

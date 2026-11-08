@@ -25,13 +25,13 @@ The default is `gpt-6-luna:low@oskar`; pass a different pi model pattern as the 
 
 2026-11-08, Node.js v26.13.0, `openai-codex/gpt-6-luna`, thinking `low`, runner `oskar`. Product revision `98455089`; the shared example runner helper was changed to await readiness, with no product or prompt changes. Three fresh serial trials per scenario:
 
-| Scenario | Trial 1 | Trial 2 | Trial 3 | Pass rate |
-| --- | --- | --- | --- | --- |
-| Group introductions | Pass | Pass | Pass | 3/3 |
-| Another thread knows | Pass | Pass | Pass | 3/3 |
-| Side question returns home | Pass | Pass | Pass | 3/3 |
-| Directed mention | Pass | Pass | Pass | 3/3 |
-| Web question searches | Pass | Pass | Pass | 3/3 |
+| Scenario                   | Trial 1 | Trial 2 | Trial 3 | Pass rate |
+| -------------------------- | ------- | ------- | ------- | --------- |
+| Group introductions        | Pass    | Pass    | Pass    | 3/3       |
+| Another thread knows       | Pass    | Pass    | Pass    | 3/3       |
+| Side question returns home | Pass    | Pass    | Pass    | 3/3       |
+| Directed mention           | Pass    | Pass    | Pass    | 3/3       |
+| Web question searches      | Pass    | Pass    | Pass    | 3/3       |
 
 The introduction case first joins both bots with a neutral message, then asks the literal `@Kira @Vera who are you two`. The mention case likewise starts with both bots already present. Introduction and mention counts apply only after the scored prompt. The hidden facts are fresh random tokens, unavailable in the asker's prompt. The side-question check also rejects extra threads and any group thread. The web check proves a search was made and an answer cites a URL; it does not certify the answer's factual accuracy.
 

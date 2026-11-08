@@ -30,7 +30,11 @@ export function server(core) {
 			throw new Error(`${AGENT} is what every thread calls its own; pick another name`)
 		if (instructions !== undefined && typeof instructions !== 'string')
 			throw new Error('instructions is text')
-		if (color !== undefined && color !== null && !(Number.isFinite(color) && color >= 0 && color < 360))
+		if (
+			color !== undefined &&
+			color !== null &&
+			!(Number.isFinite(color) && color >= 0 && color < 360)
+		)
 			throw new Error('color is a hue from 0 to 360, or null for the one it would have')
 		if (to !== undefined) {
 			const { name: _, ...agent } = await core.address(typeof to === 'string' ? agentTo(to) : to)

@@ -19,10 +19,7 @@ import {
 } from './lib.js'
 
 mkdirSync(dir, { recursive: true })
-writeFileSync(
-	path.join(dir, 'agent-ide.json'),
-	JSON.stringify({ memory: { compactAt: 30000 } }),
-)
+writeFileSync(path.join(dir, 'agent-ide.json'), JSON.stringify({ memory: { compactAt: 30000 } }))
 await server({}, { cwd: dir })
 // A window of a million tokens, so only memory's threshold can start a compaction
 await scriptedRunner(

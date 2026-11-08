@@ -1,14 +1,6 @@
 /** A bot's name, home, the agent it joins as, and instructions. */
 import html from '@solidjs/html'
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	onSettled,
-	Show,
-	snapshot,
-} from 'solid-js'
+import { createEffect, createMemo, createSignal, For, onSettled, Show, snapshot } from 'solid-js'
 import {
 	api,
 	bots,
@@ -33,7 +25,9 @@ import { Sure } from './sure.js'
 import { ThreadItem } from './thread-list.js'
 
 const familyOf = (bot) =>
-	new Set((threads.find((thread) => thread.id === bot.home)?.family ?? []).map((member) => member.id))
+	new Set(
+		(threads.find((thread) => thread.id === bot.home)?.family ?? []).map((member) => member.id),
+	)
 
 /** Its own threads without the home, and the unarchived threads it joins elsewhere. */
 export function botThreads(bot) {
@@ -123,7 +117,8 @@ export function BotSettings(props) {
 	})
 	const count = createMemo(() => own().length)
 	/** Another bot already shown in a hue */
-	const holder = (hue) => bots.find((bot) => bot.name !== props.bot.name && hueOf(bot.name) === hue)?.name
+	const holder = (hue) =>
+		bots.find((bot) => bot.name !== props.bot.name && hueOf(bot.name) === hue)?.name
 	const setColor = (color) =>
 		api('/api/bots', { name: props.bot.name, color })
 			.then(() => reloadBots())
@@ -168,20 +163,24 @@ export function BotSettings(props) {
 					title="The colour it gets by the order bots were made"
 					onClick=${() => setColor(null)}
 				>
-					<span class="dot" style=${() => `background: ${paint(defaultHueOf(props.bot.name))}`}></span>
+					<span
+						class="dot"
+						style=${() => `background: ${paint(defaultHueOf(props.bot.name))}`}
+					></span>
 					Default
 				</button>
 				<${For} each=${hues}
-					>${(hue) => html`<button
-						type="button"
-						class=${() => ['ghost small', { taken: !!holder(hue) }]}
-						aria-pressed=${() => String(props.bot.color === hue)}
-						aria-label=${() => (holder(hue) ? `Hue ${hue}, ${holder(hue)}'s` : `Hue ${hue}`)}
-						title=${() => (holder(hue) ? `${holder(hue)}'s colour` : '')}
-						onClick=${() => setColor(hue)}
-					>
-						<span class="dot" style=${`background: ${paint(hue)}`}></span>
-					</button>`}<//
+					>${(hue) =>
+						html`<button
+							type="button"
+							class=${() => ['ghost small', { taken: !!holder(hue) }]}
+							aria-pressed=${() => String(props.bot.color === hue)}
+							aria-label=${() => (holder(hue) ? `Hue ${hue}, ${holder(hue)}'s` : `Hue ${hue}`)}
+							title=${() => (holder(hue) ? `${holder(hue)}'s colour` : '')}
+							onClick=${() => setColor(hue)}
+						>
+							<span class="dot" style=${`background: ${paint(hue)}`}></span>
+						</button>`}<//
 				>
 			</div>
 			${() => props.tools}

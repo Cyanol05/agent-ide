@@ -30,8 +30,7 @@ const post = (id, body, to) =>
 	api('POST', `/api/threads/${id}/entries`, { body, ...(to !== undefined ? { to } : {}) })
 const authors = (v) => v.entries.filter((e) => e.data.answer).map((e) => e.data.author)
 
-for (const name of ['Ada', 'Bram'])
-	await api('POST', '/api/bots', { name, to: 'echo/echo@laptop' })
+for (const name of ['Ada', 'Bram']) await api('POST', '/api/bots', { name, to: 'echo/echo@laptop' })
 
 const both = (await api('POST', '/api/threads', { title: 'both' })).json.id
 await post(both, 'hi both', ['Bram', 'Ada'])

@@ -96,7 +96,9 @@ export function Exchange(props) {
 
 	return html`
 		<li class="exchange">
-			<span class="lead"><${Show} when=${working}><${Dot} state="working" title="Working on it" /><//></span>
+			<span class="lead"
+				><${Show} when=${working}><${Dot} state="working" title="Working on it" /><//
+			></span>
 			<ol class="steps">
 				<${Cross}
 					sent=${true}
@@ -131,9 +133,7 @@ function Step(props) {
 
 /** The widest label among a turn's steps, so their inputs start at one column */
 const labelWidth = (steps) =>
-	Math.max(
-		...steps.map((step) => (step.name ?? step.label ?? '').length),
-	)
+	Math.max(...steps.map((step) => (step.name ?? step.label ?? '').length))
 
 /** • tool and its input, or what the agent was handed or thought; opened, whole */
 function Call(props) {
@@ -153,7 +153,8 @@ function Call(props) {
 				</summary>
 				<${Show} when=${open}>
 					<div class="whole">
-						<pre>${() => (props.step.name ? JSON.stringify(props.step.args, null, 2) : props.step.text)}</pre>
+						<pre>
+${() => (props.step.name ? JSON.stringify(props.step.args, null, 2) : props.step.text)}</pre>
 						<${Show} when=${() => result()?.text}><pre>${() => result().text}</pre><//>
 					</div>
 				<//>
@@ -225,9 +226,7 @@ const tick = () => {
  * Each agent conversation on screen, its entries as Pi keeps them.
  * Entries never change once written, so the store is shallow: a read tracks the conversation, not each entry's fields.
  */
-const [conversations, setConversations] = createRoot(() =>
-	createStore({}, { shallow: true }),
-)
+const [conversations, setConversations] = createRoot(() => createStore({}, { shallow: true }))
 
 export { conversations }
 
@@ -279,7 +278,6 @@ export function cutsOf(conversation) {
 			]
 		})
 }
-
 
 /** A conversation cut into turns: each begins with a delivery and holds the calls, results and words that follow it */
 export function turnsOf(conversation) {

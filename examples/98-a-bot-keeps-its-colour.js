@@ -6,7 +6,11 @@ await scriptedRunner('laptop', () => say('hi'))
 const ada = async () => (await api('GET', '/api/bots')).json.find((bot) => bot.name === 'ada')
 
 await api('POST', '/api/bots', { name: 'ada', to: 'echo/echo@laptop' })
-check((await ada()).color === undefined, 'a new bot has no colour of its own', JSON.stringify(await ada()))
+check(
+	(await ada()).color === undefined,
+	'a new bot has no colour of its own',
+	JSON.stringify(await ada()),
+)
 
 const picked = await api('POST', '/api/bots', { name: 'ada', color: 187.5 })
 await api('POST', '/api/bots', { name: 'ada', instructions: 'Review diffs.' })

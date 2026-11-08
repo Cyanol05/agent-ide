@@ -25,7 +25,10 @@ check(
 )
 
 const view = (await api('GET', `/api/threads/${id}`)).json
-check(view.archived === true && view.entries, 'archived, the thread itself still opens, nothing erased')
+check(
+	view.archived === true && view.entries,
+	'archived, the thread itself still opens, nothing erased',
+)
 
 const back = await api('POST', `/api/threads/${id}/archive`, { archived: false })
 check(back.status < 300 && back.json.archived === false, 'unarchiving says so back')

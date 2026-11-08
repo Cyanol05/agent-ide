@@ -8,7 +8,10 @@ await api('POST', '/api/bots', { name: 'ada', to: 'echo/echo@bot' })
 const thread = async (title) => (await api('POST', '/api/threads', { title })).json.id
 const row = async (id) => (await api('GET', '/api/threads')).json.find((thread) => thread.id === id)
 
-check((await api('GET', '/api/server')).json.modules.includes('memory'), 'memory is on without any config')
+check(
+	(await api('GET', '/api/server')).json.modules.includes('memory'),
+	'memory is on without any config',
+)
 
 const withBot = await thread('with ada')
 const alone = await thread('alone')

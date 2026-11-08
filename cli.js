@@ -71,7 +71,8 @@ async function api(method, route, body) {
 
 function agent(name) {
 	if (!flags.thinking && !flags.dir) return name
-	if (!name.includes('@')) throw new Error('--thinking and --dir require a model@runner, not a bot name')
+	if (!name.includes('@'))
+		throw new Error('--thinking and --dir require a model@runner, not a bot name')
 	return {
 		...agentTo(name),
 		...(flags.thinking ? { thinkingLevel: flags.thinking } : {}),

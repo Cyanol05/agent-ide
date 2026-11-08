@@ -78,7 +78,14 @@ export function server(core) {
 			[...candidates.map((candidate) => candidate.name), 'nobody'].find(
 				(known) => known.toLowerCase() === name.replace(/^@/, '').toLowerCase(),
 			)
-		const names = [...new Set(picked.split(/\s*(?:,|&|\band\b)\s*/).map(known).filter(Boolean))]
+		const names = [
+			...new Set(
+				picked
+					.split(/\s*(?:,|&|\band\b)\s*/)
+					.map(known)
+					.filter(Boolean),
+			),
+		]
 		if (!names.length) return undefined
 		return {
 			names: names.includes('nobody') ? [] : names,
@@ -141,8 +148,10 @@ export function server(core) {
 				Object.entries(agents).map(([key, agent]) => core.agentOf(agent.conversation, key)),
 			)
 		).filter((agent) => agent && agent.name !== message.author)
-		const named = mentioned(message.body, here.filter((agent) => agent.name).map((agent) => agent.name))
-			.map((name) => here.find((agent) => agent.name === name))
+		const named = mentioned(
+			message.body,
+			here.filter((agent) => agent.name).map((agent) => agent.name),
+		).map((name) => here.find((agent) => agent.name === name))
 		if (message.answer)
 			return named.length && (await botTurns(threadId)) + 1 < REST ? { to: named } : undefined
 		if (named.length) return { to: named }
@@ -156,7 +165,7 @@ export function server(core) {
 		render: async ({ conversationId }) => {
 			const at = await core.home(conversationId)
 			if (!at || at.key === AGENT) return undefined
-			return "To bring in another bot in this thread, write @ and its name in your answer; it answers here after you. Post only to ask somewhere else."
+			return 'To bring in another bot in this thread, write @ and its name in your answer; it answers here after you. Post only to ask somewhere else.'
 		},
 	}
 

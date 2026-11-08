@@ -5,11 +5,10 @@ import { promisify } from 'node:util'
 import { api, base, check, dir, done, repo, runner, server, until, view } from './lib.js'
 
 const output = (...args) =>
-	promisify(execFile)(
-		process.execPath,
-		['cli.js', '--server', base, '--as', 'oskar', ...args],
-		{ cwd: repo, timeout: 8000 },
-	)
+	promisify(execFile)(process.execPath, ['cli.js', '--server', base, '--as', 'oskar', ...args], {
+		cwd: repo,
+		timeout: 8000,
+	})
 const cli = async (...args) => (await output(...args)).stdout
 
 for (const flag of ['--help', '-h']) {
@@ -94,7 +93,9 @@ await cli('post', '--thread', id, '--to', 'echo/echo@laptop', '--no-wait', 'late
 const waited = await cli('wait', id, '--after', String(before))
 const after = await cli('read', id, '--after', String(before))
 check(
-	waited.includes('later please') && /heard:[\s\S]*oskar: later please/.test(waited) && waited === after,
+	waited.includes('later please') &&
+		/heard:[\s\S]*oskar: later please/.test(waited) &&
+		waited === after,
 	'post --no-wait returns at once; wait prints what landed once the agents are idle, read --after the same',
 	JSON.stringify([waited, after]),
 )
@@ -111,7 +112,12 @@ const asAgent = await promisify(execFile)(
 	{
 		cwd: repo,
 		timeout: 8000,
-		env: { ...process.env, PI_SESSION_ID: 'sess-1', PI_MODEL: 'claude-opus-4-5', PI_REASONING_LEVEL: 'high' },
+		env: {
+			...process.env,
+			PI_SESSION_ID: 'sess-1',
+			PI_MODEL: 'claude-opus-4-5',
+			PI_REASONING_LEVEL: 'high',
+		},
 	},
 ).then(({ stdout, stderr }) => stdout + stderr)
 check(

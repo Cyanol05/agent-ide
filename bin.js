@@ -8,15 +8,22 @@ if (args[0] === 'runner') {
 	await import('./runner.js')
 } else {
 	// Skip CLI option values too: `--as runner key laptop` still asks the CLI.
-	const { positionals: [command] } = parseArgs({
+	const {
+		positionals: [command],
+	} = parseArgs({
 		args,
 		strict: false,
 		allowPositionals: true,
 		options: Object.fromEntries(
-			['server', 'as', 'thread', 'to', 'thinking', 'dir', 'title', 'last', 'after']
-				.map((name) => [name, { type: 'string' }]),
+			['server', 'as', 'thread', 'to', 'thinking', 'dir', 'title', 'last', 'after'].map((name) => [
+				name,
+				{ type: 'string' },
+			]),
 		),
 	})
-	await import(['post', 'threads', 'read', 'wait', 'runners', 'key', 'revoke', 'stop'].includes(command)
-		? './cli.js' : './server.js')
+	await import(
+		['post', 'threads', 'read', 'wait', 'runners', 'key', 'revoke', 'stop'].includes(command)
+			? './cli.js'
+			: './server.js'
+	)
 }

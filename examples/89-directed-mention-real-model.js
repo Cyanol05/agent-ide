@@ -13,5 +13,8 @@ await post(room, '@Vera what is a good way to cook carrots?')
 await settled()
 const [after] = await evidence([room])
 const replies = answers(after).filter((entry) => entry.id > boundary)
-check(replies.length === 1 && replies[0].data.author === 'Vera', 'only Vera answers the directed mention')
+check(
+	replies.length === 1 && replies[0].data.author === 'Vera',
+	'only Vera answers the directed mention',
+)
 done()

@@ -11,7 +11,17 @@ import {
 	fauxThinking,
 	fauxToolCall,
 } from '@earendil-works/pi-ai/providers/faux'
-import { api, base, call, dir, say, scriptedRunner, server, shellEnv, text } from '../examples/lib.js'
+import {
+	api,
+	base,
+	call,
+	dir,
+	say,
+	scriptedRunner,
+	server,
+	shellEnv,
+	text,
+} from '../examples/lib.js'
 
 // MODULES=+web-search node scripts/try.js layers the shell's own +/- changes on top of this script's own.
 const modules = ['+bots,+director', shellEnv.MODULES].filter(Boolean).join(',')
