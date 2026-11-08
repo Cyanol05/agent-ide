@@ -73,10 +73,10 @@ async function round(env) {
 	}
 }
 
-const on = await round({})
+const on = await round({ MODULES: '-bots,-director' })
 check(
 	on.modules.join() === 'talk,status,context',
-	'by default talk, status and context are on, the director off',
+	'talk, status and context are on; this round turns bots and director off',
 	JSON.stringify(on.modules),
 )
 check(
@@ -95,10 +95,10 @@ check(
 	'status on: the runner is told how its threads stand',
 )
 
-const off = await round({ MODULES: '-talk,-status,-context' })
+const off = await round({ MODULES: '-talk,-status,-context,-bots,-director' })
 check(
 	off.modules.length === 0,
-	'MODULES=-talk,-status,-context: no modules',
+	'MODULES=-talk,-status,-context,-bots,-director: no modules',
 	JSON.stringify(off.modules),
 )
 check(

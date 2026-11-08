@@ -2,9 +2,9 @@
 import { check, done, start, until } from './lib.js'
 
 for (const [modules, host, expected] of [
-	['+bots,+web-search,+director', '', 'talk,status,context,bots,web-search,director'],
+	['-bots,-director,+bots,+web-search,+director', '', 'talk,status,context,bots,web-search,director'],
 	['bots,web-search,director', '', 'bots,web-search,director'],
-	['-talk,-status', '::1', 'context'],
+	['-talk,-status,-bots,-director', '::1', 'context'],
 	['+bots,web-search,director', '', null],
 ]) {
 	let output = ''

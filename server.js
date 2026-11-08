@@ -68,6 +68,8 @@ import {
  * @typedef {{ author: string, command: string, to: To }} Command
  */
 
+// ── Start-up: store lock and port ─────────────────────────────────────────
+
 /** One store, whatever the port */
 const file = process.env.DB_PATH || 'agent-ide.sqlite'
 const lock = `${file}.lock`
@@ -95,6 +97,8 @@ const free = (candidate) =>
 		probe.listen(candidate, '127.0.0.1', () => probe.close(() => resolve(true)))
 	})
 if (!process.env.PORT) while (!(await free(port))) port++
+// ── Docs and tasks ────────────────────────────────────────────────────────
+
 const KIND = 'agent-ide.message'
 /** An agent's input in its conversation; `held` names the thread messages it gave */
 const DELIVERY = 'agent-ide.delivery'
@@ -326,51 +330,12 @@ function printed(
 	return post(tx, threadId, { author, body: `$ ${command}`, shell })
 }
 
+// ── State, Pi harness and snapshots ───────────────────────────────────────
+
 const clients = new Set()
 const runners = createRunners({ onChange: notify })
 /** What each running `$ cmd` has printed so far */
 const shells = new Map()
-/** The client: apps/client/client.html at /, and every module and stylesheet beside it */
-const types = {
-	'.js': 'text/javascript; charset=utf-8',
-	'.css': 'text/css; charset=utf-8',
-	'.woff2': 'font/woff2',
-	'.png': 'image/png',
-	'.webmanifest': 'application/manifest+json',
-}
-async function clientFile(pathname) {
-	if (!/^\/(?:[\w-]+\/)*[\w.-]+$/.test(pathname)) return null
-	const type = types[path.extname(pathname)]
-	if (!type) return null
-	const body = await readFile(new URL(`./apps/client${pathname}`, import.meta.url)).catch(
-		() => null,
-	)
-	return body ? { type, body } : null
-}
-/** Browser packages resolve through Node, so npm's hoisted installs work too. */
-const browserPackages = new Map([
-	['solid-js', new URL('./', import.meta.resolve('solid-js'))],
-	['@solidjs/web', new URL('./', import.meta.resolve('@solidjs/web'))],
-	['@solidjs/html', new URL('./', import.meta.resolve('@solidjs/html'))],
-	['@solidjs/signals', new URL('./dist/', import.meta.resolve('@solidjs/signals/package.json'))],
-	['pele', new URL('./', import.meta.resolve('pele'))],
-	['marked', new URL('./', import.meta.resolve('marked'))],
-])
-async function servePackage(res, pathname) {
-	for (const [name, root] of browserPackages) {
-		const prefix = `/packages/${name}/`
-		if (!pathname.startsWith(prefix)) continue
-		const file = new URL(`./${pathname.slice(prefix.length)}`, root)
-		const body =
-			file.href.startsWith(root.href) &&
-			/\.m?js$/.test(file.pathname) &&
-			(await readFile(file).catch(() => null))
-		if (!body) break
-		res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' })
-		return res.end(body)
-	}
-	return send(res, 404, { error: 'Not found' })
-}
 /** The runner this server ships, and the updater that fetches it */
 const bundle = await runnerBundle(import.meta.dirname)
 const updater = await readFile(new URL('./runner-updater.js', import.meta.url))
@@ -443,7 +408,24 @@ const threadIds = async () =>
 		.filter((conversation) => !conversation.owner)
 		.map((conversation) => conversation.id)
 
+// ── Small helpers ─────────────────────────────────────────────────────────
+
 const user = (req) => speaker(req.headers['x-user'])
+
+/** The address this request reached the server at, as a runner on another machine dials it */
+const origin = (req) =>
+	`${req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'}://${String(req.headers.host).replace(/[^\w.:\[\]-]/g, '')}`
+const sha256 = (text) => createHash('sha256').update(text).digest('hex')
+/** The start-up table and every runner event after it share one column */
+const say = (label, text) => console.log(`  ${label.padEnd(8)} ${text}`)
+const tilde = (dir) => (dir?.startsWith(os.homedir()) ? `~${dir.slice(os.homedir().length)}` : dir)
+const loopback = (address) =>
+	/^(127\.|::ffff:127\.)/.test(address) || ['::1', '[::1]', 'localhost'].includes(address)
+/** Opened on the server's own machine: only such a page connects and revokes runners */
+const local = (req) =>
+	loopback(req.socket.remoteAddress) && loopback(req.headers.host?.replace(/:\d+$/, ''))
+
+// ── Addressing: whom a message asks ───────────────────────────────────────
 
 /** A command needs no model */
 async function address(to, command = false, signal, useDefaultThinking = true) {
@@ -564,6 +546,8 @@ async function agentOf(id, key, tx) {
 	}
 }
 
+// ── Live work and statuses ────────────────────────────────────────────────
+
 /** One status for an agent, a thread, a runner or a bot: `working`, `blocked` while its runner is offline, or `idle` */
 const STATUSES = ['idle', 'blocked', 'working']
 /** Of several, the busiest */
@@ -614,7 +598,27 @@ async function agentsIn(row, busy) {
 }
 const liveTasks = async () => (await harness.inspect(context)).tasks.map(({ record }) => record)
 
+/** What an agent is doing, from Pi's live doc */
+function doing({ entries, docs }) {
+	const { run, generation, tools = [] } = docs['pi.live'] ?? {}
+	const calls = entries
+		.flatMap((entry) => (entry.model?.[0]?.role === 'assistant' ? entry.model[0].content : []))
+		.filter((block) => block.type === 'toolCall')
+	return {
+		run: Boolean(run),
+		message: generation?.message ?? null,
+		tools: tools.map(({ callId, name, status }) => ({
+			callId,
+			name,
+			status,
+			args: calls.find((call) => call.id === callId)?.arguments,
+		})),
+	}
+}
+
 /** @returns {Promise<Entry[]>} */
+// ── Thread writes: entries, delivery, outcomes ────────────────────────────
+
 /** Any conversation's entries, oldest first: a thread's, or an agent's own */
 async function entries(id) {
 	const handle = await harness.conversation(id, context)
@@ -865,6 +869,8 @@ async function faulted({ task, reason }) {
 	await commit((tx) => tell(tx, threadId, agent, settled, submitted, told))
 }
 
+// ── Read views: threads, lists, people ────────────────────────────────────
+
 /** A thread's own status, or when idle, `done` or `error` for an answer its reader hasn't read; with no reader, anyone's read counts */
 async function status(id, reads, busy, reader) {
 	const now = busiest(busy.map((job) => job.status))
@@ -952,6 +958,8 @@ async function home(conversationId) {
 	const name = key === AGENT ? writtenTo(await agentOf(conversationId, key)) : key
 	return { thread: threadId, key, name }
 }
+
+// ── Commands: post, create, fork, title, tools, compact ───────────────────
 
 /** A known request returns before anything tries to resolve its recipients. */
 async function receipt(requestId, command) {
@@ -1176,6 +1184,24 @@ async function forkThread(id, { at, title }) {
 	return { id: fork.id }
 }
 
+/**
+ * Pi's own compaction, started early: each model's background compaction begins once its context passes `tokens`,
+ * between model calls and never between a call and its result, keeping about the last 25k word for word.
+ */
+function compactingAt(tokens) {
+	// Pi's default room for the answer, set here too so the start lands at `tokens` whatever Pi's default becomes
+	const reserveTokens = 16384
+	const modelOverrides = {}
+	for (const model of models.getModels())
+		if (model.provider.startsWith('runner:') && model.contextWindow > tokens + reserveTokens)
+			modelOverrides[`${model.provider}/${model.id}`] = {
+				reserveTokens,
+				keepRecentTokens: 25000,
+				backgroundTokens: model.contextWindow - reserveTokens - tokens,
+			}
+	return { modelOverrides }
+}
+
 /** Compacts each agent of the thread now, as Pi does when its context fills; what each came to is its outcome */
 async function compact(id) {
 	const { agents } = await thread(id)
@@ -1187,6 +1213,8 @@ async function compact(id) {
 		}),
 	)
 }
+
+// ── Modules ───────────────────────────────────────────────────────────────
 
 const core = {
 	/** A thread's doc inside a commit, where a snapshot would wait for the commit itself */
@@ -1218,14 +1246,14 @@ const core = {
 	receipt,
 }
 const defaults = {
-	director: false,
+	director: true,
 	talk: true,
 	status: true,
 	memory: false,
 	matrix: false,
 	context: true,
 	'web-search': false,
-	bots: false,
+	bots: true,
 }
 /** agent-ide.json, as it started; the page changes it, and a restart takes it up */
 const settings = await readConfig()
@@ -1265,27 +1293,11 @@ const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames] = [
 	'botNames',
 ].map(hook)
 compactAt = hook('compactAt')
-/**
- * Pi's own compaction, started early: each model's background compaction begins once its context passes `tokens`,
- * between model calls and never between a call and its result, keeping about the last 25k word for word.
- */
-function compactingAt(tokens) {
-	// Pi's default room for the answer, set here too so the start lands at `tokens` whatever Pi's default becomes
-	const reserveTokens = 16384
-	const modelOverrides = {}
-	for (const model of models.getModels())
-		if (model.provider.startsWith('runner:') && model.contextWindow > tokens + reserveTokens)
-			modelOverrides[`${model.provider}/${model.id}`] = {
-				reserveTokens,
-				keepRecentTokens: 25000,
-				backgroundTokens: model.contextWindow - reserveTokens - tokens,
-			}
-	return { modelOverrides }
-}
-
 for (const [name, runner] of Object.entries(await known()))
 	models.setProvider(runnerProvider(runners, name, runner.models))
 harness.resume()
+
+// ── HTTP: input, routes, static files, runner script ──────────────────────
 
 /** Pi's own cap on an image, in base64 */
 const IMAGE_BYTES = 4.5 * 1024 * 1024
@@ -1425,6 +1437,48 @@ const routes = [
 	handle,
 ])
 
+/** The client: apps/client/client.html at /, and every module and stylesheet beside it */
+const types = {
+	'.js': 'text/javascript; charset=utf-8',
+	'.css': 'text/css; charset=utf-8',
+	'.woff2': 'font/woff2',
+	'.png': 'image/png',
+	'.webmanifest': 'application/manifest+json',
+}
+async function clientFile(pathname) {
+	if (!/^\/(?:[\w-]+\/)*[\w.-]+$/.test(pathname)) return null
+	const type = types[path.extname(pathname)]
+	if (!type) return null
+	const body = await readFile(new URL(`./apps/client${pathname}`, import.meta.url)).catch(
+		() => null,
+	)
+	return body ? { type, body } : null
+}
+/** Browser packages resolve through Node, so npm's hoisted installs work too. */
+const browserPackages = new Map([
+	['solid-js', new URL('./', import.meta.resolve('solid-js'))],
+	['@solidjs/web', new URL('./', import.meta.resolve('@solidjs/web'))],
+	['@solidjs/html', new URL('./', import.meta.resolve('@solidjs/html'))],
+	['@solidjs/signals', new URL('./dist/', import.meta.resolve('@solidjs/signals/package.json'))],
+	['pele', new URL('./', import.meta.resolve('pele'))],
+	['marked', new URL('./', import.meta.resolve('marked'))],
+])
+async function servePackage(res, pathname) {
+	for (const [name, root] of browserPackages) {
+		const prefix = `/packages/${name}/`
+		if (!pathname.startsWith(prefix)) continue
+		const file = new URL(`./${pathname.slice(prefix.length)}`, root)
+		const body =
+			file.href.startsWith(root.href) &&
+			/\.m?js$/.test(file.pathname) &&
+			(await readFile(file).catch(() => null))
+		if (!body) break
+		res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' })
+		return res.end(body)
+	}
+	return send(res, 404, { error: 'Not found' })
+}
+
 function send(res, status, value) {
 	res.writeHead(status, { 'Content-Type': 'application/json' })
 	res.end(JSON.stringify(value))
@@ -1527,6 +1581,8 @@ for arg do printf " '%s'" "$(printf %s "$arg" | sed "s/'/'\\\\''/g")"; done
 printf '\\n'
 exec "$run" "$HOME/.agent-ide/runner-updater.js" "${server}" "$@"
 `
+
+// ── WebSocket: notify, watch ──────────────────────────────────────────────
 
 /** A launched runner whose version differs is asked to update once per connection, when it has no calls open, so nothing it's doing is cut off */
 const outdated = new Set()
@@ -1656,36 +1712,8 @@ async function lastDelivery(handle, first) {
 		cursor = page.next
 	}
 }
-/** What an agent is doing, from Pi's live doc */
-function doing({ entries, docs }) {
-	const { run, generation, tools = [] } = docs['pi.live'] ?? {}
-	const calls = entries
-		.flatMap((entry) => (entry.model?.[0]?.role === 'assistant' ? entry.model[0].content : []))
-		.filter((block) => block.type === 'toolCall')
-	return {
-		run: Boolean(run),
-		message: generation?.message ?? null,
-		tools: tools.map(({ callId, name, status }) => ({
-			callId,
-			name,
-			status,
-			args: calls.find((call) => call.id === callId)?.arguments,
-		})),
-	}
-}
 
-/** The address this request reached the server at, as a runner on another machine dials it */
-const origin = (req) =>
-	`${req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'}://${String(req.headers.host).replace(/[^\w.:\[\]-]/g, '')}`
-const sha256 = (text) => createHash('sha256').update(text).digest('hex')
-/** The start-up table and every runner event after it share one column */
-const say = (label, text) => console.log(`  ${label.padEnd(8)} ${text}`)
-const tilde = (dir) => (dir?.startsWith(os.homedir()) ? `~${dir.slice(os.homedir().length)}` : dir)
-const loopback = (address) =>
-	/^(127\.|::ffff:127\.)/.test(address) || ['::1', '[::1]', 'localhost'].includes(address)
-/** Opened on the server's own machine: only such a page connects and revokes runners */
-const local = (req) =>
-	loopback(req.socket.remoteAddress) && loopback(req.headers.host?.replace(/:\d+$/, ''))
+// ── Runner keys ───────────────────────────────────────────────────────────
 
 /** A new key for a runner, replacing its old one, whose runner is cut off */
 async function mintKey(name, server) {
@@ -1723,6 +1751,8 @@ async function revoke(name) {
 	notify()
 	return { revoked: name }
 }
+
+// ── Upgrade: sockets and runner connections ───────────────────────────────
 
 /** Compressed */
 const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true })
@@ -1817,6 +1847,8 @@ async function upgrade(req, raw, head) {
 		].join(' · '),
 	)
 }
+
+// ── Settings and lifecycle ─────────────────────────────────────────────
 
 /**
  * Writes agent-ide.json and restarts to take it up: in place where the runtime can (same terminal, same process),
