@@ -620,9 +620,7 @@ function Across(props) {
 				><${Show} when=${() => !agent() && !props.to && homeBot(props.thread)?.name !== props.author}
 					>${' from '}<${ThreadLink} id=${() => props.thread}>${() => titleOf(props.thread)}<//><//
 				>`}
-			>${() => (props.to ? '' : 'from ')}<span style="color: var(--ink)"
-				><${ThreadLink} id=${() => props.thread}>${title}<//></span
-			><//
+			>${() => (props.to ? '' : 'from ')}<${ThreadLink} id=${() => props.thread}>${title}<//><//
 		>
 	`
 }
@@ -649,7 +647,7 @@ function Crossing(props) {
 						${() => ` ${props.other} `}
 						<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
 					`}
-					><span style="color: var(--ink)"><${ThreadLink} id=${() => data().from}>${title}<//></span
+					><${ThreadLink} id=${() => data().from}>${title}<//
 					>${() => ` · ${model()} · ${props.home}`}<//
 				>
 			`}

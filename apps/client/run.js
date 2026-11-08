@@ -124,7 +124,7 @@ export function Exchange(props) {
 									style=${() => colorOf(who() ?? '')}
 									><${ThreadLink} id=${() => asked()}>${name}<//></span
 								>${() => `: "${question()}"`}`}
-							><span style="color: var(--ink)"><${ThreadLink} id=${() => asked()}>${title}<//></span
+							><${ThreadLink} id=${() => asked()}>${title}<//
 							>${() => (model() ? ` · ${model()}` : '')}<//
 						><${Show} when=${() => props.answer}
 							>${() => ` · ${['answered', took()].filter(Boolean).join(' ')}`}<//
