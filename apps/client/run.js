@@ -9,7 +9,7 @@ import {
 	For,
 	Show,
 } from 'solid-js'
-import { colorOf, entries, homeBot, threads, titleOf } from './server.js'
+import { bots, colorOf, entries, homeBot, threads, titleOf } from './server.js'
 import { Message, ThreadLink } from './thread.js'
 import { agentTo, authorLabel, doing, messageText, touched } from './agent.js'
 import { Dot } from './dot.js'
@@ -93,6 +93,10 @@ export function Exchange(props) {
 		const to = agentTo(author)
 		return to.name ?? to.model?.split('/').pop() ?? author
 	}
+	// A bot is known by its name; a thread's agent by its thread's title, its model after it
+	const bot = () => bots.some((bot) => bot.name === who())
+	const title = () => !bot() && threads.find((thread) => thread.id === asked())?.title
+	const model = () => agentTo(who() ?? '').model?.split('/').pop() ?? who()
 	const question = () => {
 		const first = (props.step.args.body ?? '').split(/\r?\n/)[0]
 		return first.length > 60 ? `${first.slice(0, 59)}…` : first
@@ -111,10 +115,16 @@ export function Exchange(props) {
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<small>
-						<span class="cross">→ </span>Messaged
-						<span style=${() => colorOf(who() ?? '')}
-							><${ThreadLink} id=${() => asked()}>${name}<//></span
-						>${() => `: "${question()}"`}<${Show} when=${() => props.answer}
+						<span class="cross">→ </span
+						><${Show}
+							when=${title}
+							fallback=${() => html`${() => (bot() ? '' : 'Messaged ')}<span
+									style=${() => colorOf(who() ?? '')}
+									><${ThreadLink} id=${() => asked()}>${name}<//></span
+								>${() => `: "${question()}"`}`}
+							><span style="color: var(--ink)"><${ThreadLink} id=${() => asked()}>${title}<//></span
+							>${() => (model() ? ` · ${model()}` : '')}<//
+						><${Show} when=${() => props.answer}
 							>${() => ` · ${['answered', took()].filter(Boolean).join(' ')}`}<//
 						><${Show} when=${working}> <${Dot} state="working" /><//>
 					</small>

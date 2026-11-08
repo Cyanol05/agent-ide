@@ -35,7 +35,7 @@ import {
 	titleOf,
 	watch,
 } from './server.js'
-import { authorLabel, doing, setDoing } from './agent.js'
+import { agentTo, authorLabel, doing, setDoing } from './agent.js'
 import { answersIn, asksOf, conversations, cutsOf, Exchange, heard, newestCut, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
@@ -544,14 +544,24 @@ export function Message(props) {
 function Crossing(props) {
 	const data = () => props.data
 	const name = () => authorLabel(data().author)
+	// A thread's agent is known by its thread's title, its model after it
+	const title = () => threads.find((thread) => thread.id === data().from)?.title
+	const model = () => agentTo(data().author).model?.split('/').pop() ?? name()
 	return html`
 		<span class="cross">${() => `${props.arrow} `}</span>
 		<${Show}
 			when=${() => homeBot(data().from)?.name === data().author}
 			fallback=${() => html`
-				<span style=${() => colorOf(data().author)}>${name}</span>
-				${() => ` ${props.other} `}
-				<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
+				<${Show}
+					when=${title}
+					fallback=${() => html`
+						<span style=${() => colorOf(data().author)}>${name}</span>
+						${() => ` ${props.other} `}
+						<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
+					`}
+					><span style="color: var(--ink)"><${ThreadLink} id=${() => data().from}>${title}<//></span
+					>${() => ` · ${model()} · ${props.home}`}<//
+				>
 			`}
 		>
 			${() => (props.after ? '' : `${props.home} `)}
