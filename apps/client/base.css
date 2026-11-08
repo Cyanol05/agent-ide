@@ -52,6 +52,13 @@
 	--space-4: 1rem;
 	--space-5: 1.5rem;
 	--space-6: 2rem;
+	/* Three sizes, each on lines of the 4px grid: text to read, ui for rows, panels, fields and buttons, small for run lines, headers and the foot. */
+	--text: 16px;
+	--text-line: 24px;
+	--text-ui: 14px;
+	--text-ui-line: 20px;
+	--text-small: 12px;
+	--text-small-line: 16px;
 	/* The baseline is --space-3, half a message's 24px line; a thread's rows sit on it, and ?grid draws it. */
 	--baseline: var(--space-3);
 	/* Every control and row is a multiple of 4px tall: a control 32px, a small one 20px, a row 36px. */
@@ -97,7 +104,7 @@ a[href] {
 body {
 	padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
 	font:
-		17px/1.6 'iA Writer Quattro S',
+		var(--text) / var(--text-line) 'iA Writer Quattro S',
 		system-ui,
 		sans-serif;
 	margin: 0;
@@ -121,11 +128,13 @@ h2 {
 
 h1 {
 	font-size: 1.6rem;
+	line-height: 2.5rem;
 	margin: 0 0 var(--space-4);
 }
 
 h2 {
 	font-size: 1.1rem;
+	line-height: 1.75rem;
 	margin: 0 0 var(--space-2);
 }
 
@@ -135,10 +144,14 @@ pre {
 	border: 1px solid var(--line);
 	padding: var(--space-2) var(--space-4);
 	border-radius: 6px;
-	font-size: 14px;
+	font-size: var(--text-ui);
 	overflow-x: auto;
 	white-space: pre-wrap;
 	word-break: break-all;
+}
+
+small {
+	font-size: var(--text-small);
 }
 
 code {
@@ -155,8 +168,9 @@ button,
 select,
 textarea {
 	font: inherit;
-	padding: calc(var(--space-2) - 1px) var(--space-2);
-	line-height: 1rem;
+	font-size: var(--text-ui);
+	line-height: var(--text-ui-line);
+	padding: calc(var(--space-1) + 1px) var(--space-2);
 	border: 1px solid var(--line);
 	border-radius: 6px;
 	background: Canvas;
@@ -208,9 +222,9 @@ button.primary {
 
 /* Small: a quiet control's words, in a bar, at a row's end, in an option, in a pane's header. */
 :is(button, input, select).small {
-	font-size: 12px;
-	line-height: var(--space-3);
-	padding: calc(var(--space-1) - 1px) var(--space-2);
+	font-size: var(--text-small);
+	line-height: var(--text-small-line);
+	padding: 1px var(--space-2);
 	white-space: nowrap;
 }
 
@@ -223,7 +237,7 @@ button.send {
 	justify-content: center;
 	align-items: center;
 	border-radius: 50%;
-	font-size: 16px;
+	font-size: var(--text);
 	font-weight: 700;
 }
 
@@ -238,12 +252,13 @@ button.send {
 
 /* A field that wraps writes in 20px lines, so it grows by whole steps. */
 textarea:not(.draft) {
-	line-height: 1.25rem;
+	line-height: var(--text-ui-line);
 }
 
 /* Bare: a field that reads as the text it holds until you point at it or write in it, for a name that is also a heading or a row's title. */
 input.bare {
-	padding: calc(var(--space-2) - 1px) var(--space-1);
+	padding: calc(var(--space-1) + 1px) var(--space-1);
+	font-size: inherit;
 	border-color: transparent;
 	background: none;
 
@@ -259,8 +274,8 @@ textarea.draft {
 	border: 0;
 	background: none;
 	outline: none;
-	font-size: 15px;
-	line-height: calc(2 * var(--baseline));
+	font-size: var(--text);
+	line-height: var(--text-line);
 	color: inherit;
 
 	&.elsewhere {
@@ -289,7 +304,7 @@ input[type='checkbox'] {
 	background: none;
 	color: inherit;
 	font: inherit;
-	line-height: 1.25rem;
+	line-height: var(--text-ui-line);
 	text-decoration: none;
 	text-align: start;
 
@@ -383,7 +398,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 /* The model picker and settings: popovers on desktop, bottom sheets on phones. */
 .popover {
 	position: fixed;
-	line-height: 1.25rem;
+	line-height: var(--text-ui-line);
 	inset: auto;
 	margin: 0;
 	width: min(24rem, calc(100vw - 1rem));
@@ -395,7 +410,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 	border-radius: 14px;
 	background: Canvas;
 	color: var(--ink);
-	font-size: 14px;
+	font-size: var(--text-ui);
 	box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
 }
 
@@ -427,7 +442,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 
 	small {
 		color: var(--mute);
-		font-size: 12px;
+		font-size: var(--text-small);
 	}
 }
 
@@ -459,7 +474,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 			gap: var(--space-2);
 			flex: none;
 			min-height: 2.25rem;
-			font-size: 12px;
+			font-size: var(--text-small);
 			color: var(--mute);
 			padding: var(--space-1) var(--space-2);
 			border-bottom: 1px solid var(--line);

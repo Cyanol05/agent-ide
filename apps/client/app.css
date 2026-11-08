@@ -59,7 +59,7 @@
 	flex-direction: column;
 	align-items: stretch;
 	height: 100%;
-	font-size: 14px;
+	font-size: var(--text-ui);
 }
 
 .client,
@@ -88,7 +88,7 @@
 }
 
 .memory {
-	font-size: 14px;
+	font-size: var(--text-ui);
 
 	ul {
 		list-style: none;
@@ -165,7 +165,7 @@ agent-memory {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		font-size: 14px;
+		font-size: var(--text-ui);
 
 		input {
 			flex: 1;
@@ -174,7 +174,7 @@ agent-memory {
 		span {
 			min-width: 4.5rem;
 			font-family: ui-monospace, monospace;
-			font-size: 12px;
+			font-size: var(--text-small);
 			color: var(--mute);
 		}
 	}
@@ -204,7 +204,7 @@ agent-memory {
 /* The title is a heading that edits in place. */
 .thread-details > h2.thread-title {
 	margin: var(--space-2) var(--space-1) 0;
-	font-size: 15px;
+	font-size: var(--text);
 	font-weight: 600;
 
 	> input {
@@ -219,7 +219,7 @@ agent-memory {
 	gap: var(--space-2);
 	align-items: center;
 	padding: var(--space-1) var(--space-2);
-	font-size: 13px;
+	font-size: var(--text-ui);
 
 	label {
 		display: flex;
@@ -253,7 +253,7 @@ agent-memory {
 	padding: var(--space-2) var(--space-2) var(--space-3);
 	border-right: 1px solid var(--line);
 	overflow-y: auto;
-	font-size: 13px;
+	font-size: var(--text-ui);
 
 	/* A new row reads like the rows it makes, its + where their dot sits. */
 	li.new {
@@ -293,7 +293,7 @@ agent-memory {
 	align-items: center;
 	gap: var(--space-1);
 	border-radius: 8px;
-	font-size: 14px;
+	font-size: var(--text-ui);
 	--step: color-mix(in srgb, CanvasText 4%, transparent);
 
 	/* The row is the control: a link to the thread, or the button that makes one. */
@@ -400,7 +400,7 @@ agent-memory {
 		gap: var(--space-2);
 		margin: var(--space-2) var(--space-4);
 		pointer-events: none;
-		font-size: 13px;
+		font-size: var(--text-ui);
 		font-weight: 600;
 
 		button {
@@ -458,8 +458,8 @@ agent-memory {
 		/* Keep the scrollbar at the edge, with messages aligned to the composer. */
 		padding-inline: max(var(--space-2), calc((100% - var(--chat-width)) / 2));
 		overflow-y: auto;
-		font-size: 15px;
-		line-height: calc(2 * var(--baseline));
+		font-size: var(--text);
+		line-height: var(--text-line);
 
 		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
 		> li,
@@ -499,8 +499,9 @@ agent-memory {
 			small {
 				display: block;
 				color: var(--mute);
-				font-size: 12px;
-				line-height: var(--baseline);
+				font-size: var(--text-small);
+				line-height: var(--text-small-line);
+				margin-bottom: var(--space-2);
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
@@ -533,8 +534,8 @@ agent-memory {
 					tab-size: 2;
 					margin: var(--space-2) 0 0;
 					padding: 0 0 0 var(--space-1);
-					font-size: 13px;
-					line-height: 1.45;
+					font-size: var(--text-small);
+					line-height: var(--text-small-line);
 
 					> li {
 						margin: var(--space-1) 0 0;
@@ -595,7 +596,7 @@ agent-memory {
 
 						pre {
 							margin: var(--space-1) 0 0;
-							font-size: 12px;
+							font-size: var(--text-small);
 							white-space: pre-wrap;
 							overflow-wrap: anywhere;
 							max-height: 20rem;
@@ -620,7 +621,7 @@ agent-memory {
 				border: 0;
 
 				> details > summary {
-					font-size: 12px;
+					font-size: var(--text-small);
 				}
 			}
 
@@ -645,8 +646,8 @@ agent-memory {
 					padding: 0;
 
 					.body {
-						font-size: 13px;
-						line-height: 1.45;
+						font-size: var(--text-small);
+						line-height: var(--text-small-line);
 					}
 				}
 			}
@@ -700,13 +701,13 @@ agent-memory {
 	}
 
 	p.from:not(:empty) {
-		font-size: 12px;
+		font-size: var(--text-small);
 		padding: var(--space-1) var(--space-4) 0;
 		margin: 0;
 	}
 
 	.links {
-		font-size: 12px;
+		font-size: var(--text-small);
 		line-height: var(--baseline);
 		padding: 0 0 var(--space-3);
 	}
@@ -727,6 +728,19 @@ agent-memory {
 
 		hr {
 			margin-block: var(--space-3) calc(var(--space-3) - 1px);
+		}
+
+		> :first-child {
+			margin-top: 0;
+		}
+
+		> :last-child {
+			margin-bottom: 0;
+		}
+
+		/* Inline code in its own face would push its line taller. */
+		:not(pre) > code {
+			line-height: 0;
 		}
 	}
 
@@ -868,8 +882,8 @@ agent-memory {
 
 	pre {
 		padding: var(--space-2) var(--space-2);
-		font-size: 13px;
-		line-height: 1.45;
+		font-size: var(--text-ui);
+		line-height: var(--text-ui-line);
 		white-space: pre;
 		word-break: normal;
 
@@ -935,7 +949,7 @@ body.side .scrim {
 
 body .thread-details {
 	display: block;
-	font-size: 14px;
+	font-size: var(--text-ui);
 	position: fixed;
 	top: 0;
 	bottom: 0;
@@ -960,7 +974,7 @@ body.side .thread-details {
 /* A sheet's own headings, and a bot's parts within it, read as one kind of small label. */
 :is(.thread-details, .thread-list) {
 	:is(h2, h3) {
-		font-size: 12px;
+		font-size: var(--text-small);
 		font-weight: 500;
 		color: var(--mute);
 		margin: var(--space-4) var(--space-2) var(--space-2);
@@ -1034,8 +1048,8 @@ body.side .thread-details {
 .thread-details #members {
 	margin: 0 var(--space-2) var(--space-2);
 	color: var(--mute);
-	font-size: 12px;
-	line-height: 1.3;
+	font-size: var(--text-small);
+	line-height: var(--text-small-line);
 }
 
 /* Instructions follow Tools as Tools follows the thread, not as a first heading. */
@@ -1135,7 +1149,7 @@ body.side .thread-details {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		font-size: 12px;
+		font-size: var(--text-small);
 	}
 }
 
@@ -1169,7 +1183,7 @@ body.side .thread-details {
 
 	h3 {
 		margin: var(--space-2) var(--space-2) var(--space-1);
-		font-size: 12px;
+		font-size: var(--text-small);
 		font-weight: 500;
 		color: var(--mute);
 	}
@@ -1196,11 +1210,11 @@ body.side .thread-details {
 		margin: var(--space-2) var(--space-1) var(--space-1);
 		padding-top: var(--space-2);
 		border-top: 1px solid var(--line);
-		font-size: 13px;
+		font-size: var(--text-ui);
 	}
 
 	pre {
-		font-size: 12px;
+		font-size: var(--text-small);
 	}
 }
 
@@ -1220,7 +1234,7 @@ body.side .thread-details {
 		align-items: center;
 		gap: var(--space-2);
 		margin-top: var(--space-2);
-		font-size: 12px;
+		font-size: var(--text-small);
 		color: var(--mute);
 
 		flex-wrap: wrap;
@@ -1252,7 +1266,7 @@ body.side .thread-details {
 		margin: var(--space-2) var(--space-2) var(--space-1);
 		padding-top: var(--space-2);
 		border-top: 1px solid var(--line);
-		font-size: 12px;
+		font-size: var(--text-small);
 	}
 }
 
@@ -1263,7 +1277,7 @@ body.side .thread-details {
 
 	> p {
 		margin: var(--space-1) var(--space-2) var(--space-2);
-		font-size: 12px;
+		font-size: var(--text-small);
 		color: var(--mute);
 
 		b {
@@ -1433,8 +1447,8 @@ body.resizing {
 		flex-basis: 100%;
 		margin-top: var(--space-1);
 		color: var(--mute);
-		font-size: 12px;
-		line-height: 1.4;
+		font-size: var(--text-small);
+		line-height: var(--text-small-line);
 	}
 }
 
@@ -1456,7 +1470,7 @@ body.resizing {
 	border-radius: 10px;
 	background: Canvas;
 	color: var(--ink);
-	font-size: 14px;
+	font-size: var(--text-ui);
 	box-shadow: 0 8px 30px rgb(0 0 0 / 0.2);
 
 	button {
@@ -1569,13 +1583,13 @@ body.resizing {
 
 	small {
 		color: var(--mute);
-		font-size: 12px;
+		font-size: var(--text-small);
 	}
 }
 
 /* Where compaction cut: a quiet line across the thread, not a message. */
 .thread > ul > li.cut {
-	font-size: 12px;
+	font-size: var(--text-small);
 	text-align: center;
 	padding: var(--space-2) 0;
 }
@@ -1584,7 +1598,7 @@ body.resizing {
 .thread > ul > li.line {
 	display: flex;
 	gap: var(--space-2);
-	font-size: 12px;
+	font-size: var(--text-small);
 
 	small {
 		flex: none;
@@ -1646,7 +1660,7 @@ body.resizing {
 			pointer-events: none;
 		}
 
-		font-size: 13px;
+		font-size: var(--text-ui);
 
 		> button:first-child {
 			width: var(--control);

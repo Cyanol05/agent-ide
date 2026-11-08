@@ -177,7 +177,7 @@ body:not(.chat) {
 			background: none;
 			color: inherit;
 			font: inherit;
-			line-height: 1.25rem;
+			line-height: var(--text-ui-line);
 			font-weight: 700;
 		}
 
@@ -309,7 +309,7 @@ body:not(.chat) {
 					background: none;
 					color: inherit;
 					font: inherit;
-					line-height: 1.25rem;
+					line-height: var(--text-ui-line);
 
 					> .dot {
 						order: 0;
@@ -395,7 +395,7 @@ body:not(.chat) {
 
 			&:not(:first-child) {
 				color: var(--mute);
-				font-size: 13px;
+				font-size: var(--text-ui);
 			}
 
 			> span.name {
