@@ -149,12 +149,12 @@ check(
 	Boolean(
 		await until(
 			async () =>
-				records.size === 1 && record('')?.state === 'idle' && record('')?.msg.includes('offline'),
+				records.size === 1 && record('')?.state === 'error' && record('')?.msg.includes('offline'),
 			8000,
 			50,
 		),
 	),
-	'server gone: only the root is left, offline',
+	'server gone: only the root is left, an error',
 	JSON.stringify([...records]),
 )
 
