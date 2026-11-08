@@ -1,5 +1,6 @@
 /**
- * A bot is one name in many threads: a home thread, the agent it joins as, and instructions. Ask `ada` anywhere and an
+ * A bot is one name in many threads: a home thread, the agent it joins as, instructions, and the hue it's shown in if
+ * someone picked one. Ask `ada` anywhere and an
  * agent named ada joins as that; at home, hands off, it rewrites its own instructions with the `bot` tool. MODULES=+bots
  */
 import { obj, opt, str } from '@earendil-works/pi-schema'
@@ -7,7 +8,7 @@ import { defineDoc, defineExtension, defineTool } from '@earendil-works/pi-durab
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
 import { AGENT, agentTo } from '../util.js'
 
-/** A bot's name → { home */
+/** A bot's name → { home, to, instructions, color? }: color is a hue someone picked */
 const Bots = defineDoc({
 	kind: 'agent-ide.bots',
 	version: 1,
@@ -22,7 +23,7 @@ export function server(core) {
 	/** Each bot; whether it's busy is its home thread's family's status, on the thread list */
 	const list = async () => Object.entries(await bots()).map(([name, bot]) => ({ name, ...bot }))
 
-	async function change({ name, to, instructions }) {
+	async function change({ name, to, instructions, color }) {
 		if (typeof name !== 'string' || !/^[\w.-]{1,40}$/.test(name))
 			throw new Error('A name is 1 to 40 letters, digits, _ . or -')
 		if ((await core.known())[name]) throw new Error(`${name} is a runner; pick another name`)
@@ -30,13 +31,15 @@ export function server(core) {
 			throw new Error(`${AGENT} is what every thread calls its own; pick another name`)
 		if (instructions !== undefined && typeof instructions !== 'string')
 			throw new Error('instructions is text')
+		if (color !== undefined && color !== null && !(Number.isFinite(color) && color >= 0 && color < 360))
+			throw new Error('color is a hue from 0 to 360, or null for the one it would have')
 		if (to !== undefined) {
 			const { name: _, ...agent } = await core.address(typeof to === 'string' ? agentTo(to) : to)
 			to = agent
 		}
-		return { name, to, instructions }
+		return { name, to, instructions, color }
 	}
-	async function write(tx, { name, to, instructions }) {
+	async function write(tx, { name, to, instructions, color }) {
 		const all = await tx.doc(Bots)
 		if (!all[name]) {
 			if (!to) throw new Error(`${name} is new: say what it runs as, to: model@runner`)
@@ -46,6 +49,8 @@ export function server(core) {
 			if (to) all[name].to = to
 			if (instructions !== undefined) all[name].instructions = instructions
 		}
+		if (color === null) delete all[name].color
+		else if (color !== undefined) all[name].color = color
 		return JSON.parse(JSON.stringify({ name, ...all[name] }))
 	}
 

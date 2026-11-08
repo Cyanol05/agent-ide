@@ -86,7 +86,7 @@ Off: auto-title, web-search and matrix.
 - **talk** gives agents `post` and `threads`, to ask other threads and read them. A thread answers the thread that started it on its own; anywhere else, an agent answers with `post`.
 - **memory** summarizes messages so agents can keep working in long threads. It's used by default in threads with bots; you can switch it on or off for any thread.
 - **director** asks the bots a message @mentions, one after another. It can also pick who answers when nobody's named.
-- **bots** lets you create named bots and give them instructions.
+- **bots** lets you create named bots and give them instructions and a colour. A bot without a picked colour (`color`, a hue) gets one from the order bots were made.
 - **context** hands agents the AGENTS.md and skills in their folder, the way pi does.
 - **status** shows what agents are doing on a runner's terminal.
 - **auto-title** turns a thread's first message into a short title.
