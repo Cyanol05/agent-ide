@@ -162,28 +162,11 @@ export function Composer(props) {
 			.filter((file) => file.kind !== 'string')
 			.map((file) => file.getAsFile?.() ?? file)
 			.filter((file) => file?.type.startsWith('image/'))
-	/** A line that's only a slash word: /compact runs it here, same as the context meter's button; anything else says so */
-	const slashCommand = async (body) => {
-		const word = body.trim().match(/^\/(\S+)$/)?.[1]
-		if (!word) return false
-		if (word !== 'compact') {
-			report(new Error(`/${word} isn't a command`))
-			return true
-		}
-		if (!props.thread) {
-			report(new Error('Nothing to compact yet'))
-			return true
-		}
-		changeDraft((draft) => void (draft.draft = ''))
-		await compactNow()
-		return true
-	}
 	const submit = async (event) => {
 		event.preventDefault()
 		const free = directed(props.thread)
 		if (draft().sending || (!free && !recipients(props.thread).length)) return
 		if (!draft().draft.trim() && !draft().images.length) return
-		if (await slashCommand(draft().draft)) return
 		const body = draft().draft,
 			images = snapshot(draft().images),
 			to = snapshot(recipients(props.thread))

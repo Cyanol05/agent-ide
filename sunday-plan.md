@@ -10,7 +10,6 @@
 
 ## v1, in flight
 - Memory per thread: on by default in bot threads, `memory.threads` setting.
-- Slash commands like /compact do nothing in a thread (#35).
 
 ## v1, Oskar
 - Homepage copy against the README (Sol's list, thread 40837).
@@ -19,6 +18,7 @@
 - Phone checks: top-bar blur, Send arrow, panel ×, Enter behavior.
 
 ## After v1
+- pi slash commands and skills from the composer (#35)
 - Bench: scored scenarios on Luna low, not judged by eye.
 - Memory notes, a folder per bot (#39).
 - Trim the client: client.css ~3000 lines, client ~7300.
