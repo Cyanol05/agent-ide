@@ -36,6 +36,9 @@
 /* Light or dark is the browser's: every grey is ink mixed into the page. */
 :root {
 	color-scheme: light dark;
+	--font-text: 'iA Writer Quattro S', system-ui, sans-serif;
+	--font-ui: 'iA Writer Quattro S', system-ui, sans-serif;
+	--font-mono: ui-monospace, monospace;
 	--ink: CanvasText;
 	--mute: color-mix(in srgb, CanvasText 58%, Canvas);
 	--line: color-mix(in srgb, CanvasText 14%, Canvas);
@@ -103,10 +106,7 @@ a[href] {
 
 body {
 	padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
-	font:
-		var(--text) / var(--text-line) 'iA Writer Quattro S',
-		system-ui,
-		sans-serif;
+	font: var(--text) / var(--text-line) var(--font-text);
 	margin: 0;
 	color: var(--ink);
 	background: Canvas;
@@ -155,7 +155,7 @@ small {
 }
 
 code {
-	font-family: ui-monospace, monospace;
+	font-family: var(--font-mono);
 	font-size: 0.85em;
 }
 
@@ -168,6 +168,7 @@ button,
 select,
 textarea {
 	font: inherit;
+	font-family: var(--font-ui);
 	font-size: var(--text-ui);
 	line-height: var(--text-ui-line);
 	padding: calc(var(--space-1) + 1px) var(--space-2);

@@ -24,7 +24,11 @@
 		"modules",
 		"apps/client",
 		"remote.js",
-		"README.md"
+		"README.md",
+		"!apps/client/fonts/BerkeleyMono*",
+		"!apps/client/fonts/concourse*",
+		"!apps/client/fonts/triplicate*",
+		"!apps/client/fonts/Iosevka*"
 	],
 	"dependencies": {
 		"@earendil-works/chord": "^1.5.0",
