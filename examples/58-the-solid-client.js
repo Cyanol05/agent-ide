@@ -1,5 +1,4 @@
 /** Solid and the walkthrough's diagrams come from this server, with no build step or CDN */
-import { writeFile, unlink } from 'node:fs/promises'
 import { base, check, done, server } from './lib.js'
 
 await server()
@@ -36,16 +35,6 @@ for (const font of fonts) {
 		response.ok && response.headers.get('content-type') === 'font/woff2' && magic === 'wOF2',
 		font,
 	)
-}
-for (const [extension, type] of [['woff', 'font/woff'], ['ttc', 'font/collection']]) {
-	const file = new URL(`../apps/client/font-example.${extension}`, import.meta.url)
-	await writeFile(file, 'font example')
-	try {
-		const response = await fetch(`${base}/font-example.${extension}`)
-		check(response.ok && response.headers.get('content-type') === type, `${extension} fonts are served`)
-	} finally {
-		await unlink(file)
-	}
 }
 const entry = '/packages/pele/pele.js'
 const pele = await fetch(base + entry)

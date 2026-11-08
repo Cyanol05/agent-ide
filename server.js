@@ -1477,8 +1477,6 @@ const types = {
 	'.js': 'text/javascript; charset=utf-8',
 	'.css': 'text/css; charset=utf-8',
 	'.woff2': 'font/woff2',
-	'.woff': 'font/woff',
-	'.ttc': 'font/collection',
 	'.png': 'image/png',
 	'.webmanifest': 'application/manifest+json',
 }

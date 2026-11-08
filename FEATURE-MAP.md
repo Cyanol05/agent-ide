@@ -78,7 +78,6 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   panes.js, popover.js, sure.js, notice.js, dot.js   list/detail frame, popover placement,
                          two-press button, error line, status dot
   images.js, markdown.js image shrinking to pi's limits; message markdown
-  fonts.css              optional locally installed font faces
   base.css               tokens, reset, every control's look (buttons and their variants), popover, rows, panes, status dot
   app.css                the chat's layout: list, threads, messages, composer, sheet, picker, settings, phone
   walkthrough.css        the story page and the live system's boxes and wires, all under body:not(.chat)
