@@ -91,25 +91,25 @@
 
 	ul {
 		list-style: none;
-		margin: 0.5rem 0;
+		margin: var(--space-2) 0;
 		padding: 0;
 	}
 
 	li {
-		padding: 0.3rem 0.5rem;
+		padding: var(--space-1) var(--space-2);
 		border-left: 2px solid var(--line);
-		margin: 0.2rem 0;
+		margin: var(--space-1) 0;
 		cursor: pointer;
 
 		small {
 			color: var(--mute);
 			font-family: ui-monospace, monospace;
-			margin-right: 0.4rem;
+			margin-right: var(--space-2);
 		}
 	}
 
 	ul ul {
-		margin-left: 1rem;
+		margin-left: var(--space-4);
 	}
 
 	li {
@@ -163,7 +163,7 @@ agent-memory {
 	.room {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-2);
 		font-size: 14px;
 
 		input {
@@ -183,7 +183,7 @@ agent-memory {
 		display: flex;
 		gap: 2px;
 		height: 1.6rem;
-		margin: 0.5rem 0;
+		margin: var(--space-2) 0;
 
 		span {
 			border-radius: 3px;
@@ -202,7 +202,7 @@ agent-memory {
 
 /* The title is a heading that edits in place. */
 .thread-details > h2.thread-title {
-	margin: 0.4rem 0.3rem 0;
+	margin: var(--space-2) var(--space-1) 0;
 	font-size: 15px;
 	font-weight: 600;
 
@@ -215,14 +215,14 @@ agent-memory {
 /* A checkbox and the list it writes; the list is a field you can read and type in. Nested inside a bot's own panel too, not only the thread-level one. */
 .thread-details .hands {
 	display: flex;
-	gap: 0.6rem;
+	gap: var(--space-3);
 	align-items: center;
-	padding: 0.25rem 0.6rem;
+	padding: var(--space-1) var(--space-3);
 	font-size: 13px;
 
 	label {
 		display: flex;
-		gap: 0.35rem;
+		gap: var(--space-2);
 		align-items: center;
 		white-space: nowrap;
 		cursor: pointer;
@@ -249,7 +249,7 @@ agent-memory {
 	align-self: stretch;
 	min-height: 0;
 	/* The same inset on every side as the composer's own margin, so its foot row floats the same distance off the bottom edge */
-	padding: 0.6rem;
+	padding: var(--space-3);
 	border-right: 1px solid var(--line);
 	overflow-y: auto;
 	font-size: 13px;
@@ -290,7 +290,7 @@ agent-memory {
 	/* A grid row is as wide as its title otherwise; this keeps the ellipsis and no sideways scroll. */
 	min-width: 0;
 	align-items: center;
-	gap: 0.1rem;
+	gap: var(--space-1);
 	border-radius: 8px;
 	font-size: 14px;
 	--step: color-mix(in srgb, CanvasText 4%, transparent);
@@ -303,12 +303,12 @@ agent-memory {
 
 	/* A new bot is named in the row its + made: a field where a row's title sits, and Create at its quiet end. */
 	> form.row {
-		padding-block: 0.1rem;
+		padding-block: var(--space-1);
 
 		> input {
 			flex: 1;
 			min-width: 0;
-			margin-left: 0.65rem;
+			margin-left: var(--space-3);
 		}
 
 		> button {
@@ -322,7 +322,7 @@ agent-memory {
 
 	> button.archive {
 		margin-left: auto;
-		margin-right: 0.4rem;
+		margin-right: var(--space-2);
 		visibility: hidden;
 		flex: none;
 	}
@@ -396,8 +396,8 @@ agent-memory {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.4rem;
-		margin: 0.5rem 0.9rem;
+		gap: var(--space-2);
+		margin: var(--space-2) var(--space-4);
 		pointer-events: none;
 		font-size: 13px;
 		font-weight: 600;
@@ -451,9 +451,10 @@ agent-memory {
 		min-height: 0;
 		list-style: none;
 		margin: 0;
-		padding-block: max(3.4rem, var(--thread-top, 0px)) calc(var(--compose-height, 7rem) + 2.5rem);
+		padding-block: max(3.4rem, var(--thread-top, 0px))
+			calc(var(--compose-height, 7rem) + var(--space-6));
 		/* Keep the scrollbar at the edge, with messages aligned to the composer. */
-		padding-inline: max(0.6rem, calc((100% - var(--chat-width)) / 2));
+		padding-inline: max(var(--space-3), calc((100% - var(--chat-width)) / 2));
 		overflow-y: auto;
 		font-size: 15px;
 		line-height: 1.6;
@@ -461,13 +462,13 @@ agent-memory {
 		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
 		> li,
 		> li.exchange .said > li {
-			margin: 1.5rem 0 0;
+			margin: var(--space-5) 0 0;
 			white-space: pre-wrap;
 			overflow-wrap: anywhere;
 			position: relative;
 
 			&:first-child {
-				margin-top: 0.6rem;
+				margin-top: var(--space-3);
 			}
 
 			/* The room under what you just sent, which the answer fills. */
@@ -476,7 +477,7 @@ agent-memory {
 			}
 
 			&.same {
-				margin-top: 0.8rem;
+				margin-top: var(--space-3);
 
 				> small {
 					display: none;
@@ -488,7 +489,7 @@ agent-memory {
 				color: var(--mute);
 				font-size: 12px;
 				line-height: 1.3;
-				margin-bottom: 0.3rem;
+				margin-bottom: var(--space-1);
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
@@ -498,7 +499,7 @@ agent-memory {
 				margin-left: auto;
 				width: fit-content;
 				max-width: min(85%, 32rem);
-				padding: 0.6rem 0.9rem;
+				padding: var(--space-3) var(--space-4);
 				border-radius: 14px;
 				background: var(--tint);
 
@@ -519,13 +520,13 @@ agent-memory {
 				.steps {
 					list-style: none;
 					tab-size: 2;
-					margin: 0.35rem 0 0;
-					padding: 0 0 0 0.2rem;
+					margin: var(--space-2) 0 0;
+					padding: 0 0 0 var(--space-1);
 					font-size: 13px;
 					line-height: 1.45;
 
 					> li {
-						margin: 0.25rem 0 0;
+						margin: var(--space-1) 0 0;
 					}
 
 					> li.said {
@@ -579,10 +580,10 @@ agent-memory {
 					}
 
 					.whole {
-						padding-left: 1.4rem;
+						padding-left: var(--space-5);
 
 						pre {
-							margin: 0.3rem 0 0;
+							margin: var(--space-1) 0 0;
 							font-size: 12px;
 							white-space: pre-wrap;
 							overflow-wrap: anywhere;
@@ -591,7 +592,7 @@ agent-memory {
 						}
 
 						.body {
-							margin-top: 0.3rem;
+							margin-top: var(--space-1);
 						}
 					}
 				}
@@ -629,7 +630,7 @@ agent-memory {
 
 				.said {
 					list-style: none;
-					margin: 0.35rem 0 0 1em;
+					margin: var(--space-2) 0 0 1em;
 					padding: 0;
 
 					.body {
@@ -671,8 +672,8 @@ agent-memory {
 
 			details > .body {
 				display: block;
-				margin-top: 0.35rem;
-				padding: 0.7rem 0.9rem;
+				margin-top: var(--space-2);
+				padding: var(--space-3) var(--space-4);
 				border: 1px solid var(--line);
 				border-radius: 12px;
 			}
@@ -689,24 +690,24 @@ agent-memory {
 
 	p.from:not(:empty) {
 		font-size: 12px;
-		padding: 0.2rem 1.2rem 0;
+		padding: var(--space-1) var(--space-4) 0;
 		margin: 0;
 	}
 
 	.links {
 		font-size: 12px;
-		padding: 0 0 0.35rem;
+		padding: 0 0 var(--space-2);
 	}
 
 	> ul > li > .links:not(:first-child) {
-		padding: 0.4rem 0 0;
+		padding: var(--space-2) 0 0;
 	}
 
 	form {
 		/* The composer: a rounded box to write in, and under it a quiet bar with what's coming and whom it asks. */
 		width: calc(100% - 1.2rem);
 		max-width: var(--chat-width);
-		margin: 0 auto 0.6rem;
+		margin: 0 auto var(--space-3);
 
 		/* Its own height reserves room in the list, even as the draft grows. */
 		&.compose {
@@ -721,8 +722,8 @@ agent-memory {
 			--edge-gap: calc((var(--field) - 1.6rem) / 2);
 			display: flex;
 			align-items: flex-end;
-			gap: 0.3rem;
-			padding: 0.25rem calc(0.25rem + var(--edge-gap)) 0.25rem 0.8rem;
+			gap: var(--space-1);
+			padding: var(--space-1) calc(var(--space-1) + var(--edge-gap)) var(--space-1) var(--space-3);
 			border: 1px solid var(--line);
 			border-radius: 12px;
 			background: var(--tint);
@@ -751,15 +752,15 @@ agent-memory {
 		.bar {
 			display: flex;
 			align-items: center;
-			gap: 0.1rem;
-			padding: 0 0.1rem;
+			gap: var(--space-1);
+			padding: 0 var(--space-1);
 			min-height: 2rem;
 		}
 
 		.pick {
 			display: flex;
 			align-items: center;
-			gap: 0.4rem;
+			gap: var(--space-2);
 			min-width: 0;
 			margin-left: auto;
 
@@ -791,7 +792,7 @@ agent-memory {
 	blockquote,
 	pre,
 	table {
-		margin: 0.5rem 0;
+		margin: var(--space-2) 0;
 	}
 
 	h1,
@@ -802,7 +803,7 @@ agent-memory {
 	h6 {
 		font-size: 1em;
 		line-height: inherit;
-		margin: 0.9rem 0 0.3rem;
+		margin: var(--space-4) 0 var(--space-1);
 	}
 
 	h1 {
@@ -815,7 +816,7 @@ agent-memory {
 
 	ul,
 	ol {
-		padding-left: 1.4rem;
+		padding-left: var(--space-5);
 	}
 
 	li > p {
@@ -823,7 +824,7 @@ agent-memory {
 	}
 
 	blockquote {
-		padding-left: 0.8rem;
+		padding-left: var(--space-3);
 		border-left: 2px solid var(--line);
 		color: var(--mute);
 	}
@@ -835,7 +836,7 @@ agent-memory {
 	}
 
 	pre {
-		padding: 0.6rem 0.8rem;
+		padding: var(--space-3) var(--space-3);
 		font-size: 13px;
 		line-height: 1.45;
 		white-space: pre;
@@ -858,7 +859,7 @@ agent-memory {
 
 	th,
 	td {
-		padding: 0.25rem 0.6rem;
+		padding: var(--space-1) var(--space-3);
 		border: 1px solid var(--line);
 		text-align: start;
 	}
@@ -870,7 +871,7 @@ agent-memory {
 	hr {
 		border: 0;
 		border-top: 1px solid var(--line);
-		margin: 0.8rem 0;
+		margin: var(--space-3) 0;
 	}
 
 	img {
@@ -913,7 +914,8 @@ body .thread-details {
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	background: Canvas;
-	padding: calc(0.6rem + env(safe-area-inset-top)) 0.6rem calc(1rem + env(safe-area-inset-bottom));
+	padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3)
+		calc(var(--space-4) + env(safe-area-inset-bottom));
 	visibility: hidden;
 	border-left: 1px solid var(--line);
 	transform: translateX(100%);
@@ -930,22 +932,22 @@ body.side .thread-details {
 		font-size: 12px;
 		font-weight: 500;
 		color: var(--mute);
-		margin: 1rem 0.6rem 0.4rem;
+		margin: var(--space-4) var(--space-3) var(--space-2);
 
 		&:first-child {
-			margin-top: 0.4rem;
+			margin-top: var(--space-2);
 		}
 	}
 
 	.hands {
-		padding: 0 0.6rem;
+		padding: 0 var(--space-3);
 	}
 }
 
 /* A bot's part of the sheet, and its + new, sized like the hands toggle and its tools. */
 .thread-details .bot > :is(textarea, input, button),
 .thread-details .bot > .sure > * {
-	margin: 0 0.6rem;
+	margin: 0 var(--space-3);
 }
 
 /* Its model opens the composer's picker. */
@@ -977,8 +979,8 @@ body.side .thread-details {
 .thread-details > .page-head {
 	display: flex;
 	align-items: center;
-	gap: 0.4rem;
-	margin: 0 0.6rem 0.4rem;
+	gap: var(--space-2);
+	margin: 0 var(--space-3) var(--space-2);
 
 	h2 {
 		margin: 0;
@@ -999,7 +1001,7 @@ body.side .thread-details {
 
 /* Names as a message's author line has them. */
 .thread-details #members {
-	margin: 0 0.6rem 0.4rem;
+	margin: 0 var(--space-3) var(--space-2);
 	color: var(--mute);
 	font-size: 12px;
 	line-height: 1.3;
@@ -1007,17 +1009,17 @@ body.side .thread-details {
 
 /* Instructions follow Tools as Tools follows the thread, not as a first heading. */
 .thread-details .bot > h3:first-child {
-	margin-top: 1rem;
+	margin-top: var(--space-4);
 }
 
 .thread-details .bot > .sure > .forget {
-	margin-top: 1rem;
+	margin-top: var(--space-4);
 }
 
 .thread-list > h2 {
 	display: flex;
 	justify-content: space-between;
-	margin-inline: 0.4rem;
+	margin-inline: var(--space-2);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1073,7 +1075,7 @@ body.side .thread-details {
 .thread-pill {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: var(--space-2);
 	min-width: 0;
 	max-width: 60%;
 	height: 2.125rem;
@@ -1094,7 +1096,7 @@ body.side .thread-details {
 .model {
 	display: flex;
 	align-items: start;
-	gap: 0.6rem;
+	gap: var(--space-3);
 	width: 100%;
 	text-align: left;
 
@@ -1109,7 +1111,7 @@ body.side .thread-details {
 .model-controls {
 	> ul > li + li {
 		border-top: 1px solid var(--line);
-		padding-top: 0.4rem;
+		padding-top: var(--space-2);
 	}
 
 	.who {
@@ -1124,7 +1126,7 @@ body.side .thread-details {
 
 	.models {
 		display: grid;
-		margin-top: 0.5rem;
+		margin-top: var(--space-2);
 	}
 
 	/* A model is a row; the one asked carries a check. */
@@ -1135,7 +1137,7 @@ body.side .thread-details {
 	}
 
 	h3 {
-		margin: 0.5rem 0.5rem 0.2rem;
+		margin: var(--space-2) var(--space-2) var(--space-1);
 		font-size: 12px;
 		font-weight: 500;
 		color: var(--mute);
@@ -1144,8 +1146,8 @@ body.side .thread-details {
 	.thinking {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.15rem;
-		padding: 0 0.3rem 0.3rem;
+		gap: var(--space-1);
+		padding: 0 var(--space-1) var(--space-1);
 	}
 }
 
@@ -1154,14 +1156,14 @@ body.side .thread-details {
 	.recipients {
 		display: block;
 		width: 100%;
-		margin: 0.4rem 0 0;
+		margin: var(--space-2) 0 0;
 	}
 }
 
 .runner-list {
 	.connect-runner {
-		margin: 0.5rem 0.2rem 0.2rem;
-		padding-top: 0.7rem;
+		margin: var(--space-2) var(--space-1) var(--space-1);
+		padding-top: var(--space-3);
 		border-top: 1px solid var(--line);
 		font-size: 13px;
 	}
@@ -1185,8 +1187,8 @@ body.side .thread-details {
 	.option {
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
-		margin-top: 0.35rem;
+		gap: var(--space-2);
+		margin-top: var(--space-2);
 		font-size: 12px;
 		color: var(--mute);
 
@@ -1208,28 +1210,28 @@ body.side .thread-details {
 	}
 
 	input[type='checkbox'] {
-		margin-top: 0.35rem;
+		margin-top: var(--space-2);
 	}
 
 	.save {
-		margin: 0.6rem 0.4rem 0.1rem;
+		margin: var(--space-3) var(--space-2) var(--space-1);
 	}
 
 	.pane-body > p {
-		margin: 0.5rem 0.4rem 0.2rem;
-		padding-top: 0.6rem;
+		margin: var(--space-2) var(--space-2) var(--space-1);
+		padding-top: var(--space-3);
 		border-top: 1px solid var(--line);
 		font-size: 12px;
 	}
 }
 
 .memory-model {
-	margin-bottom: 0.4rem;
-	padding-bottom: 0.4rem;
+	margin-bottom: var(--space-2);
+	padding-bottom: var(--space-2);
 	border-bottom: 1px solid var(--line);
 
 	> p {
-		margin: 0.15rem 0.5rem 0.6rem;
+		margin: var(--space-1) var(--space-2) var(--space-3);
 		font-size: 12px;
 		color: var(--mute);
 
@@ -1259,7 +1261,7 @@ body.side .thread-details {
 	}
 
 	.sure small {
-		margin-left: 1.15rem;
+		margin-left: var(--space-4);
 	}
 }
 
@@ -1283,7 +1285,7 @@ connect-runner {
 .connect-runner {
 	form {
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--space-2);
 
 		input {
 			flex: 1;
@@ -1296,11 +1298,11 @@ connect-runner {
 
 	.command {
 		position: relative;
-		margin-top: 0.75rem;
+		margin-top: var(--space-3);
 
 		pre {
 			margin: 0;
-			padding-right: 4.5rem;
+			padding-right: calc(2 * var(--space-6));
 		}
 
 		button {
@@ -1311,7 +1313,7 @@ connect-runner {
 	}
 
 	p {
-		margin: 0.5rem 0 0;
+		margin: var(--space-2) 0 0;
 	}
 
 	.bad {
@@ -1327,10 +1329,10 @@ connect-runner {
 	flex: none;
 	display: flex;
 	align-items: center;
-	gap: 0.3rem;
+	gap: var(--space-1);
 	/* Same height and padding as the composer's bar below it, so the two rows share a baseline across the divider. */
 	height: 2rem;
-	padding: 0 2.2rem 0 0;
+	padding: 0 var(--space-6) 0 0;
 	background: Canvas;
 }
 
@@ -1338,7 +1340,7 @@ connect-runner {
 	flex: none;
 	display: flex;
 	align-items: center;
-	gap: 0.4rem;
+	gap: var(--space-2);
 	min-width: 0;
 	height: 1.6rem;
 
@@ -1360,7 +1362,7 @@ connect-runner {
 	max-height: min(40dvh, 20rem);
 	border: 1px solid var(--line);
 	border-radius: 14px;
-	padding: 0.4rem;
+	padding: var(--space-2);
 }
 
 /* The thread list's right edge drags; a line shows where while you hover or drag. */
@@ -1396,7 +1398,7 @@ body.resizing {
 	small {
 		display: block;
 		flex-basis: 100%;
-		margin-top: 0.3rem;
+		margin-top: var(--space-1);
 		color: var(--mute);
 		font-size: 12px;
 		line-height: 1.4;
@@ -1412,10 +1414,10 @@ body.resizing {
 	translate: -50% 0;
 	display: flex;
 	align-items: center;
-	gap: 0.6rem;
+	gap: var(--space-3);
 	max-width: min(32rem, calc(100vw - 2rem));
 	margin: 0;
-	padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+	padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
 	border: 1px solid var(--line);
 	border-left: 3px solid var(--wait);
 	border-radius: 10px;
@@ -1446,9 +1448,9 @@ body.resizing {
 .thread form ul.images {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.4rem;
+	gap: var(--space-2);
 	list-style: none;
-	margin: 0 0 0.4rem;
+	margin: 0 0 var(--space-2);
 	padding: 0;
 
 	li {
@@ -1475,8 +1477,8 @@ body.resizing {
 .thread > ul > li div.images {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.4rem;
-	margin-top: 0.4rem;
+	gap: var(--space-2);
+	margin-top: var(--space-2);
 
 	a {
 		max-width: 100%;
@@ -1499,8 +1501,8 @@ body.resizing {
 /* The thread as a tape: before the cut faint, a segment per memory line; after it solid, read word for word. */
 .tape {
 	display: grid;
-	gap: 0.35rem;
-	padding: 0.45rem 0.5rem;
+	gap: var(--space-2);
+	padding: var(--space-2) var(--space-2);
 
 	.reel {
 		display: flex;
@@ -1542,13 +1544,13 @@ body.resizing {
 .thread > ul > li.cut {
 	font-size: 12px;
 	text-align: center;
-	padding: 0.4rem 0;
+	padding: var(--space-2) 0;
 }
 
 /* A message folded into the memory line the agent reads instead. */
 .thread > ul > li.line {
 	display: flex;
-	gap: 0.6rem;
+	gap: var(--space-3);
 	font-size: 12px;
 
 	small {
@@ -1594,11 +1596,11 @@ body.resizing {
 		display: grid;
 		grid-template-columns: 1fr auto 1fr;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--space-2);
 		position: fixed;
 		inset: 0 0 auto;
 		z-index: 6;
-		padding: calc(0.5rem + env(safe-area-inset-top)) 0.7rem 0.5rem;
+		padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-3) var(--space-2);
 
 		/* A slight wash from the very top, gone by the pill's middle: a message fades out as it slides out, and reads solid until then. */
 		&::before {
@@ -1653,16 +1655,16 @@ body.resizing {
 
 		> ul {
 			/* A touch more air either side than a mouse needs, the composer keeping pace below. */
-			padding-inline: 0.8rem;
+			padding-inline: var(--space-3);
 			/* The bar, and a breath under it, so the top message reads whole. */
-			padding-top: calc(var(--bar-height) + 0.6rem + var(--thread-top, 0px));
+			padding-top: calc(var(--bar-height) + var(--space-3) + var(--thread-top, 0px));
 			overscroll-behavior: contain;
 		}
 
 		/* The same composer as on a big screen, edge to edge and clear of the home bar. */
 		form.compose {
 			width: calc(100% - 1.6rem);
-			margin-bottom: calc(0.9rem + env(safe-area-inset-bottom));
+			margin-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
 		}
 	}
 
@@ -1675,7 +1677,7 @@ body.resizing {
 		overscroll-behavior: contain;
 		border: 0;
 		background: Canvas;
-		padding: calc(0.6rem + env(safe-area-inset-top)) 0.6rem 0;
+		padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3) 0;
 	}
 
 	.threads {
@@ -1700,7 +1702,7 @@ body.resizing {
 	}
 
 	.list-foot {
-		margin: auto -0.6rem 0;
+		margin: auto calc(-1 * var(--space-3)) 0;
 	}
 
 	.list-edge {
