@@ -1,6 +1,6 @@
 /** Details and tools for the thread on screen, or the one about to start. */
 import html from '@solidjs/html'
-import { createEffect, createSignal, For, refresh, Show } from 'solid-js'
+import { createEffect, createSignal, For, Show } from 'solid-js'
 import {
 	api,
 	colorOf,
@@ -10,6 +10,7 @@ import {
 	homeBot,
 	newThreadTools,
 	people,
+	reloadThreads,
 	setNewThreadTools,
 	threads,
 } from './server.js'
@@ -140,7 +141,7 @@ function Title(props) {
 		setError('')
 		try {
 			await api(`/api/threads/${props.thread}/title`, { title: next })
-			refresh(threads)
+			reloadThreads()
 		} catch (failure) {
 			setError(failure.message)
 			field.value = title()
@@ -181,7 +182,7 @@ function Tools(props) {
 		try {
 			if (props.thread) {
 				await api(`/api/threads/${props.thread}/tools`, { tools: list?.length ? list : null })
-				refresh(threads)
+				reloadThreads()
 			} else setNewThreadTools(list?.length ? list : null)
 		} catch (failure) {
 			setError(failure.message)
@@ -192,7 +193,7 @@ function Tools(props) {
 		setError('')
 		try {
 			await api(`/api/threads/${props.thread}/memory`, { on })
-			refresh(threads)
+			reloadThreads()
 		} catch (failure) {
 			setError(failure.message)
 		}

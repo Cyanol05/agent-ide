@@ -12,7 +12,6 @@ import {
 	createStore,
 	For,
 	onSettled,
-	refresh,
 	Show,
 	snapshot,
 } from 'solid-js'
@@ -26,6 +25,7 @@ import {
 	entries,
 	homeBot,
 	openThread,
+	reloadBots,
 	runners,
 	sending,
 	server,
@@ -713,7 +713,7 @@ export function choose(to, always = true, thread = current()) {
 	const bot = homeBot(thread)
 	if (bot)
 		return api('/api/bots', { name: bot.name, to: { ...to, name: undefined } })
-			.then(() => refresh(bots))
+			.then(() => reloadBots())
 			.catch(report)
 	if (always || agent(thread)?.runner === to.runner)
 		setPick(to, snapshot(askedBots(thread)), null, thread)

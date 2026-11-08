@@ -2,17 +2,39 @@
 import {
 	createEffect,
 	createMemo,
-	createProjection,
 	createRoot,
 	createSignal,
 	createStore,
 	latest,
 	onSettled,
-	refresh,
+	reconcile,
 	untrack,
 } from 'solid-js'
 
 export const params = new URLSearchParams(location.search)
+
+/** What a fresh page shows before the server has answered once; everything after comes from cache or the server */
+const DEFAULT_SERVER = {
+	modules: [],
+	off: [],
+	about: {},
+	local: false,
+	settings: { overrides: [], director: {}, memory: { model: '', compactAt: null, threads: 'bots' } },
+}
+/** What's on screen survives a reload: read before first paint, written after every answer */
+const cached = (key, fallback) => {
+	try {
+		const found = localStorage.getItem(`agent-ide.${key}`)
+		return found === null ? fallback : JSON.parse(found)
+	} catch {
+		return fallback
+	}
+}
+const cache = (key, value) => {
+	try {
+		localStorage.setItem(`agent-ide.${key}`, JSON.stringify(value))
+	} catch {}
+}
 export const url = params.get('server') || location.origin
 export const me = params.get('user') || 'you'
 export const api = (path, body, method = body === undefined ? 'GET' : 'POST') =>
@@ -115,31 +137,63 @@ export function drawer(which) {
 		document.body.classList.toggle(name, name === which && !document.body.classList.contains(name))
 }
 
-export const { threads, runners, server, bots, family, columns, closeColumn } = createRoot(() => {
-	const server = createMemo(() => api('/api/server'))
-	const bots = createProjection(
-		() => (server().modules.includes('bots') ? api('/api/bots') : []),
-		[],
-		{ key: 'name' },
-	)
-	const threads = createProjection(() => api('/api/threads'), [], { key: 'id' })
-	const runners = createProjection(() => api('/api/runners'), [], { key: 'name' })
+export const {
+	threads,
+	runners,
+	server,
+	bots,
+	family,
+	columns,
+	closeColumn,
+	reloadThreads,
+	reloadBots,
+	reloadServer,
+} = createRoot(() => {
+	const [server, setServer] = createSignal(cached('server', DEFAULT_SERVER))
+	const [bots, setBots] = createStore(cached('bots', []))
+	const [threads, setThreads] = createStore(cached('threads', []))
+	const [runners, setRunners] = createStore(cached('runners', []))
+	/** Each fetch keeps its row's identity when nothing in it changed, so a keyed `For` leaves it alone */
+	const reloadServer = () =>
+		api('/api/server').then((data) => {
+			setServer(data)
+			cache('server', data)
+		})
+	const reloadBots = () =>
+		(untrack(server).modules.includes('bots') ? api('/api/bots') : Promise.resolve([])).then(
+			(data) => {
+				setBots(reconcile(data, 'name'))
+				cache('bots', data)
+			},
+		)
+	const reloadThreads = () =>
+		api('/api/threads').then((data) => {
+			setThreads(reconcile(data, 'id'))
+			cache('threads', data)
+		})
+	const reloadRunners = () =>
+		api('/api/runners').then((data) => {
+			setRunners(reconcile(data, 'name'))
+			cache('runners', data)
+		})
 	const reload = () => {
-		refresh(threads)
-		refresh(runners)
-		refresh(bots)
+		reloadThreads()
+		reloadRunners()
+		reloadBots()
 	}
-	onSettled(() =>
+	onSettled(() => {
+		reloadServer().then(reloadBots)
+		reloadThreads()
+		reloadRunners()
 		watch(
 			reload,
 			() => {
 				setConnected(true)
-				refresh(server)
-				reload()
+				reloadServer().then(reload)
 			},
 			() => setConnected(false),
-		),
-	)
+		)
+	})
 	/** The open thread's family, as the server sends it: one thread until the list has it, `[null]` for a new one */
 	const family = createMemo(() =>
 		current()
@@ -168,7 +222,7 @@ export const { threads, runners, server, bots, family, columns, closeColumn } = 
 			return next
 		})
 	}
-	return { threads, runners, server, bots, family, columns, closeColumn }
+	return { threads, runners, server, bots, family, columns, closeColumn, reloadThreads, reloadBots, reloadServer }
 })
 
 export async function createThread(title) {
@@ -181,7 +235,7 @@ export async function createThread(title) {
 export async function deleteThread(id) {
 	await api(`/api/threads/${id}`, undefined, 'DELETE')
 	if (family().includes(id)) openThread(null)
-	refresh(threads)
+	reloadThreads()
 }
 
 export const fork = async (id, at) => openThread((await api(`/api/threads/${id}/fork`, { at })).id)

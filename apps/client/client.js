@@ -94,7 +94,7 @@ function Client() {
 				<p class="mute">${() => String(error())} <button onClick=${retry}>Retry</button></p>
 			`}
 		>
-			<${Loading} fallback=${html`<p class="mute">Asking for threads…</p>`}>
+			<${Loading}>
 				<header class="app-bar">
 					<button
 						class="round"

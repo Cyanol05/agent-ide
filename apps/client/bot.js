@@ -5,11 +5,20 @@ import {
 	createMemo,
 	createSignal,
 	onSettled,
-	refresh,
 	Show,
 	snapshot,
 } from 'solid-js'
-import { api, bots, colorOf, current, followThread, hrefOf, openThread, threads } from './server.js'
+import {
+	api,
+	bots,
+	colorOf,
+	current,
+	followThread,
+	hrefOf,
+	openThread,
+	reloadBots,
+	threads,
+} from './server.js'
 import { formatAgent } from './agent.js'
 import { agent, openPicker } from './composer.js'
 import { Dot } from './dot.js'
@@ -85,7 +94,7 @@ export function BotSettings(props) {
 				onInput=${(event) => setInstructions(event.currentTarget.value)}
 				onChange=${() =>
 					api('/api/bots', { name: props.bot.name, instructions: instructions() })
-						.then(() => refresh(bots))
+						.then(() => reloadBots())
 						.catch(report)}
 			></textarea>
 			<h3>Model</h3>
@@ -113,7 +122,7 @@ export function BotSettings(props) {
 				onConfirm=${async (_e) => {
 					try {
 						await api(`/api/bots/${encodeURIComponent(props.bot.name)}`, undefined, 'DELETE')
-						refresh(bots)
+						reloadBots()
 					} catch (failure) {
 						report(failure)
 					}
@@ -145,7 +154,7 @@ export function NewBot(props) {
 				name: entered,
 				to: { ...pick, name: undefined },
 			})
-			refresh(bots)
+			reloadBots()
 			openThread(home)
 			props.onDone()
 		} catch (failure) {
