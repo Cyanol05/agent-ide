@@ -1174,7 +1174,13 @@ body.side .thread-details {
 }
 
 .model-controls {
-	> ul > li + li {
+	/* Rows follow each other like a model's; a line only before the next runner or the bots. */
+	> ul {
+		gap: 0;
+	}
+
+	> ul > li + li:is(:has(> .who), :has(> h3)) {
+		margin-top: var(--space-1);
 		border-top: 1px solid var(--line);
 		padding-top: var(--space-2);
 	}
@@ -1201,8 +1207,9 @@ body.side .thread-details {
 		color: var(--pick);
 	}
 
+	/* On the models' words, past their buttons' border. */
 	h3 {
-		margin: var(--space-2) var(--space-2) var(--space-1);
+		margin: var(--space-2) calc(var(--space-2) + 1px) var(--space-1);
 		font-size: var(--text-small);
 		font-weight: 500;
 		color: var(--mute);
@@ -1212,7 +1219,7 @@ body.side .thread-details {
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-1);
-		padding: 0 var(--space-1) var(--space-1);
+		padding-bottom: var(--space-1);
 	}
 }
 

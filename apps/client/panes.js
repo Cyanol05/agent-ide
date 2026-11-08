@@ -31,7 +31,6 @@ export function Panes(props) {
 				style=${() => ({ visibility: props.open ? 'hidden' : 'visible' })}
 			>
 				<header>
-					<span aria-hidden="true"></span>
 					<h2>${() => props.title}</h2>
 					${() => props.close}
 				</header>

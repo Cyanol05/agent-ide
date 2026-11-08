@@ -467,22 +467,32 @@ button[data-danger]:focus-visible:not(:disabled) {
 		flex-direction: column;
 		max-height: inherit;
 
+		/* The title on the rows' first edge, where their dots sit; a detail's back arrow goes before it. */
 		> header {
-			display: grid;
-			grid-template-columns: 1.75rem 1fr auto;
+			display: flex;
 			align-items: center;
 			gap: var(--space-2);
 			flex: none;
 			min-height: 2.25rem;
 			font-size: var(--text-small);
 			color: var(--mute);
-			padding: var(--space-1) var(--space-2);
+			padding: var(--space-1) var(--space-4);
 			border-bottom: 1px solid var(--line);
 
 			h2 {
+				flex: 1;
 				margin: 0;
 				font: inherit;
 				font-weight: 500;
+			}
+
+			/* A quiet arrow or × lines up by its glyph, not its padding. */
+			> button.ghost:first-child {
+				margin-left: calc(-1px - var(--space-2));
+			}
+
+			> button.ghost:last-child {
+				margin-right: calc(-1px - var(--space-2));
 			}
 		}
 	}

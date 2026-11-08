@@ -43,7 +43,7 @@ import { report } from './notice.js'
 import { imageContent, imageUrl } from './images.js'
 
 export function Composer(props) {
-	let input, picker, button, chooser, anchor, recall, recallButton, mentionList
+	let input, box, picker, button, chooser, anchor, recall, recallButton, mentionList
 	/** The @ being typed: where it starts, what follows it, and which bot is highlighted */
 	const [mention, setMention] = createSignal(null)
 	const [highlighted, setHighlighted] = createSignal(0)
@@ -83,7 +83,7 @@ export function Composer(props) {
 		(open) => {
 			if (!mentionList) return
 			mentionList.togglePopover(open)
-			if (open) onSettled(() => placePopover(mentionList, input, false))
+			if (open) onSettled(() => placePopover(mentionList, box, false))
 		},
 	)
 	/** Whom the next message asks, as the model button says it */
@@ -269,7 +269,7 @@ export function Composer(props) {
 					>
 				</ul>
 			<//>
-			<div class="box">
+			<div class="box" ref=${(el) => (box = el)}>
 				<textarea
 					class=${() => ({ draft: true, elsewhere: !active() })}
 					ref=${(el) => (input = el)}
@@ -424,7 +424,7 @@ export function Composer(props) {
 								: recipients(props.thread).map(formatAgent).join(', ')}
 					onClick=${() => {
 						openThread(props.thread)
-						anchor = button
+						anchor = box
 						picker.togglePopover()
 					}}
 				>
@@ -519,8 +519,9 @@ export function Composer(props) {
 				ref=${(el) => (picker = el)}
 				onToggle=${(event) => {
 					button.setAttribute('aria-expanded', String(event.newState === 'open'))
-					if (event.newState === 'open') placePopover(picker, anchor ?? button)
-					else anchor = button
+					// Over the composer, at the end its button sits; or at what opened it
+					if (event.newState === 'open') placePopover(picker, anchor ?? box, true, (anchor ?? box) === box)
+					else anchor = box
 				}}
 			>
 				<button type="button" class="ghost close" aria-label="Close" onClick=${() => picker.hidePopover()}>
