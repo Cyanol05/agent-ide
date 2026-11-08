@@ -157,4 +157,11 @@ node cli.js wait 3                             # waits for its agents, then prin
 node cli.js stop 3
 ```
 
+A new thread prints `thread N` on stdout, followed by any answers; progress and errors go to stderr. To capture just its id without waiting:
+
+```sh
+thread=$(node cli.js post "hello" --to sonnet@laptop --no-wait)
+node cli.js wait "${thread#thread }"
+```
+
 `node cli.js --help` has the rest.

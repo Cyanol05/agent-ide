@@ -102,7 +102,7 @@ async function post() {
 	const id = flags.thread
 		? Number(flags.thread)
 		: (await api('POST', '/api/threads', { title: flags.title ?? defaultTitle(body) })).id
-	if (!flags.thread) console.error(`thread ${id}`)
+	if (!flags.thread) console.log(`thread ${id}`)
 	const seen = (await api('GET', `/api/threads/${id}`)).entries.at(-1)?.id ?? 0
 	const to = flags.to && (flags.to.includes('nobody') ? null : flags.to.map(agent))
 	/** Listen before posting so even an immediate answer can't slip between the read and the wait */

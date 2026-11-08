@@ -4,14 +4,13 @@ import { mkdirSync } from 'node:fs'
 import { promisify } from 'node:util'
 import { api, base, check, dir, done, repo, runner, server, until, view } from './lib.js'
 
-const cli = async (...args) => {
-	const { stdout, stderr } = await promisify(execFile)(
+const output = (...args) =>
+	promisify(execFile)(
 		process.execPath,
 		['cli.js', '--server', base, '--as', 'oskar', ...args],
 		{ cwd: repo, timeout: 8000 },
 	)
-	return stdout + stderr
-}
+const cli = async (...args) => (await output(...args)).stdout
 
 for (const flag of ['--help', '-h']) {
 	const { stdout } = await promisify(execFile)(process.execPath, ['runner.js', flag], {
@@ -40,12 +39,20 @@ await server()
 const laptop = await runner('laptop')
 await runner('desk')
 
-const first = await cli('post', '--to', 'echo/echo@laptop', 'hello')
+const { stdout: first, stderr: chatter } = await output('post', '--to', 'echo/echo@laptop', 'hello')
+check(!chatter, 'a new thread id and its answers go to stdout, not stderr', chatter)
 const id = /thread (\d+)/.exec(first)?.[1]
 check(
 	id && first.includes('echo:off@laptop') && first.includes('echo@laptop heard: oskar: hello'),
 	'post starts a thread and prints the answer',
 	first,
+)
+
+const captured = await output('post', '--to', 'nobody', '--no-wait', 'captured by a script')
+check(
+	/^thread \d+\n$/.test(captured.stdout) && !captured.stderr,
+	'post --no-wait leaves the new thread id on stdout for scripts',
+	JSON.stringify(captured),
 )
 
 const both = await cli(
