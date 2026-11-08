@@ -53,6 +53,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     Thread               subscribes to the thread over /ws, keeps its messages, follows the bottom (follow)
     rows                 projection: messages plus each agent's turns, which run sits in which ask box,
                          live turn, compaction cuts, folded memory lines
+    Asked                in a bot's home, a question another thread asked it, a received step row that opens that thread (askedHere)
     Message              one message: author, the director's pick, fork link, Body, Images; one that crossed threads is a `Cross` step row
   run.js                 an agent's turns, from its own conversation
     heard, conversations the conversation entries the socket brings
@@ -70,7 +71,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   agent.js               agents' labels and live work (doing); client's agentTo, formatAgent, lastToolCall, modelsOf
   model-picker.js        model, thinking and folder controls (composer and settings share them)
   runner.js              runner list, a runner's agents, ConnectRunner
-  bot.js                 a bot's settings, its row with the threads others asked it in (askedOf, askerOf), new bot; botThreads shares its own/elsewhere lists
+  bot.js                 a bot's settings, its threads row, new bot; botThreads shares its own/elsewhere lists
   thread-list.js         the thread list, its family rows
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
                          a bot's threads as a page of the sheet

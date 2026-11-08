@@ -5,7 +5,6 @@ import {
 	archivedThreads,
 	archiveThread,
 	bots,
-	colorOf,
 	current,
 	followThread,
 	homeBot,
@@ -123,9 +122,6 @@ export function ThreadItem(props) {
 			>
 				<${Dot} state=${() => props.thread.status} />
 				<span>${() => props.thread.title}</span>
-				<${Show} when=${() => props.from}>
-					<small>from <span style=${() => colorOf(props.from)}>${() => props.from}</span></small>
-				<//>
 			</a>
 			<${Show} when=${() => !homeBot(props.thread.id)}>
 				<button

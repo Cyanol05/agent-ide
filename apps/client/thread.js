@@ -4,7 +4,9 @@ import {
 	createEffect,
 	createMemo,
 	createProjection,
+	createRoot,
 	createSignal,
+	createStore,
 	For,
 	getOwner,
 	latest,
@@ -69,9 +71,45 @@ const firstLine = (text) =>
 		.replace(/[*_`]/g, '')
 		.trim()
 
+/** Each asked thread's first message, the question, fetched once for the home of the bot it asks; `null` when it isn't one */
+const [questions, setQuestions] = createRoot(() => createStore({}, { shallow: true }))
+const asking = new Set()
+
 export function Thread(props) {
 	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
 	const messages = () => entries[props.id] ?? []
+	/** In a bot's home, the threads others asked it in: it's their one agent, and they started outside its family. A room has more than one. */
+	const askedHere = createMemo(() => {
+		const bot = homeBot(props.id)
+		if (!bot) return []
+		const family = new Set((thread()?.family ?? []).map((member) => member.id))
+		return threads.filter(
+			(other) =>
+				other.parent !== null &&
+				!family.has(other.id) &&
+				other.agents.length === 1 &&
+				other.agents[0].name === bot.name,
+		)
+	})
+	createEffect(
+		() => askedHere().map((other) => other.id),
+		(ids) => {
+			for (const id of ids)
+				if (!asking.has(id)) {
+					asking.add(id)
+					api(`/api/threads/${id}`)
+						.then((view) => {
+							const first = view.entries[0]
+							// Asked a moment ago, its question may not be in yet; the next look asks again
+							if (!first) return asking.delete(id)
+							setQuestions((all) => {
+								all[id] = first.data.from ? first : null
+							})
+						})
+						.catch(report)
+				}
+		},
+	)
 	const [unfolded, setUnfolded] = createSignal(false)
 	/** Each agent's turns and cuts, worked out again only when its own conversation grows, not when a message lands */
 	const owner = getOwner()
@@ -165,6 +203,13 @@ export function Thread(props) {
 							}
 						}),
 				)
+			// A question from another thread, where it came in, on one line that opens it there
+			const asked = askedHere().flatMap((other) => {
+				const question = questions[other.id]
+				return question
+					? [{ key: `asked:${other.id}`, asked: other.id, question, at: question.id }]
+					: []
+			})
 			const said = shown.map((entry) => ({
 				key: entry.id,
 				entry,
@@ -185,6 +230,7 @@ export function Thread(props) {
 				...said.filter((row) => !above(row)),
 				...turns.filter((row) => !above(row)),
 				...asks.filter((row) => !above(row)),
+				...asked.filter((row) => !above(row)),
 				...lines,
 				...(newest ? [newest] : []),
 			].sort((one, other) => one.at - other.at)
@@ -496,34 +542,41 @@ export function Thread(props) {
 								`}
 							>
 								<${Show}
-									when=${() => !row().ask}
+									when=${() => !row().asked}
 									fallback=${() => html`
-										<${Exchange}
-											step=${() => row().ask}
-											agent=${() => row().agent}
-											answer=${() => row().answer}
-											back=${() => row().back}
-										/>
+										<${Asked} thread=${() => row().asked} question=${() => row().question} />
 									`}
 								>
 									<${Show}
-										when=${() => row().turn || row().live}
+										when=${() => !row().ask}
 										fallback=${() => html`
-											<${Message}
-												thread=${() => props.id}
-												entry=${() => row().entry}
-												sent=${() => row().sent}
-												above=${() => row().above}
+											<${Exchange}
+												step=${() => row().ask}
+												agent=${() => row().agent}
+												answer=${() => row().answer}
+												back=${() => row().back}
 											/>
 										`}
 									>
-										<${Turn}
-											thread=${() => props.id}
-											agent=${() => row().agent}
-											turn=${() => row().turn}
-											live=${() => row().live}
-											above=${() => row().above}
-										/>
+										<${Show}
+											when=${() => row().turn || row().live}
+											fallback=${() => html`
+												<${Message}
+													thread=${() => props.id}
+													entry=${() => row().entry}
+													sent=${() => row().sent}
+													above=${() => row().above}
+												/>
+											`}
+										>
+											<${Turn}
+												thread=${() => props.id}
+												agent=${() => row().agent}
+												turn=${() => row().turn}
+												live=${() => row().live}
+												above=${() => row().above}
+											/>
+										<//>
 									<//>
 								<//>
 							<//>
@@ -633,6 +686,33 @@ export function Cross(props) {
 					<${Images} images=${() => props.data.images} />
 				</div>
 			</details>
+		</li>
+	`
+}
+
+/**
+ * A question another thread asked here, a received step row at the moment it came: who asked in their colour and its
+ * first line. Nothing more of it is copied in; the row opens the thread where it was asked and answered.
+ */
+function Asked(props) {
+	const author = () => props.question.data.author
+	return html`
+		<li class="elsewhere">
+			<ol class="steps">
+				<li class="call received asked">
+					<details>
+						<summary
+							title=${() => `${author()} asked in thread ${props.thread}`}
+							onClick=${(event) => followThread(event, props.thread)}
+						>
+							<span class="tool" style=${() => colorOf(author())}
+								><${ThreadLink} id=${() => props.thread}>${() => shortLabel(author())}<//></span
+							>
+							<span class="in">${() => firstLine(props.question.data.body)}</span>
+						</summary>
+					</details>
+				</li>
+			</ol>
 		</li>
 	`
 }
