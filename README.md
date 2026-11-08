@@ -1,85 +1,110 @@
 # agent-ide
 
-Threads for you and your agents, on your own machines. One server keeps every thread; runners connect your machines to it, each with its model logins and a folder for agents to work in. It's built on [Pi Durable](https://www.npmjs.com/package/@earendil-works/pi-durable) to show how little that takes: a restart or a stop loses nothing.
+agent-ide is yet another chat app for working with agents.
 
-What it promises is on [apps/client/client.html](apps/client/client.html), the page every server serves at `/`. The code is the truth, and [examples/](examples) shows each idea working.
+Threads live on a server you own, and agents run on your own machines, in folders you choose. Built on [Pi Durable](https://www.npmjs.com/package/@earendil-works/pi-durable), so a restart or crash loses nothing.
+
+So, what's different about this one? Not much, but it adds patterns I've found to prove themselves useful enough to write here:
+
+Bots aka agents with a name, instructions and a hands-off home thread. Agents and bots can message each other. Bots remember long threads as short summary lines they can zoom back into. Threads are multiplayer and group chats as well, invite your bots.
 
 ## Try it
 
-You need Node.js 24+ and [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) logged in: run `pi` and `/login` once. Then, in the folder you want agents to work in:
+You need Node.js 24+ and [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) logged in: run `pi` and `/login` once with any provider. Then, in the folder you want agents to work in:
 
 ```sh
 npx github:oskarrough/agent-ide
 ```
 
-Open the address it prints and the page walks you through it.
-
-From a clone it's `pnpm install --frozen-lockfile && node server.js`. `pnpm examples` runs every example; `node examples/05-fork.js` runs one.
-
-## Settings
-
-Settings live in `agent-ide.json` in the folder you start in. The page edits them, but only on the server's own machine: open settings beside the runners, change things, save, and the server restarts itself without losing anything.
-
-A few environment variables win over the file:
-
-```sh
-HOST=0.0.0.0 PORT=3001 node server.js      # reachable from other machines
-RUNNER=~/code node server.js               # agents work in another folder; RUNNER=0 for none
-MODULES=+web-search,-talk node server.js   # switch modules on or off
-DB_PATH=other.sqlite node server.js        # another store
-RESTART_LIMIT=2 node server.js             # work cut off by this many crashes in a row ends; 5 unless set
-```
-
-The log sits next to the store, in `agent-ide.log`.
+Open the server's URL for a walkthrough and the chat app. That's it.
 
 ## Another machine
 
-Start the server with `HOST=0.0.0.0`, open its page on that machine, and click "Add runner". Run the command it gives you on the other machine, in the folder agents should work in. Keep that command private, it holds the runner's key. `node runner.js --help` lists the rest.
+The other machine needs to reach the server. To let it connect over your network, start the server with:
 
-There are no accounts: anyone who can reach the server can read, post as anyone, and put its runners to work. Keep it on a trusted network. [Tailscale](https://tailscale.com) is the easy one:
+```sh
+HOST=0.0.0.0 npx github:oskarrough/agent-ide
+```
+
+Click "Add runner" on the page, or run this on the server's machine:
+
+```sh
+npx github:oskarrough/agent-ide key laptop
+```
+
+Either gives you a command to run on the other machine, in the folder agents should work in. Keep it private: it holds the runner's key.
+
+There are no accounts: anyone who can reach the server can read, post as anyone, and put its runners to work. Keep it on a trusted network. To use [Tailscale](https://tailscale.com) instead:
 
 ```sh
 npx github:oskarrough/agent-ide
 tailscale serve 3000
 ```
 
-Now open `https://<your-machine>.<your-tailnet>.ts.net` on your phone.
+Open `https://<your-machine>.<your-tailnet>.ts.net` on the other machine or your phone.
 
-## The words
+## Settings
 
-One word per thing.
+Settings live in `agent-ide.json` in the folder you start in. For example, to turn web search on and talk off:
 
-- **Server**: the one process you start. It keeps every thread and every agent's conversation in one SQLite file. One server is one world.
-- **Runner**: connects a machine to the server, offering its folders and the model logins pi has there. Agents reach nothing outside those folders. Whoever connects a runner pays for the thinking on it; the server holds no logins.
-- **Agent**: a model, how hard it thinks, and the runner it works on, written `sonnet:high@laptop`. Every part is optional; `laptop` alone is that runner's default model. Each thread has one. Change its model or runner whenever you like and it keeps the conversation. It has no name.
-- **Thread**: what people, one agent and any bots write to each other. _Hands off_ takes away its agents' write, edit and bash, so every change goes through a thread.
-- **Bot**: one name in many threads, with a home thread, the agent it joins as, and instructions. Only bots have names.
-- **Client**: whatever you look through: the web page, the CLI, a Matrix room. They all speak the same API and store nothing.
-- **Module**: a feature you can switch on or off. Each module file's first lines say what it does and how to set it.
+```json
+{
+	"modules": ["+web-search", "-talk"]
+}
+```
 
-A **conversation** is one agent's own context: what it was handed, its tool calls and its answers.
+Use `+` and `-` to change the defaults; a list of bare names replaces them.
 
-## How it behaves
+The server's address, working folder and data path are set in the environment, not the file:
 
-- An agent gets everything it hasn't seen yet in one go, and only its final answer comes back to the thread. Its tool calls stay in its own conversation, where anyone can read them.
-- Threads talk like email. An agent asks with `post`: with no thread, it starts a child holding only the question; given a thread, it asks whoever is there. The answer goes back once to the asking thread. Nothing else crosses.
-- Bots answer when asked, by name or by @mention. A bot can ask another bot the same way.
-- A person's message is an instruction, an agent's is a colleague's report or request. Nobody can fake a speaker.
-- A fork copies a thread and its agents' conversations at one message. A stop posts nothing.
+```sh
+HOST=0.0.0.0 npx github:oskarrough/agent-ide  # open the printed address on your phone or another machine
+PORT=3001 npx github:oskarrough/agent-ide     # a fixed port; otherwise the first free one from 3000
+RUNNER=~/code npx github:oskarrough/agent-ide # agents work here instead of the folder you start in
+RUNNER=0 npx github:oskarrough/agent-ide      # don't connect this machine as a runner
+DB_PATH=other.sqlite npx github:oskarrough/agent-ide
+```
+
+These win over the file; leave them unset to choose from the page.
+
+```sh
+MODULES=+web-search,-talk npx github:oskarrough/agent-ide
+MEMORY_MODEL=sonnet@laptop npx github:oskarrough/agent-ide
+```
+
+From a clone, use `node server.js` in place of `npx github:oskarrough/agent-ide`.
+
+Threads and conversations live in `agent-ide.sqlite` in the folder you start in, with the server's output in `agent-ide.log` beside it. `DB_PATH` moves both: `other.sqlite` logs to `other.log`.
 
 ## Modules
 
-On by default: talk, status, context, bots, director and memory. Off: auto-title, web-search and matrix. The details are at the top of each file in [modules/](modules); [FEATURE-MAP.md](FEATURE-MAP.md) says where everything else lives.
+Everything is a module that you can turn on and off.
+
+On by default: talk, status, context, bots, director and memory.  
+Off: auto-title, web-search and matrix.
 
 - **talk** gives agents `post` and `threads`, to ask other threads and read them.
-- **memory** writes one short line per message, so agents read the lines instead of every word, and compact into them when context gets long. Threads with a bot in them remember.
+- **memory** summarizes messages so agents can keep working in long threads. It's used by default in threads with bots; you can switch it on or off for any thread.
 - **director** asks the bots a message @mentions, one after another. It can also pick who answers when nobody's named.
-- **bots** gives you bots.
+- **bots** lets you create named bots and give them instructions.
 - **context** hands agents the AGENTS.md and skills in their folder, the way pi does.
 - **status** shows what agents are doing on a runner's terminal.
 - **auto-title** turns a thread's first message into a short title.
 - **web-search** gives agents a `web_search` tool.
 - **matrix** makes Matrix rooms into threads.
+
+For each module's settings, see the top of its file in [modules/](modules).
+
+## What's what
+
+- **Server**: the one process you start. It keeps every thread and every agent's conversation in one SQLite file.
+- **Runner**: connects a machine to the server, offering its folders and the model logins pi has there. Agents reach nothing outside those folders. Whoever connects a runner pays for the thinking on it; the server holds no logins.
+- **Agent**: a model, how hard it thinks, and the runner it works on, written `sonnet:high@laptop`. Every part is optional; `laptop` alone is that runner's default model. Each thread has one. Change its model or runner whenever you like and it keeps the conversation. It has no name.
+- **Thread**: what people, one agent and any bots write to each other. _Hands off_ prevents its agents from editing files or running commands.
+- **Bot**: one name in many threads, with a home thread, the agent it joins as, and instructions. Only bots have names.
+- **Conversation**: what one agent has read, its tool calls and its answers.
+- **Client**: the web page, the CLI or a Matrix room you use to read and write in threads; the server keeps the data.
+- **Module**: a feature you can switch on or off. Each module file's first lines say what it does and how to set it.
 
 ## The API
 
@@ -88,11 +113,11 @@ Everything the page does, you can do with a few requests. Say who you are with `
 ```sh
 api() { curl -s -H 'x-user: oskar' -H 'content-type: application/json' "localhost:3000/api/$1" ${2:+-d "$2"}; }
 
-api threads '{"title": "hello"}'                                # → {"id": 3}
+api threads '{"title": "hello"}' # → {"id": 3}
 api threads/3/entries '{"body": "what machine is this?", "to": "sonnet@laptop"}'
-api threads/3                                                   # the thread and its messages so far
-api threads/3/entries '{"body": "and now?", "to": "opus:high@laptop"}'   # same agent, new model
-api threads/3/fork '{"at": 5}'                                  # a new thread from message 5
+api threads/3 # the thread and its messages so far
+api threads/3/entries '{"body": "and now?", "to": "opus:high@laptop"}' # same agent, new model
+api threads/3/fork '{"at": 5}' # a new thread from message 5
 api threads/3/stop '{}'
 ```
 
