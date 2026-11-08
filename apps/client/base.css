@@ -52,6 +52,9 @@
 	--space-4: 1rem;
 	--space-5: 1.5rem;
 	--space-6: 2rem;
+	/* The list's foot and the composer's bar share a height, and their buttons one size, so both rows share a line. */
+	--foot-height: 2rem;
+	--foot-button: 1.6rem;
 }
 
 * {

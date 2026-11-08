@@ -46,9 +46,10 @@
 /* Out of the way: a small arrow at the end of the runners row, under the thread list. */
 .mode-toggle {
 	position: absolute;
-	bottom: 0.55rem;
+	bottom: calc(var(--space-3) + (var(--foot-height) - var(--foot-button)) / 2);
 	left: calc(var(--list-width, 15rem) - 2.4rem);
 	z-index: 2;
+	height: var(--foot-button);
 }
 
 /* The live system, flattened: the server's box is the app's frame; the client, the wires and the runners' cards are the story's. */
@@ -754,7 +755,11 @@ agent-memory {
 			align-items: center;
 			gap: var(--space-1);
 			padding: 0 var(--space-1);
-			min-height: 2rem;
+			min-height: var(--foot-height);
+
+			button.add {
+				height: var(--foot-button);
+			}
 		}
 
 		.pick {
@@ -1331,18 +1336,20 @@ connect-runner {
 	align-items: center;
 	gap: var(--space-1);
 	/* Same height and padding as the composer's bar below it, so the two rows share a baseline across the divider. */
-	height: 2rem;
+	height: var(--foot-height);
 	padding: 0 var(--space-6) 0 0;
 	background: Canvas;
 }
 
-.foot-toggle {
+button.foot-toggle {
 	flex: none;
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
 	min-width: 0;
-	height: 1.6rem;
+	height: var(--foot-button);
+	/* Its dot where a row's sits, so the words line up with the threads above. */
+	padding-inline: var(--space-3);
 
 	span:last-child {
 		overflow: hidden;
@@ -1587,7 +1594,7 @@ body.resizing {
 		position: fixed;
 		left: auto;
 		right: 0.6rem;
-		bottom: calc(0.55rem + env(safe-area-inset-bottom));
+		bottom: calc((var(--foot-height) - var(--foot-button)) / 2);
 		z-index: 4;
 	}
 
