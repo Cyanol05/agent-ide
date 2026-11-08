@@ -11,6 +11,7 @@ export function ModelPicker(props) {
 	return html`
 		<div class="model-controls">
 			<ul>
+				${() => props.first}
 				<${For}
 					each=${() => runners.filter((runner) => runner.online)}
 					fallback=${html`

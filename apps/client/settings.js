@@ -105,16 +105,6 @@ export function Settings() {
 							Writes and merges memory’s lines. Choose a cheaper model here without changing the
 							thread’s agent.
 						</p>
-						<div class="model-controls">
-							<button
-								type="button"
-								class="ghost model"
-								aria-pressed=${() => String(!selection()?.model)}
-								onClick=${() => setSelection(agentTo(''))}
-							>
-								Use each thread’s agent
-							</button>
-						</div>
 					</div>
 					<${ModelPicker}
 						getTo=${(runner) =>
@@ -122,6 +112,16 @@ export function Settings() {
 								? selection()
 								: { runner: runner.name, model: runner.model }}
 						selectedRunner=${() => selection()?.runner}
+						first=${html`<li class="models">
+							<button
+								type="button"
+								class="ghost model"
+								aria-pressed=${() => String(!selection()?.model)}
+								onClick=${() => setSelection(agentTo(''))}
+							>
+								<span>Each thread’s agent</span>
+							</button>
+						</li>`}
 						onChoose=${(to) => setSelection(to)}
 						onConfigure=${(to) => setSelection(to)}
 					/>`}
@@ -161,18 +161,8 @@ export function Settings() {
 												title=${() => model() || "Each thread's own agent writes its lines"}
 												onClick=${pickModel}
 											>
-												${() => (model() ? writtenTo(agentTo(model())) : "the thread's agent")}
+												${() => (model() ? writtenTo(agentTo(model())) : "thread's agent")}
 											</button>
-											<${Show} when=${() => model() && editable() && !overridden('MEMORY_MODEL')}>
-												<button
-													type="button"
-													class="small"
-													title="Each thread's own agent writes its lines"
-													onClick=${() => setDraft((store) => void (store.model = ''))}
-												>
-													Use each thread's agent
-												</button>
-											<//>
 										</div>
 										<div class="option compact-option">
 											<span>Compacts past</span>
