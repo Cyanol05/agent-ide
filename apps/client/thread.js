@@ -699,7 +699,7 @@ function Asked(props) {
 	return html`
 		<li class="elsewhere">
 			<ol class="steps">
-				<li class="call received asked">
+				<li class="call received asked opens">
 					<details>
 						<summary
 							title=${() => `${author()} asked in thread ${props.thread}`}

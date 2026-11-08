@@ -638,6 +638,11 @@ agent-memory {
 					content: '←';
 				}
 
+				/* A question asked here from another thread opens that thread instead of expanding, so it has no ▸. */
+				> li.opens > details > summary::after {
+					content: none;
+				}
+
 				.whole {
 					padding-left: var(--space-5);
 
