@@ -12,11 +12,17 @@ check(
 	!/<script[^>]*src=["']https?:|from ["']https?:/.test(page),
 	'the page loads no code from another server',
 )
-for (const url of ['/client.js', '/client.css', ...Object.values(imports)]) {
+for (const url of [
+	'/client.js',
+	'/base.css',
+	'/app.css',
+	'/walkthrough.css',
+	...Object.values(imports),
+]) {
 	const response = await fetch(base + url)
 	check(response.ok && (await response.text()).length > 0, `the server serves ${url}`)
 }
-const css = await (await fetch(base + '/client.css')).text()
+const css = await (await fetch(base + '/base.css')).text()
 const fonts = [...css.matchAll(/url\(['"]([^'"]+\.woff2)['"]\)/g)].map((m) => m[1])
 check(
 	fonts.length === 4 && fonts.every((f) => f.startsWith('/fonts/')),

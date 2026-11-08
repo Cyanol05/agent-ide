@@ -1,0 +1,688 @@
+/* A control's look is its element's or its variant class's, here; a rule for a place in the app sets only its layout. */
+
+/* iA Writer Quattro S, the same face as the oskar bb theme. */
+@font-face {
+	font-family: 'iA Writer Quattro S';
+	src: url('/fonts/iAWriterQuattroS-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'iA Writer Quattro S';
+	src: url('/fonts/iAWriterQuattroS-Italic.woff2') format('woff2');
+	font-weight: 400;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'iA Writer Quattro S';
+	src: url('/fonts/iAWriterQuattroS-Bold.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'iA Writer Quattro S';
+	src: url('/fonts/iAWriterQuattroS-BoldItalic.woff2') format('woff2');
+	font-weight: 700;
+	font-style: italic;
+	font-display: swap;
+}
+
+/* Light or dark is the browser's: every grey is ink mixed into the page. */
+:root {
+	color-scheme: light dark;
+	--ink: CanvasText;
+	--mute: color-mix(in srgb, CanvasText 58%, Canvas);
+	--line: color-mix(in srgb, CanvasText 14%, Canvas);
+	--tint: color-mix(in srgb, CanvasText 5%, Canvas);
+	--edge: color-mix(in srgb, CanvasText 32%, Canvas);
+	--ok: #2f9e62;
+	--wait: #d39a00;
+	--pick: #3b7be0;
+	--danger: light-dark(#c92a2a, #ff8787);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+/* Feels installed, not browsed: no tap flash, no font inflation, no double-tap delay, no zoom into a small input. */
+html {
+	-webkit-tap-highlight-color: transparent;
+	-webkit-text-size-adjust: 100%;
+	overscroll-behavior-y: none;
+}
+
+@media (any-pointer: coarse) {
+	html {
+		overscroll-behavior-y: auto;
+	}
+}
+
+button,
+a[href] {
+	touch-action: manipulation;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+}
+
+@media (pointer: coarse) {
+	input,
+	select,
+	textarea {
+		font-size: max(16px, 1em) !important;
+	}
+}
+
+body {
+	padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+	font:
+		17px/1.6 'iA Writer Quattro S',
+		system-ui,
+		sans-serif;
+	margin: 0;
+	color: var(--ink);
+	background: Canvas;
+	text-wrap: pretty;
+	font-synthesis: none;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Keyboard users get a ring on anything the controls above don't already outline. */
+:focus-visible {
+	outline: 2px solid var(--pick);
+	outline-offset: 2px;
+}
+
+h1,
+h2 {
+	text-wrap: balance;
+}
+
+h1 {
+	font-size: 1.6rem;
+	margin: 0 0 1rem;
+}
+
+h2 {
+	font-size: 1.1rem;
+	margin: 0 0 0.5rem;
+}
+
+pre {
+	background: var(--tint);
+	color: var(--ink);
+	border: 1px solid var(--line);
+	padding: 0.75rem 1rem;
+	border-radius: 6px;
+	font-size: 14px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+code {
+	font-family: ui-monospace, monospace;
+	font-size: 0.85em;
+}
+
+a {
+	color: inherit;
+}
+
+input,
+button,
+select {
+	font: inherit;
+	padding: 0.35rem 0.5rem;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: Canvas;
+	color: var(--ink);
+	min-width: 0;
+}
+
+/* A select's open list takes its colours from the select, so it gets the page's, not none. */
+select,
+option {
+	background-color: Canvas;
+	color: CanvasText;
+}
+
+/* A control's look is its element's or its variant's, here; a rule for a place sets only its layout. */
+
+/* Three buttons. Bordered, the default: white, a thin border; the one that's on gets a dark border. Its text sits in the middle, not on the page's 1.6 line. */
+button {
+	cursor: pointer;
+	line-height: 1;
+
+	&[aria-pressed='true'],
+	&.current {
+		border-color: var(--edge);
+	}
+}
+
+/* Ghost: no border, quiet text; a soft fill while it's open or on, and under the mouse. */
+button.ghost {
+	border: 0;
+	background: none;
+	color: var(--mute);
+
+	&[aria-pressed='true'],
+	&[aria-expanded='true'] {
+		background: color-mix(in srgb, CanvasText 10%, transparent);
+		color: var(--ink);
+	}
+}
+
+/* Primary: filled with ink, for the one thing the view is for. */
+button.primary {
+	border: 0;
+	background: var(--ink);
+	color: Canvas;
+
+	&:disabled {
+		background: var(--edge);
+	}
+}
+
+/* Small: a quiet control's words, in a bar, an option, a pane's header. */
+:is(button, input, select).small {
+	font-size: 12px;
+	padding: 0.25rem 0.5rem;
+	white-space: nowrap;
+}
+
+/* Tiny: a row's own action at its end. */
+button.tiny {
+	padding: 0 0.35rem;
+	font-size: 11px;
+	line-height: 1.4;
+}
+
+/* Back: the arrow at a page's start. */
+button.back {
+	padding: 0 0.2rem;
+}
+
+/* Icon: one glyph, a size up. Send is a filled round arrow, like a messages app's. */
+button.icon {
+	display: inline-flex;
+	padding: 0.2rem 0.45rem;
+	font-size: 16px;
+	line-height: 1;
+
+	&:disabled {
+		cursor: default;
+		opacity: 0.7;
+	}
+}
+
+button.send {
+	width: 1.6rem;
+	height: 1.6rem;
+	padding: 0;
+	justify-content: center;
+	align-items: center;
+	border-radius: 50%;
+	font-weight: 700;
+
+	&:disabled {
+		opacity: 1;
+	}
+}
+
+/* Remove: a small round × on a corner. */
+button.remove {
+	display: grid;
+	place-items: center;
+	width: 1.3rem;
+	height: 1.3rem;
+	padding: 0;
+	border-radius: 50%;
+	font-size: 12px;
+	line-height: 1;
+}
+
+/* Field: a soft box to type in, or a button that stands for one. */
+.field {
+	padding: 0.4rem 0.6rem;
+	font-size: 14px;
+	font-family: inherit;
+	color: var(--ink);
+	background: var(--tint);
+	border: 1px solid var(--line);
+	border-radius: 6px;
+
+	&:focus {
+		outline: none;
+		border-color: var(--mute);
+	}
+
+	small {
+		color: var(--mute);
+	}
+}
+
+/* Bare: reads as text until you point at it or write in it. */
+input.bare {
+	padding: 0.2rem 0.3rem;
+	border-color: transparent;
+	background: none;
+
+	&:focus {
+		outline: none;
+		border-color: var(--line);
+	}
+}
+
+/* The thread's name, as a heading you can edit. */
+input.thread-title {
+	font-size: 15px;
+	font-weight: 600;
+}
+
+/* Draft: what you're writing, at the messages' size, with the box around it as its frame. */
+textarea.draft {
+	padding: 0.4rem 0;
+	border: 0;
+	background: none;
+	outline: none;
+	font: inherit;
+	font-size: 15px;
+	line-height: 1.4;
+	color: inherit;
+
+	&.elsewhere {
+		color: var(--mute);
+	}
+}
+
+:is(input, textarea).bad {
+	color: var(--wait);
+}
+
+input[type='checkbox'] {
+	margin: 0;
+	padding: 0;
+	accent-color: var(--ink);
+}
+
+/* A row in a list: a link or a button, the whole width, its title cut at the edge. */
+.row {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.4rem 0.6rem;
+	padding-left: calc(0.6rem + var(--depth, 0) * 1rem);
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-decoration: none;
+	text-align: start;
+
+	> span:not(.dot, .plus) {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	> small {
+		flex: none;
+		color: var(--mute);
+	}
+}
+
+/* A model: a row with a check on the one asked. */
+button.model {
+	width: 100%;
+	border: 0;
+	background: none;
+	text-align: left;
+
+	small {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	&.on {
+		background: color-mix(in srgb, CanvasText 8%, transparent);
+
+		&::after {
+			content: '✓';
+			margin-left: auto;
+			color: var(--pick);
+		}
+	}
+
+	&[aria-selected='true'] {
+		background: var(--tint);
+	}
+}
+
+/* The asked list as one line you can write: mono, under a rule. */
+input.recipients {
+	padding: 0.55rem 0.5rem 0.35rem;
+	border: 0;
+	border-top: 1px solid var(--line);
+	border-radius: 0;
+	background: none;
+	font:
+		12px ui-monospace,
+		monospace;
+	color: var(--mute);
+	text-overflow: ellipsis;
+
+	&:focus {
+		color: var(--ink);
+		outline: none;
+	}
+}
+
+/* The thread's name, a pill: in each thread's head on a big screen, in the bar on a phone. Raised like the composer box, so it doesn't blend into the page behind it; its light first. */
+.thread-pill {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
+	max-width: 60%;
+	height: 2.125rem;
+	padding: 0 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: var(--tint);
+	color: var(--ink);
+	font-size: 13px;
+	font-weight: 400;
+
+	> span:not(.dot) {
+		flex: 0 1 auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	> .dot {
+		order: -1;
+	}
+}
+
+/* Round: the pill's square sibling, for one glyph. */
+button.round {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 2.125rem;
+	height: 2.125rem;
+	padding: 0;
+	background: var(--tint);
+	color: var(--mute);
+}
+
+/* A foot toggle: a dot and a word, its dot where a row's sits. */
+button.foot-toggle {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	height: 1.6rem;
+	padding: 0 0.6rem;
+	font-size: 12px;
+	text-align: left;
+
+	span:last-child {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+/* The way back to the story: an arrow, quiet even while it's on. */
+button.ghost.mode-toggle {
+	display: grid;
+	place-items: center;
+	width: 1.6rem;
+	height: 1.6rem;
+	padding: 0;
+	font-size: 12px;
+	background: none;
+	color: var(--mute);
+}
+
+.mute {
+	color: var(--mute);
+}
+
+.dot {
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 50%;
+	background: var(--line);
+	flex: none;
+
+	&.on {
+		background: var(--ok);
+	}
+
+	&.blocked {
+		background: var(--wait);
+	}
+
+	&.working {
+		background: var(--ok);
+		animation: blink 1s ease-in-out infinite;
+	}
+}
+
+@keyframes appear {
+	from {
+		visibility: hidden;
+	}
+}
+
+@keyframes blink {
+	50% {
+		opacity: 0.3;
+	}
+}
+
+/* Popup anchors stay still: their pressed scale would shift the position measured on opening. */
+button:active:not(:disabled):not([popovertarget], [aria-expanded]) {
+	transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	button {
+		transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
+	}
+}
+
+button[data-danger]:focus-visible:not(:disabled) {
+	color: var(--danger);
+	border-color: var(--danger);
+}
+
+/* Hover is for a mouse; on touch it sticks after a tap. */
+@media (hover: hover) and (pointer: fine) {
+	button:hover {
+		border-color: var(--edge);
+	}
+
+	button[data-danger]:hover:not(:disabled) {
+		color: var(--danger);
+		border-color: var(--danger);
+	}
+
+	input.bare:hover {
+		border-color: var(--line);
+	}
+
+	button.round:hover {
+		color: var(--ink);
+	}
+
+	button.ghost:hover:not(:disabled),
+	button.model:hover {
+		background: color-mix(in srgb, CanvasText 8%, transparent);
+		color: var(--ink);
+	}
+}
+
+/* The model picker and settings: popovers on desktop, bottom sheets on phones. */
+.popover {
+	position: fixed;
+	inset: auto;
+	margin: 0;
+	width: min(24rem, calc(100vw - 1rem));
+	max-height: min(70dvh, 32rem);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	background: Canvas;
+	color: var(--ink);
+	font-size: 14px;
+	box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+
+.model-controls > ul,
+.popover .rows {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.25rem;
+}
+
+/* One row across models, runners and modules, also inside the phone sheets. */
+:is(.model-controls .who, button.model, .popover .rows > li) {
+	display: flex;
+	align-items: start;
+	gap: 0.6rem;
+	padding: 0.45rem 0.5rem;
+	border-radius: 8px;
+
+	> .dot {
+		margin-top: 0.45rem;
+	}
+
+	> div {
+		flex: 1;
+		min-width: 0;
+	}
+
+	small {
+		color: var(--mute);
+		font-size: 12px;
+	}
+}
+
+:where(.popover .rows > li) small {
+	display: block;
+	overflow-wrap: anywhere;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	:is(button.model:not(.on), .popover .rows > li):hover {
+		background: var(--tint);
+	}
+}
+
+/* A detail covers its list without unmounting it or changing the frame's size. */
+.panes {
+	position: relative;
+	max-height: inherit;
+
+	.pane {
+		display: flex;
+		flex-direction: column;
+		max-height: inherit;
+
+		> header {
+			display: grid;
+			grid-template-columns: 1.25rem 1fr auto;
+			align-items: center;
+			gap: 0.4rem;
+			flex: none;
+			min-height: 2.25rem;
+			font-size: 12px;
+			color: var(--mute);
+			padding: 0.25rem 0.7rem;
+			border-bottom: 1px solid var(--line);
+
+			h2 {
+				margin: 0;
+				font: inherit;
+				font-weight: 500;
+			}
+		}
+	}
+
+	.pane-body {
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding: 0.5rem 0.7rem 0.7rem;
+	}
+
+	.detail {
+		position: absolute;
+		inset: 0;
+		background: Canvas;
+	}
+}
+
+/* A pane's close × is for phones. */
+.panes .pane > header > button.close {
+	display: none;
+}
+
+@media (max-width: 700px) {
+	.popover {
+		/* Lifted off the edge, clear of the home bar, like the composer. */
+		inset: auto 0.6rem calc(0.6rem + env(safe-area-inset-bottom)) 0.6rem;
+		width: auto;
+		max-height: 70dvh;
+		border-radius: 14px;
+		padding-bottom: 0.7rem;
+	}
+
+	.panes .pane-body {
+		padding-bottom: calc(0.7rem + env(safe-area-inset-bottom));
+	}
+
+	.panes .pane > header > button.close {
+		display: block;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.popover {
+		transition:
+			opacity 0.18s,
+			translate 0.25s cubic-bezier(0.23, 1, 0.32, 1),
+			display 0.25s allow-discrete,
+			overlay 0.25s allow-discrete;
+	}
+
+	.popover:not(:popover-open) {
+		opacity: 0;
+		translate: 0 8px;
+	}
+
+	@starting-style {
+		.popover:popover-open {
+			opacity: 0;
+			translate: 0 8px;
+		}
+	}
+}

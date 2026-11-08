@@ -78,7 +78,9 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   panes.js, popover.js, sure.js, notice.js, dot.js   list/detail frame, popover placement,
                          two-press button, error line, status dot
   images.js, markdown.js image shrinking to pi's limits; message markdown
-  client.css             all styles, by comment-headed section; its reusable parts are under UI parts below
+  base.css               tokens, reset, every control's look (buttons and their variants), popover, rows, panes, status dot
+  app.css                the chat's layout: list, threads, messages, composer, sheet, picker, settings, phone
+  walkthrough.css        the story page and the live system's boxes and wires, all under body:not(.chat)
 scripts/
   try.js                 scratch server with a scripted bot, for clicking through
   page-spy.js            browser init script: fetches, socket frames, stalls
@@ -105,15 +107,15 @@ Where a feature lives:
 
 ## UI parts
 
-Build from these; a new panel, row or button takes its sibling's markup and class, and adds no CSS of its own. Quoted names are client.css's section comments.
+Build from these; a new panel, row or button takes its sibling's markup and class, and adds no CSS of its own. A control (button, input, select, textarea, checkbox) gets its look only in base.css, from its element or a variant class; a rule for a place sets its layout only. Quoted names are the CSS files' section comments.
 
-- Buttons, three variants ("Three buttons"): bordered is plain `button` (Done, Create, Copy, archive, fork, revoke); `button.ghost` has no border and gets a soft fill on hover and when `aria-pressed` or `aria-expanded` (composer bar, foot toggles, closes, backs, thinking levels); `button.primary` is filled with ink (send). `data-danger` turns any of them red on hover.
+- Buttons, three variants ("Three buttons"): bordered is plain `button` (Done, Create, Copy, archive, fork, revoke); `button.ghost` has no border and gets a soft fill on hover and when `aria-pressed` or `aria-expanded` (composer bar, foot toggles, closes, backs, thinking levels); `button.primary` is filled with ink (send). `data-danger` turns any of them red on hover. Variants in base.css: `.small` (12px: the composer bar, Done, options, thinking levels, Copy, Create), `.tiny` (a row's end: archive, fork, revoke), `.back`, `.icon` and `.send`, `.remove` (an image's ×), `.round` and `.thread-pill`, `.foot-toggle`, `.mode-toggle`, `.row`, `button.model`; fields are `.field` (the bot panel's boxes), `.bare` (reads as text until focused), `.draft` (the composer's textarea), `input.recipients`.
 - Popover: a `div.popover[popover]` placed by `placePopover` (popover.js), a bottom sheet on phones ("The model picker and settings"). Panes inside it (panes.js `Panes`, `.panes .pane`, "A detail covers") give it a header with a ghost close, a back and actions. Settings (settings.js), Runners (runner.js `.runner-list`) and Context (composer.js `.recall`) use it; the model picker and @mentions (composer.js `.model-picker`) are the same frame without panes.
 - Popover rows: `ul.rows > li` in a popover's pane body, one per module, runner or option ("One row across"); the picker's `.model-controls .who` and `.model` share the look.
 - Model controls: model-picker.js `ModelPicker`, `.model-controls` with its `.models` and the `.thinking` levels ("A runner, its models"); the composer and settings share it.
 - Left aside: thread-list.js `ThreadList`, `.thread-list`; each row is `li > .row` (a link, or a button, or `form.row` for a new bot), shared with the family list `.thread-family`; its foot is `.list-foot` with `.foot-toggle`s ("The list's foot").
-- Right aside: thread-details.js `ThreadDetails`, `.thread-details` with `.scrim` ("This thread's sheet"); a bot's part is bot.js `BotSettings`, `.bot`; its fields share "Every field in the bot panel"; a page of it has `.page-head`.
-- Thread head: the pill, `.thread-pill` and `.thread > header` with `h2.title > button` and a `.close` ("The thread's name is a pill"); on a phone `.app-bar` ("A phone").
+- Right aside: thread-details.js `ThreadDetails`, `.thread-details` with `.scrim` ("This thread's sheet"); a bot's part is bot.js `BotSettings`, `.bot`; its fields are `.field`; a page of it has `.page-head`.
+- Thread head: the pill, `h2.title > button.thread-pill` in `.thread > header` and a `.round.close` ("The head is no bar"); on a phone `.app-bar` ("A phone").
 - Message list: thread.js `Message` in `.thread > ul > li` ("The chat: agents write"), its body `.markdown`, its images `div.images`, compaction's `li.cut` and `li.line`.
 - Tool calls: run.js `Turn`, `Exchange`, `Step`, `Call`; `li.turn` and `.exchange` are `<details>` whose open list is `.steps`, its tools `.tool` and its words `.said`. There's no thinking block: a live turn's summary says "thinking".
 - Composer: composer.js `Composer`, `.thread form`: the box, `.bar` with `.icon` buttons, `.pick` (whom it asks) and `.stop`, and `ul.images` waiting to go.

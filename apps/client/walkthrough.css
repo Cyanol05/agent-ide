@@ -1,0 +1,528 @@
+/* The walkthrough: the story on the left, the live system on the right, each part of the app in its own box. It lays itself over the app only while the page isn't just the chat. */
+body:not(.chat) {
+	overscroll-behavior: auto;
+
+	/* Only the mouse gets the page's scrollbar gutter reserved; touch scrollbars overlay. */
+	@media not (any-pointer: coarse) {
+		html:has(&) {
+			scrollbar-gutter: stable;
+		}
+	}
+
+	/* The page: prose on the left, the live system pinned on the right. On a narrow screen, one column. */
+	.page {
+		display: grid;
+		grid-template-columns: minmax(0, 34rem) minmax(0, 1fr);
+		gap: 0 3rem;
+		padding: 0 2rem;
+
+		> section {
+			display: block;
+			grid-column: 1;
+			padding: 3rem 0;
+			min-height: 60vh;
+			min-height: 60svh;
+
+			&:first-child {
+				padding-top: 4rem;
+			}
+
+			&:last-of-type {
+				min-height: 90vh;
+				min-height: 90svh;
+			}
+		}
+	}
+
+	.stage {
+		grid-column: 2;
+		grid-row: 1 / span 30;
+		position: sticky;
+		top: 0;
+		align-self: start;
+		height: 100vh;
+		overflow: auto;
+		padding: 2rem 0;
+	}
+
+	@media (max-width: 1000px) {
+		/* The stage comes right after the server is introduced. */
+		.page {
+			display: flex;
+			flex-direction: column;
+			padding: 0 1rem;
+
+			> section {
+				min-height: 0;
+				padding: 2rem 0;
+
+				&:nth-child(n + 3) {
+					order: 2;
+				}
+			}
+		}
+
+		.stage {
+			order: 1;
+			position: static;
+			height: auto;
+			padding: 1rem 0;
+		}
+	}
+
+	.try {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin: 1rem 0;
+	}
+
+	/* Just the chat: a quiet button above the system. */
+	.mode-toggle {
+		position: static;
+		display: block;
+		width: auto;
+		height: auto;
+		z-index: auto;
+		margin: 0 0 0.5rem auto;
+		padding: 0.15rem 0.5rem;
+		transform: none;
+		visibility: visible;
+	}
+
+	/* The live system: plumbing is quiet; the route your next message takes is loud, and shows the agent's state. */
+	.system {
+		display: grid;
+		grid-template-columns: max-content minmax(0, 1fr);
+		gap: 2.5rem;
+		align-items: start;
+		height: auto;
+	}
+
+	.client,
+	.wires {
+		display: block;
+	}
+
+	.runners {
+		grid-column: 2;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+
+		.node {
+			width: 17rem;
+		}
+	}
+
+	.wires path {
+		stroke: var(--line);
+		stroke-width: 1.5;
+
+		&.off {
+			stroke-dasharray: 4 4;
+		}
+
+		&.route {
+			stroke: var(--pick);
+			stroke-width: 2.5;
+		}
+
+		&.working {
+			stroke: var(--ok);
+			stroke-width: 2.5;
+			stroke-dasharray: 6 6;
+			animation: flow 0.6s linear infinite;
+		}
+
+		&.blocked {
+			stroke: var(--wait);
+			stroke-width: 2.5;
+			stroke-dasharray: 6 6;
+		}
+	}
+
+	/* Wires run behind the boxes, so they come out of a box's edge and never cross its text. */
+	.node {
+		position: relative;
+		z-index: 1;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--tint);
+		padding: 0.6rem 0.8rem;
+		transition:
+			opacity 0.3s,
+			box-shadow 0.3s;
+
+		&.off {
+			background: Canvas;
+			border-style: dashed;
+		}
+
+		&.routed {
+			border-color: var(--pick);
+		}
+
+		> b {
+			display: flex;
+			align-items: center;
+			gap: 0.4rem;
+		}
+
+		/* A runner's name, as the button that asks it with a keyboard. */
+		> button.ask {
+			display: flex;
+			align-items: center;
+			gap: 0.4rem;
+			margin: 0;
+			padding: 0;
+			border: 0;
+			background: none;
+			color: inherit;
+			font: inherit;
+			font-weight: 700;
+		}
+
+		> small {
+			display: block;
+			color: var(--mute);
+			overflow-wrap: anywhere;
+		}
+	}
+	/* What the section in view talks about gets a soft glow; nothing else changes, so the live parts stay readable. */
+	.stage[data-focus='server'] .server,
+	.stage[data-focus='runners'] .runners .node,
+	.stage[data-focus='hands'] .runners .node,
+	.stage[data-focus='thread'] .thread {
+		box-shadow: 0 0 0 3px #2f6fd633;
+	}
+
+	/* The server's box holds the thread list and the threads side by side, each thread its own box. */
+	.server > .body {
+		display: grid;
+		grid-template-columns: 10rem minmax(0, 1fr);
+		grid-template-rows: none;
+		gap: 0.75rem;
+		margin-top: 0.5rem;
+		position: static;
+		height: auto;
+	}
+
+	.threads {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		position: static;
+		z-index: auto;
+		height: auto;
+		overflow: visible;
+		background: none;
+		transform: none;
+		transition: none;
+	}
+
+	.thread-list {
+		display: block;
+		position: relative;
+		inset: auto;
+		z-index: 1;
+		align-self: auto;
+		min-height: auto;
+		padding: 0;
+		border: 0;
+		overflow: visible;
+		background: none;
+		transform: none;
+		visibility: visible;
+		transition: none;
+
+		> ul {
+			max-height: 24rem;
+
+			> li {
+				border-radius: 4px;
+				font-size: inherit;
+				transition: none;
+
+				&:active {
+					transform: none;
+				}
+
+				> .row {
+					padding: 0.2rem 0.4rem;
+					padding-left: calc(0.4rem + var(--depth, 0) * 1rem);
+				}
+			}
+		}
+	}
+
+	@media (max-width: 1300px) {
+		.server > .body {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.thread-list > ul {
+			max-height: 7rem;
+		}
+	}
+
+	.thread {
+		display: block;
+		flex: 1 1 16rem;
+		height: auto;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+
+		&.current {
+			border-color: var(--edge);
+		}
+
+		/* A hands-off thread's box is dashed: its agents touch nothing. */
+		&.hands-off {
+			border-style: dashed;
+		}
+
+		&::before,
+		&::after {
+			content: none;
+		}
+
+		/* The head is a bar: the name, then a quiet close for a family member's column. */
+		> header {
+			display: flex;
+			position: static;
+			justify-content: normal;
+			gap: normal;
+			margin: 0 0 0.5rem;
+			padding: 0.5rem 0.9rem;
+			border-bottom: 1px solid var(--line);
+			pointer-events: auto;
+
+			> h2.title {
+				flex: 1;
+				max-width: none;
+
+				> button {
+					gap: 0.4rem;
+					height: auto;
+					padding: 0;
+					border: 0;
+					background: none;
+					color: inherit;
+					font: inherit;
+
+					> .dot {
+						order: 0;
+					}
+				}
+			}
+
+			> button.close {
+				display: inline-block;
+				width: auto;
+				height: auto;
+				margin: 0 -0.3rem 0 0.4rem;
+				padding: 0 0.3rem;
+				border: 0;
+				background: none;
+				font: inherit;
+				font-weight: 400;
+				line-height: 1;
+			}
+		}
+
+		> p.from {
+			position: static;
+
+			&:empty {
+				display: block;
+			}
+		}
+
+		> ul {
+			flex: initial;
+			min-height: auto;
+			max-height: 26rem;
+			padding: 0.4rem 0.6rem 1.4rem;
+		}
+
+		form {
+			width: auto;
+			max-width: none;
+			margin: 0 0.6rem 0.6rem;
+
+			&.compose {
+				position: static;
+			}
+		}
+	}
+
+	/* The chat's own parts: its list's foot and edge, a phone's bar, and its motion. */
+	.list-foot,
+	.list-edge,
+	.app-bar {
+		display: none;
+	}
+
+	.thread-details,
+	button {
+		transition: none;
+	}
+
+	button:active:not(:disabled) {
+		transform: none;
+	}
+
+	/* A runner's card: its models, the first the one it runs. The whole card is the switch: lit blue when your next message goes there. */
+	.card .models {
+		list-style: none;
+		margin: 0.5rem 0 0;
+		padding: 0;
+
+		> li {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 0.4rem;
+			padding: 0.15rem 0.4rem;
+			border-radius: 4px;
+			overflow-wrap: anywhere;
+
+			&:first-child {
+				background: Canvas;
+				border: 1px solid var(--line);
+			}
+
+			&:not(:first-child) {
+				color: var(--mute);
+				font-size: 13px;
+			}
+
+			> span.name {
+				flex: 1;
+				min-width: 0;
+			}
+
+			input[type='range'] {
+				width: 4rem;
+				padding: 0;
+				accent-color: var(--pick);
+			}
+
+			.hands {
+				flex-basis: 100%;
+				font:
+					12px ui-monospace,
+					monospace;
+				color: var(--ok);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+		}
+
+		select.swap {
+			border: 0;
+			padding: 0;
+			background-color: transparent;
+			min-width: 0;
+			flex: 1;
+			font: inherit;
+			cursor: pointer;
+		}
+	}
+
+	.card {
+		cursor: pointer;
+		user-select: none;
+
+		&.routed {
+			border-color: var(--pick);
+			box-shadow: 0 0 0 1px var(--pick);
+			background: color-mix(in srgb, var(--pick) 7%, Canvas);
+
+			.models > li:first-child {
+				border-color: var(--pick);
+			}
+		}
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.card:hover {
+			border-color: var(--mute);
+		}
+	}
+
+	/* Under it all: the page's last section, after the walk-through. */
+	.reference {
+		pre.mermaid {
+			display: none;
+		}
+
+		.diagram {
+			margin: 1.5rem 0 0.5rem;
+			padding: 1rem;
+			background: #fff;
+			border: 1px solid var(--line);
+			border-radius: 10px;
+			overflow-x: auto;
+
+			svg {
+				display: block;
+				margin: 0 auto;
+			}
+		}
+
+		.name {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+			margin: 2rem 0 0.4rem;
+			font:
+				600 clamp(1.4rem, 5vw, 2rem) ui-monospace,
+				monospace;
+
+			span {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+			}
+
+			i {
+				font:
+					500 0.78rem system-ui,
+					sans-serif;
+				color: var(--mute);
+				margin-top: 0.5rem;
+				padding-top: 0.35rem;
+				border-top: 3px solid;
+				width: 100%;
+				text-align: center;
+			}
+
+			.m i {
+				border-color: #a02f6f;
+			}
+			.t i {
+				border-color: #ad8301;
+			}
+			.r i {
+				border-color: #66800b;
+			}
+			.sep {
+				color: var(--mute);
+				font-weight: 400;
+			}
+		}
+	}
+
+	ol.promises li {
+		margin: 0.35rem 0;
+	}
+}
+
+@keyframes flow {
+	to {
+		stroke-dashoffset: -12;
+	}
+}
