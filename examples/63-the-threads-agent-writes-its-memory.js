@@ -23,12 +23,13 @@ const long = (k) => `message ${k} ${'y'.repeat(1000 - `message ${k} `.length)}`
 const post = (id, body, to = null) => api('POST', `/api/threads/${id}/entries`, { body, to })
 const level0 = async (id) => (await linesOf(id)).filter((x) => x.l === 0).length
 
-await server({ MODULES: '+memory', MEMORY_THREADS: 'all' })
+await server()
 await scriptedRunner('a', route('a'))
 await scriptedRunner('b', route('b'))
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'memory' })
+await api('POST', `/api/threads/${id}/memory`, { on: true })
 
 await post(id, long(0))
 await post(id, long(1))

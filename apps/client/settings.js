@@ -33,7 +33,6 @@ export function Settings() {
 	const on = (module) => draft.modules[module.name] ?? module.on
 	const model = () => draft.model ?? server().settings?.memory.model ?? ''
 	const compactAt = () => draft.compactAt ?? server().settings?.memory.compactAt ?? 100000
-	const memoryThreads = () => draft.threads ?? server().settings?.memory.threads ?? 'bots'
 	const toggle = (module) =>
 		setDraft((store) => {
 			if (!module.on === !on(module)) store.modules[module.name] = !module.on
@@ -175,24 +174,6 @@ export function Settings() {
 												</button>
 											<//>
 										</div>
-										<div class="option">
-											<span>Remembers</span>
-											<select
-												class="small"
-												aria-label="Which threads remember"
-												title="A thread’s own Memory switch, in its details, overrides this"
-												disabled=${() => !editable() || overridden('MEMORY_THREADS')}
-												value=${memoryThreads}
-												onChange=${(event) => {
-													const value = event.currentTarget.value
-													setDraft((store) => void (store.threads = value))
-												}}
-											>
-												<option value="bots">threads with a bot</option>
-												<option value="all">every thread</option>
-												<option value="none">no thread</option>
-											</select>
-										</div>
 										<div class="option compact-option">
 											<span>Compacts past</span>
 											<input
@@ -223,11 +204,6 @@ export function Settings() {
 				>
 					<${Show} when=${() => overridden('MODULES')}>
 						<p class="mute">Module switches are locked by MODULES in the server’s environment.</p>
-					<//>
-					<${Show} when=${() => overridden('MEMORY_THREADS')}>
-						<p class="mute">
-							Which threads remember is locked by MEMORY_THREADS in the server’s environment.
-						</p>
 					<//>
 					<${Show} when=${() => overridden('MEMORY_MODEL')}>
 						<p class="mute">
@@ -261,13 +237,16 @@ const [draft, setDraft] = createRoot(() =>
 		modules: {},
 		model: undefined,
 		compactAt: undefined,
-		threads: undefined,
 		state: '',
 	}),
 )
-const MEMORY_FIELDS = ['model', 'compactAt', 'threads']
+const MEMORY_FIELDS = ['model', 'compactAt']
 const memoryChanges = () =>
 	Object.fromEntries(
-		MEMORY_FIELDS.filter((field) => draft[field] !== undefined).map((field) => [field, draft[field]]),
+		MEMORY_FIELDS.filter((field) => draft[field] !== undefined).map((field) => [
+			field,
+			draft[field],
+		]),
 	)
-const changed = () => Object.keys(draft.modules).length > 0 || Object.keys(memoryChanges()).length > 0
+const changed = () =>
+	Object.keys(draft.modules).length > 0 || Object.keys(memoryChanges()).length > 0

@@ -28,7 +28,7 @@ check(
 const pid = srv.pid
 const on = await api('POST', '/api/settings', {
 	modules: { 'web-search': true, status: false },
-	memory: { model: 'echo/echo:high@bot', compactAt: 60000, threads: 'all' },
+	memory: { model: 'echo/echo:high@bot', compactAt: 60000 },
 })
 check(
 	on.status === 201 && on.json.restarts,
@@ -60,12 +60,6 @@ check(
 	'memory compacts past the tokens the page set',
 	readFileSync(file, 'utf8'),
 )
-check(
-	JSON.parse(readFileSync(file, 'utf8')).memory.threads === 'all' &&
-		(await api('GET', '/api/server')).json.settings.memory.threads === 'all',
-	'and remembers every thread, as the page set',
-)
-
 await api('POST', '/api/settings', {
 	modules: { 'web-search': false, status: true },
 	memory: { model: '' },

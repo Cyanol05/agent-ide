@@ -56,14 +56,13 @@ const fact = (k) =>
 const body = (k) => (k === NEEDLE ? `${fact(k)} Also: the locker code is ${CODE}.` : fact(k))
 
 const srv = await server({
-	MODULES: '+memory',
-	MEMORY_THREADS: 'all',
 	MEMORY_MODEL: `${writer}@laptop`,
 })
 await localRunner('laptop', { models, resolve, echo })
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'deep recall' })
+await api('POST', `/api/threads/${id}/memory`, { on: true })
 for (let k = 0; k < N; k++)
 	await api('POST', `/api/threads/${id}/entries`, { body: body(k), to: null })
 const all = await until(

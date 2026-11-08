@@ -54,16 +54,17 @@ const pageOf = (at, end) =>
 	`${said.slice(at, end)}\n\n[characters ${at} to ${end} of ${said.length}: zoom(4, 1, ${end}) goes on]`
 const next = upTo(1000)
 
-async function round(env) {
+async function round(env, { remembers = false } = {}) {
 	for (const f of [db, `${db}-wal`, `${db}-shm`]) rmSync(f, { force: true })
 	const srv = await server(env)
 	const bot = await scriptedRunner('bot', route)
 	const {
 		json: { id },
 	} = await api('POST', '/api/threads', { title: 'zoom' })
+	if (remembers) await api('POST', `/api/threads/${id}/memory`, { on: true })
 	for (const body of [...bodies, long])
 		await api('POST', `/api/threads/${id}/entries`, { body, to: null })
-	if (env.MODULES === '+memory')
+	if (remembers)
 		await until(async () => (await linesOf(id)).some((x) => x.l === 2 && x.i === 0), 15000)
 	await api('POST', `/api/threads/${id}/entries`, {
 		body: 'what was the secret?',
@@ -84,7 +85,7 @@ async function round(env) {
 	return { offered, prompt, results: results ?? [] }
 }
 
-const on = await round({ MODULES: '+memory', MEMORY_THREADS: 'all', MEMORY_MODEL: 'echo/echo@bot' })
+const on = await round({ MEMORY_MODEL: 'echo/echo@bot' }, { remembers: true })
 const [one, two, three, four, five] = on.results
 const rows = text(one ?? {}).split('\n')
 check(
@@ -120,7 +121,7 @@ check(
 	JSON.stringify(on.offered),
 )
 
-const off = await round({})
+const off = await round({ MODULES: '-memory' })
 check(
 	!off.offered.includes('zoom') && !off.prompt.includes('Zoom is your way into the tree'),
 	'memory off: neither',

@@ -46,14 +46,13 @@ function resolve(pattern) {
 }
 
 const srv = await server({
-	MODULES: '+memory',
-	MEMORY_THREADS: 'all',
 	MEMORY_MODEL: `${writer}@laptop`,
 })
 await localRunner('laptop', { models, resolve, echo })
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'recall' })
+await api('POST', `/api/threads/${id}/memory`, { on: true })
 const ask = async (body, n) => {
 	await api('POST', `/api/threads/${id}/entries`, { body, to: { runner: 'laptop', model } })
 	return answered(id, n, 300000)

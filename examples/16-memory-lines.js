@@ -14,7 +14,7 @@ import {
 	view,
 } from './lib.js'
 
-const env = { MODULES: '+memory', MEMORY_THREADS: 'all', MEMORY_MODEL: 'echo/echo@bot' }
+const env = { MODULES: '+memory', MEMORY_MODEL: 'echo/echo@bot' }
 const requests = []
 let n = 0
 const line = (size) => {
@@ -32,7 +32,11 @@ const route = (request) => {
 const long = (tag) => `${tag} ${'y'.repeat(2000 - tag.length - 1)}`
 const has = (lines, l, i) => lines.some((x) => x.l === l && x.i === i)
 const post = (id, body) => api('POST', `/api/threads/${id}/entries`, { body, to: null })
-const thread = async (title) => (await api('POST', '/api/threads', { title })).json.id
+const thread = async (title) => {
+	const id = (await api('POST', '/api/threads', { title })).json.id
+	await api('POST', `/api/threads/${id}/memory`, { on: true })
+	return id
+}
 
 let srv = await server(env)
 await scriptedRunner('bot', route)

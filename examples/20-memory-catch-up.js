@@ -27,14 +27,13 @@ const route = (request) => {
 const long = (k) => `message ${k} ${'y'.repeat(1000 - `message ${k} `.length)}`
 
 const srv = await server({
-	MODULES: '+memory',
-	MEMORY_THREADS: 'all',
 	MEMORY_MODEL: 'echo/echo@bot',
 })
 await scriptedRunner('bot', route, { model: { contextWindow: 65536 } })
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'late' })
+await api('POST', `/api/threads/${id}/memory`, { on: true })
 for (let k = 0; k < 300; k++)
 	await api('POST', `/api/threads/${id}/entries`, { body: long(k), to: null })
 // Every message has its line, and no pair does

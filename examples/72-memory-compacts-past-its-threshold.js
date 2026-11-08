@@ -21,7 +21,7 @@ import {
 mkdirSync(dir, { recursive: true })
 writeFileSync(
 	path.join(dir, 'agent-ide.json'),
-	JSON.stringify({ modules: ['+memory'], memory: { compactAt: 30000, threads: 'all' } }),
+	JSON.stringify({ memory: { compactAt: 30000 } }),
 )
 await server({}, { cwd: dir })
 // A window of a million tokens, so only memory's threshold can start a compaction
@@ -41,6 +41,7 @@ await scriptedRunner(
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'long' })
+await api('POST', `/api/threads/${id}/memory`, { on: true })
 
 const agent = { runner: 'bot', model: 'echo/echo' }
 let compaction, turns

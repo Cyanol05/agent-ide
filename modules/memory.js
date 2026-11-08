@@ -1,15 +1,15 @@
 /**
  * Gives each thread a memory: one short line per message, pairs of lines merged going up, so an agent reads the lines
- * instead of every word and zooms back down with `zoom` (experimental). MODULES=+memory. The thread's own agent writes its lines, as
- * it runs now, so the runner that works for a thread pays for its memory; with no agent there yet, a bot there writes
- * them, and with neither, the lines wait for the first one asked. A model in the settings, `memory.model` in
- * agent-ide.json or MEMORY_MODEL=model@runner, has that one agent write every thread's lines instead. Past
- * `memory.compactAt` tokens, 100k unless set, an agent's context is compacted into the lines.
+ * instead of every word and zooms back down with `zoom` (experimental). On by default; MODULES=-memory turns it
+ * off. The thread's own agent writes its lines, as it runs now, so the runner that works for a thread pays for its
+ * memory; with no agent there yet, a bot there writes them, and with neither, the lines wait for the first one
+ * asked. A model in the settings, `memory.model` in agent-ide.json or MEMORY_MODEL=model@runner, has that one agent
+ * write every thread's lines instead. Past `memory.compactAt` tokens, 100k unless set, an agent's context is
+ * compacted into the lines.
  *
- * Each thread has memory on or off. `memory.threads` picks the default: `bots`, unless set, for threads with a bot in
- * them, `all` or `none`; MEMORY_THREADS wins over it. A thread's own switch, POST /api/threads/:id/memory {on}, overrides
- * the default. A thread with memory off writes no lines and compacts as Pi does without memory, when a window is nearly
- * full; switched on, it writes the lines it missed.
+ * A thread with a bot in it remembers; one without doesn't, unless its own switch, POST /api/threads/:id/memory
+ * {on}, overrides that in either direction. A thread with memory off writes no lines and compacts as Pi does
+ * without memory, when a window is nearly full; switched on, it writes the lines it missed.
  */
 import { retryAssistantCall } from '@earendil-works/pi-ai'
 import { num, obj, opt } from '@earendil-works/pi-schema'
@@ -25,7 +25,6 @@ import { messageText } from '../remote.js'
 import { AGENT, agentTo, collect, said, finished, background } from '../util.js'
 
 const KIND = 'agent-ide.line'
-const DEFAULTS = ['bots', 'all', 'none']
 const RETRY = { enabled: true, maxRetries: 10, baseDelayMs: 2000 }
 const LINE = 512,
 	PANEL = 64 * 1024,
@@ -90,15 +89,11 @@ export function server(core) {
 	if (name && !name.includes('@'))
 		throw new Error("memory's model is model@runner, or leave it out")
 	const override = name && agentTo(name)
-	const threads = process.env.MEMORY_THREADS || core.config?.memory?.threads || 'bots'
-	if (!DEFAULTS.includes(threads)) throw new Error("memory's threads is bots, all or none")
 
-	/** Whether a thread remembers: its own switch, else the default; `to` counts the bots a message is asking in */
+	/** Whether a thread remembers: its own switch, else a thread with a bot in it; `to` counts the bots a message is asking in */
 	const remembers = (row, to = []) =>
 		row.memory ??
-		(threads === 'all' ||
-			(threads === 'bots' &&
-				[...Object.keys(row.agents), ...to].some((name) => !name.includes('@') && name !== AGENT)))
+		[...Object.keys(row.agents), ...to].some((name) => !name.includes('@') && name !== AGENT)
 
 	/** Who writes a thread's lines: MEMORY_MODEL, else its agent as it runs now, else a bot there, else nobody yet */
 	async function writerOf(threadId, signal) {
@@ -389,8 +384,6 @@ export function server(core) {
 		catchUp,
 		serve,
 		remembers: (row) => remembers(row),
-		/** The default for threads without their own switch */
-		memoryThreads: threads,
 		/** Past this many tokens an agent's context is compacted into the lines, so it never carries a full window */
 		compactAt: Number(core.config?.memory?.compactAt) || 100000,
 	}

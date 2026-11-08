@@ -1,27 +1,14 @@
-/** With memory on, a thread with a bot in it remembers and one without doesn't, unless `memory.threads` or its own switch says otherwise */
-import {
-	answered,
-	api,
-	check,
-	done,
-	linesOf,
-	say,
-	scriptedRunner,
-	server,
-	sleep,
-	until,
-} from './lib.js'
+/** Memory is on by default: a thread with a bot in it remembers and one without doesn't, unless its own switch
+ * says otherwise. */
+import { answered, api, check, done, linesOf, say, scriptedRunner, server, sleep, until } from './lib.js'
 
-await server({ MODULES: '+memory,+bots' })
+await server()
 await scriptedRunner('bot', () => say('ok'))
 await api('POST', '/api/bots', { name: 'ada', to: 'echo/echo@bot' })
 const thread = async (title) => (await api('POST', '/api/threads', { title })).json.id
 const row = async (id) => (await api('GET', '/api/threads')).json.find((thread) => thread.id === id)
 
-check(
-	(await api('GET', '/api/server')).json.settings.memory.threads === 'bots',
-	'by default, memory remembers the threads with a bot in them',
-)
+check((await api('GET', '/api/server')).json.modules.includes('memory'), 'memory is on without any config')
 
 const withBot = await thread('with ada')
 const alone = await thread('alone')

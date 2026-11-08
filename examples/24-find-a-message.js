@@ -28,14 +28,13 @@ const fact = (k) =>
 	`ticket ${1000 + k}: moved crate ${400 + k} to bay ${k % 31}. ${'Notes on the move. '.repeat(40).trim()}`
 
 const srv = await server({
-	MODULES: '+memory',
-	MEMORY_THREADS: 'all',
 	MEMORY_MODEL: 'echo/echo@bot',
 })
 await scriptedRunner('bot', route)
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'crates' })
+await api('POST', `/api/threads/${id}/memory`, { on: true })
 for (let k = 0; k < 16; k++)
 	await api('POST', `/api/threads/${id}/entries`, { body: fact(k), to: null })
 const lines = await until(async () => {

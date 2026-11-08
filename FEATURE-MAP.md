@@ -72,7 +72,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
                          a bot's threads as a page of the sheet
   agent-memory.js        memory popover and compaction view for the visible thread
-  settings.js            server settings: modules on/off, memory's model and which threads remember
+  settings.js            server settings: modules on/off and memory's model
   system.js, wires.js    the live system diagram and the wires between boxes
   tutorial.js            walkthrough buttons wired to the real server
   panes.js, popover.js, sure.js, notice.js, dot.js   list/detail frame, popover placement,

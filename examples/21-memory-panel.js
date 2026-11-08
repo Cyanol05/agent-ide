@@ -23,11 +23,12 @@ const route = (request) =>
 	)
 const long = (k) => `message ${k} ${'y'.repeat(1000 - `message ${k} `.length)}`
 
-let srv = await server({ MODULES: '+memory', MEMORY_THREADS: 'all', MEMORY_MODEL: 'echo/echo@bot' })
+let srv = await server({ MEMORY_MODEL: 'echo/echo@bot' })
 const bot = await scriptedRunner('bot', route)
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'panel' })
+await api('POST', `/api/threads/${id}/memory`, { on: true })
 for (let k = 0; k < 5; k++)
 	await api('POST', `/api/threads/${id}/entries`, { body: long(k), to: null })
 await until(async () => (await linesOf(id)).length === 5 + 2 + 1, 15000)
@@ -57,7 +58,7 @@ srv.kill()
 await sleep(300)
 
 for (const f of [db, `${db}-wal`, `${db}-shm`]) rmSync(f, { force: true })
-srv = await server()
+srv = await server({ MODULES: '-memory' })
 const {
 	json: { id: plain },
 } = await api('POST', '/api/threads', { title: 'plain' })

@@ -1278,7 +1278,7 @@ const defaults = {
 	director: true,
 	talk: true,
 	status: true,
-	memory: false,
+	memory: true,
 	matrix: false,
 	context: true,
 	'web-search': false,
@@ -1320,7 +1320,7 @@ const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames] = [
 	'botNames',
 ].map(hook)
 compactAt = hook('compactAt')
-const [remembers, memoryThreads] = [hook('remembers'), hook('memoryThreads')]
+const remembers = hook('remembers')
 for (const [name, runner] of Object.entries(await known()))
 	models.setProvider(runnerProvider(runners, name, runner.models))
 harness.resume()
@@ -1383,7 +1383,6 @@ const routes = [
 				memory: {
 					model: settings.config.memory?.model ?? '',
 					compactAt: compactAt ?? null,
-					threads: memoryThreads ?? settings.config.memory?.threads ?? 'bots',
 				},
 				/** What modules say of their own settings, by name */
 				...Object.fromEntries(
@@ -1392,9 +1391,7 @@ const routes = [
 						.map((module) => [module.name, module.settings]),
 				),
 				/** Set in the environment, these win over agent-ide.json */
-				overrides: ['MODULES', 'MEMORY_MODEL', 'MEMORY_THREADS'].filter(
-					(name) => process.env[name],
-				),
+				overrides: ['MODULES', 'MEMORY_MODEL'].filter((name) => process.env[name]),
 				restarts: typeof process.execve === 'function',
 			},
 		}),
@@ -1913,12 +1910,6 @@ async function saveSettings({ modules: wanted = {}, memory }) {
 		if (memory.model !== undefined) {
 			if (model) next.memory = { ...next.memory, model }
 			else if (next.memory) delete next.memory.model
-		}
-		if (memory.threads !== undefined) {
-			if (!['bots', 'all', 'none'].includes(memory.threads))
-				throw new Error('memory remembers threads with bots, all or none')
-			if (memory.threads === 'bots') delete next.memory?.threads
-			else next.memory = { ...next.memory, threads: memory.threads }
 		}
 		if (memory.compactAt !== undefined) {
 			const tokens = Number(memory.compactAt)

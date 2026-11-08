@@ -13,7 +13,7 @@ import {
 	until,
 } from './lib.js'
 
-await server({ MODULES: '+memory', MEMORY_THREADS: 'all' })
+await server({ MODULES: '+memory' })
 for (const [runner, contextWindow, count, half, lineSize] of [
 	['automatic', 40000, 310, 140, 300],
 	['manual', 1000000, 330, 160, 492],
@@ -32,6 +32,7 @@ for (const [runner, contextWindow, count, half, lineSize] of [
 	const {
 		json: { id },
 	} = await api('POST', '/api/threads', { title: runner })
+	await api('POST', `/api/threads/${id}/memory`, { on: true })
 	const post = (body, to = null) => api('POST', `/api/threads/${id}/entries`, { body, to })
 	let position = 0
 	const fill = async (end) => {
