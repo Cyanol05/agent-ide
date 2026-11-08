@@ -607,7 +607,8 @@ function Message(props) {
 
 /**
  * A message that crossed threads, as a step of a run: → sent or ← received, the other side in its bot's colour, the
- * message's first line; opened, the whole of it. A question is muted and starts closed, an answer is ink and starts open.
+ * message's first line; opened, the whole of it. A question is muted, an answer ink. What went out starts closed, and so
+ * does a question that came in; an answer that came in starts open.
  * The other side is a bot by its name, a thread's agent by its thread's title, or its model while the thread has none.
  */
 export function Cross(props) {
@@ -618,7 +619,7 @@ export function Cross(props) {
 	const answer = () => !!props.data.re
 	return html`
 		<li class=${() => ['call', props.sent ? 'sent' : 'received', { asked: !answer() }]}>
-			<details open=${answer}>
+			<details open=${() => !props.sent && answer()}>
 				<summary
 					title=${() => props.title ?? `${props.sent ? 'to' : 'from'} ${props.author || label()} in thread ${props.thread}`}
 				>
