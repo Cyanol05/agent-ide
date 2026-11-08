@@ -4,11 +4,12 @@ import {
 	check,
 	conversationOf,
 	done,
+	quiet,
 	runner,
 	say,
 	scriptedRunner,
 	server,
-	sleep,
+	settled,
 	until,
 	view,
 } from './lib.js'
@@ -30,7 +31,7 @@ check(
 	'the child answers in the child',
 	JSON.stringify(answer),
 )
-await sleep(500)
+await quiet()
 check(
 	(await view(parent)).entries.length === 0,
 	'and its parent hears nothing of it',
@@ -53,14 +54,13 @@ const placed = await until(
 	20,
 )
 await api('POST', `/api/threads/${stopped.id}/stop`, {})
-await sleep(1000)
-const after = await view(stopped.id)
+const after = await settled(stopped.id)
 check(
 	Boolean(placed) &&
-		after.status !== 'working' &&
+		Boolean(after) &&
 		after.entries.every((e) => e.data.author === 'oskar'),
 	'a stopped child posts nothing in its thread',
-	JSON.stringify(after.entries),
+	JSON.stringify(after?.entries),
 )
 check((await view(parent)).entries.length === 0, 'nor its parent')
 

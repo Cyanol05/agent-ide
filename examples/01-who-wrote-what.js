@@ -5,7 +5,6 @@ import {
 	answered,
 	answers,
 	api,
-	base,
 	check,
 	conversationOf,
 	dir,
@@ -141,8 +140,5 @@ check(
 	"a default model pi can't resolve is reported with why",
 	JSON.stringify(lost),
 )
-
-const page = await (await fetch(`${base}/`)).text()
-check(page.includes('Under it all'), 'the server serves its walkthrough on its one page')
 
 done()

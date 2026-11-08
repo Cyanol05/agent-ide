@@ -5,6 +5,7 @@ import {
 	call,
 	check,
 	done,
+	quiet,
 	say,
 	scriptedRunner,
 	server,
@@ -44,7 +45,7 @@ check(
 	'the bot that started the room is in it, with those it asked',
 	JSON.stringify(opened.agents.map((agent) => agent.name)),
 )
-await new Promise((resolve) => setTimeout(resolve, 300))
+await quiet()
 check(
 	(await view(home)).entries.every((entry) => entry.data.from !== room.id),
 	'their answers stay in the room; nothing comes back to her home',

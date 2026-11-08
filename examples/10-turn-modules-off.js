@@ -10,11 +10,12 @@ import {
 	conversationOf,
 	db,
 	done,
+	kill,
+	quiet,
 	runner,
 	say,
 	scriptedRunner,
 	server,
-	sleep,
 	text,
 	until,
 	view,
@@ -55,13 +56,11 @@ async function round(env) {
 			(e) => e.kind === 'pi.tool-result',
 		),
 	)
-	await until(async () => (await view(id)).status !== 'working')
-	await sleep(300)
+	await quiet()
 	const children = (await api('GET', '/api/threads')).json.filter((t) => t.parent === id)
 	const parent = await view(id)
 	bot.close()
-	srv.kill()
-	await sleep(300)
+	await kill(srv)
 	return {
 		modules,
 		told,
@@ -138,8 +137,7 @@ for (const status of ['1', '0']) {
 		JSON.stringify(out.slice(-200)),
 	)
 }
-srv.kill()
-await sleep(300)
+await kill(srv)
 
 // agent-ide.json in the folder the server starts in
 fresh()

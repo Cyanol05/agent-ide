@@ -6,11 +6,11 @@ import {
 	check,
 	db,
 	done,
+	kill,
 	linesOf,
 	say,
 	scriptedRunner,
 	server,
-	sleep,
 	text,
 	until,
 } from './lib.js'
@@ -54,8 +54,7 @@ check(
 	JSON.stringify(bad),
 )
 bot.close()
-srv.kill()
-await sleep(300)
+await kill(srv)
 
 for (const f of [db, `${db}-wal`, `${db}-shm`]) rmSync(f, { force: true })
 srv = await server({ MODULES: '-memory' })

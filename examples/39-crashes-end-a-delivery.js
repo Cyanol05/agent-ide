@@ -1,7 +1,9 @@
 /** A delivery that crash after crash cut off ends instead of running forever, and the thread says so */
-import { answered, api, check, done, runner, server, sleep, until, view } from './lib.js'
+import { answered, api, check, done, kill, runner, server, until, view } from './lib.js'
 
-let srv = await server()
+/** Pi's limit is five crashes in a row; two show the same */
+const env = { RESTART_LIMIT: '2' }
+let srv = await server(env)
 let laptop = await runner('laptop')
 const to = { runner: 'laptop', model: 'echo/echo' }
 const {
@@ -9,26 +11,22 @@ const {
 } = await api('POST', '/api/threads', { title: 'crashes' })
 await api('POST', `/api/threads/${id}/entries`, { body: 'hi', to })
 await answered(id)
-laptop.kill()
+await kill(laptop)
 await until(() => api('GET', '/api/runners').then((r) => r.json.every((x) => !x.online)))
 await api('POST', `/api/threads/${id}/entries`, { body: 'hello', to })
-const stopped = (p) => new Promise((resolve) => p.once('exit', (code) => resolve(code)))
-for (let i = 0; i < 6; i++) {
-	const exit = stopped(srv)
-	srv.kill('SIGTERM')
-	if ((await exit) !== 0) check(false, 'a stop closes the server cleanly', `exit ${await exit}`)
-	srv = await server()
+for (let i = 0; i < 3; i++) {
+	await kill(srv)
+	check(srv.exitCode === 0, 'a stop closes the server cleanly', `exit ${srv.exitCode}`)
+	srv = await server(env)
 }
 check(
 	(await view(id)).agents[0]?.status === 'blocked',
-	'six stops later, the delivery still waits for its runner',
+	'more stops than the limit later, the delivery still waits for its runner',
 	(await view(id)).agents[0]?.status,
 )
-for (let i = 0; i < 6; i++) {
-	srv.kill('SIGKILL')
-	await sleep(100)
-	srv = await server()
-	await sleep(100)
+for (let i = 0; i < 2; i++) {
+	await kill(srv, 'SIGKILL')
+	srv = await server(env)
 }
 const v = await until(async () => {
 	const v = await view(id)
@@ -45,8 +43,12 @@ check(
 	v?.agents[0]?.status,
 )
 laptop = await runner('laptop')
-await sleep(200)
-check((await view(id)).entries.length === v?.entries.length, 'nothing runs again on its own')
+// The runner is back, so anything still due would show as working now
+const back = await view(id)
+check(
+	back.entries.length === v?.entries.length && back.status !== 'working',
+	'nothing runs again on its own',
+)
 await api('POST', `/api/threads/${id}/entries`, { body: 'again', to })
 const after = await answered(id, 2)
 const answer = after?.entries.filter((e) => e.data.answer).at(-1)

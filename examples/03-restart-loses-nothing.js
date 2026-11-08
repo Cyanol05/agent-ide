@@ -7,6 +7,8 @@ import {
 	check,
 	conversationOf,
 	done,
+	kill,
+	quiet,
 	runner,
 	server,
 	sleep,
@@ -39,8 +41,7 @@ check(
 	'the message is written, its delivery waits for the runner',
 	JSON.stringify(await inputs()),
 )
-srv.kill('SIGKILL')
-await sleep(500)
+await kill(srv, 'SIGKILL')
 srv = await server()
 const queued = await view(id)
 check(queued.status === 'blocked', 'after restart the delivery waits for the runner', queued.status)
@@ -62,7 +63,7 @@ check(
 	'after restart ben is answered and credited',
 	brief(after),
 )
-await sleep(1000)
+await quiet()
 check(
 	answers(await view(id)).length === 2 &&
 		(await inputs()).filter((t) => t.includes('while away')).length === 1,

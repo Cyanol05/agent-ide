@@ -9,11 +9,11 @@ import {
 	conversationOf,
 	db,
 	done,
+	kill,
 	linesOf,
 	say,
 	scriptedRunner,
 	server,
-	sleep,
 	text,
 	until,
 	view,
@@ -80,8 +80,7 @@ async function round(env, { remembers = false } = {}) {
 		)
 	}, 15000)
 	bot.close()
-	srv.kill()
-	await sleep(300)
+	await kill(srv)
 	return { offered, prompt, results: results ?? [] }
 }
 

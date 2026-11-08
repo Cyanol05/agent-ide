@@ -1,7 +1,7 @@
 /** A runner that goes away */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { answered, api, check, dir, done, runner, server, sleep, until, view } from './lib.js'
+import { answered, api, check, dir, done, runner, server, settled, until, view } from './lib.js'
 
 await server()
 // The models pi has enabled in the runner's folder are offered, and what it can't resolve is skipped
@@ -51,12 +51,11 @@ const blocked = await until(async () => (await view(id)).status === 'blocked')
 check(Boolean(blocked), 'a thread waiting for an offline runner is blocked')
 
 await api('POST', `/api/threads/${id}/stop`, {})
-await sleep(800)
-const stopped = await view(id)
+const stopped = await settled(id)
 check(
-	stopped.status === 'idle' && !stopped.entries.some((e) => e.data.error),
+	stopped?.status === 'idle' && !stopped.entries.some((e) => e.data.error),
 	'a stopped thread is idle, with no error entry',
-	`${stopped.status} ${JSON.stringify(stopped.entries)}`,
+	`${stopped?.status} ${JSON.stringify(stopped?.entries)}`,
 )
 
 done()

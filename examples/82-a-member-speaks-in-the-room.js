@@ -1,5 +1,5 @@
 /** MODULES=+bots,+director: a bot that's in a thread speaks there as itself when it posts from home, and the room answers in the room */
-import { answered, api, call, check, done, say, scriptedRunner, server, text, until, view } from './lib.js'
+import { answered, api, call, check, done, quiet, say, scriptedRunner, server, text, until, view } from './lib.js'
 
 await server({ MODULES: '+bots,+director' })
 await scriptedRunner('laptop', (request) => {
@@ -29,7 +29,7 @@ check(
 	JSON.stringify(said?.data),
 )
 const after = await answered(room, 3)
-await new Promise((resolve) => setTimeout(resolve, 300))
+await quiet()
 const backHome = (await view(home)).entries.filter((entry) => entry.data.from === room)
 check(
 	after.entries.at(-1).data.author === 'Kira' && backHome.length === 0,

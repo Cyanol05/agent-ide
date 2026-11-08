@@ -1,5 +1,5 @@
 /** An example's disposable server goes away on success, failure and a timeout. */
-import { execFile } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { check, done, repo, until } from './lib.js'
 
 for (const end of [
@@ -9,7 +9,7 @@ for (const end of [
 	'timeout',
 ]) {
 	const { error, output } = await new Promise((resolve) => {
-		execFile(
+		const example = spawn(
 			process.execPath,
 			['--input-type=module', '-e', `
 				import { server, check, done } from './examples/lib.js'
@@ -17,9 +17,16 @@ for (const end of [
 				console.log('server pid:', child.pid)
 				${end === 'timeout' ? 'setInterval(() => {}, 1000)' : end}
 			`],
-			{ cwd: repo, timeout: end === 'timeout' ? 4000 : 10000 },
-			(error, output) => resolve({ error, output }),
+			{ cwd: repo, stdio: ['ignore', 'pipe', 'pipe'] },
 		)
+		let output = ''
+		example.stdout.on('data', (chunk) => {
+			output += chunk
+			// A timeout in all.js is a SIGTERM; this one comes as soon as the server is up
+			if (end === 'timeout' && output.includes('server pid:')) example.kill('SIGTERM')
+		})
+		example.stderr.on('data', (chunk) => (output += chunk))
+		example.on('exit', (code, signal) => resolve({ error: code !== 0 || signal, output }))
 	})
 	const pid = Number(/server pid: (\d+)/.exec(output)?.[1])
 	check(Boolean(pid), `${end}: the example started a server`, output)

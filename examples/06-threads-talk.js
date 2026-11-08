@@ -7,10 +7,12 @@ import {
 	check,
 	conversationOf,
 	done,
+	kill,
+	online,
+	quiet,
 	say,
 	scriptedRunner,
 	server,
-	sleep,
 	text,
 	until,
 	view,
@@ -53,8 +55,7 @@ const child = await until(
 	5,
 )
 check(Boolean(child), 'the agent started a child thread')
-srv.kill('SIGKILL')
-await sleep(300)
+await kill(srv, 'SIGKILL')
 srv = await server()
 
 const woke = await until(async () => {
@@ -100,7 +101,7 @@ check(
 	'the reply says where it came from and which post it answers',
 	JSON.stringify(replies[0]?.data).slice(0, 300),
 )
-await sleep(500)
+await quiet()
 check(
 	(await view(child.id)).entries.filter((e) => e.data.from === parent).length === 1,
 	"the parent's answer to the reply stays in the parent: no ping-pong",
@@ -156,7 +157,7 @@ check(
 	Boolean(await until(async () => (await view(human)).entries.find((e) => e.data.answer))),
 	'a human in a child gets the answer there',
 )
-await sleep(500)
+await quiet()
 check(
 	!(await view(parent)).entries.some((e) => e.data.from === human),
 	'and the parent hears nothing of it',
@@ -165,15 +166,16 @@ check(
 /** A note that asks nobody, then a restart */
 const settledParent = await view(parent)
 await api('POST', `/api/threads/${parent}/entries`, { body: 'just a note', to: null })
-srv.kill('SIGKILL')
-await sleep(300)
+await kill(srv, 'SIGKILL')
 srv = await server()
-await sleep(600)
-const quiet = await view(parent)
+// Once the runner is back, an old reply asking again would be a live delivery
+await online('bot')
+await quiet()
+const still = await view(parent)
 check(
-	answers(quiet).length === answers(settledParent).length && quiet.status !== 'working',
+	answers(still).length === answers(settledParent).length,
 	'after a restart no old reply asks again: the note stays unanswered',
-	brief(quiet),
+	brief(still),
 )
 
 /** Answering a post with the post tool is the answer */
@@ -185,7 +187,7 @@ const byPost = await until(async () => {
 	const v = await view(asker)
 	return v.entries.some((e) => e.data.body === 'by post: 5') && v.status !== 'working' ? v : null
 }, 10000)
-await sleep(300)
+await quiet()
 const back = (await view(asker)).entries.filter((e) => e.data.from && e.data.from !== asker)
 check(
 	Boolean(byPost) && back.length === 1 && back[0].data.body === 'by post: 5',

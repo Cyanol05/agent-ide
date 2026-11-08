@@ -9,6 +9,7 @@ import {
 	keyFor,
 	say,
 	scriptedRunner,
+	quiet,
 	server,
 	sleep,
 	until,
@@ -69,7 +70,11 @@ check((await view(id)).entries.length === 1, 'Stop posts no answer or error')
 
 // A reply arriving after Stop must not revive the post or cache its resolved model.
 if (resolving) socket.send(JSON.stringify({ id: resolving.id, result: { model } }))
-await sleep(150)
+// Best-effort: the reply is taken once the runner's row has no call left, and anything it started would be work
+await until(async () =>
+	(await api('GET', '/api/runners')).json.some((r) => r.name === 'slow' && !r.calls.length),
+)
+await quiet()
 check(
 	(await api('GET', '/api/threads')).json.length === 1,
 	'a late resolve creates no child thread',

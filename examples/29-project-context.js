@@ -11,7 +11,7 @@ import {
 	done,
 	runner,
 	server,
-	sleep,
+	kill,
 	view,
 } from './lib.js'
 
@@ -60,9 +60,7 @@ await ask(id, 'again', 2)
 const second = await prompt(id)
 check(second.includes('Always answer in Danish.'), 'an edit counts from the next request')
 
-srv.kill()
-laptop.kill()
-await sleep(300)
+await Promise.all([kill(srv), kill(laptop)])
 for (const f of [db, `${db}-wal`, `${db}-shm`]) rmSync(f, { force: true })
 srv = await server({ MODULES: '-context' })
 laptop = await runner('laptop')

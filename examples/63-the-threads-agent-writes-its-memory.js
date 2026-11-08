@@ -7,7 +7,6 @@ import {
 	say,
 	scriptedRunner,
 	server,
-	sleep,
 	text,
 	until,
 } from './lib.js'
@@ -33,9 +32,11 @@ await api('POST', `/api/threads/${id}/memory`, { on: true })
 
 await post(id, long(0))
 await post(id, long(1))
-await sleep(1500)
+// A short message is its own line, written at once; the long ones have no agent to write theirs
+await post(id, 'short')
+await until(async () => (await linesOf(id)).some((x) => x.l === 0 && x.i === 2))
 check(
-	(await level0(id)) === 0 && asked.a + asked.b === 0,
+	(await level0(id)) === 1 && asked.a + asked.b === 0,
 	'with no agent in the thread, its long messages wait for their lines',
 )
 
@@ -47,8 +48,9 @@ check(
 check(asked.a > 0 && asked.b === 0, 'on its own runner', JSON.stringify(asked))
 
 const before = { ...asked }
-await post(id, long(4), { runner: 'b', model: 'echo/echo' })
-await until(async () => (await level0(id)) >= 5, 15000)
+const { entry } = (await post(id, long(4), { runner: 'b', model: 'echo/echo' })).json
+const at = (await api('GET', `/api/threads/${id}`)).json.entries.findIndex((e) => e.id === entry)
+await until(async () => (await linesOf(id)).some((x) => x.l === 0 && x.i === at), 15000)
 check(
 	asked.b > before.b,
 	'switched to another runner, the agent writes its next lines there',

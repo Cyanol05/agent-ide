@@ -151,6 +151,38 @@ export async function until(fn, ms = 8000, every = 100) {
 	return null
 }
 
+/** Stops a process and resolves once it has exited */
+export const kill = (p, signal = 'SIGTERM') =>
+	new Promise((resolve) => {
+		if (p.exitCode !== null || p.signalCode !== null) return resolve()
+		p.once('exit', () => resolve())
+		p.kill(signal)
+	})
+
+/** Every thread settled: no agent working or waiting for a runner, so nothing more will land until someone asks */
+export const quiet = (ms) =>
+	until(
+		async () =>
+			(await api('GET', '/api/threads')).json.every(
+				(t) => !['working', 'blocked'].includes(t.status),
+			),
+		ms,
+	)
+
+/** One thread settled, `blocked` counting as settled when the runner it waits for is away */
+export const settled = (id, { blocked = false, ms } = {}) =>
+	until(async () => {
+		const v = await view(id)
+		return v.status !== 'working' && (blocked || v.status !== 'blocked') ? v : null
+	}, ms)
+
+/** A runner's row says it's online */
+export const online = (name, ms) =>
+	until(
+		() => api('GET', '/api/runners').then((r) => r.json.some((x) => x.name === name && x.online)),
+		ms,
+	)
+
 export const answered = (id, n = 1, ms) =>
 	until(async () => {
 		const v = await view(id)

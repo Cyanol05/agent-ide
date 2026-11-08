@@ -1,5 +1,5 @@
 /** MODULES=+director: a bot's answer that @mentions another bot here asks it, never itself or a bot not here, and bots rest after three answers in a row until a person writes */
-import { answered, api, check, done, say, scriptedRunner, server, text, view } from './lib.js'
+import { answered, api, check, done, quiet, say, scriptedRunner, server, text, view } from './lib.js'
 
 await server({ MODULES: '+bots,+director' })
 /** Each bot passes the floor to the next, by @mention, and mentions itself and an outsider on the way */
@@ -18,7 +18,7 @@ const authors = (v) => v.entries.filter((e) => e.data.answer).map((e) => e.data.
 const room = (await api('POST', '/api/threads', { title: 'room' })).json.id
 await api('POST', `/api/threads/${room}/entries`, { body: 'quiet please', to: ['Kira', 'Ada', 'Bram'] })
 const hello = await answered(room, 3)
-await new Promise((resolve) => setTimeout(resolve, 300))
+await quiet()
 check(
 	(await view(room)).entries.length === hello.entries.length &&
 		hello.entries.slice(1).every((entry) => !entry.data.to),
@@ -28,7 +28,7 @@ check(
 
 await api('POST', `/api/threads/${room}/entries`, { body: '@kira start' })
 const chain = await answered(room, 6)
-await new Promise((resolve) => setTimeout(resolve, 300))
+await quiet()
 const settled = await view(room)
 check(
 	JSON.stringify(authors(settled).slice(3)) === '["Kira","Ada","Bram"]',
@@ -44,7 +44,7 @@ check(
 
 await api('POST', `/api/threads/${room}/entries`, { body: 'and again', to: 'Bram' })
 await answered(room, 9)
-await new Promise((resolve) => setTimeout(resolve, 300))
+await quiet()
 check(
 	JSON.stringify(authors(await view(room)).slice(6)) === '["Bram","Kira","Ada"]',
 	'a person writing wakes them: @mentions summon again, for three answers',

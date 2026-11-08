@@ -4,11 +4,11 @@ import {
 	api,
 	check,
 	done,
+	kill,
 	linesOf,
 	say,
 	scriptedRunner,
 	server,
-	sleep,
 	text,
 	until,
 	view,
@@ -91,8 +91,7 @@ const c = await thread('restart')
 const entries = []
 for (let k = 0; k < 8; k++) entries.push((await post(c, long(`m${k}`))).json.entry)
 await until(async () => (await linesOf(c)).length > 0, 15000)
-srv.kill('SIGKILL')
-await sleep(500)
+await kill(srv, 'SIGKILL')
 srv = await server(env)
 const want = [
 	[0, 8],
@@ -104,7 +103,6 @@ const built = await until(async () => {
 	const ls = await linesOf(c)
 	return want.every((k) => ls.some((x) => `${x.l}:${x.i}` === k)) && ls
 }, 30000)
-await sleep(300)
 const keys = (await linesOf(c)).map((x) => `${x.l}:${x.i}`)
 check(
 	Boolean(built) &&
@@ -129,7 +127,6 @@ await until(async () => {
 	const own = (await linesOf(f)).filter((x) => x.id > at)
 	return forkWant.every((k) => own.some((x) => `${x.l}:${x.i}` === k))
 }, 30000)
-await sleep(300)
 const own = (await linesOf(f))
 	.filter((x) => x.id > at)
 	.map((x) => `${x.l}:${x.i}`)

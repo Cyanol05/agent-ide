@@ -11,7 +11,7 @@ import {
 	say,
 	scriptedRunner,
 	server,
-	sleep,
+	kill,
 	text,
 	until,
 	view,
@@ -153,8 +153,7 @@ check(
 await api('POST', `/api/threads/${q}/stop`, {})
 
 // Restart with the director
-srv.kill()
-await sleep(500)
+await kill(srv)
 srv = await server({ MODULES: '+director' })
 laptop = await runner('laptop', { wait: false })
 const after = await answered(a, 3, 15000)

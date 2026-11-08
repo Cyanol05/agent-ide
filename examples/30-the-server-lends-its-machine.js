@@ -2,7 +2,7 @@
 import { mkdtempSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { answered, api, check, dir, done, server, sleep, until, view } from './lib.js'
+import { answered, api, check, dir, done, kill, server, until, view } from './lib.js'
 
 const name = os.hostname()
 const online = async () =>
@@ -22,10 +22,18 @@ await api('POST', `/api/threads/${id}/entries`, {
 const v = await answered(id)
 check(v?.entries.at(-1).data.body.startsWith(`echo@${name} heard`), 'an agent on it answers')
 
-srv.kill('SIGTERM')
-await new Promise((r) => srv.on('exit', r))
+await kill(srv)
+/** The server's runner shares its process group, so an empty group means it exited too */
+const alone = () => {
+	try {
+		process.kill(-srv.pid, 0)
+		return false
+	} catch (error) {
+		return error.code === 'ESRCH'
+	}
+}
+check(Boolean(await until(async () => alone())), 'its runner stopped with the server')
 srv = await server()
-await sleep(1000)
-check(!(await online()), 'its runner stopped with the server, so it never comes back')
+check(!(await online()), 'so it never comes back')
 check((await view(id)).entries.length === v.entries.length, 'and the thread kept everything')
 done()

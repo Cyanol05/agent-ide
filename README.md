@@ -27,6 +27,7 @@ HOST=0.0.0.0 PORT=3001 node server.js      # reachable from other machines
 RUNNER=~/code node server.js               # agents work in another folder; RUNNER=0 for none
 MODULES=+web-search,-talk node server.js   # switch modules on or off
 DB_PATH=other.sqlite node server.js        # another store
+RESTART_LIMIT=2 node server.js             # work cut off by this many crashes in a row ends; 5 unless set
 ```
 
 The log sits next to the store, in `agent-ide.log`.

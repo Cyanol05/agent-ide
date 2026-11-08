@@ -7,10 +7,10 @@ import {
 	conversationOf,
 	check,
 	done,
+	kill,
 	say,
 	scriptedRunner,
 	server,
-	sleep,
 	until,
 	view,
 	text,
@@ -154,8 +154,7 @@ check(
 first.close()
 
 // A restart closes the socket
-srv.kill('SIGKILL')
-await sleep(500)
+await kill(srv, 'SIGKILL')
 srv = await server()
 const restarted = watch(id)
 const now = await until(async () => lives(restarted.heard)[0], 8000, 20)

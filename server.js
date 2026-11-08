@@ -386,6 +386,10 @@ const harness = await Harness.open(
 		/** A failed run doesn't strand the messages queued behind it: the next run takes them */
 		settings: () => ({
 			afterFailedRun: 'continue',
+			/** RESTART_LIMIT=n: how many crashes in a row end a task; Pi's own limit unless set */
+			...(Number(process.env.RESTART_LIMIT) >= 1 && {
+				restartLimit: Number(process.env.RESTART_LIMIT),
+			}),
 			...(compactAt && { compaction: compactingAt(compactAt) }),
 		}),
 		onReport: (report) => {

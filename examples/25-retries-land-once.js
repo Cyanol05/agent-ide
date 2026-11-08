@@ -1,5 +1,5 @@
 /** Retries never double */
-import { answered, answers, api, check, done, runner, server, sleep, until, view } from './lib.js'
+import { answered, answers, api, check, done, kill, quiet, runner, server, until, view } from './lib.js'
 
 let srv = await server()
 await runner('laptop')
@@ -32,8 +32,7 @@ check(
 )
 await answered(id)
 
-srv.kill('SIGKILL')
-await sleep(500)
+await kill(srv, 'SIGKILL')
 srv = await server()
 const later = await api('POST', `/api/threads/${id}/entries`, {
 	body: 'hello',
@@ -53,7 +52,7 @@ const ran = await api('POST', `/api/threads/${id}/entries`, {
 })
 await api('POST', `/api/threads/${id}/entries`, { body: '$ echo hi', requestId: 'run-1' })
 await until(async () => (await view(id)).entries.some((e) => e.data.shell))
-await sleep(500)
+await quiet()
 const v = await view(id)
 check(
 	ran.status === 201 &&

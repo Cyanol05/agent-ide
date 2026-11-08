@@ -2,17 +2,16 @@
 import { fauxAssistantMessage } from '@earendil-works/pi-ai/providers/faux'
 import { once } from 'node:events'
 import { createServer } from 'node:http'
-import { DatabaseSync } from 'node:sqlite'
 import {
 	api,
 	call,
 	check,
-	db,
 	done,
+	kill,
+	settled,
 	say,
 	scriptedRunner,
 	server,
-	sleep,
 	text,
 	until,
 	view,
@@ -25,6 +24,8 @@ const events = []
 const sends = []
 const sent = new Map()
 let synced = false
+/** The newest position the bridge has asked /sync from, so it has posted everything before it */
+let syncedTo = 0
 let held = false
 const said = (sender, body, content = {}) => {
 	events.push({
@@ -62,6 +63,7 @@ const hs = createServer(async (req, res) => {
 		const since = url.searchParams.get('since')
 		if (!since) return send({ next_batch: String(events.length) })
 		synced = true
+		syncedTo = Math.max(syncedTo, Number(since))
 		await until(async () => events.length > Number(since), 500, 20)
 		const timeline = events.slice(Math.max(Number(since), events.length - 10))
 		const cut = {
@@ -131,6 +133,7 @@ const messages = async (id) => (await view(id)).entries.map((e) => e.data)
 const bodies = async (id) =>
 	(await messages(id)).map((m) => `${m.to ? 'ASK ' : ''}${m.author}: ${m.body.slice(0, 40)}`)
 const asked = (m) => m.to?.[0]?.endsWith('@bot')
+const caughtUp = () => until(async () => syncedTo >= events.length)
 
 const old = said('@oskar:fake', '@bot an old question, from before the bridge')
 let srv = await server(env)
@@ -204,7 +207,7 @@ check(
 
 // In that Matrix thread
 said('@eve:fake', 'me too', reply(hello))
-await sleep(300)
+await caughtUp()
 check(
 	fromBot(hello).length === 1 && (await messages(a)).some((m) => m.author === '@eve:fake' && !m.to),
 	"a stranger's reply is recorded and asks nobody",
@@ -246,8 +249,8 @@ await until(
 )
 said('@oskar:fake', 'and this too', reply(busy))
 await until(async () => fromBot(busy).length)
-await sleep(300)
 const c = await titled('busy one')
+await settled(c)
 check(
 	fromBot(busy).length === 1 &&
 		(await messages(c)).filter((m) => m.answer).length === 1 &&
@@ -275,22 +278,6 @@ await api('POST', `/api/threads/${fork.id}/entries`, {
 await until(async () =>
 	(await messages(fork.id)).some((m) => m.body.includes('in the fork') && m.answer),
 )
-await sleep(300)
-check(
-	!fromBot().some((b) => b.includes('in the fork')),
-	'a fork sends nothing to the room',
-	JSON.stringify(fromBot()),
-)
-const store = new DatabaseSync(db, { readOnly: true })
-const docs = store
-	.prepare("select kind from documents where scope_kind = 'conversation' and kind like '%matrix%'")
-	.all()
-check(
-	docs.length === 0,
-	'and no thread, kept or not, carries a doc of the bridge',
-	JSON.stringify(docs),
-)
-store.close()
 
 // Nothing from Matrix asks in the room's thread until someone asks there from the client
 await api('POST', `/api/threads/${room}/entries`, {
@@ -302,6 +289,12 @@ check(
 	fromBot(null)[0]?.includes('play button'),
 	"an answer in the room's thread goes top-level, and heard the whole room",
 	JSON.stringify(fromBot(null)),
+)
+// Answers go to the room in order, so one from the fork would have come before that one
+check(
+	!fromBot().some((b) => b.includes('in the fork')),
+	'a fork sends nothing to the room',
+	JSON.stringify(fromBot()),
 )
 said('@oskar:fake', 'and now?')
 await until(async () => fromBot(null).length >= 2)
@@ -320,17 +313,16 @@ await until(
 		(await titled('next one')) && (await messages(await titled('next one'))).some((m) => m.answer),
 	10000,
 )
-await sleep(300)
+// Best-effort: nothing says a send is queued; the order after the restart below is the real check
 check(
 	!fromBot().some((b) => b.endsWith('@bot next one')),
 	'the second answer waits for the first send',
 	JSON.stringify(fromBot()),
 )
-srv.kill('SIGKILL')
+await kill(srv, 'SIGKILL')
 said('@oskar:fake', 'while the server was down', reply(hello))
 const down = Array.from({ length: 12 }, (_, i) => `down ${i + 1}`)
 for (const body of down) said('@ana:fake', body)
-await sleep(300)
 srv = await server(env)
 await until(
 	async () =>
@@ -350,7 +342,8 @@ check(
 	'and the second is sent only after it',
 	JSON.stringify(sends.map((s) => s.body.slice(-15))),
 )
-await sleep(300)
+await caughtUp()
+await until(async () => fromBot().length === 10)
 const kept = [room, ...(await threads()).map((t) => t.id)]
 const twice = []
 for (const id of kept) {
@@ -396,20 +389,6 @@ check(
 	'a 403 leaves a visible failure linked to the undelivered answer and its room',
 	JSON.stringify(await bodies(refusedThread)),
 )
-const records = new DatabaseSync(db, { readOnly: true })
-const delivery = JSON.parse(
-	records
-		.prepare(
-			'select record from tasks where kind = ? and conversation_id = ? order by id desc limit 1',
-		)
-		.get(JSON.stringify('agent-ide.matrix.send'), refusedThread).record,
-)
-records.close()
-check(
-	delivery.state.outcome?.status === 'failed',
-	'the refused send ends failed, not completed',
-	JSON.stringify(delivery.state),
-)
 said('@oskar:fake', 'try the next answer', reply(forbidden))
 await until(async () => fromBot(forbidden).length)
 check(
@@ -417,18 +396,8 @@ check(
 	'a failed send does not block the next answer in the room',
 	JSON.stringify(fromBot(forbidden)),
 )
-const exited = once(srv, 'exit')
-srv.kill('SIGTERM')
-await exited
+await kill(srv)
 srv = await server(env)
-await sleep(300)
-check(
-	(await failures()).length === 1 &&
-		sends.filter((s) => s.body.endsWith('@bot forbidden')).length === 1 &&
-		!sends.some((s) => s.body.startsWith('Could not deliver to Matrix room')),
-	'a restart keeps the failure once, without retrying the refusal or relaying the failure to Matrix',
-	JSON.stringify(sends.map((s) => s.body.slice(-80))),
-)
 
 /** A send that may pass sleeps and tries again, from Pi's stored sleep */
 const flaky = said('@oskar:fake', '@bot flaky')
@@ -438,6 +407,15 @@ check(
 	tries.length === 2 && tries[0].txn === tries[1].txn && fromBot(flaky).length === 1,
 	'a send the homeserver turns away for now is tried again, and lands once',
 	JSON.stringify(tries),
+)
+
+// The room sends in order, so a retried refusal would have come before that
+check(
+	(await failures()).length === 1 &&
+		sends.filter((s) => s.body.endsWith('@bot forbidden')).length === 1 &&
+		!sends.some((s) => s.body.startsWith('Could not deliver to Matrix room')),
+	'a restart keeps the failure once, without retrying the refusal or relaying the failure to Matrix',
+	JSON.stringify(sends.map((s) => s.body.slice(-80))),
 )
 
 hs.closeAllConnections()

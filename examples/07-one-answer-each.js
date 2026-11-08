@@ -6,10 +6,10 @@ import {
 	call,
 	check,
 	done,
+	quiet,
 	say,
 	scriptedRunner,
 	server,
-	sleep,
 	text,
 	until,
 	view,
@@ -17,8 +17,12 @@ import {
 
 await server()
 
-/** Ask once, then twice more while the child is still thinking */
-const bot = await scriptedRunner('bot', (request) => {
+/** Ask once, then twice more while the child is still thinking: its first answer waits until both are in */
+const posted = async (n) => {
+	const kid = (await api('GET', '/api/threads')).json.find((t) => t.parent === parent)
+	return kid && (await view(kid.id)).entries.filter((e) => e.data.from === parent).length >= n
+}
+const bot = await scriptedRunner('bot', async (request) => {
 	const last = request.messages.findLast((m) => m.role !== 'system')
 	const t = text(last)
 	const results = request.messages.filter((m) => m.role === 'toolResult')
@@ -30,9 +34,12 @@ const bot = await scriptedRunner('bot', (request) => {
 	}
 	if (t.includes('answering from thread')) return say(`Got it: ${t.split('\n')[0]}`)
 	if (t.includes('ask twice')) return call('post', { title: 'pair', body: 'slow question' })
-	if (t.includes('slow question')) return say('thinking slowly '.repeat(80))
+	if (t.includes('slow question')) {
+		await until(() => posted(3), 15000, 20)
+		return say('thinking slowly')
+	}
 	if (t.includes('and another thing') || t.includes('and a third'))
-		return say('one answer for the rest')
+		return say('one answer for that')
 	return say(`heard: ${t}`)
 })
 
@@ -49,7 +56,7 @@ const settled = await until(async () => {
 		? v
 		: null
 }, 30000)
-await sleep(1000)
+await quiet()
 
 const p = await view(parent)
 const child = (await api('GET', '/api/threads')).json.find((t) => t.parent === parent)
@@ -71,8 +78,11 @@ check(
 	'one reply per child answer, re = the posts it answers',
 	`want ${JSON.stringify(want)} got ${JSON.stringify(got)}`,
 )
-if (!answers.some((a) => (a.data.re ?? []).length > 1))
-	console.log('(Pi answered each follow-up on its own; grouping not exercised)')
+check(
+	JSON.stringify(want) === JSON.stringify(posts.map((post) => String(post.id)).sort()),
+	'each post, even those that came in while the child was thinking, gets an answer of its own',
+	JSON.stringify(want),
+)
 
 bot.close()
 done()

@@ -88,13 +88,14 @@ scripts/
   try.js                 scratch server with a scripted bot, for clicking through
   page-spy.js            browser init script: fetches, socket frames, stalls
   replay-pi.js           replays pi sessions into a thread, to try memory
-examples/lib.js          what examples share: start (owned child processes), server, runner, scriptedRunner, api, view, until, check
+examples/lib.js          what examples share: start (owned child processes), kill (awaits the exit), server, runner, scriptedRunner, api, view, until, quiet/settled/online (wait for state, not the clock), check
 examples/17-memory-compaction.js   automatic and manual cuts, memory coverage and budget at small and large windows
 examples/27-watch-agents-work.js   socket snapshots, streaming entries, delivery identity and reconnects
 examples/all.js          suite queue, per-example timeout and interruption cleanup
 examples/92-the-server-keeps-a-log.js   the log next to the store: output, crash stack, exit code
 examples/93-auto-title.js          one-shot default titles, explicit titles, edits in flight and failures
 examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
+examples/64-settings-restart-the-server.js   settings write agent-ide.json and restart in place; only the server's machine may
 examples/86–90-*-real-model.js     move bench: introductions, another thread's fact, side question,
                                  directed mention and web search; REAL=1 only
 examples/real-model-bench.js       real runner setup, delivery settling and transcript evidence

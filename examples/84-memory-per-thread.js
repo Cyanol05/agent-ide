@@ -1,6 +1,6 @@
 /** Memory is on by default: a thread with a bot in it remembers and one without doesn't, unless its own switch
  * says otherwise. */
-import { answered, api, check, done, linesOf, say, scriptedRunner, server, sleep, until } from './lib.js'
+import { answered, api, check, done, linesOf, say, scriptedRunner, server, until } from './lib.js'
 
 await server()
 await scriptedRunner('bot', () => say('ok'))
@@ -24,7 +24,7 @@ check(
 	Boolean(await until(async () => (await linesOf(withBot)).length >= 2)),
 	'a thread with a bot gets its lines',
 )
-await sleep(300)
+// A message gets its line's task as it's written, or never
 check(
 	(await linesOf(alone)).length === 0 && (await row(alone)).memory === false,
 	'a thread with only its own agent gets none',
@@ -45,7 +45,6 @@ await api('POST', `/api/threads/${withBot}/memory`, { on: false })
 const before = (await linesOf(withBot)).length
 await api('POST', `/api/threads/${withBot}/entries`, { body: 'forget this, ada', to: ['ada'] })
 await answered(withBot, 2)
-await sleep(300)
 check(
 	(await linesOf(withBot)).length === before && (await row(withBot)).memory === false,
 	'switched off, a thread with a bot writes no more',
