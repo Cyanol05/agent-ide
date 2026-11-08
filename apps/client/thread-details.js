@@ -47,7 +47,7 @@ export function ThreadDetails() {
 		return threads.filter(
 			(thread) =>
 				thread.id !== current() &&
-				!thread.hidden &&
+				!thread.archived &&
 				!family().includes(thread.id) &&
 				thread.agents.some((agent) => agent.name === bot.name),
 		)

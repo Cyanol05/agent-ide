@@ -64,7 +64,7 @@ export function server(core) {
 		})
 	}
 
-	async function hiding(tx, threadId) {
+	async function archiving(tx, threadId) {
 		const [name] = Object.entries(await tx.doc(Bots)).find(([, bot]) => bot.home === threadId) ?? []
 		if (name) throw new Error(`Thread ${threadId} is ${name}'s home; forget ${name} first`)
 	}
@@ -157,7 +157,7 @@ export function server(core) {
 	return {
 		serve,
 		remove,
-		hiding,
+		archiving,
 		botAgent,
 		instructionsOf,
 		botNames,

@@ -2,6 +2,7 @@
 import html from '@solidjs/html'
 import { createSignal, For, Show } from 'solid-js'
 import {
+	archivedThreads,
 	archiveThread,
 	bots,
 	current,
@@ -21,12 +22,11 @@ import { BotItem, NewBot } from './bot.js'
 export function ThreadList() {
 	const [creating, setCreating] = createSignal(false)
 	const [archivedPage, setArchivedPage] = createSignal(false)
-	const archived = () => threads.filter((thread) => thread.archived)
 	return html`
 		<nav class="thread-list" aria-label="Threads">
 			<${Show}
 				when=${() => !archivedPage()}
-				fallback=${html`<${ArchivedPage} onBack=${() => setArchivedPage(false)} threads=${archived} />`}
+				fallback=${html`<${ArchivedPage} onBack=${() => setArchivedPage(false)} />`}
 			>
 				<${Show} when=${() => server().modules.includes('bots')}>
 					<h2>Bots</h2>
@@ -57,11 +57,11 @@ export function ThreadList() {
 					>
 						${(thread) => html`<${ThreadItem} thread=${() => thread} />`}
 					<//>
-					<${Show} when=${() => archived().length}>
+					<${Show} when=${() => archivedThreads.length}>
 						<li class="new">
 							<button type="button" class="row" onClick=${() => setArchivedPage(true)}>
 								<span>Archived</span>
-								<small aria-hidden="true">${() => archived().length}</small>
+								<small aria-hidden="true">${() => archivedThreads.length}</small>
 							</button>
 						</li>
 					<//>
@@ -84,8 +84,8 @@ function ArchivedPage(props) {
 			</button>
 			<h2>Archived</h2>
 		</header>
-		<ul>
-			<${For} each=${() => props.threads()}>
+		<ul class="thread-family">
+			<${For} each=${() => archivedThreads}>
 				${(thread) => html`<${ThreadItem} thread=${() => thread} archived />`}
 			<//>
 		</ul>
@@ -122,13 +122,11 @@ export function ThreadItem(props) {
 			<${Show} when=${() => !homeBot(props.thread.id)}>
 				<button
 					type="button"
-					class="delete"
-					data-danger=${() => !props.archived}
+					class="archive"
 					title=${() => (props.archived ? 'Bring this thread back' : 'Archive this thread')}
-					onClick=${() =>
-						archiveThread(props.thread.id, !props.archived).catch(report)}
+					onClick=${() => archiveThread(props.thread.id, !props.archived).catch(report)}
 				>
-					${() => (props.archived ? 'unarchive' : 'archive')}
+					${() => (props.archived ? 'Unarchive' : 'Archive')}
 				</button>
 			<//>
 		</li>

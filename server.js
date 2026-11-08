@@ -909,6 +909,7 @@ async function threadRow(id, reader, all) {
 	return {
 		id,
 		...row,
+		/** Stored as `hidden` still; renaming the doc's own key would need migrating every already-archived thread */
 		archived: hidden,
 		/** With memory on, whether it remembers; without, nothing */
 		memory: remembers?.(row),

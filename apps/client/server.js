@@ -139,6 +139,7 @@ export function drawer(which) {
 
 export const {
 	threads,
+	archivedThreads,
 	runners,
 	server,
 	bots,
@@ -146,12 +147,14 @@ export const {
 	columns,
 	closeColumn,
 	reloadThreads,
+	reloadArchivedThreads,
 	reloadBots,
 	reloadServer,
 } = createRoot(() => {
 	const [server, setServer] = createSignal(cached('server', DEFAULT_SERVER))
 	const [bots, setBots] = createStore(cached('bots', []))
 	const [threads, setThreads] = createStore(cached('threads', []))
+	const [archivedThreads, setArchivedThreads] = createStore([])
 	const [runners, setRunners] = createStore(cached('runners', []))
 	/** Each fetch keeps its row's identity when nothing in it changed, so a keyed `For` leaves it alone */
 	const reloadServer = () =>
@@ -171,6 +174,9 @@ export const {
 			setThreads(reconcile(data, 'id'))
 			cache('threads', data)
 		})
+	/** Its own fetch; the main list never carries archived threads */
+	const reloadArchivedThreads = () =>
+		api('/api/threads/archived').then((data) => setArchivedThreads(reconcile(data, 'id')))
 	const reloadRunners = () =>
 		api('/api/runners').then((data) => {
 			setRunners(reconcile(data, 'name'))
@@ -178,12 +184,14 @@ export const {
 		})
 	const reload = () => {
 		reloadThreads()
+		reloadArchivedThreads()
 		reloadRunners()
 		reloadBots()
 	}
 	onSettled(() => {
 		reloadServer().then(reloadBots)
 		reloadThreads()
+		reloadArchivedThreads()
 		reloadRunners()
 		watch(
 			reload,
@@ -222,7 +230,20 @@ export const {
 			return next
 		})
 	}
-	return { threads, runners, server, bots, family, columns, closeColumn, reloadThreads, reloadBots, reloadServer }
+	return {
+		threads,
+		archivedThreads,
+		runners,
+		server,
+		bots,
+		family,
+		columns,
+		closeColumn,
+		reloadThreads,
+		reloadArchivedThreads,
+		reloadBots,
+		reloadServer,
+	}
 })
 
 export async function createThread(title) {
@@ -232,10 +253,11 @@ export async function createThread(title) {
 	if (!latest(current)) openThread(id)
 	return id
 }
-export async function deleteThread(id) {
-	await api(`/api/threads/${id}`, undefined, 'DELETE')
-	if (family().includes(id)) openThread(null)
+export async function archiveThread(id, archived) {
+	await api(`/api/threads/${id}/archive`, { archived })
+	if (archived && family().includes(id)) openThread(null)
 	reloadThreads()
+	reloadArchivedThreads()
 }
 
 export const fork = async (id, at) => openThread((await api(`/api/threads/${id}/fork`, { at })).id)
