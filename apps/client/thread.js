@@ -47,6 +47,13 @@ import { markdown } from './markdown.js'
 const stripSummaryTag = (text) =>
 	(text ?? '').replace(/^\s*<\/?summary>\s*\n?/im, '').replace(/\n\s*<\/?summary>\s*$/im, '')
 
+/** Its first line of words, without the markdown around them, to stand for it folded */
+const firstLine = (text) =>
+	(stripSummaryTag(text).split('\n').find((line) => line.trim()) ?? '')
+		.replace(/^\s*(#+|[-*>]|\d+\.)\s*/, '')
+		.replace(/[*_`]/g, '')
+		.trim()
+
 export function Thread(props) {
 	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
 	const messages = () => entries[props.id] ?? []
@@ -402,11 +409,13 @@ export function Thread(props) {
 										when=${() => row().cut}
 										fallback=${() => html`
 											<li
-												class="line mute"
+												class="line"
 												title=${() => `messages ${row().at} to ${row().at + row().n - 1}`}
 											>
-												<small>${() => `${row().at}+${row().n}`}</small>
-												<div class="body markdown" innerHTML=${() => markdown(stripSummaryTag(row().text))} />
+												<details>
+													<summary><small>${() => firstLine(row().text)}</small></summary>
+													<div class="body markdown" innerHTML=${() => markdown(stripSummaryTag(row().text))} />
+												</details>
 											</li>
 										`}
 									>

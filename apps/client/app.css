@@ -529,6 +529,20 @@ agent-memory {
 				}
 			}
 
+			/* What the agent reads instead of the messages above: its first line, quiet as a run line; opened, the whole of it at a message's size, on the thread's lines. */
+			&.line {
+				summary > small {
+					display: inline;
+					margin: 0;
+				}
+
+				details > .body {
+					margin-top: var(--space-3);
+					padding: 0;
+					border: 0;
+				}
+			}
+
 			/* A turn: one line of what the agent did, live while it works; open, each step in order, as a transcript. */
 			&.turn {
 				color: var(--mute);
@@ -1629,17 +1643,6 @@ body.resizing {
 	font-size: var(--text-small);
 	text-align: center;
 	padding: var(--space-2) 0;
-}
-
-/* A message folded into the memory line the agent reads instead. */
-.thread > ul > li.line {
-	display: flex;
-	gap: var(--space-2);
-	font-size: var(--text-small);
-
-	small {
-		flex: none;
-	}
 }
 
 /* A finger needs 44px: the small icon buttons keep their look and reach past it. */
