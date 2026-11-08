@@ -93,39 +93,20 @@ export function Thread(props) {
 				)
 			})
 			const answerOf = answersIn(all)
-			// A question from another thread holds the answer said here to it alone, as a reply under it: a post's, else the run's last words
-			const questions = new Set(
-				all.filter((entry) => entry.data.from && !entry.data.re).map((entry) => entry.id),
-			)
-			const replies = new Map()
-			for (const entry of all)
-				if (!entry.data.from && entry.data.re?.every((id) => questions.has(id)))
-					for (const id of entry.data.re)
-						if (!replies.has(id) || (replies.get(id).data.answer && !entry.data.answer))
-							replies.set(id, entry)
-			const inside = new Set([...replies.values()].map((entry) => entry.id))
-			// The run that answered such a question alone sits in its box between question and answer, whatever else it did
-			const runs = new Map()
+			// An answer said here to a question from another thread names where it went
 			const byId = new Map(all.map((entry) => [entry.id, entry]))
-			const turnsAfter = Map.groupBy(turns, (row) => row.turn?.after)
-			for (const [id, reply] of replies) {
-				const question = byId.get(id)
-				const run = turnsAfter
-					.get(id)
-					?.find((row) => row.turn && row.agent.name === reply.data.author)
-				if (run && question && reply.data.re.length === 1) runs.set(id, run)
+			const sentTo = (entry) => {
+				const question = entry.data.from ? undefined : byId.get(entry.data.re?.[0])
+				return question?.data.from ? question : undefined
 			}
-			const boxed = new Set(runs.values())
-			// An answer to an ask line shows in it; one with no line (a boxed run's post, say) stays a message
+			// An answer to an ask line shows in it; one with no line stays a message
 			const answers = new Set(
-				turns.flatMap((row) =>
-					row.turn && !boxed.has(row) ? row.turn.steps.map((step) => answerOf(step)?.id) : [],
-				),
+				turns.flatMap((row) => (row.turn ? row.turn.steps.map((step) => answerOf(step)?.id) : [])),
 			)
-			const shown = all.filter((entry) => !answers.has(entry.id) && !inside.has(entry.id))
+			const shown = all.filter((entry) => !answers.has(entry.id))
 			// Each ask an agent made here is one line after its run, open to the whole exchange
 			const asks = turns
-				.filter((row) => row.turn && !boxed.has(row))
+				.filter((row) => row.turn)
 				.flatMap((row) =>
 					asksOf(row.turn.steps)
 						.filter((step) => step.result)
@@ -150,8 +131,7 @@ export function Thread(props) {
 				key: entry.id,
 				entry,
 				at: entry.id,
-				reply: replies.get(entry.id),
-				run: runs.get(entry.id),
+				sent: sentTo(entry),
 			}))
 			const cuts = (latest(thread)?.agents ?? []).flatMap((agent) =>
 				perConversation(agent.conversation)
@@ -165,7 +145,7 @@ export function Thread(props) {
 			const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
 			const rows = [
 				...said.filter((row) => !above(row)),
-				...turns.filter((row) => !above(row) && !boxed.has(row)),
+				...turns.filter((row) => !above(row)),
 				...asks.filter((row) => !above(row)),
 				...lines,
 				...(newest ? [newest] : []),
@@ -446,8 +426,7 @@ export function Thread(props) {
 											<${Message}
 												thread=${() => props.id}
 												entry=${() => row().entry}
-												reply=${() => row().reply}
-												run=${() => row().run}
+												sent=${() => row().sent}
 												above=${() => row().above}
 											/>
 										`}
@@ -475,6 +454,7 @@ export function Thread(props) {
 export function Message(props) {
 	const data = () => props.entry.data
 	const elsewhere = () => !props.embedded && data().from && data().from !== props.thread
+	const answered = () => elsewhere() && data().re
 	const forks = () =>
 		threads.filter(
 			(thread) =>
@@ -485,51 +465,28 @@ export function Message(props) {
 	return html`
 		<li
 			class=${() => ({
-				elsewhere: elsewhere(),
-				reply: elsewhere() && data().re,
+				elsewhere: answered(),
+				reply: answered(),
 				mine: !elsewhere() && data().author === me,
 				same: !elsewhere() && data().author !== me && props.above === data().author,
 			})}
 		>
 			<${Show}
-				when=${() => elsewhere() && data().re}
+				when=${() => answered()}
 				fallback=${html`
-					<${Show}
-						when=${() => elsewhere()}
-						fallback=${html`<small
-							title=${() => data().author}
-							style=${() => colorOf(data().author)}
-							>${() => authorLabel(data().author)}</small
-						>`}
+					<small title=${() => data().author}
+						><span style=${() => colorOf(data().author)}>${() => authorLabel(data().author)}</span
+						><${Show} when=${() => elsewhere()}
+							>${' '}<${ThreadLink} id=${() => data().from}>${() => `from ${data().from}`}<//><//
+						></small
 					>
-						<small title=${() => data().author}>
-							<${Crossing} data=${() => data()} arrow="→" home="asked from" other="asked from" />
-						</small>
-					<//>
 					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
-					<${Show} when=${() => props.run}>
-						<ul class="run">
-							<${Turn}
-								thread=${() => props.thread}
-								agent=${() => props.run.agent}
-								turn=${() => props.run.turn}
-								live=${() => props.run.live}
-								handed=${() => props.run.turn.held.length !== 1}
-							/>
-						</ul>
-					<//>
-					<${Show} when=${() => props.reply}>
-						<div class="reply">
-							<small title=${() => props.reply.data.author}
-								><span class="cross">← </span
-								><span style=${() => colorOf(props.reply.data.author)}
-									>${() => authorLabel(props.reply.data.author)}</span
-								>
-								answered</small
+					<${Show} when=${() => props.sent}>
+						<div class="links mute">
+							${'→ sent to '}<${ThreadLink} id=${() => props.sent.data.from}
+								>${() => authorLabel(props.sent.data.author)}<//
 							>
-							<${Body} data=${() => props.reply.data} />
-							<${Images} images=${() => props.reply.data.images} />
 						</div>
 					<//>
 				`}

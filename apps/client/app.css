@@ -460,7 +460,6 @@ agent-memory {
 
 		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
 		> li,
-		> li > .run > li,
 		> li.exchange .said > li {
 			margin: 1.5rem 0 0;
 			white-space: pre-wrap;
@@ -603,22 +602,6 @@ agent-memory {
 				animation: appear 0s 0.4s both;
 			}
 
-			/* The run that answered it sits between the question and its answer. */
-			> .run {
-				list-style: none;
-				margin: 0.7rem 0 0;
-				padding: 0;
-
-				> li {
-					margin: 0;
-				}
-			}
-
-			/* The answer said here to that question sits under it, indented like an exchange's reply. */
-			&.elsewhere > .reply {
-				margin: 0.35rem 0 0 1em;
-			}
-
 			/* A post's answer is the post's result: one line in the flow the size of a run line, opened to read it. */
 			&.elsewhere.reply {
 				padding: 0;
@@ -630,8 +613,6 @@ agent-memory {
 			}
 
 			/* Light sea green says it crossed threads: the box's frame and its arrows. The names keep their author's colour, the words plain ink. */
-			&.elsewhere:not(.reply),
-			&.elsewhere > .reply,
 			/* An ask is one quiet line in the flow; opened, the exchange in the same box a question gets over there. */
 			&.exchange {
 				summary > small {
