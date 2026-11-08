@@ -410,8 +410,8 @@ agent-memory {
 	}
 }
 
-/* A checkbox and the list it writes; the list is a field you can read and type in. */
-.thread-details > .hands {
+/* A checkbox and the list it writes; the list is a field you can read and type in. Nested inside a bot's own panel too, not only the thread-level one. */
+.thread-details .hands {
 	display: flex;
 	gap: 0.6rem;
 	align-items: center;
@@ -437,14 +437,15 @@ agent-memory {
 	}
 }
 
-/* Tools and a bot's model: written as pi takes them, in a field that looks like one. */
-:is(.thread-details > .hands input.tools, .thread-details .bot > button.model) {
-	padding: 0.25rem 0.45rem;
-	font:
-		12px ui-monospace,
-		monospace;
+/* Every field in the bot panel — tools, model, instructions — reads as one kind of box: same text size, padding, border, background. */
+:is(.thread-details .hands input.tools, .thread-details .bot > button.model, .thread-details .instructions) {
+	padding: 0.4rem 0.6rem;
+	font-size: 14px;
+	font-family: inherit;
 	color: var(--ink);
 	background: var(--tint);
+	border: 1px solid var(--line);
+	border-radius: 6px;
 
 	&:focus {
 		outline: none;
@@ -1785,17 +1786,11 @@ body.side .thread-details {
 	margin: 0 0.6rem;
 }
 
-.thread-details .bot button {
-	padding: 0 0.4rem;
-	font-size: 12px;
-}
-
 /* Its model opens the composer's picker, and reads as the field it stands for. */
 .thread-details .bot > button.model {
 	display: block;
 	box-sizing: border-box;
 	width: calc(100% - 1.2rem);
-	padding: 0.25rem 0.45rem;
 	text-align: left;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -1810,6 +1805,7 @@ body.side .thread-details {
 	justify-content: space-between;
 	align-items: center;
 	padding: 0.25rem 0.45rem;
+	font-size: 14px;
 	text-align: left;
 	background: var(--tint);
 
@@ -1837,26 +1833,16 @@ body.side .thread-details {
 	}
 }
 
-/* Its instructions are written like a message: the composer's box, growing with what's in it. */
+/* Its instructions are written like a message: the composer's box, growing with what's in it, up to a dozen lines, then it scrolls so Threads stays in view. */
 .thread-details .instructions {
 	display: block;
 	width: calc(100% - 1.2rem);
 	box-sizing: border-box;
 	field-sizing: content;
 	min-height: 4lh;
+	max-height: 12lh;
+	overflow-y: auto;
 	resize: none;
-	padding: 0.4rem 0.6rem;
-	border: 1px solid var(--line);
-	border-radius: 6px;
-	background: var(--tint);
-	color: inherit;
-	font: inherit;
-	font-size: 14px;
-
-	&:focus {
-		outline: none;
-		border-color: var(--mute);
-	}
 }
 
 /* Names as a message's author line has them. */
