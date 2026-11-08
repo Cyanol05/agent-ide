@@ -7,6 +7,7 @@ import {
 	current,
 	drawer,
 	family,
+	forkedFrom,
 	homeBot,
 	newThreadTools,
 	people,
@@ -26,6 +27,33 @@ export function ThreadDetails() {
 			(name) => name !== homeBot(current())?.name,
 		)
 	const depth = (id) => here()?.family.find((member) => member.id === id)?.depth ?? 0
+	/** A family member's parent, if it's also a member: the thread a fork or child points at */
+	const parentOf = (id) => {
+		const thread = threads.find((member) => member.id === id)
+		return thread?.parent ?? forkedFrom(thread)
+	}
+	/**
+	 * The sheet's own line of descent: ancestors up to the root, itself, and its own descendants.
+	 * No siblings or cousins. A root thread's line is still every one of its children.
+	 */
+	const lineage = () => {
+		const ids = family()
+		const id = current()
+		if (!ids.includes(id)) return ids
+		const ancestors = new Set()
+		for (let above = parentOf(id); ids.includes(above); above = parentOf(above)) ancestors.add(above)
+		const descendants = new Set()
+		const open = [id]
+		while (open.length) {
+			const parent = open.pop()
+			for (const child of ids)
+				if (!descendants.has(child) && parentOf(child) === parent) {
+					descendants.add(child)
+					open.push(child)
+				}
+		}
+		return ids.filter((member) => member === id || ancestors.has(member) || descendants.has(member))
+	}
 	// A bot's threads are a page of their own: a bot with hundreds of them must not push its own settings off the sheet
 	const [page, setPage] = createSignal(false)
 	createEffect(current, () => {
@@ -89,11 +117,11 @@ export function ThreadDetails() {
 						/>`}<//
 				>
 				<${Show} when=${() => !homeBot(current())}>
-					<${Show} when=${() => family().length > 1}>
+					<${Show} when=${() => lineage().length > 1}>
 						<ul class="thread-family">
 							<${For}
 								each=${() =>
-									family()
+									lineage()
 										.map((id) => threads.find((thread) => thread.id === id))
 										.filter(Boolean)}
 							>
