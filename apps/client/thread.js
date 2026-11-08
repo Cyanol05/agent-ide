@@ -10,6 +10,7 @@ import {
 	For,
 	getOwner,
 	latest,
+	onSettled,
 	reconcile,
 	runWithOwner,
 	Show,
@@ -265,7 +266,13 @@ export function Thread(props) {
 	const titleClick = () => (current() !== props.id ? openThread(props.id) : drawer('side'))
 	let list,
 		followed,
+		sizes,
+		changes,
 		stuck = true
+	onSettled(() => () => {
+		sizes?.disconnect()
+		changes?.disconnect()
+	})
 	/** Marks the thread read for me, but only while I'm actually looking: a hidden tab shouldn't clear the dot for an answer nobody saw */
 	const markRead = (id) => {
 		if (document.visibilityState === 'visible') api(`/api/threads/${id}/read`, {}).catch(report)
@@ -412,7 +419,7 @@ export function Thread(props) {
 			if (stuck) list.scrollTop = list.scrollHeight
 			followed = list.scrollHeight
 		}
-		const sizes = new ResizeObserver(() => {
+		sizes = new ResizeObserver(() => {
 			const column = list.parentElement
 			const height = (element) => {
 				if (!element) return 0
@@ -436,10 +443,11 @@ export function Thread(props) {
 			bottom()
 		})
 		sizes.observe(list)
-		new MutationObserver((changes) => {
-			for (const change of changes)
+		changes = new MutationObserver((records) => {
+			for (const change of records)
 				for (const row of change.addedNodes) if (row.nodeType === 1) sizes.observe(row)
-		}).observe(list, { childList: true })
+		})
+		changes.observe(list, { childList: true })
 	}
 	return html`
 		<article
