@@ -1,26 +1,29 @@
 # Sunday plan
 
 ## v1, landed
-- Packaging: the package ships only the app; npm and npx install cleanly, with no ws warning.
-- No runner attached: nothing hangs, and the model picker offers to connect one.
-- Status follows the Program Status Protocol; a dropped runner shows error.
-- Your message appears the moment you press Enter, with room left below it for the answer.
-- Posts read "Messaged …"; a failed post shows as a failed step, not a pending ask.
+- Packaging: npm/npx install clean, no ws warning.
+- No runner: nothing hangs, picker offers to connect one.
+- Status follows the Program Status Protocol.
+- Your message appears on Enter, room left for the answer.
+- Posts read "Messaged …"; failed post shows as a failed step.
+- Bots and director on by default.
 
 ## v1, in flight
-- Bots and director on by default.
-- Memory per thread: on in bot threads by default; setting `memory.threads` (bots, all, none) and a switch on each thread.
+- Memory per thread (#39): on by default in bot threads, `memory.threads` setting.
 
 ## v1, Oskar
-- Homepage copy against the README (Sol's list in thread 40837).
-- Commit the client and FEATURE-MAP edits.
+- Homepage copy against the README (Sol's list, thread 40837).
+- Commit client and FEATURE-MAP edits.
 - Publish: drop "private", version 0.1.0.
-- Phone checks: top-bar blur, Send arrow, × on panels; does Enter add a newline or do nothing on touch?
+- Phone checks: top-bar blur, Send arrow, panel ×, Enter behavior.
 
 ## After v1
-- A bench for the final test: does a cheap model reach for the right move at the right time? Five or so real scenarios (introduce yourself in a group chat, ask another thread, a side question returning home, recall from memory, search the web), run on Luna low and judged from the thread's text. Today we judge by eye, one test at a time.
-- Memory notes: a folder per bot that persists (#39).
-- Trim the client: client.css is about 3000 lines and the client about 7300; that's where v1.1's cuts are.
-- A worker's CLI posts show as Oskar's; they should show as the agent.
-- Drop the Claude cache_control retry once pi-claude-code#10 is fixed.
-- The name. Keep agent-ide until a better one shows up in use.
+- Bench: does a cheap model reach for the right move, judged by eye on Luna low.
+- Memory notes, a folder per bot (#39).
+- Trim the client: client.css ~3000 lines, client ~7300.
+- Worker's CLI posts should show as the agent, not Oskar.
+- Drop Claude cache_control retry once pi-claude-code#10 lands.
+- The name: keep agent-ide for now.
+
+## Open issues
+- #35 Slash commands like /compact do nothing in a thread.
