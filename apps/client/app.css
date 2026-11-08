@@ -46,7 +46,7 @@
 /* Out of the way: a small arrow at the end of the runners row, under the thread list. */
 .mode-toggle {
 	position: absolute;
-	bottom: calc(var(--space-3) + (var(--foot-height) - var(--foot-button)) / 2);
+	bottom: calc(var(--baseline) + (var(--foot-height) - var(--foot-button)) / 2);
 	left: calc(var(--list-width, 15rem) - 2.4rem);
 	z-index: 2;
 	height: var(--foot-button);
@@ -249,8 +249,8 @@ agent-memory {
 	flex-direction: column;
 	align-self: stretch;
 	min-height: 0;
-	/* The same inset on every side as the composer's own margin, so its foot row floats the same distance off the bottom edge */
-	padding: var(--space-3);
+	/* The same inset as the composer's own margins, so its foot row floats the same distance off the bottom edge */
+	padding: var(--space-3) var(--space-3) var(--baseline);
 	border-right: 1px solid var(--line);
 	overflow-y: auto;
 	font-size: 13px;
@@ -452,24 +452,25 @@ agent-memory {
 		min-height: 0;
 		list-style: none;
 		margin: 0;
-		padding-block: max(3.4rem, var(--thread-top, 0px))
-			calc(var(--compose-height, 7rem) + var(--space-6));
+		/* Rounded to the baseline, so the rows sit on it at the top and the bottom of the scroll. */
+		padding-block: round(up, max(3.4rem, var(--thread-top, 0px)), var(--baseline))
+			round(up, calc(var(--compose-height, 7rem) + var(--space-6)), var(--baseline));
 		/* Keep the scrollbar at the edge, with messages aligned to the composer. */
 		padding-inline: max(var(--space-3), calc((100% - var(--chat-width)) / 2));
 		overflow-y: auto;
 		font-size: 15px;
-		line-height: 1.6;
+		line-height: calc(2 * var(--baseline));
 
 		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
 		> li,
 		> li.exchange .said > li {
-			margin: var(--space-5) 0 0;
+			margin: calc(2 * var(--baseline)) 0 0;
 			white-space: pre-wrap;
 			overflow-wrap: anywhere;
 			position: relative;
 
 			&:first-child {
-				margin-top: var(--space-3);
+				margin-top: var(--baseline);
 			}
 
 			/* The room under what you just sent, which the answer fills. */
@@ -478,16 +479,16 @@ agent-memory {
 			}
 
 			&.same {
-				margin-top: var(--space-3);
+				margin-top: var(--baseline);
 
 				> small {
 					display: none;
 				}
 			}
 
-			/* One rhythm: a new speaker's message opens a block with --space-5 above it; what follows inside it sits --space-3 below. */
+			/* One rhythm on the baseline: a new speaker's message opens a block two baselines down; what follows inside it sits one baseline down. */
 			&:is(.turn, .exchange, .reply) {
-				margin-top: var(--space-3);
+				margin-top: var(--baseline);
 			}
 
 			/* What came from or went to another thread sits in by --space-5, its header with it. */
@@ -499,8 +500,7 @@ agent-memory {
 				display: block;
 				color: var(--mute);
 				font-size: 12px;
-				line-height: 1.3;
-				margin-bottom: var(--space-1);
+				line-height: var(--baseline);
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
@@ -510,7 +510,7 @@ agent-memory {
 				margin-left: auto;
 				width: fit-content;
 				max-width: min(85%, 32rem);
-				padding: var(--space-3) var(--space-4);
+				padding: var(--baseline) var(--space-4);
 				border-radius: 14px;
 				background: var(--tint);
 
@@ -707,18 +707,34 @@ agent-memory {
 
 	.links {
 		font-size: 12px;
-		padding: 0 0 var(--space-2);
+		line-height: var(--baseline);
+		padding: 0 0 var(--baseline);
 	}
 
 	> ul > li > .links:not(:first-child) {
-		padding: var(--space-2) 0 0;
+		padding: var(--baseline) 0 0;
+	}
+
+	/* A message's markdown keeps to the baseline: a line apart, never part of one. */
+	.markdown {
+		:is(p, ul, ol, blockquote, pre, table) {
+			margin-block: var(--baseline);
+		}
+
+		:is(h1, h2, h3, h4, h5, h6) {
+			margin: var(--baseline) 0 0;
+		}
+
+		hr {
+			margin-block: var(--baseline) calc(var(--baseline) - 1px);
+		}
 	}
 
 	form {
 		/* The composer: a rounded box to write in, and under it a quiet bar with what's coming and whom it asks. */
 		width: calc(100% - 1.2rem);
 		max-width: var(--chat-width);
-		margin: 0 auto var(--space-3);
+		margin: 0 auto var(--baseline);
 
 		/* Its own height reserves room in the list, even as the draft grows. */
 		&.compose {
@@ -729,7 +745,7 @@ agent-memory {
 
 		.box {
 			/* One line of the field; Send sits centred on it at the bottom, and stays there as the field grows. */
-			--field: calc(1.4 * 15px + 0.8rem);
+			--field: calc(4 * var(--baseline) - 2px - 2 * var(--space-1));
 			--edge-gap: calc((var(--field) - 1.6rem) / 2);
 			display: flex;
 			align-items: flex-end;
@@ -1495,7 +1511,7 @@ body.resizing {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-2);
-	margin-top: var(--space-2);
+	margin-top: var(--baseline);
 
 	a {
 		max-width: 100%;

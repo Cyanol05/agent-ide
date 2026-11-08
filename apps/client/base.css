@@ -45,6 +45,8 @@
 	--wait: #d39a00;
 	--pick: #3b7be0;
 	--danger: light-dark(#c92a2a, #ff8787);
+	/* The baseline: half a message's 24px line. A thread's rows and gaps are whole multiples of it; ?grid draws it. */
+	--baseline: 0.75rem;
 	/* Every margin, padding and gap is one of these six, but the walkthrough's page margins, markdown's em and hairlines. */
 	--space-1: 0.2rem;
 	--space-2: 0.4rem;
@@ -53,7 +55,7 @@
 	--space-5: 1.5rem;
 	--space-6: 2rem;
 	/* The list's foot and the composer's bar share a height, and their buttons one size, so both rows share a line. */
-	--foot-height: 2rem;
+	--foot-height: calc(3 * var(--baseline));
 	--foot-button: 1.6rem;
 }
 
@@ -243,14 +245,14 @@ input.bare {
 	}
 }
 
-/* Draft: what you're writing, at the messages' size, with the composer's box as its frame. */
+/* Draft: what you're writing, in a message's lines, its padding making the composer's box, border and all, whole baselines tall. */
 textarea.draft {
-	padding: var(--space-2) 0;
+	padding: calc(var(--baseline) - 1px - var(--space-1)) 0;
 	border: 0;
 	background: none;
 	outline: none;
 	font-size: 15px;
-	line-height: 1.4;
+	line-height: calc(2 * var(--baseline));
 	color: inherit;
 
 	&.elsewhere {
@@ -518,4 +520,18 @@ button[data-danger]:focus-visible:not(:disabled) {
 			translate: 0 8px;
 		}
 	}
+}
+
+/* ?grid draws the baseline over the page, fixed to the window, to line things up against. */
+body.grid::after {
+	content: '';
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	pointer-events: none;
+	background: repeating-linear-gradient(
+		to bottom,
+		transparent 0 calc(var(--baseline) - 1px),
+		color-mix(in srgb, var(--pick) 30%, transparent) calc(var(--baseline) - 1px) var(--baseline)
+	);
 }

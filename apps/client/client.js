@@ -10,6 +10,7 @@ import { Tutorial } from './tutorial.js'
 import { Notice } from './notice.js'
 
 function Client() {
+	document.body.classList.toggle('grid', params.has('grid'))
 	const [chat, setChat] = createSignal(params.has('chat'))
 	createEffect(chat, (on) => {
 		document.body.classList.toggle('chat', on)
