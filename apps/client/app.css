@@ -471,7 +471,7 @@ agent-memory {
 			> .images,
 			> details > .body,
 			> details > .images {
-				margin-left: var(--space-1);
+				margin-left: var(--space-2);
 			}
 		}
 
@@ -671,7 +671,7 @@ agent-memory {
 				/* Opened, the question and its answer are the messages that crossed, under the line. */
 				.said {
 					list-style: none;
-					margin: 0 0 0 var(--space-1);
+					margin: 0 0 0 var(--space-2);
 					padding: 0;
 
 					> li.elsewhere {
