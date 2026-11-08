@@ -81,12 +81,8 @@ export function Composer(props) {
 		() => mentionable().length > 0,
 		(open) => {
 			if (!mentionList) return
-			if (!open) {
-				if (mentionList.matches(':popover-open')) mentionList.hidePopover()
-				return
-			}
-			if (!mentionList.matches(':popover-open')) mentionList.showPopover()
-			onSettled(() => placePopover(mentionList, input, false))
+			mentionList.togglePopover(open)
+			if (open) onSettled(() => placePopover(mentionList, input, false))
 		},
 	)
 	/** Whom the next message asks, as the model button says it */
@@ -580,33 +576,19 @@ export function Composer(props) {
  */
 function PickerBot(bot, close, thread, mention) {
 	const selected = () => askedBots(thread()).some((to) => to.name === bot.name)
-	if (mention)
-		return html`
-			<li role="presentation">
-				<button
-					type="button"
-					role="option"
-					id=${mention.id}
-					tabindex="-1"
-					aria-selected=${() => String(mention.highlighted())}
-					class="ghost model"
-					onMouseDown=${(event) => event.preventDefault()}
-					onClick=${(_event) => mention.pick()}
-				>
-					<span style=${() => colorOf(bot.name)}>${() => bot.name}</span>
-					<small
-						>${() => (isHere(bot, thread()) ? formatAgent(bot.to) : 'not in this thread yet')}</small
-					>
-				</button>
-			</li>
-		`
 	return html`
-		<li>
+		<li role=${() => mention ? 'presentation' : undefined}>
 			<button
 				type="button"
+				role=${() => mention ? 'option' : undefined}
+				id=${mention?.id}
+				tabindex=${() => mention ? '-1' : undefined}
+				aria-selected=${() => mention ? String(mention.highlighted()) : undefined}
 				class="ghost model"
-				aria-pressed=${() => String(selected())}
+				aria-pressed=${() => mention ? undefined : String(selected())}
+				onMouseDown=${(event) => { if (mention) event.preventDefault() }}
 				onClick=${(event) => {
+					if (mention) return mention.pick()
 					if (!event.shiftKey) return (setPick(null, [botAgent(bot)], null, thread()), close())
 					const others = askedBots(thread()).filter((to) => to.name !== bot.name)
 					setPick(
@@ -618,7 +600,8 @@ function PickerBot(bot, close, thread, mention) {
 				}}
 			>
 				<span style=${() => colorOf(bot.name)}>${() => bot.name}</span>
-				<small>${() => formatAgent(bot.to)}</small>
+				<small>${() => mention && !isHere(bot, thread())
+					? 'not in this thread yet' : formatAgent(bot.to)}</small>
 			</button>
 		</li>
 	`
