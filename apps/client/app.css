@@ -458,7 +458,11 @@ agent-memory {
 		margin: 0;
 		/* Rounded to the baseline, so the rows sit on it at the top and the bottom of the scroll. */
 		padding-block: round(up, max(3.4rem, var(--thread-top, 0px)), var(--baseline))
-			round(up, calc(var(--compose-height, 7rem) + var(--fade-bottom) + var(--space-2)), var(--baseline));
+			round(
+				up,
+				calc(var(--compose-height, 7rem) + var(--fade-bottom) + var(--space-2)),
+				var(--baseline)
+			);
 		/* Keep the scrollbar at the edge, with messages aligned to the composer. */
 		padding-inline: max(var(--space-2), calc((100% - var(--chat-width)) / 2));
 		overflow-y: auto;
@@ -539,7 +543,6 @@ agent-memory {
 					display: inline;
 					margin: 0;
 				}
-
 			}
 
 			/* A run's steps, and the messages that crossed threads, one line each; open, the whole of it. */
@@ -774,6 +777,9 @@ agent-memory {
 			align-items: flex-end;
 			gap: var(--space-1);
 			padding: var(--space-1) calc(var(--space-1) + var(--edge-gap)) var(--space-1) var(--space-2);
+			/* Out into the margin by its own padding and border, so what you type starts on the messages' edge and Send ends on it. */
+			margin-inline: calc(-1 * (var(--space-2) + 1px))
+				calc(-1 * (var(--space-1) + var(--edge-gap) + 1px));
 			border: 1px solid var(--line);
 			border-radius: 12px;
 			background: var(--tint);
@@ -804,6 +810,9 @@ agent-memory {
 			align-items: center;
 			gap: var(--space-1);
 			padding: 0 var(--space-1);
+			/* Out as far as the box, so the +'s glyph and the agent's name sit on the messages' edges too. */
+			margin-inline: calc(-1 * (var(--space-2) + 1px))
+				calc(-1 * (var(--space-1) + var(--space-2) + 1px));
 			min-height: var(--foot-height);
 
 			/* Its + on the field's first letter above it. */
