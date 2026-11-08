@@ -192,7 +192,7 @@ agent-memory {
 			border-radius: 3px;
 			min-width: 3px;
 			cursor: pointer;
-			transition: flex-grow 0.3s;
+			transition: flex-grow var(--duration-popover) var(--ease-out);
 
 			@media (hover: hover) and (pointer: fine) {
 				&:hover {
@@ -363,7 +363,7 @@ agent-memory {
 	height: 100%;
 	background: Canvas;
 	border-right: 1px solid var(--line);
-	transition: opacity 0.3s;
+	transition: opacity var(--duration-popover) var(--ease-out);
 
 	/* Only the columns beside it get a line; at the window's edge there is nothing to divide. */
 	&:last-child {
@@ -970,7 +970,7 @@ body .scrim {
 	background: rgb(0 0 0 / 0.4);
 	opacity: 0;
 	pointer-events: none;
-	transition: opacity 0.25s;
+	transition: opacity var(--duration-sheet) var(--ease-sheet);
 }
 
 body.list .scrim,
@@ -1092,23 +1092,23 @@ body.side .thread-details {
 	/* Visible the moment it opens, so what's inside can take focus; hidden only once it has slid away. */
 	.thread-details {
 		transition:
-			transform 0.32s cubic-bezier(0.23, 1, 0.32, 1),
-			visibility 0s 0.32s;
+			transform var(--duration-sheet) var(--ease-sheet),
+			visibility 0s var(--duration-sheet);
 	}
 
 	body.side .thread-details {
 		transition:
-			transform 0.32s cubic-bezier(0.23, 1, 0.32, 1),
+			transform var(--duration-sheet) var(--ease-sheet),
 			visibility 0s;
 	}
 
 	:is(.thread-list > ul, .thread-family) > li {
-		transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
+		transition: background-color var(--duration-press) var(--ease-out);
 	}
 }
 
 :is(.thread-list > ul, .thread-family) > li:active {
-	transform: scale(0.97);
+	background: var(--line);
 }
 
 /* Hover is for a mouse; on touch it sticks after a tap. */
@@ -1118,8 +1118,8 @@ body.side .thread-details {
 		background: var(--tint);
 	}
 
-	.thread-list > ul > li:hover:not(.current),
-	.thread-family > li:hover:not(.current) {
+	.thread-list > ul > li:hover:not(.current, :active),
+	.thread-family > li:hover:not(.current, :active) {
 		background: var(--step);
 	}
 
@@ -1510,7 +1510,7 @@ body.resizing {
 
 @media (prefers-reduced-motion: no-preference) {
 	.notice {
-		animation: rise 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+		animation: rise var(--duration-popover) var(--ease-out);
 	}
 }
 
@@ -1799,8 +1799,8 @@ body.resizing {
 	@media (prefers-reduced-motion: no-preference) {
 		:is(.threads, .app-bar, .thread-list, .mode-toggle) {
 			transition:
-				transform 0.35s cubic-bezier(0.32, 0.72, 0, 1),
-				visibility 0.35s;
+				transform var(--duration-sheet) var(--ease-sheet),
+				visibility var(--duration-sheet) var(--ease-sheet);
 		}
 	}
 }
