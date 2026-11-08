@@ -2,99 +2,83 @@
 
 Threads for you and your agents, on your own machines. One server keeps every thread; runners connect your machines to it, each with its model logins and a folder for agents to work in. It's built on [Pi Durable](https://www.npmjs.com/package/@earendil-works/pi-durable) to show how little that takes: a restart or a stop loses nothing.
 
-What it promises is on [apps/client/client.html](apps/client/client.html), the page every server serves at `/`; the words it uses and its principles are below. The code is the truth, and [examples/](examples) shows each idea working.
+What it promises is on [apps/client/client.html](apps/client/client.html), the page every server serves at `/`. The code is the truth, and [examples/](examples) shows each idea working.
 
 ## Try it
+
+You need Node.js 24+ and [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) logged in: run `pi` and `/login` once. Then, in the folder you want agents to work in:
 
 ```sh
 npx github:oskarrough/agent-ide
 ```
 
-Its agents work in the folder you start it in, as a runner named after this machine, and think with the models [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) is logged into there, so run `pi` and `/login` once first. Open the address it prints and the page walks you through it. It needs Node.js 24+.
+Open the address it prints and the page walks you through it.
 
-From a clone, `npm install && node server.js` does the same; for development, `pnpm install --frozen-lockfile`. `pnpm examples` runs every example, each with its own server and runner, and `node examples/05-fork.js` runs one. The `real-model` ones use your pi login, so they run only on their own or with `REAL=1`.
+From a clone it's `pnpm install --frozen-lockfile && node server.js`. `pnpm examples` runs every example; `node examples/05-fork.js` runs one.
 
-The [real-model move bench](examples/real-model-bench.md) checks five everyday decisions with `gpt-6-luna:low@oskar`. Its examples require `REAL=1`, even when run alone.
+## Settings
 
-## Running it
+Settings live in `agent-ide.json` in the folder you start in. The page edits them, but only on the server's own machine: open settings beside the runners, change things, save, and the server restarts itself without losing anything.
 
-```sh
-node server.js
-```
-
-Its settings live in `agent-ide.json` in the folder you start it in, and the page changes them: open settings beside the runners, switch modules on or off, pick memory's model, and save. The server writes the file and restarts itself, losing nothing; where the runtime can't restart in place, the page says it stopped and you start it again. Only the server's own machine can change them; elsewhere the page shows them read-only.
-
-talk (experimental), status, context, bots, director (experimental) and memory (experimental) are on by default, auto-title, web-search and matrix off; each module file's first lines say what it does. Memory has each thread's own agent write its lines, unless you pick one model for all. A thread with a bot in it remembers, one without doesn't, and a thread's own Memory switch, in its details or `POST /api/threads/:id/memory {on}`, overrides that in either direction; switched on, it writes the lines it missed. A thread with memory off writes no lines and compacts as it would without memory. Once an agent's context passes 100k tokens, memory compacts it into the lines, keeping about the last 25k word for word; it waits for a model call, so a tool call and its result stay together. Memory's `compactAt` moves that line. In the file that reads `{"modules": ["+web-search", "-status"], "memory": {"model": "haiku@desk", "compactAt": 100000}}`; bare names replace the whole list. Without memory, Pi compacts only when a window is nearly full. The director asks the bots a message @mentions, one after another in the order written; mentioning a bot that isn't in the thread asks no one new, since bots join only when you add them. Being in a thread doesn't hand a bot everything said there: it answers when asked. Bots ask each other the same way, and are told to: a bot's answer that @mentions another bot in the thread asks it, never itself, until bots have answered three times in a row with no one else writing; then they rest until a person writes. With `{"director": {"picks": true, "model": "gpt-6-luna:low@oskar"}}`, a message that names no one, a person's or an agent's post, in a thread with two or more bots, asks the ones that model picks, or nobody: usually one, each with something to add when it's meant for the group, and the bot you just pushed back on. The page then leaves out `to` unless you choose someone, the model button reads "director's pick", and each picked message says whom it picked and why.
-
-With `auto-title` on, a thread's first answer polishes its opening message into a title of at most 36 characters. It only replaces the default title (the opening message's first 60 characters, or “An image”); chosen titles stay put, including edits made while the title is being generated. A title you pick that matches the default gets replaced too. There is one attempt per thread; failures are logged and leave its title alone. By default it uses the thread's own agent model and runner with thinking off, or the answering bot's when the thread has no agent. Set `{"auto-title": {"model": "openai-codex/gpt-6-luna:low"}}` to choose another model, optionally adding `@runner`; without a runner it uses that same runner.
-
-Environment variables override the file:
+A few environment variables win over the file:
 
 ```sh
-HOST=0.0.0.0 PORT=3001 node server.js   # reachable from other machines
-RUNNER=~/code node server.js            # agents work in another folder; RUNNER=0 connects none
-MODULES=+web-search,-talk node server.js    # modules on (+name) or off (-name)
-MEMORY_MODEL=haiku@desk node server.js  # one model writes every thread's memory
-DB_PATH=other.sqlite node server.js     # another store
+HOST=0.0.0.0 PORT=3001 node server.js      # reachable from other machines
+RUNNER=~/code node server.js               # agents work in another folder; RUNNER=0 for none
+MODULES=+web-search,-talk node server.js   # switch modules on or off
+DB_PATH=other.sqlite node server.js        # another store
 ```
 
-The server writes everything it prints, any crash, the signal that stopped it, and how it ended to a log next to its store: `agent-ide.log`, or `other.log` for `other.sqlite`.
+The log sits next to the store, in `agent-ide.log`.
 
 ## Another machine
 
-Start the server with `HOST=0.0.0.0`, open its page on the server's own machine through localhost, and click "Add runner". Run the command it gives you on the other machine, in the folder agents should work in. The command holds the runner's key, so keep it private; a new command for the same name replaces the old key. `node runner.js --help` lists the runner's flags, like `--read-only` and `--owner`. Both machines need to reach each other: the same network, or [Tailscale](https://tailscale.com).
+Start the server with `HOST=0.0.0.0`, open its page on that machine, and click "Add runner". Run the command it gives you on the other machine, in the folder agents should work in. Keep that command private, it holds the runner's key. `node runner.js --help` lists the rest.
 
-Only the server's own machine can mint or revoke runner keys, and other websites can't write to the server, even on loopback. People have no accounts: anyone who can reach the server can read, post as anyone and ask its runners to work. Keep it on a trusted network.
-
-## Run it on your tailnet
-
-[Tailscale](https://tailscale.com) is a private network for your own devices: nothing else reaches it, and there's no login to build.
+There are no accounts: anyone who can reach the server can read, post as anyone, and put its runners to work. Keep it on a trusted network. [Tailscale](https://tailscale.com) is the easy one:
 
 ```sh
 npx github:oskarrough/agent-ide
 tailscale serve 3000
 ```
 
-Open `https://<your-machine>.<your-tailnet>.ts.net` from your phone; `tailscale serve status` prints the address. Agents work wherever you connect a runner, one command from "Add runner" on each machine, with its own pi login.
+Now open `https://<your-machine>.<your-tailnet>.ts.net` on your phone.
 
 ## The words
 
-One word per thing: each names something you can point at in the code or the API, and nothing else here overlaps it.
+One word per thing.
 
-- **Server**: the one process you start, on any box you own. It connects the folder it starts in as its first runner, and keeps every thread and every agent's conversation in one SQLite file. What you might call a workspace, or the cloud. One server is one world.
-- **Runner**: a program that connects a machine to the server, offering its folders and the model logins pi has there. Each `--dir` adds a folder, and `--discover-dirs` offers the git and jj checkouts beneath them. Agents reach nothing outside them but the skills pi lists for them, which they can read wherever they live. Not a machine: a machine is where runners run, one per folder if you like, and a cloud sandbox is just another machine.
-- **Agent**: a model, how hard it thinks, and the runner it works on, written `sonnet:high@laptop` wherever it's shown or typed. Each thread has one, and it knows its folder the way pi does there, AGENTS.md and skills. Without a thinking level, a new agent uses pi's settings on its runner. Change its model, thinking or runner whenever you like; it keeps the conversation and is told when it moves. Not a bot: it has no name.
-- **Thread**: what people, one agent and any bots write to each other, kept on the server. Its tools are its agent's, as `pi --tools` takes them; _hands off_ is `-write,-edit,-bash`: its agents can look things up, but every change has to go through a thread. Threads don't live on runners: to work on two machines at once, start a thread on each, or have one agent post a child thread to the other.
-- **Client**: whatever you look through: the web client, the CLI, or a Matrix room through the matrix module. All speak the same API and store nothing.
-- **Bot**: one name in many threads, with a home thread, the agent it joins as, and instructions (the bots module). Only bots have names.
-
-Each part of `sonnet:high@laptop` is optional and falls back to pi's defaults on that runner; `laptop` alone is its default model. The model goes by its own name; `anthropic/sonnet` picks a provider when two have it.
+- **Server**: the one process you start. It keeps every thread and every agent's conversation in one SQLite file. One server is one world.
+- **Runner**: connects a machine to the server, offering its folders and the model logins pi has there. Agents reach nothing outside those folders. Whoever connects a runner pays for the thinking on it; the server holds no logins.
+- **Agent**: a model, how hard it thinks, and the runner it works on, written `sonnet:high@laptop`. Every part is optional; `laptop` alone is that runner's default model. Each thread has one. Change its model or runner whenever you like and it keeps the conversation. It has no name.
+- **Thread**: what people, one agent and any bots write to each other. _Hands off_ takes away its agents' write, edit and bash, so every change goes through a thread.
+- **Bot**: one name in many threads, with a home thread, the agent it joins as, and instructions. Only bots have names.
+- **Client**: whatever you look through: the web page, the CLI, a Matrix room. They all speak the same API and store nothing.
+- **Module**: a feature you can switch on or off. Each module file's first lines say what it does and how to set it.
 
 A **conversation** is one agent's own context: what it was handed, its tool calls and its answers.
 
-## Principles
+## How it behaves
 
-Pi Durable does the storage, tasks, ordering, retries, restarts, stops and forks. agent-ide adds three things on top: a **thread** is stored the way Pi stores a conversation, one that never runs a model, with its title, parent, agent and bots beside it as a Pi doc; a **runner** is, to the server, a Pi model provider and the execution environment of every conversation on it; and its **tasks** (Admit, Deliver, Shell, Anchor) hand agents their messages, bring answers back, run `$ cmd` and let a stop reach an agent.
+- An agent gets everything it hasn't seen yet in one go, and only its final answer comes back to the thread. Its tool calls stay in its own conversation, where anyone can read them.
+- Threads talk like email. An agent asks with `post`: with no thread, it starts a child holding only the question; given a thread, it asks whoever is there. The answer goes back once to the asking thread. Nothing else crosses.
+- Bots answer when asked, by name or by @mention. A bot can ask another bot the same way.
+- A person's message is an instruction, an agent's is a colleague's report or request. Nobody can fake a speaker.
+- A fork copies a thread and its agents' conversations at one message. A stop posts nothing.
 
-Messages:
+## Modules
 
-- Each delivery hands an agent everything it hasn't seen yet as one input, and only its final answer comes back to the thread. Its tool calls stay in its own conversation, where any agent can read them with `threads`. Long output is cut at 4,000 characters, saying how much is left.
-- Threads talk like email. An agent asks with `post`: with no thread, it starts a child holding only the question; given a thread, it asks whoever is there. The answer goes back once to the asking thread, and a reply to that answer ends the exchange. Nothing else crosses. Posting to a thread that asked you something answers it. A bot posting to a thread it's in isn't asking from outside: it speaks there as itself, as a person in the room would, and replies stay there for its run in that thread. The same goes for a bot that starts a thread for two or more other bots, named by `to` or @mentioned in its first message: it's a group chat, and the bot is in it from that first message, which asks them all. A thread started for one bot is a side question as before. A post, and an answer coming back, reach a busy agent mid-run, as a person's Enter does.
-- A name is one line of plain text and a message's later lines are indented, so nobody can forge a speaker in an agent's input. Agents are marked as agents by what they wrote, never by their name: a person's message is an instruction, an agent's is a colleague's report or request.
-- The client watches Pi's own event streams, so replies and tool calls show live; a reconnect starts from fresh snapshots.
+On by default: talk, status, context, bots, director and memory. Off: auto-title, web-search and matrix. The details are at the top of each file in [modules/](modules); [FEATURE-MAP.md](FEATURE-MAP.md) says where everything else lives.
 
-Durability:
-
-- Every write lands in the commit that ends or advances a Pi task, so a restart repeats nothing. A command cut off by a restart is reported as cut off: the agent picks up where Pi left it, not where the shell was.
-- A stop posts nothing, and messages never delivered wait for the next delivery.
-- A fork forks the thread and each agent's conversation at the same point, in one commit, and keeps the thread's tools as they are now.
-
-Runners:
-
-- An agent's model calls go out through the pi logins on its runner, so whoever connects a runner pays for the thinking on it, and the server holds no logins. A shared pool is a runner without an owner, with a key in its environment.
-- A runner with an `--owner` takes work only from its owner and whom it `--allow`s: people, or `@runner` for the agents there. Allowing is transitive. A refusal starts no agent work. Agents can't pick their name, but a person can claim to be the owner.
-- A runner shows its key when it dials in, so nobody can take its name. The server keeps only the key's hash; a new key cuts off the old one. A revoked runner leaves the list, and its threads wait for the name to connect again.
-- The server ships its own runner, so a runner always matches its server. It updates only when it has nothing open.
+- **talk** gives agents `post` and `threads`, to ask other threads and read them.
+- **memory** writes one short line per message, so agents read the lines instead of every word, and compact into them when context gets long. Threads with a bot in them remember.
+- **director** asks the bots a message @mentions, one after another. It can also pick who answers when nobody's named.
+- **bots** gives you bots.
+- **context** hands agents the AGENTS.md and skills in their folder, the way pi does.
+- **status** shows what agents are doing on a runner's terminal.
+- **auto-title** turns a thread's first message into a short title.
+- **web-search** gives agents a `web_search` tool.
+- **matrix** makes Matrix rooms into threads.
 
 ## The API
 
@@ -111,47 +95,40 @@ api threads/3/fork '{"at": 5}'                                  # a new thread f
 api threads/3/stop '{}'
 ```
 
-To watch a thread live, open `/ws` and send `{"watch": 3}`. You get its new messages and who's in it as they happen. For each agent you get its conversation as `{agent, entries}`, whole first and then each entry once, as it's written, so thinking and tool output show while it works. You also get its live work (the tool it's in, the words it's writing), naming while it works the `delivery` it answers: `{id, held}`, its entry in the agent's conversation and the messages it handed over. Every other change arrives as `{}`, which means "fetch the list again".
+A message's `to` says whom it asks: an agent like `sonnet@laptop`, a bot's name, or `null` for nobody. Leave it out and it asks whoever the thread asked last. A body starting with `$ ` runs that command on the runner instead.
 
-Four ideas carry it:
-
-- A thread has one agent, plus any bots. A message's `to` says whom it asks: an agent like `sonnet:high@laptop` or `{runner, model, thinkingLevel?, dir?}` for the thread's agent, a bot's name, or `null` for nobody. Left out, it asks whom the thread asked last. With the director, those it asks answer one after another in the order named, each handed the answers before it and anything said meanwhile; stop ends the rest. With the director, a bot's answer has a `to` too when it @mentions another bot there. Naming an agent starts the thread's, or switches the one there in place, keeping its conversation; it's told when it moves runner or folder. `ada=sonnet@laptop` switches the bot ada the same way. A message's `author` is a person's or bot's name, or the agent written out the same way. From another thread, `12` reaches thread 12's agent and `12/ada` a bot there.
-- A message is a Pi entry, `{id, kind: "agent-ide.message", conversationId, byTaskId?, data}`, with `data` as `{author, body, to?, images?, from?, re?, answer?, error?, shell?, picked?}`; `picked` is the director's reason for whom it asked. A body starting with `$ ` runs a command on the runner it's sent to, and `shell` holds what it printed.
-- Threads, agents and runners each carry one `status`: `working`, `blocked` while its runner is offline, or `idle`. An idle thread says `done` or `error` until you read its answer.
-- Send the same `requestId` again after a dropped response and you get the first result back.
+To watch a thread live, open `/ws` and send `{"watch": 3}`. You get new messages and each agent's work as it happens; a bare `{}` means "fetch the list again".
 
 ```
-GET    /api/server                         its modules, those off, what each does, whether you may add runners, and a module's own settings, like the director's model when it picks
-GET    /api/runners                        every runner holding a key, connected or not
-POST   /api/runners {name}                 a key, and the command that connects it
-DELETE /api/runners/:name                  takes its key away
+GET    /api/server                     modules, settings, whether you may add runners
+GET    /api/runners
+POST   /api/runners {name}             a key, and the command that connects it
+DELETE /api/runners/:name
 GET    /api/threads
-POST   /api/threads {title, parent?, tools?, requestId?}
-GET    /api/threads/:id                    the thread, its messages and who's in it
-GET    /api/threads/archived               archived threads, flat, with no family tree
-POST   /api/threads/:id/archive {archived: true|false}   archives it, or brings it back
-POST   /api/threads/:id/entries {body, to?, images?, steer?, requestId?}   images as pi's ImageContent, base64
+POST   /api/threads {title, parent?, tools?}
+GET    /api/threads/:id
+GET    /api/threads/archived
+POST   /api/threads/:id/archive {archived}
+POST   /api/threads/:id/entries {body, to?, images?, steer?}
 POST   /api/threads/:id/fork {at, title?}
 POST   /api/threads/:id/title {title}
-POST   /api/threads/:id/tools {tools}      as pi --tools takes them
+POST   /api/threads/:id/tools {tools}  as pi --tools takes them
 POST   /api/threads/:id/read
 POST   /api/threads/:id/stop
-POST   /api/threads/:id/compact            compact its agents now, as if their context were full; where memory is on, memory is the summary
-GET    /api/conversations/:id              an agent's own conversation, tool calls and all
+POST   /api/threads/:id/compact
+GET    /api/conversations/:id          an agent's own conversation, tool calls and all
 ```
 
-A module can add routes under `/api/<module>` and `/api/threads/:id/<module>`. Runners speak the protocol in [remote.js](remote.js).
+Modules add their own routes under `/api/<module>`. The routes are in `server.js`, the runner protocol in [remote.js](remote.js).
 
 The CLI is the same API from a terminal:
 
 ```sh
-node cli.js post "hello" --to sonnet@laptop    # prints the answer as it lands; --thread 3 to continue one
+node cli.js post "hello" --to sonnet@laptop    # prints the answer as it lands
 node cli.js threads
-node cli.js read 3                             # --after 12 for only what came after message 12
+node cli.js read 3
 node cli.js wait 3                             # waits for its agents, then prints the answers
 node cli.js stop 3
-node cli.js key desk                           # a runner key, on the server's machine
-node cli.js revoke desk
 ```
 
-`node cli.js --help` has the rest, like `--server`, `--as` and `--thinking`.
+`node cli.js --help` has the rest.
