@@ -1,5 +1,5 @@
 /**
- * Gives agents `post`, to ask another thread or answer one, and `threads`, to read any thread or any agent's work.
+ * Gives agents `post`, to ask another thread or answer one, and `threads`, to read any thread or any agent's work (experimental).
  * On by default; MODULES=-talk turns it off.
  * A `post` call does everything in one commit, with a receipt keyed by its task id, so a replay finds it.
  */

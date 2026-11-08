@@ -1,6 +1,6 @@
 /**
  * Gives each thread a memory: one short line per message, pairs of lines merged going up, so an agent reads the lines
- * instead of every word and zooms back down with `zoom`. MODULES=+memory. The thread's own agent writes its lines, as
+ * instead of every word and zooms back down with `zoom` (experimental). MODULES=+memory. The thread's own agent writes its lines, as
  * it runs now, so the runner that works for a thread pays for its memory; with no agent there yet, a bot there writes
  * them, and with neither, the lines wait for the first one asked. A model in the settings, `memory.model` in
  * agent-ide.json or MEMORY_MODEL=model@runner, has that one agent write every thread's lines instead. Past

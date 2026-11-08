@@ -1,5 +1,5 @@
 /**
- * Asks the bots a message @mentions, by name in any case, instead of whom the thread asked last. An agent written out,
+ * Asks the bots a message @mentions, by name in any case, instead of whom the thread asked last (experimental). An agent written out,
  * model@runner, is never a mention, a mention reaches only bots already in the thread, and no one summons themselves.
  * Those a message asks answer one after another, in the order named, each handed the answers before it. A bot's answer
  * that @mentions another bot here asks that bot too, until bots have answered three times in a row with no one else
