@@ -11,9 +11,11 @@ import {
 	fauxThinking,
 	fauxToolCall,
 } from '@earendil-works/pi-ai/providers/faux'
-import { api, base, call, dir, say, scriptedRunner, server, text } from '../examples/lib.js'
+import { api, base, call, dir, say, scriptedRunner, server, shellEnv, text } from '../examples/lib.js'
 
-await server({ MODULES: '+bots,+director', DIRECTOR_MODEL: 'echo/echo@bot' })
+// MODULES=+memory node scripts/try.js layers the shell's own +/- changes on top of this script's own.
+const modules = ['+bots,+director', shellEnv.MODULES].filter(Boolean).join(',')
+await server({ MODULES: modules, DIRECTOR_MODEL: 'echo/echo@bot' })
 const personas = {
 	ada: 'a careful reviewer',
 	bram: 'a blunt engineer',

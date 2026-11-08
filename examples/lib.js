@@ -12,7 +12,8 @@ import {
 } from '@earendil-works/pi-ai/providers/faux'
 import { messageText as text, serveRunner } from '../remote.js'
 
-/** The shell's agent-ide settings stay out of every server and runner an example starts: a dev shell's MODULES=+director routes posts with no `to` to nobody */
+/** The shell's agent-ide settings stay out of every server and runner an example starts: a dev shell's MODULES=+director routes posts with no `to` to nobody. `shellEnv` keeps what was there, so a script like try.js can still layer its own MODULES on top. */
+export const shellEnv = {}
 for (const name of [
 	'MODULES',
 	'MEMORY_MODEL',
@@ -22,8 +23,10 @@ for (const name of [
 	'AGENT_IDE_KEY',
 	'AGENT_IDE_LENT',
 	'AGENT_IDE_SERVER',
-])
+]) {
+	shellEnv[name] = process.env[name]
 	delete process.env[name]
+}
 
 export const repo = path.resolve(import.meta.dirname, '..')
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
