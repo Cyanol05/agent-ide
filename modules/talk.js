@@ -22,7 +22,7 @@ export function server(core) {
 		description:
 			'Ask someone. Leave out `thread` for a side question: a new child thread that holds only what you write; a bot starting one for other bots is in it and speaks there as itself. ' +
 			'Give a `thread` to ask whoever is there, with all they already know there. Posting to a thread that asked you something answers it. ' +
-			"Whoever answers, their answer comes to you here as a message, even mid-turn; don't read the thread to check for it. " +
+			"A thread you start answers you here on its own, even mid-turn; don't read it to check. Any other thread answers only if its agent posts back. " +
 			"A bot posting to a thread it's in speaks there as itself instead, and replies stay there.",
 		parameters: obj({
 			thread: opt(num({ description: 'The thread to post to. Leave out to start a new one.' })),
@@ -140,6 +140,8 @@ export function server(core) {
 				fallback: async () => thread === undefined ? [await agentOf(api.conversationId)]
 					: asker ? [asker] : await core.lastAsked(thread),
 			})
+			/** Only a thread you started answers you on its own */
+			const child = thread === undefined || (await core.thread(thread)).parent === from
 			return core.once(`post ${api.taskId}`, 'post', async (tx) => {
 				context.abortSignal?.throwIfAborted()
 				const id = thread ?? (await core.startThread(tx, title, from))
@@ -169,7 +171,7 @@ export function server(core) {
 					output: [
 						{
 							type: 'text',
-							text: `Posted to thread ${id} for ${who}.${to.length ? ' The answer will come to you here on its own; carry on, or end your turn with no text: any text you end with is posted.' : ''}`,
+							text: `Posted to thread ${id} for ${who}.${!to.length ? '' : child ? ' The answer will come to you here on its own; carry on, or end your turn with no text: any text you end with is posted.' : " It isn't your child, so an answer comes only if its agent posts back."}`,
 						},
 					],
 					details: { thread: id },
@@ -183,7 +185,7 @@ export function server(core) {
 		description:
 			"Read a thread's latest entries, or those that contain `query`, or list every thread by leaving out both. " +
 			"With `agent`, read that agent's own work in the thread instead: what it was handed, the tool calls it made and what they printed, word for word. " +
-			'Answers to your own posts come to you; no need to read for them.',
+			'Answers from threads you started come to you; no need to read for them.',
 		parameters: obj({
 			thread: opt(num({ description: 'With `query` or `agent`, your own thread by default' })),
 			agent: opt(

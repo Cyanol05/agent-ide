@@ -3,10 +3,12 @@ import {
 	answered,
 	answers,
 	api,
+	brief,
 	call,
 	check,
 	conversationOf,
 	done,
+	quiet,
 	say,
 	scriptedRunner,
 	server,
@@ -102,11 +104,18 @@ const news = await until(
 	10,
 )
 const told = await answered(busy)
+await quiet()
 check(
-	answers(told).length === 1 &&
-		JSON.stringify(answers(told)[0].data.re) === JSON.stringify([work, news?.id]),
+	Boolean(news) &&
+		answers(told).length === 1 &&
+		JSON.stringify(answers(told)[0].data.re) === JSON.stringify([work]),
 	"another thread's post joined the answer being written",
 	JSON.stringify(told?.entries.map((entry) => entry.data)),
+)
+check(
+	!(await view(teller)).entries.some((entry) => entry.data.from === busy),
+	"and since busy isn't teller's child, the answer stays in busy",
+	brief(await view(teller)),
 )
 dee.close()
 

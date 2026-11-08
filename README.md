@@ -83,7 +83,7 @@ Everything is a module that you can turn on and off.
 On by default: talk, status, context, bots, director and memory.  
 Off: auto-title, web-search and matrix.
 
-- **talk** gives agents `post` and `threads`, to ask other threads and read them.
+- **talk** gives agents `post` and `threads`, to ask other threads and read them. A thread answers the thread that started it on its own; anywhere else, an agent answers with `post`.
 - **memory** summarizes messages so agents can keep working in long threads. It's used by default in threads with bots; you can switch it on or off for any thread.
 - **director** asks the bots a message @mentions, one after another. It can also pick who answers when nobody's named.
 - **bots** lets you create named bots and give them instructions.

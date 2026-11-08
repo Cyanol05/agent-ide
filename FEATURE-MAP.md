@@ -31,7 +31,7 @@ util.js                  helpers server and modules share: agentTo, writtenTo, m
                          finished (task result), background (thread-owned task)
 modules.js               agent-ide.json, MODULES, and loading each module's server/runner half
 modules/
-  talk.js                `post` and `threads` tools; reply sends answers back to askers; a bot in the
+  talk.js                `post` and `threads` tools; reply sends answers back to the parent thread that asked; a bot in the
                          thread it posts to speaks there as itself (member), and so does a bot that
                          starts a thread for two or more bots (opener in server.js's post)
   auto-title.js          first-answer title generation (AutoTitle), sanitizeThreadTitle, one attempt per thread

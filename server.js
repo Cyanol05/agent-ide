@@ -827,7 +827,12 @@ async function outcome(threadId, agent, settled, mine) {
 			: mine,
 	)
 	const held = (await messages(threadId)).filter((entry) => ids.has(entry.id))
+	/** A thread answers the thread that started it on its own; a post from anywhere else gets an answer only through `post` */
+	const { parent } = await thread(threadId)
+	const asks = held.filter((entry) => entry.data.from && !entry.data.re)
+	const posts = asks.filter((entry) => entry.data.from === parent)
 	const re = held
+		.filter((entry) => !asks.includes(entry) || posts.includes(entry))
 		.filter((entry) => entry.data.to?.some((name) => keyOf(name) === key))
 		.map((entry) => entry.id)
 	const body = done
@@ -859,7 +864,6 @@ async function outcome(threadId, agent, settled, mine) {
 			},
 		},
 	]
-	const posts = held.filter((entry) => entry.data.from && !entry.data.re)
 	if (posts.length && reply)
 		return [
 			...told,
