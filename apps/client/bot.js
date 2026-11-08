@@ -76,7 +76,7 @@ export function BotSettings(props) {
 			(thread) =>
 				!family.has(thread.id) &&
 				thread.id !== props.bot.home &&
-				!thread.hidden &&
+				!thread.archived &&
 				thread.agents.some((agent) => agent.name === props.bot.name),
 		)
 		return [...mine, ...elsewhere]
