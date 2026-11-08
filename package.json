@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"bin": {
-		"agent-ide": "server.js"
+		"agent-ide": "bin.js"
 	},
 	"scripts": {
 		"start": "node server.js",
@@ -15,6 +15,7 @@
 		"node": ">=24"
 	},
 	"files": [
+		"bin.js",
 		"server.js",
 		"runner.js",
 		"runner-updater.js",

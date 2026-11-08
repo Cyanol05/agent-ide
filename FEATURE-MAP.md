@@ -3,6 +3,7 @@
 Where things live, so you open the right file first. The README says what each thing is; this says where it is.
 
 ```
+bin.js                   installed executable: dispatches to server, CLI commands, or runner
 server.js                the server: Pi Durable store, tasks, HTTP API, /ws, runners, settings
   Thread, Runners, Keys, Receipts   the docs it keeps (defineDoc)
   Anchor, Admit, Deliver, Shell     the tasks: own an agent, take a message in, hand it over, run `$ cmd`
@@ -102,6 +103,7 @@ examples/real-model-bench.js       real runner setup, delivery settling and tran
 examples/real-model-bench.md       how to run the move bench and its recorded baseline
 examples/91-wait-for-the-runner.js runner startup waits for ready or rejects on exit
 examples/95-cli-address-options.js CLI folder/thinking flags preserve model addresses and reject bot-only names
+examples/96-one-executable.js installed executable dispatch, including leading CLI options
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 
