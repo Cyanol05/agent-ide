@@ -943,6 +943,12 @@ const threadList = async (reader) => {
 	}
 	return rows
 }
+/** Archived threads, flat: the Archived page finds and brings them back, where the family tree doesn't show them */
+async function archivedThreads(reader) {
+	const busy = await work()
+	const rows = await Promise.all((await threadIds()).map((id) => threadRow(id, reader, busy)))
+	return rows.filter((row) => row.archived)
+}
 async function threadView(id, reader) {
 	await conversation(id)
 	return {
@@ -1412,6 +1418,7 @@ const routes = [
 	['DELETE /api/runners/:name', (req, name) => revoke(name)],
 	['GET /runner/bundle', () => bundle],
 	['GET /api/threads', (req) => threadList(user(req))],
+	['GET /api/threads/archived', (req) => archivedThreads(user(req))],
 	['POST /api/threads', async (req) => createThread(await input(req))],
 	['GET /api/threads/:id', (req, id) => threadView(id, user(req))],
 	['DELETE /api/threads/:id', (req, id) => hideThread(id)],

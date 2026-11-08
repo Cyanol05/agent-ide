@@ -2,9 +2,9 @@
 import html from '@solidjs/html'
 import { createSignal, For, Show } from 'solid-js'
 import {
+	archiveThread,
 	bots,
 	current,
-	deleteThread,
 	followThread,
 	homeBot,
 	hrefOf,
@@ -20,43 +20,75 @@ import { BotItem, NewBot } from './bot.js'
 
 export function ThreadList() {
 	const [creating, setCreating] = createSignal(false)
+	const [archivedPage, setArchivedPage] = createSignal(false)
+	const archived = () => threads.filter((thread) => thread.archived)
 	return html`
 		<nav class="thread-list" aria-label="Threads">
-			<${Show} when=${() => server().modules.includes('bots')}>
-				<h2>Bots</h2>
-				<ul class="bots">
-					<${Show}
-						when=${() => creating()}
-						fallback=${html`<${NewRow} label="New bot" onPick=${(_e) => setCreating(true)} />`}
-						><${NewBot} onDone=${(_e) => setCreating(false)}
-					/><//>
-					<${For} each=${() => bots}>${(bot) => html`<${BotItem} bot=${() => bot} />`}<//>
-				</ul>
-				<h2>Threads</h2>
-			<//>
-			<ul>
-				<${NewRow}
-					label="New thread"
-					current=${() => !current()}
-					onPick=${(_e) => openThread(null)}
-				/>
-				<${For}
-					each=${() =>
-						threads.filter(
-							(thread) =>
-								!thread.hidden &&
-								!homeBot(thread.id) &&
-								!threads.some((other) => other.id === thread.parent),
-						)}
-				>
-					${(thread) => html`<${ThreadItem} thread=${() => thread} />`}
+			<${Show}
+				when=${() => !archivedPage()}
+				fallback=${html`<${ArchivedPage} onBack=${() => setArchivedPage(false)} threads=${archived} />`}
+			>
+				<${Show} when=${() => server().modules.includes('bots')}>
+					<h2>Bots</h2>
+					<ul class="bots">
+						<${Show}
+							when=${() => creating()}
+							fallback=${html`<${NewRow} label="New bot" onPick=${(_e) => setCreating(true)} />`}
+							><${NewBot} onDone=${(_e) => setCreating(false)}
+						/><//>
+						<${For} each=${() => bots}>${(bot) => html`<${BotItem} bot=${() => bot} />`}<//>
+					</ul>
+					<h2>Threads</h2>
 				<//>
-			</ul>
+				<ul>
+					<${NewRow}
+						label="New thread"
+						current=${() => !current()}
+						onPick=${(_e) => openThread(null)}
+					/>
+					<${For}
+						each=${() =>
+							threads.filter(
+								(thread) =>
+									!thread.archived &&
+									!homeBot(thread.id) &&
+									!threads.some((other) => other.id === thread.parent),
+							)}
+					>
+						${(thread) => html`<${ThreadItem} thread=${() => thread} />`}
+					<//>
+					<${Show} when=${() => archived().length}>
+						<li class="new">
+							<button type="button" class="row" onClick=${() => setArchivedPage(true)}>
+								<span>Archived</span>
+								<small aria-hidden="true">${() => archived().length}</small>
+							</button>
+						</li>
+					<//>
+				</ul>
+			<//>
 			<footer class="list-foot">
 				<${RunnerList} />
 				<${Settings} />
 			</footer>
 		</nav>
+	`
+}
+
+/** Archived threads, opened as a page, the way a bot's threads open */
+function ArchivedPage(props) {
+	return html`
+		<header class="page-head">
+			<button type="button" aria-label="Back to threads" onClick=${() => props.onBack()}>
+				<span aria-hidden="true">←</span>
+			</button>
+			<h2>Archived</h2>
+		</header>
+		<ul>
+			<${For} each=${() => props.threads()}>
+				${(thread) => html`<${ThreadItem} thread=${() => thread} archived />`}
+			<//>
+		</ul>
 	`
 }
 
@@ -91,11 +123,12 @@ export function ThreadItem(props) {
 				<button
 					type="button"
 					class="delete"
-					data-danger
-					title="Delete this thread"
-					onClick=${() => deleteThread(props.thread.id).catch(report)}
+					data-danger=${() => !props.archived}
+					title=${() => (props.archived ? 'Bring this thread back' : 'Archive this thread')}
+					onClick=${() =>
+						archiveThread(props.thread.id, !props.archived).catch(report)}
 				>
-					delete
+					${() => (props.archived ? 'unarchive' : 'archive')}
 				</button>
 			<//>
 		</li>

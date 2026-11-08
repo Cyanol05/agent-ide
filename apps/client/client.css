@@ -739,7 +739,7 @@ agent-memory {
 		}
 	}
 
-	> button.delete {
+	> button.archive {
 		margin-left: auto;
 		margin-right: 0.4rem;
 		padding: 0 0.3rem;
@@ -758,7 +758,7 @@ agent-memory {
 	}
 }
 
-/* Without hover, the open thread's row keeps its delete in sight. */
+/* Without hover, the open thread's row keeps its archive button in sight. */
 @media (hover: none) {
 	:is(.thread-list > ul, .thread-family) > li.current button {
 		visibility: visible;
@@ -1006,12 +1006,6 @@ agent-memory {
 				animation: appear 0s 0.4s both;
 			}
 
-			&.elsewhere {
-				padding: 0.7rem 0.9rem;
-				border: 1px solid var(--line);
-				border-radius: 12px;
-			}
-
 			/* The run that answered it sits between the question and its answer. */
 			> .run {
 				list-style: none;
@@ -1023,11 +1017,9 @@ agent-memory {
 				}
 			}
 
-			/* The answer said here to that question sits under it, past a thin rule, like a reply under its mail. */
+			/* The answer said here to that question sits under it, indented like an exchange's reply. */
 			&.elsewhere > .reply {
-				margin-top: 0.7rem;
-				padding-top: 0.6rem;
-				border-top: 1px solid var(--line);
+				margin: 0.35rem 0 0 1em;
 			}
 
 			/* A post's answer is the post's result: one line in the flow the size of a run line, opened to read it. */
@@ -2435,7 +2427,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 	display: none;
 }
 
-/* Revoke waits at the row's end, like a thread's delete. */
+/* Revoke waits at the row's end, like a thread's archive button. */
 .runner-list .pane-body > ul > li {
 	flex-wrap: wrap;
 
