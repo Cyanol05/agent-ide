@@ -1533,7 +1533,8 @@ body.chat {
 		align-self: stretch;
 		display: flex;
 		flex-direction: column;
-		padding: 0.6rem 0.6rem 0;
+		/* The same inset on every side as the composer's own margin, so its foot row floats the same distance off the bottom edge */
+		padding: 0.6rem;
 		border-right: 1px solid var(--line);
 		overflow-y: auto;
 
