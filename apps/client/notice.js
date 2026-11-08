@@ -1,4 +1,4 @@
-/** What went wrong, as one quiet line at the top that goes by itself. */
+/** What went wrong, above the active composer's input; goes by itself. */
 import html from '@solidjs/html'
 import { createEffect, createRoot, createSignal, Show } from 'solid-js'
 

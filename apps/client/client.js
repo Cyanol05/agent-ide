@@ -7,7 +7,6 @@ import { Dot } from './dot.js'
 import { System } from './system.js'
 import { ThreadDetails } from './thread-details.js'
 import { Tutorial } from './tutorial.js'
-import { Notice } from './notice.js'
 
 function Client() {
 	document.body.classList.toggle('grid', params.has('grid'))
@@ -88,7 +87,6 @@ function Client() {
 						</svg>`
 					: 'Just the chat'}
 		</button>
-		<${Notice} />
 		<${Errored}
 			fallback=${(error, retry) => html`
 				<p class="mute">${() => String(error())} <button onClick=${retry}>Retry</button></p>

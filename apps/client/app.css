@@ -1482,42 +1482,22 @@ body.resizing {
 	}
 }
 
-/* What went wrong: one line at the top, under the thread's name and clear of the composer, gone after a few seconds. */
+/* What went wrong: above the input, reserving its own space in the composer. */
 .notice {
-	position: fixed;
-	left: 50%;
-	top: calc(3.2rem + env(safe-area-inset-top));
-	z-index: 20;
-	translate: -50% 0;
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
-	max-width: min(32rem, calc(100vw - 2rem));
-	margin: 0;
+	margin: 0 0 var(--space-2);
 	padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
 	border: 1px solid var(--line);
-	border-left: 3px solid var(--wait);
 	border-radius: 10px;
-	background: Canvas;
+	background: var(--tint);
 	color: var(--ink);
 	font-size: var(--text-ui);
-	box-shadow: 0 8px 30px rgb(0 0 0 / 0.2);
 
 	button {
 		flex: none;
-	}
-}
-
-@media (prefers-reduced-motion: no-preference) {
-	.notice {
-		animation: rise var(--duration-popover) var(--ease-out);
-	}
-}
-
-@keyframes rise {
-	from {
-		opacity: 0;
-		translate: -50% -8px;
+		margin-left: auto;
 	}
 }
 

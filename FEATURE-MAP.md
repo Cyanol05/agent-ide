@@ -134,4 +134,4 @@ Build from these; a new panel, row or button takes its sibling's markup and clas
 - Message list: thread.js `Message` in `.thread > ul > li` ("The chat: agents write"), its body `.markdown`, its images `div.images`, compaction's `li.cut` and `li.line`.
 - Tool calls: run.js `Turn`, `Exchange`, `Step`, `Call`; `li.turn` and `.exchange` are `<details>` whose open list is `.steps`, its tools `.tool` and its words `.said`. There's no thinking block: a live turn's summary says "thinking".
 - Composer: composer.js `Composer`, `.thread form`: the box, `.bar` with `.icon` buttons, `.pick` (whom it asks) and `.stop`, and `ul.images` waiting to go.
-- Small parts: sure.js `Sure` (`.sure`, a button that asks by changing its words), notice.js `Notice` (`.notice`, what went wrong), dot.js `Dot` (`.dot`, status).
+- Small parts: sure.js `Sure` (`.sure`, a button that asks by changing its words), notice.js `Notice` (`.notice`, what went wrong, above the active composer's input), dot.js `Dot` (`.dot`, status).

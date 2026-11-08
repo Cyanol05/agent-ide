@@ -42,6 +42,8 @@ export const api = (path, body, method = body === undefined ? 'GET' : 'POST') =>
 		headers: { 'Content-Type': 'application/json', 'x-user': me },
 		method,
 		...(body === undefined ? {} : { body: JSON.stringify(body) }),
+	}).catch((error) => {
+		throw error instanceof TypeError ? new Error("Can't reach the server") : error
 	}).then(async (response) => {
 		const json = await response.json()
 		if (!response.ok) throw new Error(json.error)

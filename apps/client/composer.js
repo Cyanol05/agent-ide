@@ -40,7 +40,7 @@ import { Dot } from './dot.js'
 import { conversations } from './run.js'
 import { Compaction, Memory } from './agent-memory.js'
 import { Panes } from './panes.js'
-import { report } from './notice.js'
+import { Notice, report } from './notice.js'
 import { imageContent, imageUrl } from './images.js'
 
 export function Composer(props) {
@@ -248,6 +248,7 @@ export function Composer(props) {
 				add(files)
 			}}
 		>
+			<${Show} when=${active}><${Notice} /><//>
 			<${Show} when=${() => draft().images.length}>
 				<ul class="images" aria-label="Images to send">
 					<${For} each=${() => draft().images}
