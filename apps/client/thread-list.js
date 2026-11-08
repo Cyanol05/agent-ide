@@ -80,7 +80,7 @@ export function ThreadList() {
 function ArchivedPage(props) {
 	return html`
 		<header class="page-head">
-			<button type="button" aria-label="Back to threads" onClick=${() => props.onBack()}>
+			<button type="button" class="ghost small" aria-label="Back to threads" onClick=${() => props.onBack()}>
 				<span aria-hidden="true">←</span>
 			</button>
 			<h2>Archived</h2>
@@ -118,7 +118,7 @@ export function ThreadItem(props) {
 				onClick=${(event) => followThread(event, props.thread.id)}
 			>
 				<${Dot} state=${() => props.thread.status} />
-				<span>${() => props.thread.title || 'untitled'}</span>
+				<span>${() => props.thread.title}</span>
 			</a>
 			<${Show} when=${() => !homeBot(props.thread.id)}>
 				<button

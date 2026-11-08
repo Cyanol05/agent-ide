@@ -27,10 +27,12 @@ import { report } from './notice.js'
 import { Sure } from './sure.js'
 import { ThreadItem } from './thread-list.js'
 
+const familyOf = (bot) =>
+	new Set((threads.find((thread) => thread.id === bot.home)?.family ?? []).map((member) => member.id))
+
 /** Its own threads without the home, and the unarchived threads it joins elsewhere. */
 export function botThreads(bot) {
-	const home = threads.find((thread) => thread.id === bot.home)
-	const family = new Set((home?.family ?? []).map((member) => member.id))
+	const family = familyOf(bot)
 	const own = threads.filter((thread) => thread.id !== bot.home && family.has(thread.id))
 	const elsewhere = threads.filter(
 		(thread) =>
@@ -44,8 +46,8 @@ export function botThreads(bot) {
 
 export function BotItem(props) {
 	const family = createMemo(() => {
-		const home = threads.find((thread) => thread.id === props.bot.home)
-		return threads.filter((thread) => home?.family.some((member) => member.id === thread.id))
+		const members = familyOf(props.bot)
+		return threads.filter((thread) => members.has(thread.id))
 	})
 	const working = createMemo(() => family().filter((thread) => thread.status === 'working').length)
 	const status = createMemo(

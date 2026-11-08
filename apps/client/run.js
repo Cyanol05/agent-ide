@@ -9,7 +9,7 @@ import {
 	For,
 	Show,
 } from 'solid-js'
-import { bots, colorOf, entries, homeBot, threads, titleOf } from './server.js'
+import { bots, colorOf, homeBot, threads, titleOf } from './server.js'
 import { Message, ThreadLink } from './thread.js'
 import { authorLabel, doing, messageText, shortLabel, touched } from './agent.js'
 import { Dot } from './dot.js'
@@ -25,9 +25,7 @@ export function Turn(props) {
 		() => props.live,
 		(on) => (on ? tick() : undefined),
 	)
-	// In a box that already shows the question, the run doesn't repeat it as handed
-	const steps = () =>
-		(props.turn?.steps ?? []).filter((step) => props.handed !== false || step.label !== 'handed')
+	const steps = () => props.turn?.steps ?? []
 	const now = () => {
 		const running = steps().findLast((step) => step.name && !step.result)
 		if (running)
@@ -66,7 +64,7 @@ export function Turn(props) {
 				<${Show} when=${open}>
 					<ol class="steps" style=${() => `--label: ${labelWidth(steps())}ch`}>
 						<${For} each=${steps} keyed=${(step) => step.key}
-							>${(step) => html`<${Step} step=${() => step()} thread=${() => props.thread} />`}<//
+							>${(step) => html`<${Step} step=${() => step()} />`}<//
 						>
 						<${Show} when=${said}><li class="said">${said}</li><//>
 					</ol>
@@ -253,9 +251,11 @@ const tick = () => {
  * Each agent conversation on screen, its entries as Pi keeps them.
  * Entries never change once written, so the store is shallow: a read tracks the conversation, not each entry's fields.
  */
-export const [conversations, setConversations] = createRoot(() =>
+const [conversations, setConversations] = createRoot(() =>
 	createStore({}, { shallow: true }),
 )
+
+export { conversations }
 
 /** Takes an agent's entries off the socket: whole on each new watch, then each one once, as it's written */
 export function heard(conversation, entries, whole) {
@@ -308,14 +308,13 @@ export function cutsOf(conversation) {
 
 
 /** A conversation cut into turns: each begins with a delivery and holds the calls, results and words that follow it */
-export function turnsOf(conversation, list = conversations[conversation]) {
+export function turnsOf(conversation) {
 	const turns = []
-	for (const entry of list ?? []) {
+	for (const entry of conversations[conversation] ?? []) {
 		const message = entry.model?.[0]
 		if (entry.kind === 'agent-ide.delivery') {
 			turns.push({
 				key: `${conversation}:${entry.id}`,
-				conversation,
 				delivery: entry.id,
 				held: entry.data?.held ?? [],
 				after: Math.max(0, ...(entry.data?.held ?? [])),
@@ -323,7 +322,6 @@ export function turnsOf(conversation, list = conversations[conversation]) {
 				end: message?.timestamp,
 				// What the agent was handed opens its steps
 				steps: [{ key: `${entry.id}:handed`, label: 'handed', text: handedText(message) }],
-				ended: false,
 			})
 			continue
 		}
@@ -331,7 +329,6 @@ export function turnsOf(conversation, list = conversations[conversation]) {
 		if (!turn || !message) continue
 		turn.end = message.timestamp ?? turn.end
 		if (message.role === 'assistant') {
-			turn.ended = !['toolUse'].includes(message.stopReason)
 			for (const block of message.content ?? []) {
 				if (block.type === 'toolCall')
 					turn.steps.push({

@@ -626,10 +626,6 @@ agent-memory {
 							max-height: 20rem;
 							overflow-y: auto;
 						}
-
-						.body {
-							margin-top: var(--space-1);
-						}
 					}
 				}
 			}
@@ -1043,8 +1039,8 @@ body.side .thread-details {
 	white-space: nowrap;
 }
 
-/* A page of the sheet: its header is the way back to the bot. */
-.thread-details > .page-head {
+/* A page of threads: its header is the way back. */
+.page-head {
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
@@ -1188,16 +1184,6 @@ body.side .thread-details {
 		margin-top: var(--space-1);
 		border-top: 1px solid var(--line);
 		padding-top: var(--space-2);
-	}
-
-	.who {
-		small {
-			flex: 1;
-			min-width: 0;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
 	}
 
 	.models {

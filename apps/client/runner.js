@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { createMemo, createSignal, createUniqueId, For, Show } from 'solid-js'
 import { api, minted, runners, server, setMinted, threads } from './server.js'
-import { rowOf, doing, lastToolCall, THINKING_LEVELS } from './agent.js'
+import { rowOf, doing, lastToolCall, modelsOf, THINKING_LEVELS } from './agent.js'
 import { choose, configure, recipients, toFor } from './composer.js'
 import { placePopover } from './popover.js'
 import { Panes } from './panes.js'
@@ -14,9 +14,7 @@ export function Runner(props) {
 	const runner = () => props.runner
 	const to = () => toFor(runner())
 	const agents = () => props.agents.filter((agent) => agent.to.runner === runner().name)
-	const models = () => [
-		...new Set([to().model, runner().model, ...(runner().offers ?? [])].filter(Boolean)),
-	]
+	const models = () => modelsOf(runner(), to())
 	const others = () =>
 		[...new Map(agents().map((agent) => [rowOf(agent.to), agent.to])).values()].filter(
 			(other) => rowOf(other) !== rowOf(to()),
@@ -192,7 +190,7 @@ function RunnerItem(props) {
 								? 'offline'
 								: call() ||
 									`working in ${work()
-										.map((work) => work.title || 'untitled')
+										.map((work) => work.title)
 										.join(', ')}`}</small
 					>
 				<//>

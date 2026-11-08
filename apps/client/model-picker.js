@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { For, Show } from 'solid-js'
 import { runners } from './server.js'
-import { THINKING_LEVELS, thinkingWord } from './agent.js'
+import { modelsOf, THINKING_LEVELS, thinkingWord } from './agent.js'
 import { Dot } from './dot.js'
 import { ConnectRunner } from './runner.js'
 
@@ -32,9 +32,7 @@ export function ModelPicker(props) {
 function PickerRunner(runner, props) {
 	const to = () => props.getTo(runner)
 	const selected = () => props.selectedRunner === runner.name
-	const models = () => [
-		...new Set([to().model, runner.model, ...(runner.offers ?? [])].filter(Boolean)),
-	]
+	const models = () => modelsOf(runner, to())
 	const folderValue = (folder) =>
 		folder === runner.dir
 			? ''

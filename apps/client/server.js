@@ -260,4 +260,7 @@ export const colorOf = (name) => {
 	return bots.some((bot) => bot.name === name) ? `color: oklch(0.6 0.14 ${hue})` : ''
 }
 export const forkedFrom = (thread) => thread?.conversation?.parent?.conversationId
-export const titleOf = (id) => threads.find((thread) => thread.id === id)?.title || `thread ${id}`
+export const titleOf = (id) => {
+	const thread = threads.find((thread) => thread.id === id)
+	return thread ? thread.title : `thread ${id}`
+}

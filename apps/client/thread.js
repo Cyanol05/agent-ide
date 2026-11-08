@@ -398,7 +398,7 @@ export function Thread(props) {
 						style=${() => colorOf(homeBot(props.id)?.name ?? '')}
 						onClick=${titleClick}
 					>
-						<span>${() => (props.id ? thread()?.title || 'untitled' : 'a new thread')}</span>
+						<span>${() => (props.id ? thread()?.title : 'a new thread')}</span>
 						<${Dot} state=${() => thread()?.status} />
 					</button>
 				</h2>
@@ -569,7 +569,7 @@ export function Message(props) {
 			>
 				<details>
 					<summary>
-						<${Crossing} data=${() => data()} arrow="←" home="answered" other="answered in" after />
+						<${Crossing} data=${() => data()} />
 					</summary>
 					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
@@ -610,7 +610,7 @@ export function Message(props) {
  */
 function Across(props) {
 	const agent = () => props.author?.includes('@') && !agentTo(props.author).name
-	const title = () => threads.find((thread) => thread.id === props.thread)?.title?.trim()
+	const title = () => threads.find((thread) => thread.id === props.thread)?.title
 	const name = () => (agent() ? shortLabel(props.author) : authorLabel(props.author))
 	return html`
 		<${Show}
@@ -627,16 +627,15 @@ function Across(props) {
 
 /**
  * Who crossed threads: a bot answering from its own thread is named by a link to it; anyone else is named, then the thread.
- * `home` is the word beside a bot's link, before it unless `after`; `other` the words between a name and its thread.
  */
 function Crossing(props) {
 	const data = () => props.data
 	const name = () => authorLabel(data().author)
 	// A thread's agent is known by its thread's title, its model after it
-	const title = () => threads.find((thread) => thread.id === data().from)?.title?.trim()
+	const title = () => threads.find((thread) => thread.id === data().from)?.title
 	const model = () => agentTo(data().author).model?.split('/').pop() ?? name()
 	return html`
-		<span class="cross">${() => `${props.arrow} `}</span>
+		<span class="cross">← </span>
 		<${Show}
 			when=${() => homeBot(data().from)?.name === data().author}
 			fallback=${() => html`
@@ -644,25 +643,24 @@ function Crossing(props) {
 					when=${title}
 					fallback=${() => html`
 						<span style=${() => colorOf(data().author)}>${name}</span>
-						${() => ` ${props.other} `}
+						${' answered in '}
 						<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
 					`}
 					><${ThreadLink} id=${() => data().from}>${title}<//
-					>${() => ` · ${model()} · ${props.home}`}<//
+					>${() => ` · ${model()} · answered`}<//
 				>
 			`}
 		>
-			${() => (props.after ? '' : `${props.home} `)}
 			<span style=${() => colorOf(data().author)}>
 				<${ThreadLink} id=${() => data().from}>${name}<//>
 			</span>
-			${() => (props.after ? ` ${props.home}` : '')}
+			${' answered'}
 		<//>
 	`
 }
 
 /** What a message says: markdown, except a `$ cmd` and an error, which stay as written */
-export const Body = (props) => html`
+const Body = (props) => html`
 	<${Show}
 		when=${() => !props.data.shell && !props.data.error}
 		fallback=${html`<span class="body">${() => props.data.body}</span>`}

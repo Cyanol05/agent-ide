@@ -65,3 +65,7 @@ const toolLine = (tool) => `${tool.name} ${touched(tool.args) ?? ''}`.trim()
 /** The argument that says what a tool call touches, if it has one */
 export const touched = (args = {}) =>
 	args.command ?? args.path ?? args.pattern ?? args.query ?? args.code ?? args.body
+
+/** The chosen model, the runner's default, and every model it offers, once each. */
+export const modelsOf = (runner, to) =>
+	[...new Set([to.model, runner.model, ...(runner.offers ?? [])].filter(Boolean))]
