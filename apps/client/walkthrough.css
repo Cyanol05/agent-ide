@@ -146,7 +146,7 @@ body:not(.chat) {
 		border: 1px solid var(--line);
 		border-radius: 8px;
 		background: var(--tint);
-		padding: var(--space-3) var(--space-3);
+		padding: var(--space-2) var(--space-2);
 		transition:
 			opacity 0.3s,
 			box-shadow 0.3s;
@@ -177,6 +177,7 @@ body:not(.chat) {
 			background: none;
 			color: inherit;
 			font: inherit;
+			line-height: 1.25rem;
 			font-weight: 700;
 		}
 
@@ -199,7 +200,7 @@ body:not(.chat) {
 		display: grid;
 		grid-template-columns: 10rem minmax(0, 1fr);
 		grid-template-rows: none;
-		gap: var(--space-3);
+		gap: var(--space-2);
 		margin-top: var(--space-2);
 		position: static;
 		height: auto;
@@ -208,7 +209,7 @@ body:not(.chat) {
 	.threads {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--space-3);
+		gap: var(--space-2);
 		position: static;
 		z-index: auto;
 		height: auto;
@@ -308,6 +309,7 @@ body:not(.chat) {
 					background: none;
 					color: inherit;
 					font: inherit;
+					line-height: 1.25rem;
 
 					> .dot {
 						order: 0;
@@ -341,13 +343,13 @@ body:not(.chat) {
 			flex: initial;
 			min-height: auto;
 			max-height: 26rem;
-			padding: var(--space-2) var(--space-3) var(--space-5);
+			padding: var(--space-2) var(--space-2) var(--space-5);
 		}
 
 		form {
 			width: auto;
 			max-width: none;
-			margin: 0 var(--space-3) var(--space-3);
+			margin: 0 var(--space-2) var(--space-2);
 
 			&.compose {
 				position: static;

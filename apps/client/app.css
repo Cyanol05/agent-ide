@@ -46,7 +46,7 @@
 /* Out of the way: a small arrow at the end of the runners row, under the thread list. */
 .mode-toggle {
 	position: absolute;
-	bottom: calc(var(--baseline) + (var(--foot-height) - var(--foot-button)) / 2);
+	bottom: calc(var(--space-3) + (var(--foot-height) - var(--foot-button)) / 2);
 	left: calc(var(--list-width, 15rem) - 2.4rem);
 	z-index: 2;
 	height: var(--foot-button);
@@ -183,7 +183,7 @@ agent-memory {
 	.bar {
 		display: flex;
 		gap: 2px;
-		height: 1.6rem;
+		height: var(--space-5);
 		margin: var(--space-2) 0;
 
 		span {
@@ -216,9 +216,9 @@ agent-memory {
 /* A checkbox and the list it writes; the list is a field you can read and type in. Nested inside a bot's own panel too, not only the thread-level one. */
 .thread-details .hands {
 	display: flex;
-	gap: var(--space-3);
+	gap: var(--space-2);
 	align-items: center;
-	padding: var(--space-1) var(--space-3);
+	padding: var(--space-1) var(--space-2);
 	font-size: 13px;
 
 	label {
@@ -250,7 +250,7 @@ agent-memory {
 	align-self: stretch;
 	min-height: 0;
 	/* The same inset as the composer's own margins, so its foot row floats the same distance off the bottom edge */
-	padding: var(--space-3) var(--space-3) var(--baseline);
+	padding: var(--space-2) var(--space-2) var(--space-3);
 	border-right: 1px solid var(--line);
 	overflow-y: auto;
 	font-size: 13px;
@@ -309,7 +309,7 @@ agent-memory {
 		> input {
 			flex: 1;
 			min-width: 0;
-			margin-left: var(--space-3);
+			margin-left: var(--space-2);
 		}
 
 		> button {
@@ -409,8 +409,8 @@ agent-memory {
 
 		> button.close {
 			flex: none;
-			width: 2.125rem;
-			height: 2.125rem;
+			width: var(--control);
+			height: var(--control);
 		}
 
 		/* The heading only wraps the pill, so all of the pill is its button. */
@@ -438,7 +438,7 @@ agent-memory {
 
 	> p.from {
 		position: absolute;
-		inset: 3.125rem 0 auto;
+		inset: calc(var(--control) + 2 * var(--space-2)) 0 auto;
 		z-index: 2;
 
 		&:empty {
@@ -456,7 +456,7 @@ agent-memory {
 		padding-block: round(up, max(3.4rem, var(--thread-top, 0px)), var(--baseline))
 			round(up, calc(var(--compose-height, 7rem) + var(--space-6)), var(--baseline));
 		/* Keep the scrollbar at the edge, with messages aligned to the composer. */
-		padding-inline: max(var(--space-3), calc((100% - var(--chat-width)) / 2));
+		padding-inline: max(var(--space-2), calc((100% - var(--chat-width)) / 2));
 		overflow-y: auto;
 		font-size: 15px;
 		line-height: calc(2 * var(--baseline));
@@ -464,13 +464,13 @@ agent-memory {
 		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
 		> li,
 		> li.exchange .said > li {
-			margin: calc(2 * var(--baseline)) 0 0;
+			margin: var(--space-5) 0 0;
 			white-space: pre-wrap;
 			overflow-wrap: anywhere;
 			position: relative;
 
 			&:first-child {
-				margin-top: var(--baseline);
+				margin-top: var(--space-3);
 			}
 
 			/* The room under what you just sent, which the answer fills. */
@@ -479,7 +479,7 @@ agent-memory {
 			}
 
 			&.same {
-				margin-top: var(--baseline);
+				margin-top: var(--space-3);
 
 				> small {
 					display: none;
@@ -488,7 +488,7 @@ agent-memory {
 
 			/* One rhythm on the baseline: a new speaker's message opens a block two baselines down; what follows inside it sits one baseline down. */
 			&:is(.turn, .exchange, .reply) {
-				margin-top: var(--baseline);
+				margin-top: var(--space-3);
 			}
 
 			/* What came from or went to another thread sits in by --space-5, its header with it. */
@@ -510,7 +510,7 @@ agent-memory {
 				margin-left: auto;
 				width: fit-content;
 				max-width: min(85%, 32rem);
-				padding: var(--baseline) var(--space-4);
+				padding: var(--space-3) var(--space-4);
 				border-radius: 14px;
 				background: var(--tint);
 
@@ -684,7 +684,7 @@ agent-memory {
 			details > .body {
 				display: block;
 				margin-top: var(--space-2);
-				padding: var(--space-3) var(--space-4);
+				padding: var(--space-2) var(--space-4);
 				border: 1px solid var(--line);
 				border-radius: 12px;
 			}
@@ -692,7 +692,7 @@ agent-memory {
 			.fork {
 				position: absolute;
 				right: 0;
-				top: -0.2rem;
+				top: calc(-1 * var(--space-1));
 				white-space: nowrap;
 				opacity: 0;
 			}
@@ -708,33 +708,33 @@ agent-memory {
 	.links {
 		font-size: 12px;
 		line-height: var(--baseline);
-		padding: 0 0 var(--baseline);
+		padding: 0 0 var(--space-3);
 	}
 
 	> ul > li > .links:not(:first-child) {
-		padding: var(--baseline) 0 0;
+		padding: var(--space-3) 0 0;
 	}
 
 	/* A message's markdown keeps to the baseline: a line apart, never part of one. */
 	.markdown {
 		:is(p, ul, ol, blockquote, pre, table) {
-			margin-block: var(--baseline);
+			margin-block: var(--space-3);
 		}
 
 		:is(h1, h2, h3, h4, h5, h6) {
-			margin: var(--baseline) 0 0;
+			margin: var(--space-3) 0 0;
 		}
 
 		hr {
-			margin-block: var(--baseline) calc(var(--baseline) - 1px);
+			margin-block: var(--space-3) calc(var(--space-3) - 1px);
 		}
 	}
 
 	form {
 		/* The composer: a rounded box to write in, and under it a quiet bar with what's coming and whom it asks. */
-		width: calc(100% - 1.2rem);
+		width: calc(100% - 2 * var(--space-2));
 		max-width: var(--chat-width);
-		margin: 0 auto var(--baseline);
+		margin: 0 auto var(--space-3);
 
 		/* Its own height reserves room in the list, even as the draft grows. */
 		&.compose {
@@ -746,11 +746,11 @@ agent-memory {
 		.box {
 			/* One line of the field; Send sits centred on it at the bottom, and stays there as the field grows. */
 			--field: calc(4 * var(--baseline) - 2px - 2 * var(--space-1));
-			--edge-gap: calc((var(--field) - 1.6rem) / 2);
+			--edge-gap: calc((var(--field) - var(--space-5)) / 2);
 			display: flex;
 			align-items: flex-end;
 			gap: var(--space-1);
-			padding: var(--space-1) calc(var(--space-1) + var(--edge-gap)) var(--space-1) var(--space-3);
+			padding: var(--space-1) calc(var(--space-1) + var(--edge-gap)) var(--space-1) var(--space-2);
 			border: 1px solid var(--line);
 			border-radius: 12px;
 			background: var(--tint);
@@ -855,7 +855,7 @@ agent-memory {
 	}
 
 	blockquote {
-		padding-left: var(--space-3);
+		padding-left: var(--space-2);
 		border-left: 2px solid var(--line);
 		color: var(--mute);
 	}
@@ -867,7 +867,7 @@ agent-memory {
 	}
 
 	pre {
-		padding: var(--space-3) var(--space-3);
+		padding: var(--space-2) var(--space-2);
 		font-size: 13px;
 		line-height: 1.45;
 		white-space: pre;
@@ -890,7 +890,7 @@ agent-memory {
 
 	th,
 	td {
-		padding: var(--space-1) var(--space-3);
+		padding: var(--space-1) var(--space-2);
 		border: 1px solid var(--line);
 		text-align: start;
 	}
@@ -902,7 +902,7 @@ agent-memory {
 	hr {
 		border: 0;
 		border-top: 1px solid var(--line);
-		margin: var(--space-3) 0;
+		margin: var(--space-2) 0;
 	}
 
 	img {
@@ -945,7 +945,7 @@ body .thread-details {
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	background: Canvas;
-	padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3)
+	padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-2)
 		calc(var(--space-4) + env(safe-area-inset-bottom));
 	visibility: hidden;
 	border-left: 1px solid var(--line);
@@ -963,7 +963,7 @@ body.side .thread-details {
 		font-size: 12px;
 		font-weight: 500;
 		color: var(--mute);
-		margin: var(--space-4) var(--space-3) var(--space-2);
+		margin: var(--space-4) var(--space-2) var(--space-2);
 
 		&:first-child {
 			margin-top: var(--space-2);
@@ -971,21 +971,21 @@ body.side .thread-details {
 	}
 
 	.hands {
-		padding: 0 var(--space-3);
+		padding: 0 var(--space-2);
 	}
 }
 
 /* A bot's part of the sheet, and its + new, sized like the hands toggle and its tools. */
 .thread-details .bot > :is(textarea, input, button),
 .thread-details .bot > .sure > * {
-	margin: 0 var(--space-3);
+	margin: 0 var(--space-2);
 }
 
 /* Its model opens the composer's picker. */
 .thread-details .bot > button.bot-model {
 	display: block;
 	box-sizing: border-box;
-	width: calc(100% - 1.2rem);
+	width: calc(100% - 2 * var(--space-2));
 	text-align: left;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -996,7 +996,7 @@ body.side .thread-details {
 .thread-details .bot > button.threads {
 	display: flex;
 	box-sizing: border-box;
-	width: calc(100% - 1.2rem);
+	width: calc(100% - 2 * var(--space-2));
 	justify-content: space-between;
 	align-items: center;
 	text-align: left;
@@ -1011,7 +1011,7 @@ body.side .thread-details {
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
-	margin: 0 var(--space-3) var(--space-2);
+	margin: 0 var(--space-2) var(--space-2);
 
 	h2 {
 		margin: 0;
@@ -1021,7 +1021,7 @@ body.side .thread-details {
 /* Its instructions are written like a message: the composer's box, growing with what's in it, up to a dozen lines, then it scrolls so Threads stays in view. */
 .thread-details .instructions {
 	display: block;
-	width: calc(100% - 1.2rem);
+	width: calc(100% - 2 * var(--space-2));
 	box-sizing: border-box;
 	field-sizing: content;
 	min-height: 4lh;
@@ -1032,7 +1032,7 @@ body.side .thread-details {
 
 /* Names as a message's author line has them. */
 .thread-details #members {
-	margin: 0 var(--space-3) var(--space-2);
+	margin: 0 var(--space-2) var(--space-2);
 	color: var(--mute);
 	font-size: 12px;
 	line-height: 1.3;
@@ -1109,7 +1109,7 @@ body.side .thread-details {
 	gap: var(--space-2);
 	min-width: 0;
 	max-width: 60%;
-	height: 2.125rem;
+	height: var(--control);
 
 	> span:not(.dot) {
 		flex: 0 1 auto;
@@ -1127,7 +1127,7 @@ body.side .thread-details {
 .model {
 	display: flex;
 	align-items: start;
-	gap: var(--space-3);
+	gap: var(--space-2);
 	width: 100%;
 	text-align: left;
 
@@ -1194,7 +1194,7 @@ body.side .thread-details {
 .runner-list {
 	.connect-runner {
 		margin: var(--space-2) var(--space-1) var(--space-1);
-		padding-top: var(--space-3);
+		padding-top: var(--space-2);
 		border-top: 1px solid var(--line);
 		font-size: 13px;
 	}
@@ -1245,12 +1245,12 @@ body.side .thread-details {
 	}
 
 	.save {
-		margin: var(--space-3) var(--space-2) var(--space-1);
+		margin: var(--space-2) var(--space-2) var(--space-1);
 	}
 
 	.pane-body > p {
 		margin: var(--space-2) var(--space-2) var(--space-1);
-		padding-top: var(--space-3);
+		padding-top: var(--space-2);
 		border-top: 1px solid var(--line);
 		font-size: 12px;
 	}
@@ -1262,7 +1262,7 @@ body.side .thread-details {
 	border-bottom: 1px solid var(--line);
 
 	> p {
-		margin: var(--space-1) var(--space-2) var(--space-3);
+		margin: var(--space-1) var(--space-2) var(--space-2);
 		font-size: 12px;
 		color: var(--mute);
 
@@ -1329,7 +1329,7 @@ connect-runner {
 
 	.command {
 		position: relative;
-		margin-top: var(--space-3);
+		margin-top: var(--space-2);
 
 		pre {
 			margin: 0;
@@ -1338,8 +1338,8 @@ connect-runner {
 
 		button {
 			position: absolute;
-			top: 0.4rem;
-			right: 0.4rem;
+			top: var(--space-2);
+			right: var(--space-2);
 		}
 	}
 
@@ -1375,7 +1375,7 @@ button.foot-toggle {
 	min-width: 0;
 	height: var(--foot-button);
 	/* Its dot where a row's sits, so the words line up with the threads above. */
-	padding-inline: var(--space-3);
+	padding-inline: var(--space-2);
 
 	span:last-child {
 		overflow: hidden;
@@ -1447,7 +1447,7 @@ body.resizing {
 	translate: -50% 0;
 	display: flex;
 	align-items: center;
-	gap: var(--space-3);
+	gap: var(--space-2);
 	max-width: min(32rem, calc(100vw - 2rem));
 	margin: 0;
 	padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
@@ -1501,8 +1501,8 @@ body.resizing {
 
 	button {
 		position: absolute;
-		top: -0.4rem;
-		right: -0.4rem;
+		top: calc(-1 * var(--space-2));
+		right: calc(-1 * var(--space-2));
 	}
 }
 
@@ -1511,7 +1511,7 @@ body.resizing {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--space-2);
-	margin-top: var(--baseline);
+	margin-top: var(--space-3);
 
 	a {
 		max-width: 100%;
@@ -1583,7 +1583,7 @@ body.resizing {
 /* A message folded into the memory line the agent reads instead. */
 .thread > ul > li.line {
 	display: flex;
-	gap: var(--space-3);
+	gap: var(--space-2);
 	font-size: 12px;
 
 	small {
@@ -1613,13 +1613,13 @@ body.resizing {
 	body {
 		overscroll-behavior: none;
 		/* The bar's own height, so the thread below knows where it ends. */
-		--bar-height: calc(3.125rem + env(safe-area-inset-top));
+		--bar-height: calc(var(--control) + 2 * var(--space-2) + env(safe-area-inset-top));
 	}
 
 	.mode-toggle {
 		position: fixed;
 		left: auto;
-		right: 0.6rem;
+		right: var(--space-2);
 		bottom: calc((var(--foot-height) - var(--foot-button)) / 2);
 		z-index: 4;
 	}
@@ -1633,7 +1633,7 @@ body.resizing {
 		position: fixed;
 		inset: 0 0 auto;
 		z-index: 6;
-		padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-3) var(--space-2);
+		padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-2) var(--space-2);
 
 		/* A slight wash from the very top, gone by the pill's middle: a message fades out as it slides out, and reads solid until then. */
 		&::before {
@@ -1649,8 +1649,8 @@ body.resizing {
 		font-size: 13px;
 
 		> button:first-child {
-			width: 2.125rem;
-			height: 2.125rem;
+			width: var(--control);
+			height: var(--control);
 		}
 
 		.thread-pill {
@@ -1683,20 +1683,20 @@ body.resizing {
 		}
 
 		> p.from {
-			top: calc(var(--bar-height) + 0.4rem);
+			top: calc(var(--bar-height) + var(--space-2));
 		}
 
 		> ul {
 			/* A touch more air either side than a mouse needs, the composer keeping pace below. */
-			padding-inline: var(--space-3);
+			padding-inline: var(--space-2);
 			/* The bar, and a breath under it, so the top message reads whole. */
-			padding-top: calc(var(--bar-height) + var(--space-3) + var(--thread-top, 0px));
+			padding-top: calc(var(--bar-height) + var(--space-2) + var(--thread-top, 0px));
 			overscroll-behavior: contain;
 		}
 
 		/* The same composer as on a big screen, edge to edge and clear of the home bar. */
 		form.compose {
-			width: calc(100% - 1.6rem);
+			width: calc(100% - 2 * var(--space-2));
 			margin-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
 		}
 	}
@@ -1710,7 +1710,7 @@ body.resizing {
 		overscroll-behavior: contain;
 		border: 0;
 		background: Canvas;
-		padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3) 0;
+		padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-2) 0;
 	}
 
 	.threads {
@@ -1735,7 +1735,7 @@ body.resizing {
 	}
 
 	.list-foot {
-		margin: auto calc(-1 * var(--space-3)) 0;
+		margin: auto calc(-1 * var(--space-2)) 0;
 	}
 
 	.list-edge {
@@ -1750,13 +1750,13 @@ body.resizing {
 	:is(.thread-details, .model-picker:not(.mentions)) > button.close {
 		display: flex;
 		position: absolute;
-		top: calc(0.5rem + env(safe-area-inset-top));
-		right: 0.6rem;
+		top: calc(var(--space-2) + env(safe-area-inset-top));
+		right: var(--space-2);
 		z-index: 1;
 	}
 
 	.model-picker:not(.mentions) > button.close {
-		top: 0.5rem;
+		top: var(--space-2);
 	}
 
 	@media (prefers-reduced-motion: no-preference) {

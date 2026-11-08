@@ -45,18 +45,20 @@
 	--wait: #d39a00;
 	--pick: #3b7be0;
 	--danger: light-dark(#c92a2a, #ff8787);
-	/* The baseline: half a message's 24px line. A thread's rows and gaps are whole multiples of it; ?grid draws it. */
-	--baseline: 0.75rem;
-	/* Every margin, padding and gap is one of these six, but the walkthrough's page margins, markdown's em and hairlines. */
-	--space-1: 0.2rem;
-	--space-2: 0.4rem;
-	--space-3: 0.6rem;
+	/* One scale on a 4px grid: every margin, padding and gap is one of these, but the walkthrough's page margins, markdown's em and hairlines. */
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
 	--space-4: 1rem;
 	--space-5: 1.5rem;
 	--space-6: 2rem;
+	/* The baseline is --space-3, half a message's 24px line; a thread's rows sit on it, and ?grid draws it. */
+	--baseline: var(--space-3);
+	/* Every control and row is a multiple of 4px tall: a control 32px, a small one 20px, a row 36px. */
+	--control: 2rem;
 	/* The list's foot and the composer's bar share a height, and their buttons one size, so both rows share a line. */
 	--foot-height: calc(3 * var(--baseline));
-	--foot-button: 1.6rem;
+	--foot-button: 1.5rem;
 }
 
 * {
@@ -131,7 +133,7 @@ pre {
 	background: var(--tint);
 	color: var(--ink);
 	border: 1px solid var(--line);
-	padding: var(--space-3) var(--space-4);
+	padding: var(--space-2) var(--space-4);
 	border-radius: 6px;
 	font-size: 14px;
 	overflow-x: auto;
@@ -153,7 +155,8 @@ button,
 select,
 textarea {
 	font: inherit;
-	padding: var(--space-2) var(--space-2);
+	padding: calc(var(--space-2) - 1px) var(--space-2);
+	line-height: 1rem;
 	border: 1px solid var(--line);
 	border-radius: 6px;
 	background: Canvas;
@@ -171,7 +174,6 @@ option {
 /* Three buttons. Bordered, the default: white, a thin border; the one that's on gets a dark border. Its text sits in the middle, not on the page's 1.6 line. */
 button {
 	cursor: pointer;
-	line-height: 1;
 
 	&[aria-pressed='true'],
 	&.current {
@@ -181,7 +183,7 @@ button {
 
 /* Ghost: no border, quiet text; a soft fill while it's open, on or picked, and under the mouse. */
 button.ghost {
-	border: 0;
+	border-color: transparent;
 	background: none;
 	color: var(--mute);
 
@@ -195,7 +197,7 @@ button.ghost {
 
 /* Primary: filled with ink, for the one thing the view is for. */
 button.primary {
-	border: 0;
+	border-color: transparent;
 	background: var(--ink);
 	color: Canvas;
 
@@ -207,14 +209,15 @@ button.primary {
 /* Small: a quiet control's words, in a bar, at a row's end, in an option, in a pane's header. */
 :is(button, input, select).small {
 	font-size: 12px;
-	padding: var(--space-1) var(--space-2);
+	line-height: var(--space-3);
+	padding: calc(var(--space-1) - 1px) var(--space-2);
 	white-space: nowrap;
 }
 
 /* Send: the one round button, a filled arrow like a messages app's; a circle is a look, so its place can't give it. */
 button.send {
-	width: 1.6rem;
-	height: 1.6rem;
+	width: var(--space-5);
+	height: var(--space-5);
 	padding: 0;
 	display: inline-flex;
 	justify-content: center;
@@ -233,9 +236,14 @@ button.send {
 	}
 }
 
+/* A field that wraps writes in 20px lines, so it grows by whole steps. */
+textarea:not(.draft) {
+	line-height: 1.25rem;
+}
+
 /* Bare: a field that reads as the text it holds until you point at it or write in it, for a name that is also a heading or a row's title. */
 input.bare {
-	padding: var(--space-1) var(--space-1);
+	padding: calc(var(--space-2) - 1px) var(--space-1);
 	border-color: transparent;
 	background: none;
 
@@ -247,7 +255,7 @@ input.bare {
 
 /* Draft: what you're writing, in a message's lines, its padding making the composer's box, border and all, whole baselines tall. */
 textarea.draft {
-	padding: calc(var(--baseline) - 1px - var(--space-1)) 0;
+	padding: calc(var(--space-3) - 1px - var(--space-1)) 0;
 	border: 0;
 	background: none;
 	outline: none;
@@ -275,12 +283,13 @@ input[type='checkbox'] {
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
-	padding: var(--space-2) var(--space-3);
-	padding-left: calc(var(--space-3) + var(--depth, 0) * var(--space-4));
+	padding: var(--space-2) var(--space-2);
+	padding-left: calc(var(--space-2) + var(--depth, 0) * var(--space-4));
 	border: 0;
 	background: none;
 	color: inherit;
 	font: inherit;
+	line-height: 1.25rem;
 	text-decoration: none;
 	text-align: start;
 
@@ -374,13 +383,14 @@ button[data-danger]:focus-visible:not(:disabled) {
 /* The model picker and settings: popovers on desktop, bottom sheets on phones. */
 .popover {
 	position: fixed;
+	line-height: 1.25rem;
 	inset: auto;
 	margin: 0;
 	width: min(24rem, calc(100vw - 1rem));
 	max-height: min(70dvh, 32rem);
 	overflow-y: auto;
 	overscroll-behavior: contain;
-	padding: var(--space-3);
+	padding: var(--space-2);
 	border: 1px solid var(--line);
 	border-radius: 14px;
 	background: Canvas;
@@ -402,7 +412,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 :is(.model-controls .who, .popover .rows > li) {
 	display: flex;
 	align-items: start;
-	gap: var(--space-3);
+	gap: var(--space-2);
 	padding: var(--space-2) var(--space-2);
 	border-radius: 8px;
 
@@ -451,7 +461,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 			min-height: 2.25rem;
 			font-size: 12px;
 			color: var(--mute);
-			padding: var(--space-1) var(--space-3);
+			padding: var(--space-1) var(--space-2);
 			border-bottom: 1px solid var(--line);
 
 			h2 {
@@ -466,7 +476,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 		min-height: 0;
 		overflow-y: auto;
 		overscroll-behavior: contain;
-		padding: var(--space-2) var(--space-3) var(--space-3);
+		padding: var(--space-2) var(--space-2) var(--space-2);
 	}
 
 	.detail {
@@ -484,15 +494,15 @@ button[data-danger]:focus-visible:not(:disabled) {
 @media (max-width: 700px) {
 	.popover {
 		/* Lifted off the edge, clear of the home bar, like the composer. */
-		inset: auto 0.6rem calc(0.6rem + env(safe-area-inset-bottom)) 0.6rem;
+		inset: auto var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom)) var(--space-2);
 		width: auto;
 		max-height: 70dvh;
 		border-radius: 14px;
-		padding-bottom: var(--space-3);
+		padding-bottom: var(--space-2);
 	}
 
 	.panes .pane-body {
-		padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+		padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
 	}
 
 	.panes .pane > header > button.close {
@@ -522,16 +532,19 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 }
 
-/* ?grid draws the baseline over the page, fixed to the window, to line things up against. */
-body.grid::after {
-	content: '';
-	position: fixed;
-	inset: 0;
-	z-index: 1000;
-	pointer-events: none;
-	background: repeating-linear-gradient(
-		to bottom,
-		transparent 0 calc(var(--baseline) - 1px),
-		color-mix(in srgb, var(--pick) 30%, transparent) calc(var(--baseline) - 1px) var(--baseline)
-	);
+/* ?grid draws the baseline on what sits on it: the thread's list, scrolling with its text, and the two bars at its foot, each lined up to its own box. */
+body.grid {
+	:is(.thread > ul, .list-foot, form.compose .bar) {
+		background-image: repeating-linear-gradient(
+			to bottom,
+			transparent 0 calc(var(--baseline) - 1px),
+			color-mix(in srgb, var(--pick) 30%, transparent) calc(var(--baseline) - 1px) var(--baseline)
+		);
+	}
+
+	/* Counted up from its foot, where the newest messages are. */
+	.thread > ul {
+		background-attachment: local;
+		background-position: bottom;
+	}
 }
