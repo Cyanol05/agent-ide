@@ -1501,7 +1501,7 @@ const browserPackages = new Map([
 	['pele', new URL('./', import.meta.resolve('pele'))],
 	['marked', new URL('./', import.meta.resolve('marked'))],
 ])
-async function servePackage(res, pathname) {
+async function servePackage(res, pathname, head = false) {
 	for (const [name, root] of browserPackages) {
 		const prefix = `/packages/${name}/`
 		if (!pathname.startsWith(prefix)) continue
@@ -1512,7 +1512,7 @@ async function servePackage(res, pathname) {
 			(await readFile(file).catch(() => null))
 		if (!body) break
 		res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' })
-		return res.end(body)
+		return res.end(head ? undefined : body)
 	}
 	return send(res, 404, { error: 'Not found' })
 }
@@ -1546,27 +1546,29 @@ async function handleRequest(req, res) {
 		res.writeHead(204)
 		return res.end()
 	}
-	if (req.method === 'GET' && url.pathname === '/') {
+	const head = req.method === 'HEAD'
+	const asGet = ['GET', 'HEAD'].includes(req.method)
+	if (asGet && url.pathname === '/') {
 		const page = await readFile(new URL('./apps/client/client.html', import.meta.url))
 		res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-		return res.end(page)
+		return res.end(head ? undefined : page)
 	}
-	if (req.method === 'GET' && url.pathname.startsWith('/packages/'))
-		return servePackage(res, url.pathname)
-	if (req.method === 'GET') {
+	if (asGet && url.pathname.startsWith('/packages/'))
+		return servePackage(res, url.pathname, head)
+	if (asGet) {
 		const file = await clientFile(url.pathname)
 		if (file) {
 			res.writeHead(200, { 'Content-Type': file.type })
-			return res.end(file.body)
+			return res.end(head ? undefined : file.body)
 		}
 	}
-	if (req.method === 'GET' && url.pathname === '/runner/updater.js') {
+	if (asGet && url.pathname === '/runner/updater.js') {
 		res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' })
-		return res.end(updater)
+		return res.end(head ? undefined : updater)
 	}
-	if (req.method === 'GET' && url.pathname === '/connect-runner') {
+	if (asGet && url.pathname === '/connect-runner') {
 		res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
-		return res.end(runnerScript(origin(req)))
+		return res.end(head ? undefined : runnerScript(origin(req)))
 	}
 	const key = `${req.method} ${url.pathname}`
 	for (const [pattern, handle] of routes) {
