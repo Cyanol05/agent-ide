@@ -256,8 +256,10 @@ agent-memory {
 	border-right: 1px solid var(--line);
 	overflow-y: auto;
 	font-size: var(--text-ui);
+}
 
-	/* A new row reads like the rows it makes, its + where their dot sits. */
+/* A new row reads like the rows it makes, its + where their dot sits; a row that opens a page of them, its count at the end. */
+:is(.thread-list, .thread-family) {
 	li.new {
 		color: var(--mute);
 
@@ -1035,29 +1037,16 @@ body.side .thread-details {
 	margin: 0 var(--space-2);
 }
 
-/* Its model opens the composer's picker. */
+/* Its model opens the composer's picker, a field like the others. */
 .thread-details .bot > button.bot-model {
 	display: block;
+	background: var(--tint);
 	box-sizing: border-box;
 	width: calc(100% - 2 * var(--space-2));
 	text-align: left;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-/* Its threads are one row that opens them, not a list that pushes its settings off the sheet. */
-.thread-details .bot > button.threads {
-	display: flex;
-	box-sizing: border-box;
-	width: calc(100% - 2 * var(--space-2));
-	justify-content: space-between;
-	align-items: center;
-	text-align: left;
-
-	small {
-		color: var(--mute);
-	}
 }
 
 /* A page of the sheet: its header is the way back to the bot. */

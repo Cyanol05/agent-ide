@@ -120,15 +120,21 @@ export function BotSettings(props) {
 			${() => props.tools}
 			<${Show} when=${() => count() > 0}>
 				<h3>Threads</h3>
-				<${Show} when=${() => active().length > 0}>
-					<ul class="thread-family">
-						<${For} each=${active}>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//>
-					</ul>
-				<//>
-				<button type="button" class="threads" onClick=${(event) => props.onThreads(event)}>
-					<span>${() => `All ${count()} ${count() === 1 ? 'thread' : 'threads'}`}</span>
-					<small aria-hidden="true">→</small>
-				</button>
+				<ul class="thread-family">
+					<${For} each=${active}>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//>
+					<li class="new">
+						<button
+							type="button"
+							class="row"
+							aria-label=${() => `All ${count()} ${count() === 1 ? 'thread' : 'threads'}`}
+							onClick=${(event) => props.onThreads(event)}
+						>
+							<span class="plus" aria-hidden="true"></span>
+							<span>All threads</span>
+							<small aria-hidden="true">${() => count()}</small>
+						</button>
+					</li>
+				</ul>
 			<//>
 			<${Sure}
 				class="forget"
