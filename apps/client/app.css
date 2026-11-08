@@ -353,6 +353,7 @@ agent-memory {
 /* A thread: a column with its name on top and the composer at the foot, the messages scrolling between them, fading out under both. */
 .thread {
 	--chat-width: 50rem;
+	--fade-bottom: calc(3 * var(--baseline));
 	position: relative;
 	z-index: 1;
 	display: flex;
@@ -385,10 +386,11 @@ agent-memory {
 		background: linear-gradient(Canvas, transparent);
 	}
 
+	/* Solid from the composer's top edge down; above it, one soft fade, so words dim as they reach the composer and never show under it. */
 	&::after {
 		bottom: 0;
-		height: var(--compose-height, 7rem);
-		background: linear-gradient(transparent, Canvas calc(100% - 2.2rem));
+		height: calc(var(--compose-height, 7rem) + var(--fade-bottom));
+		background: linear-gradient(transparent, Canvas var(--fade-bottom));
 	}
 
 	/* The head is no bar, just the pill and, beside it, its own close. */
@@ -456,7 +458,7 @@ agent-memory {
 		margin: 0;
 		/* Rounded to the baseline, so the rows sit on it at the top and the bottom of the scroll. */
 		padding-block: round(up, max(3.4rem, var(--thread-top, 0px)), var(--baseline))
-			round(up, calc(var(--compose-height, 7rem) + var(--space-6)), var(--baseline));
+			round(up, calc(var(--compose-height, 7rem) + var(--fade-bottom) + var(--space-2)), var(--baseline));
 		/* Keep the scrollbar at the edge, with messages aligned to the composer. */
 		padding-inline: max(var(--space-2), calc((100% - var(--chat-width)) / 2));
 		overflow-y: auto;
