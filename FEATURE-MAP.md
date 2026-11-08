@@ -89,6 +89,7 @@ examples/lib.js          what examples share: start (owned child processes), ser
 examples/17-memory-compaction.js   automatic and manual cuts, memory coverage and budget at small and large windows
 examples/27-watch-agents-work.js   socket snapshots, streaming entries, delivery identity and reconnects
 examples/all.js          suite queue, per-example timeout and interruption cleanup
+examples/92-the-server-keeps-a-log.js   the log next to the store: output, crash stack, exit code
 examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
 examples/86–90-*-real-model.js     move bench: introductions, another thread's fact, side question,
                                  directed mention and web search; REAL=1 only

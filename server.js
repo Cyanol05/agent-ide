@@ -4,7 +4,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
 import { createModels } from '@earendil-works/pi-ai/models'
@@ -88,6 +88,23 @@ if (holder && holder !== process.pid && alive(holder)) {
 	process.exit(1)
 }
 writeFileSync(lock, String(process.pid))
+
+/** Everything the server prints, with the time, plus how it ended, next to its store: agent-ide.sqlite logs to agent-ide.log */
+const logFile = `${file.replace(/\.sqlite$/, '')}.log`
+const logged = (text) => {
+	const time = new Date().toISOString()
+	const lines = String(text).replace(/\n$/, '').split('\n')
+	try {
+		appendFileSync(logFile, lines.map((line) => `${time} ${line}\n`).join(''))
+	} catch {}
+}
+for (const stream of [process.stdout, process.stderr]) {
+	const write = stream.write.bind(stream)
+	stream.write = (chunk, ...rest) => (logged(chunk), write(chunk, ...rest))
+}
+logged(`started, process ${process.pid}`)
+process.on('uncaughtExceptionMonitor', (error, origin) => logged(`${origin}: ${error?.stack ?? error}`))
+process.on('exit', (code) => logged(`exited with code ${code}`))
 process.on('exit', () => Number(readFileSync(lock, 'utf8')) === process.pid && rmSync(lock))
 /** PORT, or 3000 and up to the first free one */
 let port = Number(process.env.PORT || 3000)
@@ -1934,8 +1951,11 @@ async function connectSelf(url) {
 		process.execPath,
 		[new URL('./runner.js', import.meta.url).pathname, '--server', url, '--dir', dir],
 		// Its online line would repeat the server's runner row
-		{ stdio: 'inherit', env: { ...process.env, AGENT_IDE_KEY: key, AGENT_IDE_LENT: '1' } },
+		{ stdio: ['inherit', 'pipe', 'pipe'], env: { ...process.env, AGENT_IDE_KEY: key, AGENT_IDE_LENT: '1' } },
 	)
+	// Through this process's own output, so the log has it too
+	lent.stdout.on('data', (chunk) => process.stdout.write(chunk))
+	lent.stderr.on('data', (chunk) => process.stderr.write(chunk))
 	for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => lent.kill(signal))
 }
 
