@@ -113,7 +113,7 @@ Where a feature lives:
 - Asking a model / switching it: composer.js pick/choose, model-picker.js, server.js whom/reconfigure.
 - Live work you watch: server.js work/doing/watch, client agent.js doing, run.js Turn.
 - Memory and compaction: modules/memory.js, server.js compact/compactingAt, client agent-memory.js, thread.js rows (cuts, folded lines), run.js cutsOf.
-- Bots: modules/bots.js, client bot.js, composer.js PickerBot, client server.js homeBot/botAgent.
+- Bots: modules/bots.js, client bot.js, composer.js PickerBot, client server.js homeBot/botAgent; a bot's colour is server.js `colorOf` (its picked `color` hue, else by the order bots were made), picked in bot.js `BotSettings` `.colors`.
 - Runners and keys: remote.js, runner.js, server.js mintKey/revoke/upgrade, client runner.js.
 - Forks: server.js forkThread/seenBy, client server.js fork, thread.js Message (fork link).
 - `$ cmd`: server.js Shell, printed, shells.

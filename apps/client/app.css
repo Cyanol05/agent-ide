@@ -1062,6 +1062,36 @@ body.side .thread-details {
 	white-space: nowrap;
 }
 
+/* Its colour: the default, then a swatch per hue, as a row of small ghost buttons; the one it has is filled. */
+.thread-details .bot > .colors {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1);
+	margin: 0 var(--space-2);
+
+	> button {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+		min-height: var(--space-5);
+	}
+
+	/* A swatch is its dot, a little larger than a status dot, so the hues read. */
+	> button:not(:first-child) {
+		padding-inline: var(--space-1);
+	}
+
+	.dot {
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+
+	/* Another bot's colour already: still yours to pick, dimmed so a clash is a choice. */
+	> .taken .dot {
+		opacity: 0.3;
+	}
+}
+
 /* A page of threads: its header is the way back. */
 .page-head {
 	display: flex;

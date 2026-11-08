@@ -258,16 +258,23 @@ export const fork = async (id, at) => openThread((await api(`/api/threads/${id}/
 export const homeBot = (id) => bots.find((bot) => bot.home === id)
 export const botAgent = (bot) => ({ ...bot.to, name: bot.name })
 /**
- * A bot's colour, as a style for `property`; anyone else has none. Bots take golden-angle hues in the order they were
- * made, so the first several sit far apart and a new bot changes no one's; forgetting one shifts the bots made after it.
+ * The hue a bot gets unless someone picked one: golden-angle steps in the order bots were made, so the first several
+ * sit far apart and a new bot changes no one's; forgetting one shifts the bots made after it that have none picked.
  */
+const madeHue = (index) => Math.round(50 + index * 137.508) % 360
+export const defaultHueOf = (name) => {
+	const index = [...bots].sort((a, b) => a.home - b.home).findIndex((bot) => bot.name === name)
+	return index < 0 ? undefined : madeHue(index)
+}
+/** The hues to pick from: the first eight bots', around the wheel */
+export const hues = Array.from({ length: 8 }, (_, index) => madeHue(index)).sort((a, b) => a - b)
+/** A hue as a colour that reads on both grounds */
+export const paint = (hue) => `light-dark(oklch(0.56 0.15 ${hue}), oklch(0.74 0.13 ${hue}))`
+/** A bot's colour, as a style for `property`: the hue picked for it, else its default; anyone else has none */
+export const hueOf = (name) => bots.find((bot) => bot.name === name)?.color ?? defaultHueOf(name)
 export const colorOf = (name, property = 'color') => {
-	const index = [...bots]
-		.sort((a, b) => a.home - b.home)
-		.findIndex((bot) => bot.name === name)
-	if (index < 0) return ''
-	const hue = (50 + index * 137.508) % 360
-	return `${property}: light-dark(oklch(0.56 0.15 ${hue}), oklch(0.74 0.13 ${hue}))`
+	const hue = hueOf(name)
+	return hue === undefined ? '' : `${property}: ${paint(hue)}`
 }
 export const forkedFrom = (thread) => thread?.conversation?.parent?.conversationId
 export const titleOf = (id) => {

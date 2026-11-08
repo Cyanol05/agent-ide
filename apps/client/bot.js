@@ -14,9 +14,13 @@ import {
 	bots,
 	colorOf,
 	current,
+	defaultHueOf,
 	followThread,
 	hrefOf,
+	hueOf,
+	hues,
 	openThread,
+	paint,
 	reloadBots,
 	threads,
 } from './server.js'
@@ -88,6 +92,12 @@ export function BotSettings(props) {
 		return [...own, ...elsewhere]
 	})
 	const count = createMemo(() => own().length)
+	/** Another bot already shown in a hue */
+	const holder = (hue) => bots.find((bot) => bot.name !== props.bot.name && hueOf(bot.name) === hue)?.name
+	const setColor = (color) =>
+		api('/api/bots', { name: props.bot.name, color })
+			.then(() => reloadBots())
+			.catch(report)
 	// Of its hundreds, the ones happening now or needing a hand; an unread answer already shows its dot in the thread list
 	const active = createMemo(() =>
 		own().filter((thread) => ['working', 'blocked', 'error'].includes(thread.status)),
@@ -119,6 +129,31 @@ export function BotSettings(props) {
 			>
 				${() => formatAgent(props.bot.to)}
 			</button>
+			<h3>Colour</h3>
+			<div class="colors">
+				<button
+					type="button"
+					class="ghost small"
+					aria-pressed=${() => String(props.bot.color === undefined)}
+					title="The colour it gets by the order bots were made"
+					onClick=${() => setColor(null)}
+				>
+					<span class="dot" style=${() => `background: ${paint(defaultHueOf(props.bot.name))}`}></span>
+					Default
+				</button>
+				<${For} each=${hues}
+					>${(hue) => html`<button
+						type="button"
+						class=${() => ['ghost small', { taken: !!holder(hue) }]}
+						aria-pressed=${() => String(props.bot.color === hue)}
+						aria-label=${() => (holder(hue) ? `Hue ${hue}, ${holder(hue)}'s` : `Hue ${hue}`)}
+						title=${() => (holder(hue) ? `${holder(hue)}'s colour` : '')}
+						onClick=${() => setColor(hue)}
+					>
+						<span class="dot" style=${`background: ${paint(hue)}`}></span>
+					</button>`}<//
+				>
+			</div>
 			${() => props.tools}
 			<${Show} when=${() => count() > 0}>
 				<h3>Threads</h3>
