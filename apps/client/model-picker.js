@@ -4,6 +4,7 @@ import { For, Show } from 'solid-js'
 import { runners } from './server.js'
 import { THINKING_LEVELS } from './agent.js'
 import { Dot } from './dot.js'
+import { ConnectRunner } from './runner.js'
 
 /** getTo(runner) supplies each runner's choice; the caller decides when a choice is applied or closes the view. */
 export function ModelPicker(props) {
@@ -12,7 +13,12 @@ export function ModelPicker(props) {
 			<ul>
 				<${For}
 					each=${() => runners.filter((runner) => runner.online)}
-					fallback=${html`<li class="mute">No runner is online.</li>`}
+					fallback=${html`
+						<li class="mute no-runner">
+							No runner is online.
+							<${ConnectRunner} />
+						</li>
+					`}
 				>
 					${(runner) => PickerRunner(runner, props)}
 				<//>
