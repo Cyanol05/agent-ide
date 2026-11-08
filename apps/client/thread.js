@@ -13,6 +13,7 @@ import {
 	Show,
 } from 'solid-js'
 import {
+	api,
 	closeColumn,
 	colorOf,
 	columns,
@@ -201,6 +202,10 @@ export function Thread(props) {
 	let list,
 		followed,
 		stuck = true
+	/** Marks the thread read for me, but only while I'm actually looking: a hidden tab shouldn't clear the dot for an answer nobody saw */
+	const markRead = (id) => {
+		if (document.visibilityState === 'visible') api(`/api/threads/${id}/read`, {}).catch(report)
+	}
 	createEffect(
 		() => props.id,
 		(id) => {
@@ -211,6 +216,9 @@ export function Thread(props) {
 			stuck = true
 			sent = null
 			if (room) room.style.height = '0px'
+			markRead(id)
+			const onVisible = () => markRead(id)
+			document.addEventListener('visibilitychange', onVisible)
 			const close = watch(
 				(message) => {
 					if (message.thread !== id) return
@@ -227,6 +235,7 @@ export function Thread(props) {
 								message.entries,
 							)
 						})
+						if (!snapshot) markRead(id)
 					}
 					if (message.people)
 						setPeople((all) => {
@@ -252,6 +261,7 @@ export function Thread(props) {
 			// Its messages stay, so coming back shows them at once while the snapshot catches up.
 			return () => {
 				close()
+				document.removeEventListener('visibilitychange', onVisible)
 				setDoing((work) => {
 					delete work[id]
 				})
