@@ -4,6 +4,7 @@ import {
 	createEffect,
 	createMemo,
 	createSignal,
+	For,
 	onSettled,
 	Show,
 	snapshot,
@@ -24,6 +25,7 @@ import { agent, openPicker } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { Sure } from './sure.js'
+import { ThreadItem } from './thread-list.js'
 
 export function BotItem(props) {
 	const family = createMemo(() => {
@@ -64,8 +66,8 @@ export function BotSettings(props) {
 			if (document.activeElement !== instructionsField) setInstructions(instructions)
 		},
 	)
-	// Its own threads, the home itself left out, plus the threads it joins elsewhere: what the row counts
-	const count = createMemo(() => {
+	// Its own threads, the home itself left out, plus the threads it joins elsewhere
+	const own = createMemo(() => {
 		const home = threads.find((thread) => thread.id === props.bot.home)
 		const family = new Set((home?.family ?? []).map((member) => member.id))
 		family.delete(props.bot.home)
@@ -77,8 +79,11 @@ export function BotSettings(props) {
 				!thread.hidden &&
 				thread.agents.some((agent) => agent.name === props.bot.name),
 		)
-		return mine.length + elsewhere.length
+		return [...mine, ...elsewhere]
 	})
+	const count = createMemo(() => own().length)
+	// Of its hundreds, the ones worth a look: everything that isn't sitting idle
+	const active = createMemo(() => own().filter((thread) => thread.status !== 'idle'))
 	return html`
 		<div class="bot">
 			<h3>Instructions</h3>
@@ -109,8 +114,13 @@ export function BotSettings(props) {
 			${() => props.tools}
 			<${Show} when=${() => count() > 0}>
 				<h3>Threads</h3>
+				<${Show} when=${() => active().length > 0}>
+					<ul class="thread-family">
+						<${For} each=${active}>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//>
+					</ul>
+				<//>
 				<button type="button" class="threads" onClick=${(event) => props.onThreads(event)}>
-					<span>${() => `${count()} ${count() === 1 ? 'thread' : 'threads'}`}</span>
+					<span>${() => `All ${count()} ${count() === 1 ? 'thread' : 'threads'}`}</span>
 					<small aria-hidden="true">→</small>
 				</button>
 			<//>
