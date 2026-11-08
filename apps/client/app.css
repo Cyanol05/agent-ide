@@ -584,10 +584,6 @@ agent-memory {
 							width: 1rem;
 						}
 
-						&::after {
-							content: '';
-						}
-
 						.tool {
 							flex: none;
 							width: calc(var(--label) + 1ch);
@@ -666,7 +662,7 @@ agent-memory {
 					margin: 0;
 				}
 
-				/* Its arrow, or while the other side works the dot that stands in for it, in one slot so the words don't move. */
+				/* The dot while the other side works, in a slot kept when it's gone, so the words don't move. */
 				.lead {
 					display: inline-flex;
 					align-items: center;
@@ -707,23 +703,9 @@ agent-memory {
 
 			summary {
 				color: var(--mute);
-				cursor: pointer;
-				list-style: none;
 				white-space: nowrap;
 				overflow: hidden;
 				text-overflow: ellipsis;
-
-				&::-webkit-details-marker {
-					display: none;
-				}
-
-				&::after {
-					content: ' ▾';
-				}
-			}
-
-			details[open] > summary::after {
-				content: ' ▴';
 			}
 
 			details > .body {

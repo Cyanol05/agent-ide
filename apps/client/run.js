@@ -11,7 +11,7 @@ import {
 } from 'solid-js'
 import { bots, colorOf, entries, homeBot, threads, titleOf } from './server.js'
 import { Message, ThreadLink } from './thread.js'
-import { agentTo, authorLabel, doing, messageText, shortLabel, touched } from './agent.js'
+import { authorLabel, doing, messageText, shortLabel, touched } from './agent.js'
 import { Dot } from './dot.js'
 
 /**
@@ -92,14 +92,9 @@ export function Exchange(props) {
 		if (!author) return titleOf(asked())
 		return shortLabel(author)
 	}
-	// A bot is known by its name; a thread's agent by its thread's title, its model after it
+	// A bot is known by its name; a thread's agent by its thread's title, or its model while it has none
 	const bot = () => bots.some((bot) => bot.name === who())
 	const title = () => !bot() && threads.find((thread) => thread.id === asked())?.title
-	const model = () => agentTo(who() ?? '').model?.split('/').pop() ?? who()
-	const question = () => {
-		const first = (props.step.args.body ?? '').split(/\r?\n/)[0]
-		return first.length > 60 ? `${first.slice(0, 59)}…` : first
-	}
 	const took = () => {
 		const start = props.step.result?.time
 		const end = props.back
@@ -115,17 +110,13 @@ export function Exchange(props) {
 				<summary>
 					<small>
 						<span class="lead"
-							><${Show} when=${working} fallback=${html`<span class="cross">→</span>`}
-								><${Dot} state="working" title="Working on it" /><//
-						></span
-						><${Show}
+							><${Show} when=${working}><${Dot} state="working" title="Working on it" /><//></span
+						>${() => (props.answer ? 'Messaged ' : 'Messaging ')}<${Show}
 							when=${title}
-							fallback=${() => html`${() => (bot() ? '' : 'Messaged ')}<span
-									style=${() => colorOf(who() ?? '')}
-									><${ThreadLink} id=${() => asked()}>${name}<//></span
-								>${() => `: "${question()}"`}`}
-							><${ThreadLink} id=${() => asked()}>${title}<//
-							>${() => (model() ? ` · ${model()}` : '')}<//
+							fallback=${() => html`<span style=${() => colorOf(who() ?? '')}
+								><${ThreadLink} id=${() => asked()}>${name}<//></span
+							>`}
+							><${ThreadLink} id=${() => asked()}>${title}<//><//
 						><${Show} when=${() => props.answer}
 							>${() => ` · ${['answered', took()].filter(Boolean).join(' ')}`}<//
 						>

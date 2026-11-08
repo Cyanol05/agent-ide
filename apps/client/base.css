@@ -154,6 +154,26 @@ small {
 	font-size: var(--text-small);
 }
 
+/* A disclosure points right while closed and down while open, one size wherever it is, after its line. */
+summary {
+	cursor: pointer;
+	list-style: none;
+
+	&::-webkit-details-marker {
+		display: none;
+	}
+
+	&::after {
+		content: '\a0▸';
+		flex: none;
+		font-size: var(--text-small);
+	}
+}
+
+details[open] > summary::after {
+	content: '\a0▾';
+}
+
 code {
 	font-family: var(--font-mono);
 	font-size: 0.85em;
