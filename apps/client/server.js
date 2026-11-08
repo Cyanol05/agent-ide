@@ -69,7 +69,8 @@ export function watch(receive, opened = () => {}, closed = () => {}) {
 }
 
 /** Page lifetime; components own the messages of just the threads on screen. */
-export const [connected, setConnected] = createSignal(false)
+const [connected, setConnected] = createSignal(false)
+export { connected }
 export const [newThreadTools, setNewThreadTools] = createSignal(null)
 /** The last key this page made, {name, connect}: the key is shown once, so it outlives the form that asked */
 export const [minted, setMinted] = createSignal(null)
@@ -109,7 +110,8 @@ export const merged = (list, more) => {
 }
 /** Who's in each thread on screen, as its socket says */
 export const [people, setPeople] = createStore({})
-export const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
+const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
+export { current }
 
 export function openThread(id) {
 	setCurrent(id)
@@ -149,7 +151,6 @@ export const {
 	reloadThreads,
 	reloadArchivedThreads,
 	reloadBots,
-	reloadServer,
 } = createRoot(() => {
 	const [server, setServer] = createSignal(cached('server', DEFAULT_SERVER))
 	const [bots, setBots] = createStore(cached('bots', []))
@@ -162,26 +163,17 @@ export const {
 			setServer(data)
 			cache('server', data)
 		})
+	const reloadList = (path, set, key, cacheKey = path, enabled = true) =>
+		(enabled ? api(`/api/${path}`) : Promise.resolve([])).then((data) => {
+			set(reconcile(data, key))
+			if (cacheKey) cache(cacheKey, data)
+		})
 	const reloadBots = () =>
-		(untrack(server).modules.includes('bots') ? api('/api/bots') : Promise.resolve([])).then(
-			(data) => {
-				setBots(reconcile(data, 'name'))
-				cache('bots', data)
-			},
-		)
-	const reloadThreads = () =>
-		api('/api/threads').then((data) => {
-			setThreads(reconcile(data, 'id'))
-			cache('threads', data)
-		})
+		reloadList('bots', setBots, 'name', 'bots', untrack(server).modules.includes('bots'))
+	const reloadThreads = () => reloadList('threads', setThreads, 'id')
 	/** Its own fetch; the main list never carries archived threads */
-	const reloadArchivedThreads = () =>
-		api('/api/threads/archived').then((data) => setArchivedThreads(reconcile(data, 'id')))
-	const reloadRunners = () =>
-		api('/api/runners').then((data) => {
-			setRunners(reconcile(data, 'name'))
-			cache('runners', data)
-		})
+	const reloadArchivedThreads = () => reloadList('threads/archived', setArchivedThreads, 'id', null)
+	const reloadRunners = () => reloadList('runners', setRunners, 'name')
 	const reload = () => {
 		reloadThreads()
 		reloadArchivedThreads()
@@ -242,7 +234,6 @@ export const {
 		reloadThreads,
 		reloadArchivedThreads,
 		reloadBots,
-		reloadServer,
 	}
 })
 

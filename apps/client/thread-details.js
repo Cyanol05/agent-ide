@@ -16,7 +16,7 @@ import {
 	threads,
 } from './server.js'
 import { authorLabel } from './agent.js'
-import { BotSettings } from './bot.js'
+import { BotSettings, botThreads } from './bot.js'
 import { ThreadItem } from './thread-list.js'
 
 export function ThreadDetails() {
@@ -64,21 +64,9 @@ export function ThreadDetails() {
 	createEffect(page, (open) => {
 		if (open) sheet.scrollTop = 0
 	})
-	const botThreads = () =>
-		homeBot(current())
-			? threads.filter((thread) => thread.id !== current() && family().includes(thread.id))
-			: []
-	/** Threads it works in that aren't its own family, each shown once */
-	const alsoIn = () => {
+	const botFamily = () => {
 		const bot = homeBot(current())
-		if (!bot) return []
-		return threads.filter(
-			(thread) =>
-				thread.id !== current() &&
-				!thread.archived &&
-				!family().includes(thread.id) &&
-				thread.agents.some((agent) => agent.name === bot.name),
-		)
+		return bot ? botThreads(bot) : { own: [], elsewhere: [] }
 	}
 	// The same tools for whichever thread is on screen, mounted anew when it changes
 	const tools = () =>
@@ -141,15 +129,15 @@ export function ThreadDetails() {
 					<h2>Threads</h2>
 				</header>
 				<ul class="thread-family">
-					<${For} each=${botThreads}
+					<${For} each=${() => botFamily().own}
 						>${(thread) =>
 							html`<${ThreadItem} thread=${() => thread} depth=${() => depth(thread.id) - 1} />`}<//
 					>
 				</ul>
-				<${Show} when=${() => alsoIn().length}>
+				<${Show} when=${() => botFamily().elsewhere.length}>
 					<h2>Also in</h2>
 					<ul class="thread-family">
-						<${For} each=${alsoIn}
+						<${For} each=${() => botFamily().elsewhere}
 							>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//
 						>
 					</ul>
@@ -205,27 +193,22 @@ function Tools(props) {
 		},
 	)
 	const [error, setError] = createSignal('')
-	const apply = async (list) => {
+	const save = async (path, body) => {
 		setError('')
 		try {
-			if (props.thread) {
-				await api(`/api/threads/${props.thread}/tools`, { tools: list?.length ? list : null })
-				reloadThreads()
-			} else setNewThreadTools(list?.length ? list : null)
-		} catch (failure) {
-			setError(failure.message)
-		}
-	}
-	const here = () => props.thread && threads.find((thread) => thread.id === props.thread)
-	const remember = async (on) => {
-		setError('')
-		try {
-			await api(`/api/threads/${props.thread}/memory`, { on })
+			await api(`/api/threads/${props.thread}/${path}`, body)
 			reloadThreads()
 		} catch (failure) {
 			setError(failure.message)
 		}
 	}
+	const apply = (list) => {
+		const tools = list?.length ? list : null
+		if (props.thread) return save('tools', { tools })
+		setError('')
+		setNewThreadTools(tools)
+	}
+	const here = () => props.thread && threads.find((thread) => thread.id === props.thread)
 	return html`
 		<div class="hands">
 			<label title="Its agents can look things up, but every change has to go through a thread">
@@ -266,7 +249,7 @@ function Tools(props) {
 					<input
 						type="checkbox"
 						checked=${() => here().memory}
-						onChange=${(event) => remember(event.currentTarget.checked)}
+						onChange=${(event) => save('memory', { on: event.currentTarget.checked })}
 					/>
 					Memory
 				</label>

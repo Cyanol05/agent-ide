@@ -67,7 +67,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   agent.js               agents' labels and live work (doing); client's agentTo, formatAgent, toolLine
   model-picker.js        model, thinking and folder controls (composer and settings share them)
   runner.js              runner list, a runner's agents, ConnectRunner
-  bot.js                 a bot's settings, its threads row, new bot
+  bot.js                 a bot's settings, its threads row, new bot; botThreads shares its own/elsewhere lists
   thread-list.js         the thread list, its family rows
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
                          a bot's threads as a page of the sheet

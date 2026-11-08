@@ -49,21 +49,11 @@ export function Settings() {
 		try {
 			const { restarts } = await api('/api/settings', {
 				modules: snapshot(draft.modules),
-				...((draft.model !== undefined ||
-					draft.compactAt !== undefined ||
-					draft.threads !== undefined) && {
-					memory: {
-						...(draft.model !== undefined && { model: draft.model }),
-						...(draft.compactAt !== undefined && { compactAt: draft.compactAt }),
-						...(draft.threads !== undefined && { threads: draft.threads }),
-					},
-				}),
+				...(Object.keys(memoryChanges()).length && { memory: memoryChanges() }),
 			})
 			setDraft((store) => {
 				store.modules = {}
-				store.model = undefined
-				store.compactAt = undefined
-				store.threads = undefined
+				for (const field of MEMORY_FIELDS) store[field] = undefined
 				store.state = restarts ? 'restarting' : 'stopped'
 			})
 		} catch (error) {
@@ -265,8 +255,9 @@ const [draft, setDraft] = createRoot(() =>
 		state: '',
 	}),
 )
-const changed = () =>
-	Object.keys(draft.modules).length > 0 ||
-	draft.model !== undefined ||
-	draft.compactAt !== undefined ||
-	draft.threads !== undefined
+const MEMORY_FIELDS = ['model', 'compactAt', 'threads']
+const memoryChanges = () =>
+	Object.fromEntries(
+		MEMORY_FIELDS.filter((field) => draft[field] !== undefined).map((field) => [field, draft[field]]),
+	)
+const changed = () => Object.keys(draft.modules).length > 0 || Object.keys(memoryChanges()).length > 0

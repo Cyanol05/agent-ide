@@ -27,6 +27,21 @@ import { report } from './notice.js'
 import { Sure } from './sure.js'
 import { ThreadItem } from './thread-list.js'
 
+/** Its own threads without the home, and the unarchived threads it joins elsewhere. */
+export function botThreads(bot) {
+	const home = threads.find((thread) => thread.id === bot.home)
+	const family = new Set((home?.family ?? []).map((member) => member.id))
+	const own = threads.filter((thread) => thread.id !== bot.home && family.has(thread.id))
+	const elsewhere = threads.filter(
+		(thread) =>
+			thread.id !== bot.home &&
+			!family.has(thread.id) &&
+			!thread.archived &&
+			thread.agents.some((agent) => agent.name === bot.name),
+	)
+	return { own, elsewhere }
+}
+
 export function BotItem(props) {
 	const family = createMemo(() => {
 		const home = threads.find((thread) => thread.id === props.bot.home)
@@ -66,20 +81,9 @@ export function BotSettings(props) {
 			if (document.activeElement !== instructionsField) setInstructions(instructions)
 		},
 	)
-	// Its own threads, the home itself left out, plus the threads it joins elsewhere
 	const own = createMemo(() => {
-		const home = threads.find((thread) => thread.id === props.bot.home)
-		const family = new Set((home?.family ?? []).map((member) => member.id))
-		family.delete(props.bot.home)
-		const mine = threads.filter((thread) => family.has(thread.id))
-		const elsewhere = threads.filter(
-			(thread) =>
-				!family.has(thread.id) &&
-				thread.id !== props.bot.home &&
-				!thread.archived &&
-				thread.agents.some((agent) => agent.name === props.bot.name),
-		)
-		return [...mine, ...elsewhere]
+		const { own, elsewhere } = botThreads(props.bot)
+		return [...own, ...elsewhere]
 	})
 	const count = createMemo(() => own().length)
 	// Of its hundreds, the ones happening now or needing a hand; an unread answer already shows its dot in the thread list
