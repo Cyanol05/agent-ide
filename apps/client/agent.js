@@ -5,7 +5,6 @@ export const [doing, setDoing] = createRoot(() => createStore({}))
 
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
-/** A thinking level in the picker's short words */
 export const thinkingWord = (level) => ({ minimal: 'min', medium: 'med' })[level] ?? level
 
 /** `model:thinking@runner`, as pi names a model, or `ada=model@runner` for a bot: util.js's agentTo, with the thinking split off */
@@ -58,11 +57,9 @@ export const messageText = (message) =>
 
 export const lastToolCall = (doing) => {
 	const tool = doing?.run && doing.tools.at(-1)
-	return tool ? toolLine(tool) : ''
+	return tool ? `${tool.name} ${touched(tool.args) ?? ''}`.trim() : ''
 }
-const toolLine = (tool) => `${tool.name} ${touched(tool.args) ?? ''}`.trim()
 
-/** The argument that says what a tool call touches, if it has one */
 export const touched = (args = {}) =>
 	args.command ?? args.path ?? args.pattern ?? args.query ?? args.code ?? args.body
 

@@ -32,7 +32,6 @@ export function Compaction() {
 }
 
 function CompactionOf(props) {
-	/** The newest cut across the thread's agents, null before any */
 	const cut = createMemo(() =>
 		newestCut(
 			(threads.find((thread) => thread.id === props.thread)?.agents ?? []).flatMap((agent) =>

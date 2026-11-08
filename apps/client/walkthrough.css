@@ -275,7 +275,6 @@ body:not(.chat) {
 			border-color: var(--edge);
 		}
 
-		/* A hands-off thread's box is dashed: its agents touch nothing. */
 		&.hands-off {
 			border-style: dashed;
 		}

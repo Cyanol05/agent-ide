@@ -55,7 +55,6 @@ const askedOf = (bot) => {
 	)
 }
 
-/** Who asked: the bot in the parent thread, or its agent */
 const askerOf = (thread) => {
 	const parent = threads.find((other) => other.id === thread.parent)
 	if (!parent) return ''
@@ -116,7 +115,6 @@ export function BotSettings(props) {
 		return [...own, ...elsewhere]
 	})
 	const count = createMemo(() => own().length)
-	/** Another bot already shown in a hue */
 	const holder = (hue) =>
 		bots.find((bot) => bot.name !== props.bot.name && hueOf(bot.name) === hue)?.name
 	const setColor = (color) =>

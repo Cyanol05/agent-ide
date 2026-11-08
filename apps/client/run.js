@@ -120,13 +120,12 @@ export function Exchange(props) {
 }
 
 function Step(props) {
-	const step = () => props.step
 	return html`
 		<${Show}
-			when=${() => step().name || step().label}
-			fallback=${() => html`<li class="said">${() => step().said}</li>`}
+			when=${() => props.step.name || props.step.label}
+			fallback=${() => html`<li class="said">${() => props.step.said}</li>`}
 		>
-			<${Call} step=${() => step()} />
+			<${Call} step=${() => props.step} />
 		<//>
 	`
 }
@@ -135,7 +134,6 @@ function Step(props) {
 const labelWidth = (steps) =>
 	Math.max(...steps.map((step) => (step.name ?? step.label ?? '').length))
 
-/** • tool and its input, or what the agent was handed or thought; opened, whole */
 function Call(props) {
 	const result = () => props.step.result
 	const [open, setOpen] = createSignal(false)
@@ -163,7 +161,6 @@ ${() => (props.step.name ? JSON.stringify(props.step.args, null, 2) : props.step
 	`
 }
 
-/** A step's input as it was stored, on one line */
 const input = (step) => (step.name ? JSON.stringify(step.args) : (step.text ?? ''))
 
 /** What a turn did, in a few words; its asks have their own lines */
@@ -292,7 +289,6 @@ export function turnsOf(conversation) {
 				after: Math.max(0, ...(entry.data?.held ?? [])),
 				start: message?.timestamp,
 				end: message?.timestamp,
-				// What the agent was handed opens its steps
 				steps: [{ key: `${entry.id}:handed`, label: 'handed', text: handedText(message) }],
 			})
 			continue
@@ -335,7 +331,6 @@ export function turnsOf(conversation) {
 	return turns
 }
 
-/** The newest of some cuts, null before any */
 export const newestCut = (cuts) =>
 	cuts.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null)
 

@@ -2,7 +2,6 @@
 export function placePopover(panel, button, sheet = true, end = false) {
 	if (sheet && matchMedia('(max-width: 700px)').matches) return panel.removeAttribute('style')
 	const rect = button.getBoundingClientRect()
-	// Above it, unless it fits only below
 	const below = rect.top < panel.offsetHeight + 14 && innerHeight - rect.bottom > rect.top
 	const fits = !end && rect.left + panel.offsetWidth <= innerWidth - 8
 	Object.assign(panel.style, {

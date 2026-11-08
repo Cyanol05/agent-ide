@@ -67,7 +67,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     choose, configure, toFor             model picker and runner controls changing that pick
     Composer: submit, add, typeRecipients, filled, compactNow   send, images, typed recipients, context meter
     PickerBot            bots in the picker, and as @mention options
-  agent.js               agents' labels and live work (doing); client's agentTo, formatAgent, toolLine, modelsOf
+  agent.js               agents' labels and live work (doing); client's agentTo, formatAgent, lastToolCall, modelsOf
   model-picker.js        model, thinking and folder controls (composer and settings share them)
   runner.js              runner list, a runner's agents, ConnectRunner
   bot.js                 a bot's settings, its row with the threads others asked it in (askedOf, askerOf), new bot; botThreads shares its own/elsewhere lists

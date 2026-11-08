@@ -116,7 +116,6 @@ export const merged = (list, more) => {
 		...waiting,
 	]
 }
-/** Who's in each thread on screen, as its socket says */
 export const [people, setPeople] = createStore({})
 const [current, setCurrent] = createSignal(Number(params.get('thread')) || null)
 export { current }
@@ -272,9 +271,7 @@ export const defaultHueOf = (name) => {
 	const index = [...bots].sort((a, b) => a.home - b.home).findIndex((bot) => bot.name === name)
 	return index < 0 ? undefined : madeHue(index)
 }
-/** The hues to pick from: the first eight bots', around the wheel */
 export const hues = Array.from({ length: 8 }, (_, index) => madeHue(index)).sort((a, b) => a - b)
-/** A hue as a colour that reads on both grounds */
 export const paint = (hue) => `light-dark(oklch(0.56 0.15 ${hue}), oklch(0.74 0.13 ${hue}))`
 /** A bot's colour, as a style for `property`: the hue picked for it, else its default; anyone else has none */
 export const hueOf = (name) => bots.find((bot) => bot.name === name)?.color ?? defaultHueOf(name)

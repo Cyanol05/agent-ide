@@ -1,6 +1,5 @@
 /* The app: the chat fills the window. The walkthrough, when it's on, lays its story over this. */
 
-/* A list that scrolls keeps its bounce to itself. */
 .thread > ul,
 .thread-list > ul {
 	overscroll-behavior: contain;
@@ -203,7 +202,6 @@ agent-memory {
 	}
 }
 
-/* The title is a heading that edits in place. */
 .thread-details > h2.thread-title {
 	margin: var(--space-2) var(--space-1) 0;
 	font-size: var(--text);
@@ -479,7 +477,6 @@ agent-memory {
 				margin-top: var(--space-3);
 			}
 
-			/* The room under what you just sent, which the answer fills. */
 			&.room {
 				margin: 0;
 			}
@@ -614,7 +611,6 @@ agent-memory {
 						}
 					}
 
-					/* Open, its words are under it, so the line drops its preview. */
 					> details[open] > summary .in {
 						display: none;
 					}
@@ -682,7 +678,6 @@ agent-memory {
 				height: var(--text-small-line);
 			}
 
-			small span[style] > .thread-link,
 			summary span[style] > .thread-link {
 				color: inherit;
 			}
@@ -1047,7 +1042,6 @@ body.side .thread-details {
 		min-height: var(--space-5);
 	}
 
-	/* A swatch is its dot, a little larger than a status dot, so the hues read. */
 	> button:not(:first-child) {
 		padding-inline: var(--space-1);
 	}
@@ -1057,7 +1051,6 @@ body.side .thread-details {
 		height: 0.75rem;
 	}
 
-	/* Another bot's colour already: still yours to pick, dimmed so a clash is a choice. */
 	> .taken .dot {
 		opacity: 0.3;
 	}
@@ -1340,7 +1333,6 @@ body.side .thread-details {
 	}
 }
 
-/* The sheets' close × is for phones. */
 :is(.thread-details, .model-picker) > button.close {
 	display: none;
 }
@@ -1486,7 +1478,6 @@ button.foot-toggle {
 	}
 }
 
-/* While dragging, nothing else selects or shows its own cursor. */
 body.resizing {
 	cursor: col-resize;
 	user-select: none;
@@ -1717,7 +1708,6 @@ body.resizing {
 			display: none;
 		}
 
-		/* The app bar carries the top fade. */
 		&::before {
 			display: none;
 		}

@@ -31,7 +31,6 @@ export function ThreadDetails() {
 		).values(),
 	]
 	const depth = (id) => here()?.family.find((member) => member.id === id)?.depth ?? 0
-	/** A family member's parent, if it's also a member: the thread a fork or child points at */
 	const parentOf = (id) => {
 		const thread = threads.find((member) => member.id === id)
 		return thread?.parent ?? forkedFrom(thread)
@@ -64,7 +63,6 @@ export function ThreadDetails() {
 	createEffect(current, () => {
 		setPage(false)
 	})
-	// The page starts at its own top, wherever the settings had been scrolled to
 	let sheet
 	createEffect(page, (open) => {
 		if (open) sheet.scrollTop = 0
@@ -158,7 +156,6 @@ export function ThreadDetails() {
 	`
 }
 
-/** Rename on Enter or leaving the field; Escape puts the old title back. */
 function Title(props) {
 	const title = () => threads.find((thread) => thread.id === props.thread)?.title ?? ''
 	const [error, setError] = createSignal('')

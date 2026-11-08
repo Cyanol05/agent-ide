@@ -143,7 +143,6 @@ export function Thread(props) {
 				turns.flatMap((row) => (row.turn ? row.turn.steps.map((step) => answerOf(step)?.id) : [])),
 			)
 			const shown = all.filter((entry) => !answers.has(entry.id))
-			// Each ask an agent made here is one line after its run, open to the whole exchange
 			const asks = turns
 				.filter((row) => row.turn)
 				.flatMap((row) =>
@@ -500,7 +499,6 @@ export function Thread(props) {
 									when=${() => !row().ask}
 									fallback=${() => html`
 										<${Exchange}
-											thread=${() => props.id}
 											step=${() => row().ask}
 											agent=${() => row().agent}
 											answer=${() => row().answer}
@@ -539,7 +537,7 @@ export function Thread(props) {
 	`
 }
 
-export function Message(props) {
+function Message(props) {
 	const data = () => props.entry.data
 	const elsewhere = () => data().from && data().from !== props.thread
 	const crossed = () => !!(elsewhere() || props.sent)
@@ -648,7 +646,6 @@ const Body = (props) => html`
 	<//>
 `
 
-/** A message's images, as it sent them */
 const Images = (props) => html`
 	<${Show} when=${() => props.images?.length}>
 		<div class="images">
@@ -674,7 +671,7 @@ const Images = (props) => html`
 	<//>
 `
 
-export const ThreadLink = (props) => html`
+const ThreadLink = (props) => html`
 	<a
 		class="thread-link"
 		href=${() => hrefOf(props.id)}

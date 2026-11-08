@@ -77,7 +77,6 @@ export function ThreadList() {
 	`
 }
 
-/** Archived threads, opened as a page, the way a bot's threads open */
 function ArchivedPage(props) {
 	return html`
 		<header class="page-head">
@@ -99,7 +98,6 @@ function ArchivedPage(props) {
 	`
 }
 
-/** The first row of a list makes a new one of what it lists, in the place it will appear. */
 function NewRow(props) {
 	return html`
 		<li class=${() => ['new', { current: props.current }]}>

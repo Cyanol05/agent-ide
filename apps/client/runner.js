@@ -87,7 +87,6 @@ export function Runner(props) {
 	`
 }
 
-/** A runner's dot: its status, or when idle, whether it's online */
 const dotOf = (runner) =>
 	runner.status && runner.status !== 'idle' ? runner.status : runner.online ? 'on' : ''
 
@@ -109,7 +108,6 @@ function AgentRow(props) {
 	`
 }
 
-/** The chat's runner list: who's there, and where you connect another machine or revoke one. */
 export function RunnerList() {
 	let button, panel
 	const id = createUniqueId()

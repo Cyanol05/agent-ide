@@ -120,7 +120,6 @@ body {
 	-webkit-font-smoothing: antialiased;
 }
 
-/* Keyboard users get a ring on anything the controls above don't already outline. */
 :focus-visible {
 	outline: 2px solid var(--pick);
 	outline-offset: 2px;
@@ -215,8 +214,7 @@ option {
 button {
 	cursor: pointer;
 
-	&[aria-pressed='true'],
-	&.current {
+	&[aria-pressed='true'] {
 		border-color: var(--edge);
 	}
 }
@@ -235,7 +233,6 @@ button.ghost {
 	}
 }
 
-/* Primary: filled with ink, for the one thing the view is for. */
 button.primary {
 	border-color: transparent;
 	background: var(--ink);
@@ -276,7 +273,6 @@ button.send {
 	}
 }
 
-/* A field that wraps writes in 20px lines, so it grows by whole steps. */
 textarea:not(.draft) {
 	line-height: var(--text-ui-line);
 }
@@ -537,7 +533,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 }
 
-/* A pane's close × is for phones. */
 .panes .pane > header > button.close {
 	display: none;
 }

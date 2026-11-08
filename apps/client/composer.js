@@ -45,7 +45,6 @@ import { imageContent, imageUrl } from './images.js'
 
 export function Composer(props) {
 	let input, box, picker, button, chooser, anchor, recall, recallButton, mentionList
-	/** The @ being typed: where it starts, what follows it, and which bot is highlighted */
 	const [mention, setMention] = createSignal(null)
 	const [highlighted, setHighlighted] = createSignal(0)
 	const mentionable = () => (mention() ? mentionsFor(mention().query, props.thread) : [])
@@ -60,7 +59,6 @@ export function Composer(props) {
 		if (next?.query !== mention()?.query || next?.start !== mention()?.start) setHighlighted(0)
 		setMention(next)
 	}
-	/** Picking a bot writes @name and asks it with this message, the way a bot joins a thread */
 	const pickMention = (bot) => {
 		const { start } = mention()
 		const text = `${input.value.slice(0, start)}@${bot.name} `
@@ -87,7 +85,6 @@ export function Composer(props) {
 			if (open) onSettled(() => placePopover(mentionList, box, false))
 		},
 	)
-	/** Whom the next message asks, as the model button says it */
 	const asking = () =>
 		directed(props.thread)
 			? "director's pick"
@@ -96,7 +93,6 @@ export function Composer(props) {
 					.join(' + ')
 	const [lines, setLines] = createSignal(false)
 	const [compacting, setCompacting] = createSignal(false)
-	/** How full the agent's context was at its last answer: tokens, and the share of its window */
 	const filled = () => {
 		const agent = here(props.thread).find((agent) => agent.contextWindow)
 		const used = (conversations[agent?.conversation] ?? []).findLast(
@@ -155,7 +151,6 @@ export function Composer(props) {
 			picker.showPopover()
 		}
 	})
-	/** Pasted, dropped or picked: each image waits above the box until it's sent or taken off */
 	const add = async (files) => {
 		const key = props.thread ?? 'new'
 		for (const file of files)
@@ -540,7 +535,6 @@ export function Composer(props) {
 				ref=${(el) => (picker = el)}
 				onToggle=${(event) => {
 					button.setAttribute('aria-expanded', String(event.newState === 'open'))
-					// Over the composer, at the end its button sits; or at what opened it
 					if (event.newState === 'open')
 						placePopover(picker, anchor ?? box, true, (anchor ?? box) === box)
 					else anchor = box
@@ -662,7 +656,6 @@ const persistDraft = (key, text) => {
 /** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
 const pick = (thread = current()) => compose.picks[thread ?? 'new'] ?? null
 const here = (thread = current()) => threads.find((row) => row.id === thread)?.agents ?? []
-/** The names the thread asked last */
 const lastTo = (thread = current()) =>
 	(entries[thread] ?? []).findLast((event) => event.data.to?.length)?.data.to
 const fallback = (runner) =>
@@ -705,7 +698,6 @@ const directing = (thread) =>
 		!homeBot(thread) &&
 		here(thread).filter((agent) => agent.to?.name).length > 1,
 	)
-/** Nobody chosen for the next message, so the director picks */
 const directed = (thread) => directing(thread) && !pick(thread)
 export const recipients = (thread = current()) =>
 	[agent(thread), ...askedBots(thread)].filter(Boolean)

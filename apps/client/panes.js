@@ -2,7 +2,6 @@
 import html from '@solidjs/html'
 import { createEffect, createMemo, onSettled, Show } from 'solid-js'
 
-/** Controlled by open/onBack; detail and actions are ordinary content, not another popup. */
 export function Panes(props) {
 	let back, origin
 	const opened = createMemo(() => props.open)

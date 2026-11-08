@@ -16,7 +16,6 @@ export async function imageContent(file) {
 		throw new Error(`${file.name || 'That file'} isn't an image this browser can read`)
 	})
 	const scale = Math.min(1, SIDE / Math.max(bitmap.width, bitmap.height))
-	// Small enough and a kind every model takes: sent as it is, untouched
 	if (scale === 1 && AS_IS.includes(file.type) && (file.size * 4) / 3 < BYTES) {
 		bitmap.close()
 		return { type: 'image', mimeType: file.type, data: await base64(file) }
