@@ -7,3 +7,5 @@ node_modules/
 third-party/
 bun.lock
 *.log
+
+apps/client/fonts/
