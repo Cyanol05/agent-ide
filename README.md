@@ -37,7 +37,7 @@ MEMORY_THREADS=all node server.js       # which threads remember: bots, all or n
 DB_PATH=other.sqlite node server.js     # another store
 ```
 
-The server writes everything it prints, any crash, and how it ended to a log next to its store: `agent-ide.log`, or `other.log` for `other.sqlite`.
+The server writes everything it prints, any crash, the signal that stopped it, and how it ended to a log next to its store: `agent-ide.log`, or `other.log` for `other.sqlite`.
 
 ## Another machine
 

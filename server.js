@@ -403,7 +403,10 @@ harness.closed.then(
 /** A stop closes the harness, so the tasks it cuts off wait to resume, and Pi doesn't count them as crashed */
 let stopping
 for (const signal of ['SIGINT', 'SIGTERM'])
-	process.on(signal, () => (stopping ??= harness.close(context).finally(() => process.exit(0))))
+	process.on(signal, () => {
+		logged(`stopped by ${signal}`)
+		stopping ??= harness.close(context).finally(() => process.exit(0))
+	})
 
 /** What each runner said when it last connected; a runner whose key is gone stays here, so its agents can wait for its name */
 const known = async () => (await harness.snapshot(Runners, context)) ?? {}
