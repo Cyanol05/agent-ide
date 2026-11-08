@@ -69,7 +69,6 @@ async function api(method, route, body) {
 	return json
 }
 
-/** Names belong to the API; only --thinking and --dir need an object. */
 function agent(name) {
 	if (!flags.thinking && !flags.dir) return name
 	if (!name.includes('@')) throw new Error('--thinking and --dir require a model@runner, not a bot name')

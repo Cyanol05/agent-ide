@@ -71,7 +71,6 @@ check(
 )
 check(!reports.some((r) => r.app && r.id), 'only the root names the app; threads inherit it')
 
-// A command in the runner's folder
 await api('POST', `/api/threads/${id}/entries`, { body: '$ sleep 0.5' })
 check(
 	Boolean(
@@ -143,7 +142,6 @@ check(
 	'the API says error too',
 )
 
-// The server goes away
 srv.kill()
 check(
 	Boolean(

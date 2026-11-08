@@ -35,7 +35,6 @@ const textOf = (content) =>
 				.join('\n')
 	).trim()
 
-/** A session's posts */
 function posts(file) {
 	const lines = readFileSync(file, 'utf8')
 		.split('\n')

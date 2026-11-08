@@ -73,7 +73,6 @@ check(
 	'fork is in the thread list',
 )
 
-// Post in the fork
 await api('POST', `/api/threads/${f}/entries`, { body: 'other way' }, 'ben')
 fv = await answered(f, 2)
 const ben = fv?.entries.find((e) => e.data.author === 'ben')
@@ -107,7 +106,6 @@ check(
 	brief(f2v),
 )
 
-// A fork of a busy thread
 laptop.kill()
 await until(() => api('GET', '/api/runners').then((r) => r.json.every((x) => !x.online)))
 await api('POST', `/api/threads/${a}/entries`, { body: 'while away' }, 'cy')
@@ -152,7 +150,6 @@ check(
 )
 await api('POST', `/api/threads/${q}/stop`, {})
 
-// Restart with the director
 await kill(srv)
 srv = await server({ MODULES: '+director' })
 laptop = await runner('laptop', { wait: false })

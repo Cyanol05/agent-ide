@@ -36,7 +36,7 @@ Your output must be a single line, at most 36 characters, with no explanation.
 "hello!" → Greeting
 </examples>`
 
-export function sanitizeThreadTitle(raw) {
+function sanitizeThreadTitle(raw) {
 	const line = raw
 		.replace(/<think>[\s\S]*?<\/think>\s*/g, '')
 		.split(/\r?\n/)

@@ -153,7 +153,6 @@ check(
 )
 first.close()
 
-// A restart closes the socket
 await kill(srv, 'SIGKILL')
 srv = await server()
 const restarted = watch(id)

@@ -476,7 +476,6 @@ export function serveRunner({
 			(message) => message.role === 'assistant' && message.stopReason !== 'error',
 		)
 		// Without a session id pi-claude-code starts a fresh Claude Code process instead of the warm one.
-		// Delete this, with `quiet`, once earendil-works/pi-claude-code#30 is fixed.
 		if (model.provider === 'claude-code' && said && quiet(said))
 			options = { ...options, sessionId: undefined }
 		let sentAt = 0
@@ -485,8 +484,8 @@ export function serveRunner({
 				['start', 'done', 'error'].includes(event.type) ||
 				event.type.endsWith('_end') ||
 				Date.now() - sentAt > 100
-			// The first Claude Code request after a system prompt change carries one cache marker too many; the next one
-			// doesn't, so it's worded for Pi's retry. Delete once earendil-works/pi-claude-code#10 is fixed.
+			// Claude Code's first request after a system prompt change can exceed the cache-marker cap;
+			// the next request doesn't, so make the error recognizable to Pi's retry.
 			if (event.type === 'error' && /maximum of 4 blocks with cache_control/.test(event.error.errorMessage))
 				event.error.errorMessage += ' (try your request again)'
 			const { partial, ...slim } = event
@@ -586,7 +585,7 @@ const text = (message) =>
 /**
  * Claude Code writes `(no content)` for a reply with no text, then drops that reply when the history comes back,
  * so pi-claude-code finds one user message fewer than pi has and refuses every later turn
- * (earendil-works/pi-claude-code#30). It means the agent said nothing.
+ * after that empty reply. It means the agent said nothing.
  */
 const saidNothing = (message) =>
 	message?.role === 'assistant' &&

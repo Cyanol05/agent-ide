@@ -71,7 +71,6 @@ check(
 	"the agent's conversation is no thread",
 )
 
-// Ana says something without a `to`
 await api('POST', `/api/threads/${id}/entries`, { body: 'me too' }, 'ana')
 const v2 = await answered(id, 2)
 const ana = v2?.entries.find((e) => e.data.author === 'ana')
@@ -101,7 +100,6 @@ check(
 	JSON.stringify([cy?.data.to, v3?.agents]),
 )
 
-/** Dee names no model */
 const pi = path.join(dir, '..', 'pi')
 mkdirSync(pi)
 writeFileSync(

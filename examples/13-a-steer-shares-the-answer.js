@@ -119,7 +119,6 @@ check(
 )
 dee.close()
 
-/** Cy works through a tool call */
 const cy = await scriptedRunner('cy', (request) => {
 	const t = text(request.messages.findLast((m) => m.role === 'user'))
 	if (t.includes('again')) return say('cy heard it all')

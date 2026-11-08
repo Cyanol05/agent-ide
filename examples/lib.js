@@ -28,7 +28,7 @@ for (const name of [
 }
 
 export const repo = path.resolve(import.meta.dirname, '..')
-export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** The first server asks for port 0 and says which it got; later ones, restarts, keep it */
 export let base
@@ -45,9 +45,9 @@ mkdirSync(home)
 const procs = new Set()
 process.on('exit', () => {
 	// Disposable stores need no graceful shutdown; don't orphan a server waiting on a task.
-	for (const p of procs) {
+	for (const child of procs) {
 		try {
-			process.kill(-p.pid, 'SIGKILL')
+			process.kill(-child.pid, 'SIGKILL')
 		} catch (error) {
 			if (error.code !== 'ESRCH') throw error
 		}
@@ -59,34 +59,34 @@ process.on('SIGTERM', () => process.exit(143))
 
 /** Servers start in the example's own folder, so the checkout's agent-ide.json stays out too */
 export function start(file, args = [], env = {}, cwd = tmp) {
-	const p = spawn(process.execPath, [path.join(repo, file), ...args], {
+	const child = spawn(process.execPath, [path.join(repo, file), ...args], {
 		cwd,
 		detached: true,
 		env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DB_PATH: db, ...env },
 		stdio: ['ignore', 'pipe', 'pipe'],
 	})
-	p.stdout.on('data', (d) => process.env.VERBOSE && process.stdout.write(`[${file}] ${d}`))
-	p.stderr.on('data', (d) => process.stdout.write(`[${file} err] ${d}`))
-	procs.add(p)
-	p.on('exit', () => procs.delete(p))
-	return p
+	child.stdout.on('data', (chunk) => process.env.VERBOSE && process.stdout.write(`[${file}] ${chunk}`))
+	child.stderr.on('data', (chunk) => process.stdout.write(`[${file} err] ${chunk}`))
+	procs.add(child)
+	child.on('exit', () => procs.delete(child))
+	return child
 }
 
 export async function server(env = {}, { cwd } = {}) {
-	const p = start('server.js', [], { RUNNER: '0', ...env }, cwd)
+	const child = start('server.js', [], { RUNNER: '0', ...env }, cwd)
 	if (!port) {
-		p.stdout.on('data', (d) => {
-			port ||= Number(/http:\/\/127\.0\.0\.1:(\d+)/.exec(d)?.[1])
+		child.stdout.on('data', (chunk) => {
+			port ||= Number(/http:\/\/127\.0\.0\.1:(\d+)/.exec(chunk)?.[1])
 		})
 		await until(async () => port)
 		base = `http://127.0.0.1:${port}`
 	}
-	await until(() => api('GET', '/api/server').then((r) => r.status === 200))
-	return p
+	await until(() => api('GET', '/api/server').then((response) => response.status === 200))
+	return child
 }
 
 export async function runner(name, { args = [], env = {}, wait = true } = {}) {
-	const p = start('runner.js', ['--server', base, '--name', name, '--dir', dir, ...args], {
+	const child = start('runner.js', ['--server', base, '--name', name, '--dir', dir, ...args], {
 		HOME: home,
 		AGENT_IDE_KEY: await keyFor(name),
 		...env,
@@ -97,21 +97,20 @@ export async function runner(name, { args = [], env = {}, wait = true } = {}) {
 			const ready = (chunk) => {
 				output += chunk
 				if (!output.includes(`${name} online at`)) return
-				p.stdout.off('data', ready)
-				p.off('exit', exited)
+				child.stdout.off('data', ready)
+				child.off('exit', exited)
 				resolve()
 			}
 			const exited = (code) => {
-				p.stdout.off('data', ready)
+				child.stdout.off('data', ready)
 				reject(new Error(`${name} exited before connecting: ${code}`))
 			}
-			p.stdout.on('data', ready)
-			p.once('exit', exited)
+			child.stdout.on('data', ready)
+			child.once('exit', exited)
 		})
-	return p
+	return child
 }
 
-/** A new key for a runner, which the store keeps across restarts */
 export const keyFor = async (name) => (await api('POST', '/api/runners', { name })).json.key
 
 export async function api(method, route, body, user = 'oskar') {
@@ -124,39 +123,38 @@ export async function api(method, route, body, user = 'oskar') {
 }
 export const view = async (id) => (await api('GET', `/api/threads/${id}`)).json
 /** An agent's own conversation, found by its name or by `provider/id@runner`, whatever it thinks */
-export const conversationOf = async (v, name) =>
+export const conversationOf = async (thread, name) =>
 	(
 		await api(
 			'GET',
-			`/api/conversations/${v.agents.find((a) => a.name === name || `${a.to?.model}@${a.to?.runner}` === name)?.conversation}`,
+			`/api/conversations/${thread.agents.find((agent) => agent.name === name || `${agent.to?.model}@${agent.to?.runner}` === name)?.conversation}`,
 		)
 	).json
 /** A thread's memory lines, from its raw Pi conversation */
 export const linesOf = async (id) =>
 	(await api('GET', `/api/conversations/${id}`)).json.entries
-		.filter((e) => e.kind === 'agent-ide.line')
-		.map((e) => ({ id: e.id, ...e.data }))
-export const answers = (v) => v.entries.filter((e) => e.data.answer)
-export const brief = (v) =>
-	JSON.stringify(v?.entries.map((e) => [e.id, e.data.author, e.data.body.slice(0, 40)]))
+		.filter((entry) => entry.kind === 'agent-ide.line')
+		.map((entry) => ({ id: entry.id, ...entry.data }))
+export const answers = (thread) => thread.entries.filter((entry) => entry.data.answer)
+export const brief = (thread) =>
+	JSON.stringify(thread?.entries.map((entry) => [entry.id, entry.data.author, entry.data.body.slice(0, 40)]))
 export { text }
 
 export async function until(fn, ms = 8000, every = 100) {
 	const end = Date.now() + ms
 	while (Date.now() < end) {
-		const v = await fn().catch(() => null)
-		if (v) return v
+		const result = await fn().catch(() => null)
+		if (result) return result
 		await sleep(every)
 	}
 	return null
 }
 
-/** Stops a process and resolves once it has exited */
-export const kill = (p, signal = 'SIGTERM') =>
+export const kill = (child, signal = 'SIGTERM') =>
 	new Promise((resolve) => {
-		if (p.exitCode !== null || p.signalCode !== null) return resolve()
-		p.once('exit', () => resolve())
-		p.kill(signal)
+		if (child.exitCode !== null || child.signalCode !== null) return resolve()
+		child.once('exit', () => resolve())
+		child.kill(signal)
 	})
 
 /** Every thread settled: no agent working or waiting for a runner, so nothing more will land until someone asks */
@@ -164,7 +162,7 @@ export const quiet = (ms) =>
 	until(
 		async () =>
 			(await api('GET', '/api/threads')).json.every(
-				(t) => !['working', 'blocked'].includes(t.status),
+				(thread) => !['working', 'blocked'].includes(thread.status),
 			),
 		ms,
 	)
@@ -172,21 +170,21 @@ export const quiet = (ms) =>
 /** One thread settled, `blocked` counting as settled when the runner it waits for is away */
 export const settled = (id, { blocked = false, ms } = {}) =>
 	until(async () => {
-		const v = await view(id)
-		return v.status !== 'working' && (blocked || v.status !== 'blocked') ? v : null
+		const thread = await view(id)
+		return thread.status !== 'working' && (blocked || thread.status !== 'blocked') ? thread : null
 	}, ms)
 
 /** A runner's row says it's online */
 export const online = (name, ms) =>
 	until(
-		() => api('GET', '/api/runners').then((r) => r.json.some((x) => x.name === name && x.online)),
+		() => api('GET', '/api/runners').then((response) => response.json.some((runner) => runner.name === name && runner.online)),
 		ms,
 	)
 
-export const answered = (id, n = 1, ms) =>
+export const answered = (id, count = 1, ms) =>
 	until(async () => {
-		const v = await view(id)
-		return answers(v).length >= n && !['working', 'blocked'].includes(v.status) ? v : null
+		const thread = await view(id)
+		return answers(thread).length >= count && !['working', 'blocked'].includes(thread.status) ? thread : null
 	}, ms)
 
 let failed = 0
@@ -212,7 +210,7 @@ export async function localRunner(
 			`ws://127.0.0.1:${port}/ws?${new URLSearchParams([['runner', name], ['dir', dir], ['model', model], ...query, ...(readOnly ? [['readOnly', '1']] : [])])}`,
 			{ headers: { authorization: `Bearer ${key}` } },
 		)
-		const r = serveRunner({
+		const runner = serveRunner({
 			name,
 			dir,
 			models,
@@ -221,21 +219,21 @@ export async function localRunner(
 			readOnly,
 			ops,
 			readable,
-			send: (t) => socket.readyState === WebSocket.OPEN && socket.send(t),
-			onTell: (m) => {
-				if (m.op !== 'ready') onTell?.(m)
+			send: (text) => socket.readyState === WebSocket.OPEN && socket.send(text),
+			onTell: (message) => {
+				if (message.op !== 'ready') onTell?.(message)
 			},
 		})
-		socket.onmessage = ({ data }) => r.receive(data)
+		socket.onmessage = ({ data }) => runner.receive(data)
 		socket.onclose = () => {
-			r.stopAll()
+			runner.stopAll()
 			if (!closing) setTimeout(connect, 300)
 		}
 		socket.onerror = () => {}
 	}
 	connect()
 	await until(() =>
-		api('GET', '/api/runners').then((r) => r.json.some((x) => x.name === name && x.online)),
+		api('GET', '/api/runners').then((response) => response.json.some((runner) => runner.name === name && runner.online)),
 	)
 	return {
 		close: () => {
@@ -272,6 +270,6 @@ export async function scriptedRunner(
 	})
 }
 
-export const say = (t) => fauxAssistantMessage([fauxText(t)])
+export const say = (text) => fauxAssistantMessage([fauxText(text)])
 export const call = (name, args) =>
 	fauxAssistantMessage([fauxToolCall(name, args)], { stopReason: 'toolUse' })

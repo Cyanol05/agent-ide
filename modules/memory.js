@@ -36,7 +36,6 @@ const PAGE = 16 * 1024,
 const bytes = (text) => Buffer.byteLength(text)
 const key = (l, i) => `${l}:${i}`
 const RULER = '-'.repeat(LINE)
-/** The first LINE bytes, whole characters only */
 const cut = (text) => {
 	let head = Buffer.from(text).subarray(0, LINE).toString()
 	while (bytes(head) > LINE) head = head.slice(0, -1)

@@ -33,7 +33,6 @@ const original = await conversationOf(first, name)
 const all = JSON.parse(oldAnswer.data.body).tools
 const forks = []
 
-// The issue's repro: restrict tools after an answer, then fork that older answer.
 await api('POST', `/api/threads/${id}/tools`, { tools: ['read'] })
 const read = (await api('POST', `/api/threads/${id}/fork`, { at: oldAnswer.id })).json.id
 forks.push({ id: read, tools: ['read'], expected: ['read'], inherited: 1 })

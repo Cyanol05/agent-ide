@@ -20,7 +20,6 @@ const HANDS_OFF = ['-write', '-edit', '-bash']
 
 export function server(core) {
 	const bots = () => core.commit(async (tx) => JSON.parse(JSON.stringify(await tx.doc(Bots))))
-	/** Each bot; whether it's busy is its home thread's family's status, on the thread list */
 	const list = async () => Object.entries(await bots()).map(([name, bot]) => ({ name, ...bot }))
 
 	async function change({ name, to, instructions, color }) {

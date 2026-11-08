@@ -59,7 +59,6 @@ check(
 	said,
 )
 
-// It delegates
 await api('POST', `/api/threads/${id}/entries`, { body: 'delegate this', to })
 const child = await until(
 	async () => (await api('GET', '/api/threads')).json.find((t) => t.parent === id),
@@ -73,7 +72,6 @@ check(
 	there,
 )
 
-/** A fork keeps them */
 const { json: fork } = await api('POST', `/api/threads/${id}/fork`, {
 	at: first.entries.find((e) => e.data.answer).id,
 })
@@ -82,7 +80,6 @@ check(
 	"a fork keeps the thread's tools",
 )
 
-/** Exactly these: a list of names */
 const {
 	json: { id: only },
 } = await api('POST', '/api/threads', { title: 'only read', tools: ['read'] })
@@ -90,7 +87,6 @@ await api('POST', `/api/threads/${only}/entries`, { body: 'which tools?', to })
 const just = (await answered(only, 1)).entries.find((e) => e.data.answer)?.data.body ?? ''
 check(just === 'tools: read', 'a list of names enables exactly those', just)
 
-// Turned off and on again later, for its agents too
 await api('POST', `/api/threads/${id}/tools`, { tools: null })
 await api('POST', `/api/threads/${id}/entries`, { body: 'which tools now?', to })
 const now =

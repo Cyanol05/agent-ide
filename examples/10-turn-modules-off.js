@@ -114,7 +114,6 @@ check(
 check(off.children.length === 0, 'talk off: no child thread')
 check(off.told.length === 0, 'status off: no status pushes', JSON.stringify(off.told))
 
-// The runner end
 fresh()
 const srv = await server()
 for (const status of ['1', '0']) {
@@ -139,7 +138,6 @@ for (const status of ['1', '0']) {
 }
 await kill(srv)
 
-// agent-ide.json in the folder the server starts in
 fresh()
 const own = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-own-'))
 writeFileSync(

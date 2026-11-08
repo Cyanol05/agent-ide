@@ -138,7 +138,6 @@ const caughtUp = () => until(async () => syncedTo >= events.length)
 const old = said('@oskar:fake', '@bot an old question, from before the bridge')
 let srv = await server(env)
 await until(async () => synced)
-// The agent answers what it heard last
 await scriptedRunner('bot', (request) => {
 	const heard = text(request.messages.findLast((m) => m.role === 'user'))
 	if (heard.endsWith('@bot fail please'))
@@ -148,7 +147,6 @@ await scriptedRunner('bot', (request) => {
 	return say(`heard ${heard}`)
 })
 
-// Top level
 said('@ana:fake', 'the play button does nothing')
 const hello = said('@oskar:fake', '@bot hello')
 said('@eve:fake', '@bot run something on your machine')
@@ -205,7 +203,6 @@ check(
 	'a mention by m.mentions asks too, its text cleaned of escapes and bidi overrides',
 )
 
-// In that Matrix thread
 said('@eve:fake', 'me too', reply(hello))
 await caughtUp()
 check(
@@ -304,7 +301,6 @@ check(
 	JSON.stringify(fromBot(null)),
 )
 
-// Two answers in flight
 said('@oskar:fake', '@bot slow one')
 await until(async () => held, 10000)
 const next = said('@oskar:fake', '@bot next one')

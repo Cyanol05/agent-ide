@@ -41,7 +41,6 @@ for (const end of [
 		}
 	}, 3000)
 	check(gone, `${end}: no server remains`)
-	// Clean up the old-code reproduction too; never leave a failing check's server behind.
 	if (pid && !gone) process.kill(pid, 'SIGKILL')
 }
 done()

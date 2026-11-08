@@ -6,13 +6,11 @@ await server()
 const thread = async (title) => (await api('POST', '/api/threads', { title })).json.id
 const vpsThread = await thread('on the vps')
 const laptopThread = await thread('on the laptop')
-// On the vps
 await scriptedRunner('vps', (request) =>
 	lastOf(request).role === 'toolResult'
 		? say('found a problem in the log')
 		: call('bash', { command: 'echo "ERROR null user in /api/me (line 42)"' }),
 )
-// On the laptop
 await scriptedRunner('laptop', (request) => {
 	const last = lastOf(request)
 	if (last.role === 'toolResult') return say(`read: ${text(last)}`)

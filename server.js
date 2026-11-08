@@ -123,7 +123,6 @@ const DELIVERY = 'agent-ide.delivery'
 const TAIL = 20000
 /** Our docs are small, so every change stores the whole doc and a read replays nothing */
 const base = () => true
-/** Every runner that ever connected, with the models pi resolved on it */
 const Runners = defineDoc({
 	kind: 'agent-ide.runners',
 	version: 1,
@@ -131,7 +130,6 @@ const Runners = defineDoc({
 	checkpointWhen: base,
 	initial: () => ({}),
 })
-/** Each runner's key, as its sha256 */
 const Keys = defineDoc({
 	kind: 'agent-ide.keys',
 	version: 1,
@@ -159,7 +157,6 @@ const Thread = defineDoc({
 		memory: null,
 	}),
 })
-/** By request id */
 const Receipts = defineDocFamily({
 	kind: 'agent-ide.receipt',
 	version: 1,
@@ -414,7 +411,6 @@ for (const signal of ['SIGINT', 'SIGTERM'])
 
 /** What each runner said when it last connected; a runner whose key is gone stays here, so its agents can wait for its name */
 const known = async () => (await harness.snapshot(Runners, context)) ?? {}
-/** The runners that may connect: the list */
 const keys = async () => (await harness.snapshot(Keys, context)) ?? {}
 const thread = (id) => harness.snapshot(Thread, id, context)
 const commit = (fn) => harness.commit(async (tx) => fn(tx), context)
@@ -424,7 +420,6 @@ const conversation = async (id) => {
 	return found
 }
 
-/** Newest first */
 const threadIds = async () =>
 	(
 		await collect((cursor) =>
@@ -481,7 +476,6 @@ async function address(to, command = false, signal, useDefaultThinking = true) {
 	folder(runner, clean)
 	return clean
 }
-/** Whom `to` asks in a thread */
 const addresses = (to, command, threadId) =>
 	Promise.all((to === null ? [] : [to].flat()).map((to) => whom(threadId, to, command)))
 /** `12` is thread 12's agent and `12/ada` a bot there; a runner named only digits is `@12` */
@@ -576,7 +570,6 @@ async function agentOf(id, key, tx) {
 
 /** One status for an agent, a thread, a runner or a bot: `working`, `blocked` while its runner is offline, or `idle` */
 const STATUSES = ['idle', 'blocked', 'working']
-/** Of several, the busiest */
 const busiest = (statuses) =>
 	STATUSES[Math.max(0, ...statuses.map((status) => STATUSES.indexOf(status)))]
 /**
@@ -623,7 +616,6 @@ async function agentsIn(row, busy) {
 	)
 }
 
-/** What an agent is doing, from Pi's live doc */
 function doing({ entries, docs }) {
 	const { run, generation, tools = [] } = docs['pi.live'] ?? {}
 	const calls = entries
@@ -644,7 +636,6 @@ function doing({ entries, docs }) {
 /** @returns {Promise<Entry[]>} */
 // ── Thread writes: entries, delivery, outcomes ────────────────────────────
 
-/** Any conversation's entries, oldest first: a thread's, or an agent's own */
 async function entries(id) {
 	const handle = await harness.conversation(id, context)
 	return handle
@@ -655,7 +646,6 @@ async function messages(id) {
 	await conversation(id)
 	return (await entries(id)).filter((entry) => entry.kind === KIND)
 }
-/** Whom the thread asked last, as they are now */
 async function lastAsked(id) {
 	const names = (await messages(id)).findLast((entry) => entry.data.to)?.data.to ?? []
 	const { agents } = await thread(id)
@@ -806,7 +796,6 @@ async function restore(tx, threadId, conversation, { held, note }) {
 	if (note) recipient.note ??= note
 }
 
-/** What a settled input posts, and where */
 async function outcome(threadId, agent, settled, mine) {
 	const done = settled.status === 'done'
 	if (!done && settled.reason === 'aborted') return []
@@ -1078,7 +1067,6 @@ function imageList(images) {
 		: null
 }
 
-/** Inside the caller's commit */
 async function startThread(tx, title, parent, tools = null) {
 	const { id } = await tx.createConversation(ownerless)
 	Object.assign(await tx.doc(Thread, id), { title, parent, createdAt: now(), tools })
@@ -1383,7 +1371,6 @@ async function conversationView(id) {
 	return { ...view, entries: await entries(id) }
 }
 
-/** As the README lists them */
 const routes = [
 	[
 		'GET /api/server',
@@ -1402,7 +1389,6 @@ const routes = [
 					model: settings.config.memory?.model ?? '',
 					compactAt: compactAt ?? null,
 				},
-				/** What modules say of their own settings, by name */
 				...Object.fromEntries(
 					modules
 						.filter((module) => module.settings)
@@ -1790,7 +1776,6 @@ async function mintKey(name, server) {
 		connect: `curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=${key} sh -s -- --name ${name} --dir .`,
 	}
 }
-/** Takes a runner's key away */
 async function revoke(name) {
 	const had = await commit(async (tx) => {
 		const all = await tx.doc(Keys)
@@ -1806,7 +1791,6 @@ async function revoke(name) {
 
 // ── Upgrade: sockets and runner connections ───────────────────────────────
 
-/** Compressed */
 const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true })
 async function upgrade(req, raw, head) {
 	const url = new URL(req.url, 'http://localhost')

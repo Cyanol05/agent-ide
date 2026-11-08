@@ -22,7 +22,6 @@ const { values: args } = parseArgs({
 	options: {
 		server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://localhost:3000' },
 		name: { type: 'string', default: os.hostname() },
-		/** Each --dir is one more folder agents work in */
 		dir: { type: 'string', multiple: true, default: [process.cwd()] },
 		'discover-dirs': { type: 'boolean', default: false },
 		owner: { type: 'string', default: '' },
@@ -114,7 +113,6 @@ const launched = process.env.AGENT_IDE_LAUNCHER === '1'
 
 const modules = await load('runner', { status: true, context: true }, { name, server, dir, roots })
 
-/** The folders it serves, for the picker */
 function folders() {
 	const found = []
 	const list = (at) => {
@@ -196,7 +194,6 @@ async function connect() {
 	socket.onerror = () => {}
 }
 
-/** The server runs a newer runner */
 let warned = false
 function update() {
 	if (launched) {
