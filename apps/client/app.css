@@ -495,16 +495,6 @@ agent-memory {
 				margin-top: var(--space-3);
 			}
 
-			/* What came from or went to another thread sits in by --space-5, its header with it. */
-			&.elsewhere {
-				margin-left: var(--space-5);
-			}
-
-			/* An ask's line starts where a turn's steps do; opened, what crossed sits in like any message from elsewhere. */
-			&.exchange {
-				margin-left: var(--space-1);
-			}
-
 			/* Its words a size down, on the same 24px lines, so it stays on the baseline. */
 			&.elsewhere:not(.reply) > .body {
 				font-size: var(--text-ui);
@@ -660,11 +650,10 @@ agent-memory {
 					margin: 0;
 				}
 
-				/* The dot while the other side works, in a slot kept when it's gone, so the words don't move. */
+				/* The dot while the other side works. */
 				.lead {
 					display: inline-flex;
 					align-items: center;
-					width: 1.5em;
 					/* One em tall on the baseline, so the dot's middle is the words' middle, as a row centres it */
 					height: 1em;
 				}
