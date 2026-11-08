@@ -35,7 +35,7 @@ import {
 	titleOf,
 	watch,
 } from './server.js'
-import { agentTo, authorLabel, doing, setDoing } from './agent.js'
+import { agentTo, authorLabel, doing, setDoing, shortLabel } from './agent.js'
 import { answersIn, asksOf, conversations, cutsOf, Exchange, heard, newestCut, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
@@ -545,20 +545,22 @@ export function Message(props) {
 					<${Show}
 						when=${() => props.sent}
 						fallback=${html`<small title=${() => data().author}
-							><${Show} when=${() => elsewhere()}><span class="cross">← </span><//><span
-								style=${() => colorOf(data().author)}
-								>${() => authorLabel(data().author)}</span
-							><${Show} when=${() => elsewhere()}
-								>${' '}<${ThreadLink} id=${() => data().from}>${() => `from ${data().from}`}<//><//
+							><${Show}
+								when=${() => elsewhere()}
+								fallback=${html`<span style=${() => colorOf(data().author)}
+									>${() => authorLabel(data().author)}</span
+								>`}
+								><span class="cross">← </span
+								><${Across} author=${() => data().author} thread=${() => data().from} /><//
 							></small
 						>`}
 					>
 						<small title=${() => `sent to ${props.sent.data.author} in thread ${props.sent.data.from}`}
-							><span class="cross">→ </span>to${' '}<${ThreadLink} id=${() => props.sent.data.from}
-								><span style=${() => colorOf(props.sent.data.author)}
-									>${() => authorLabel(props.sent.data.author)}</span
-								><//
-							></small
+							><span class="cross">→ </span>to${' '}<${Across}
+								author=${() => props.sent.data.author}
+								thread=${() => props.sent.data.from}
+								to=${true}
+							/></small
 						>
 					<//>
 					<${Body} data=${() => data()} />
@@ -598,6 +600,30 @@ export function Message(props) {
 				</button>
 			<//>
 		</li>
+	`
+}
+
+/**
+ * Who a message crossed to or from, by its thread: a thread's agent by the thread's title, or its model while
+ * the thread has none; a bot in its own thread by its name; anyone else by name, then the thread.
+ * `to` leaves out the "from" a title would have.
+ */
+function Across(props) {
+	const agent = () => props.author?.includes('@') && !agentTo(props.author).name
+	const title = () => threads.find((thread) => thread.id === props.thread)?.title?.trim()
+	const name = () => (agent() ? shortLabel(props.author) : authorLabel(props.author))
+	return html`
+		<${Show}
+			when=${() => agent() && title()}
+			fallback=${() => html`<${ThreadLink} id=${() => props.thread}
+					><span style=${() => colorOf(props.author)}>${name}</span><//
+				><${Show} when=${() => !agent() && !props.to && homeBot(props.thread)?.name !== props.author}
+					>${' from '}<${ThreadLink} id=${() => props.thread}>${() => titleOf(props.thread)}<//><//
+				>`}
+			>${() => (props.to ? '' : 'from ')}<span style="color: var(--ink)"
+				><${ThreadLink} id=${() => props.thread}>${title}<//></span
+			><//
+		>
 	`
 }
 
