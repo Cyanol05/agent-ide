@@ -1726,8 +1726,8 @@ body.resizing {
 		}
 
 		> ul {
-			/* A touch more air either side than a mouse needs, the composer keeping pace below. */
-			padding-inline: var(--space-2);
+			/* Room either side for a live exchange's dot, hanging left of its label; the composer keeps pace below. */
+			padding-inline: var(--space-4);
 			/* The bar, and a breath under it, so the top message reads whole. */
 			padding-top: calc(var(--bar-height) + var(--space-2) + var(--thread-top, 0px));
 			overscroll-behavior: contain;
@@ -1735,7 +1735,7 @@ body.resizing {
 
 		/* The same composer as on a big screen, edge to edge and clear of the home bar. */
 		form.compose {
-			width: calc(100% - 2 * var(--space-2));
+			width: calc(100% - 2 * var(--space-4));
 			margin-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
 		}
 	}
