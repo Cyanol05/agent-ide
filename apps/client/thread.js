@@ -360,7 +360,7 @@ export function Thread(props) {
 				<${Show} when=${() => props.id && columns().length > 1}>
 					<button
 						type="button"
-						class="round close"
+						class="close"
 						title="Close here; the thread details still list it"
 						aria-label="Close"
 						onClick=${() => closeColumn(props.id)}
@@ -559,7 +559,7 @@ export function Message(props) {
 			>
 			<${Show} when=${() => !props.embedded && !props.entry.sending}>
 				<button
-					class="tiny fork"
+					class="small fork"
 					title="A new thread from this message"
 					onClick=${() => fork(props.thread, props.entry.id).catch(report)}
 				>

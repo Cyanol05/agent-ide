@@ -81,11 +81,8 @@ body:not(.chat) {
 	.mode-toggle {
 		position: static;
 		display: block;
-		width: auto;
-		height: auto;
 		z-index: auto;
 		margin: 0 0 0.5rem auto;
-		padding: 0.15rem 0.5rem;
 		transform: none;
 		visibility: visible;
 	}
@@ -301,6 +298,7 @@ body:not(.chat) {
 			> h2.title {
 				flex: 1;
 				max-width: none;
+				font-weight: inherit;
 
 				> button {
 					gap: 0.4rem;

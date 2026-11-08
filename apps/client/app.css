@@ -200,11 +200,16 @@ agent-memory {
 	}
 }
 
-/* The title reads as a heading and edits in place. */
-.thread-details > .thread-title {
-	display: block;
-	width: calc(100% - 0.6rem);
+/* The title is a heading that edits in place. */
+.thread-details > h2.thread-title {
 	margin: 0.4rem 0.3rem 0;
+	font-size: 15px;
+	font-weight: 600;
+
+	> input {
+		display: block;
+		width: 100%;
+	}
 }
 
 /* A checkbox and the list it writes; the list is a field you can read and type in. Nested inside a bot's own panel too, not only the thread-level one. */
@@ -383,7 +388,7 @@ agent-memory {
 		background: linear-gradient(transparent, Canvas calc(100% - 2.2rem));
 	}
 
-	/* The head is no bar, just the pill and, beside it, its own quiet close. */
+	/* The head is no bar, just the pill and, beside it, its own close. */
 	> header {
 		position: absolute;
 		inset: 0 0 auto;
@@ -401,6 +406,12 @@ agent-memory {
 			pointer-events: auto;
 		}
 
+		> button.close {
+			flex: none;
+			width: 2.125rem;
+			height: 2.125rem;
+		}
+
 		/* The heading only wraps the pill, so all of the pill is its button. */
 		> h2.title {
 			display: flex;
@@ -409,6 +420,7 @@ agent-memory {
 			max-width: 60%;
 			margin: 0;
 			font: inherit;
+			font-weight: 400;
 
 			> button {
 				flex: 1;
@@ -910,6 +922,7 @@ body.side .scrim {
 
 body .thread-details {
 	display: block;
+	font-size: 14px;
 	position: fixed;
 	top: 0;
 	bottom: 0;
@@ -954,7 +967,7 @@ body.side .thread-details {
 	margin: 0 0.6rem;
 }
 
-/* Its model opens the composer's picker, and reads as the field it stands for. */
+/* Its model opens the composer's picker. */
 .thread-details .bot > button.bot-model {
 	display: block;
 	box-sizing: border-box;
@@ -973,6 +986,10 @@ body.side .thread-details {
 	justify-content: space-between;
 	align-items: center;
 	text-align: left;
+
+	small {
+		color: var(--mute);
+	}
 }
 
 /* A page of the sheet: its header is the way back to the bot. */
@@ -1071,7 +1088,43 @@ body.side .thread-details {
 	}
 }
 
+/* The thread's name as a pill: in each thread's head on a big screen, in the bar on a phone; its light first. */
+.thread-pill {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
+	max-width: 60%;
+	height: 2.125rem;
+
+	> span:not(.dot) {
+		flex: 0 1 auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	> .dot {
+		order: -1;
+	}
+}
+
 /* A runner, its models as rows with a check on the one asked, and how hard it thinks as a row of steps. */
+.model {
+	display: flex;
+	align-items: start;
+	gap: 0.6rem;
+	width: 100%;
+	text-align: left;
+
+	small {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 12px;
+	}
+}
+
 .model-controls {
 	> ul > li + li {
 		border-top: 1px solid var(--line);
@@ -1091,6 +1144,13 @@ body.side .thread-details {
 	.models {
 		display: grid;
 		margin-top: 0.5rem;
+	}
+
+	/* A model is a row; the one asked carries a check. */
+	.model[aria-pressed='true']::after {
+		content: '✓';
+		margin-left: auto;
+		color: var(--pick);
 	}
 
 	h3 {
@@ -1113,8 +1173,7 @@ body.side .thread-details {
 	.recipients {
 		display: block;
 		width: 100%;
-		margin: 0.2rem 0 0;
-		text-align: left;
+		margin: 0.4rem 0 0;
 	}
 }
 
@@ -1296,7 +1355,17 @@ connect-runner {
 
 .foot-toggle {
 	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
 	min-width: 0;
+	height: 1.6rem;
+
+	span:last-child {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 
 	&.runner-toggle {
 		flex: 0 1 auto;
@@ -1508,7 +1577,7 @@ body.resizing {
 
 /* A finger needs 44px: the small icon buttons keep their look and reach past it. */
 @media (pointer: coarse) {
-	.thread form button.icon {
+	.thread form .bar button {
 		position: relative;
 
 		&::after {
@@ -1559,6 +1628,13 @@ body.resizing {
 			background: linear-gradient(Canvas, transparent);
 			z-index: -1;
 			pointer-events: none;
+		}
+
+		font-size: 13px;
+
+		> button:first-child {
+			width: 2.125rem;
+			height: 2.125rem;
 		}
 
 		.thread-pill {

@@ -1,4 +1,4 @@
-/* A control's look is its element's or its variant class's, here; a rule for a place in the app sets only its layout. */
+/* A control's look is its element's or one of these classes': three buttons, small, send, and for fields bare and draft. A rule for a place sets only its size and position. */
 
 /* iA Writer Quattro S, the same face as the oskar bb theme. */
 @font-face {
@@ -138,7 +138,8 @@ a {
 
 input,
 button,
-select {
+select,
+textarea {
 	font: inherit;
 	padding: 0.35rem 0.5rem;
 	border: 1px solid var(--line);
@@ -155,8 +156,6 @@ option {
 	color: CanvasText;
 }
 
-/* A control's look is its element's or its variant's, here; a rule for a place sets only its layout. */
-
 /* Three buttons. Bordered, the default: white, a thin border; the one that's on gets a dark border. Its text sits in the middle, not on the page's 1.6 line. */
 button {
 	cursor: pointer;
@@ -168,14 +167,15 @@ button {
 	}
 }
 
-/* Ghost: no border, quiet text; a soft fill while it's open or on, and under the mouse. */
+/* Ghost: no border, quiet text; a soft fill while it's open, on or picked, and under the mouse. */
 button.ghost {
 	border: 0;
 	background: none;
 	color: var(--mute);
 
 	&[aria-pressed='true'],
-	&[aria-expanded='true'] {
+	&[aria-expanded='true'],
+	&[aria-selected='true'] {
 		background: color-mix(in srgb, CanvasText 10%, transparent);
 		color: var(--ink);
 	}
@@ -192,85 +192,36 @@ button.primary {
 	}
 }
 
-/* Small: a quiet control's words, in a bar, an option, a pane's header. */
+/* Small: a quiet control's words, in a bar, at a row's end, in an option, in a pane's header. */
 :is(button, input, select).small {
 	font-size: 12px;
 	padding: 0.25rem 0.5rem;
 	white-space: nowrap;
 }
 
-/* Tiny: a row's own action at its end. */
-button.tiny {
-	padding: 0 0.35rem;
-	font-size: 11px;
-	line-height: 1.4;
-}
-
-/* Back: the arrow at a page's start. */
-button.back {
-	padding: 0 0.2rem;
-}
-
-/* Icon: one glyph, a size up. Send is a filled round arrow, like a messages app's. */
-button.icon {
-	display: inline-flex;
-	padding: 0.2rem 0.45rem;
-	font-size: 16px;
-	line-height: 1;
-
-	&:disabled {
-		cursor: default;
-		opacity: 0.7;
-	}
-}
-
+/* Send: the one round button, a filled arrow like a messages app's; a circle is a look, so its place can't give it. */
 button.send {
 	width: 1.6rem;
 	height: 1.6rem;
 	padding: 0;
+	display: inline-flex;
 	justify-content: center;
 	align-items: center;
 	border-radius: 50%;
+	font-size: 16px;
 	font-weight: 700;
-
-	&:disabled {
-		opacity: 1;
-	}
 }
 
-/* Remove: a small round × on a corner. */
-button.remove {
-	display: grid;
-	place-items: center;
-	width: 1.3rem;
-	height: 1.3rem;
-	padding: 0;
-	border-radius: 50%;
-	font-size: 12px;
-	line-height: 1;
-}
-
-/* Field: a soft box to type in, or a button that stands for one. */
-.field {
-	padding: 0.4rem 0.6rem;
-	font-size: 14px;
-	font-family: inherit;
-	color: var(--ink);
+/* Fields: one soft box to type in, a shade off the page, its border darker while you write. */
+:is(input, textarea, select):not([type='checkbox'], [type='range']) {
 	background: var(--tint);
-	border: 1px solid var(--line);
-	border-radius: 6px;
 
 	&:focus {
-		outline: none;
 		border-color: var(--mute);
-	}
-
-	small {
-		color: var(--mute);
 	}
 }
 
-/* Bare: reads as text until you point at it or write in it. */
+/* Bare: a field that reads as the text it holds until you point at it or write in it, for a name that is also a heading or a row's title. */
 input.bare {
 	padding: 0.2rem 0.3rem;
 	border-color: transparent;
@@ -282,19 +233,12 @@ input.bare {
 	}
 }
 
-/* The thread's name, as a heading you can edit. */
-input.thread-title {
-	font-size: 15px;
-	font-weight: 600;
-}
-
-/* Draft: what you're writing, at the messages' size, with the box around it as its frame. */
+/* Draft: what you're writing, at the messages' size, with the composer's box as its frame. */
 textarea.draft {
 	padding: 0.4rem 0;
 	border: 0;
 	background: none;
 	outline: none;
-	font: inherit;
 	font-size: 15px;
 	line-height: 1.4;
 	color: inherit;
@@ -314,7 +258,7 @@ input[type='checkbox'] {
 	accent-color: var(--ink);
 }
 
-/* A row in a list: a link or a button, the whole width, its title cut at the edge. */
+/* A row: a link, or a button that makes one, as wide as its list; a link is none of the three buttons, and its fill is the row's, not its own. */
 .row {
 	display: flex;
 	align-items: center;
@@ -339,122 +283,6 @@ input[type='checkbox'] {
 		flex: none;
 		color: var(--mute);
 	}
-}
-
-/* A model: a row with a check on the one asked. */
-button.model {
-	width: 100%;
-	border: 0;
-	background: none;
-	text-align: left;
-
-	small {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	&.on {
-		background: color-mix(in srgb, CanvasText 8%, transparent);
-
-		&::after {
-			content: '✓';
-			margin-left: auto;
-			color: var(--pick);
-		}
-	}
-
-	&[aria-selected='true'] {
-		background: var(--tint);
-	}
-}
-
-/* The asked list as one line you can write: mono, under a rule. */
-input.recipients {
-	padding: 0.55rem 0.5rem 0.35rem;
-	border: 0;
-	border-top: 1px solid var(--line);
-	border-radius: 0;
-	background: none;
-	font:
-		12px ui-monospace,
-		monospace;
-	color: var(--mute);
-	text-overflow: ellipsis;
-
-	&:focus {
-		color: var(--ink);
-		outline: none;
-	}
-}
-
-/* The thread's name, a pill: in each thread's head on a big screen, in the bar on a phone. Raised like the composer box, so it doesn't blend into the page behind it; its light first. */
-.thread-pill {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	min-width: 0;
-	max-width: 60%;
-	height: 2.125rem;
-	padding: 0 0.75rem;
-	border: 1px solid var(--line);
-	border-radius: 6px;
-	background: var(--tint);
-	color: var(--ink);
-	font-size: 13px;
-	font-weight: 400;
-
-	> span:not(.dot) {
-		flex: 0 1 auto;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	> .dot {
-		order: -1;
-	}
-}
-
-/* Round: the pill's square sibling, for one glyph. */
-button.round {
-	display: grid;
-	place-items: center;
-	flex: none;
-	width: 2.125rem;
-	height: 2.125rem;
-	padding: 0;
-	background: var(--tint);
-	color: var(--mute);
-}
-
-/* A foot toggle: a dot and a word, its dot where a row's sits. */
-button.foot-toggle {
-	display: flex;
-	align-items: center;
-	gap: 0.4rem;
-	height: 1.6rem;
-	padding: 0 0.6rem;
-	font-size: 12px;
-	text-align: left;
-
-	span:last-child {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-}
-
-/* The way back to the story: an arrow, quiet even while it's on. */
-button.ghost.mode-toggle {
-	display: grid;
-	place-items: center;
-	width: 1.6rem;
-	height: 1.6rem;
-	padding: 0;
-	font-size: 12px;
-	background: none;
-	color: var(--mute);
 }
 
 .mute {
@@ -525,12 +353,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 		border-color: var(--line);
 	}
 
-	button.round:hover {
-		color: var(--ink);
-	}
-
-	button.ghost:hover:not(:disabled),
-	button.model:hover {
+	button.ghost:hover:not(:disabled) {
 		background: color-mix(in srgb, CanvasText 8%, transparent);
 		color: var(--ink);
 	}
@@ -564,7 +387,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 /* One row across models, runners and modules, also inside the phone sheets. */
-:is(.model-controls .who, button.model, .popover .rows > li) {
+:is(.model-controls .who, .popover .rows > li) {
 	display: flex;
 	align-items: start;
 	gap: 0.6rem;
@@ -592,7 +415,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 @media (hover: hover) and (pointer: fine) {
-	:is(button.model:not(.on), .popover .rows > li):hover {
+	.popover .rows > li:hover {
 		background: var(--tint);
 	}
 }
@@ -609,7 +432,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 
 		> header {
 			display: grid;
-			grid-template-columns: 1.25rem 1fr auto;
+			grid-template-columns: 1.75rem 1fr auto;
 			align-items: center;
 			gap: 0.4rem;
 			flex: none;

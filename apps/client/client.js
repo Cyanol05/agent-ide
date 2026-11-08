@@ -65,9 +65,8 @@ function Client() {
 	})
 	return html`
 		<button
-			class="ghost mode-toggle"
+			class="ghost small mode-toggle"
 			type="button"
-			aria-pressed=${() => String(chat())}
 			title=${() => (chat() ? 'Back to the story' : '')}
 			aria-label=${() => (chat() ? 'Back to the story' : 'Just the chat')}
 			onClick=${() => setChat(!chat())}
@@ -97,7 +96,6 @@ function Client() {
 			<${Loading}>
 				<header class="app-bar">
 					<button
-						class="round"
 						type="button"
 						aria-label="All threads"
 						onClick=${() => drawer('list')}

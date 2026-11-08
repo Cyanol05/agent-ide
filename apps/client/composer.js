@@ -258,7 +258,7 @@ export function Composer(props) {
 								<img src=${() => imageUrl(image)} alt="" />
 								<button
 									type="button"
-									class="remove"
+									class="small"
 									aria-label="Take this image off"
 									onClick=${(_e) =>
 										changeDraft((draft) => {
@@ -346,7 +346,7 @@ export function Composer(props) {
 				></textarea>
 				<${Show} when=${() => active()}>
 					<button
-						class="primary icon send"
+						class="primary send"
 						title="Send"
 						aria-label="Send"
 						disabled=${() =>
@@ -359,7 +359,7 @@ export function Composer(props) {
 			<div class="bar">
 				<button
 					type="button"
-					class="ghost icon add"
+					class="ghost add"
 					title="Add images; you can also paste or drop them"
 					aria-label="Add images"
 					onClick=${(_e) => {
@@ -477,7 +477,7 @@ export function Composer(props) {
 				<${Show} when=${() => active()}>
 					<${Panes}
 						title="Context"
-						close=${html`<button type="button" class="ghost close icon" aria-label="Close" onClick=${() => recall.hidePopover()}>×</button>`}
+						close=${html`<button type="button" class="ghost small close" aria-label="Close" onClick=${() => recall.hidePopover()}>×</button>`}
 						detailTitle="Memory’s lines"
 						actions=${html`<button type="button" class="small" onClick=${() => recall.hidePopover()}>Done</button>`}
 						open=${() => lines()}
@@ -589,7 +589,7 @@ function PickerBot(bot, close, thread, mention) {
 					id=${mention.id}
 					tabindex="-1"
 					aria-selected=${() => String(mention.highlighted())}
-					class="model"
+					class="ghost model"
 					onMouseDown=${(event) => event.preventDefault()}
 					onClick=${(_event) => mention.pick()}
 				>
@@ -604,7 +604,8 @@ function PickerBot(bot, close, thread, mention) {
 		<li>
 			<button
 				type="button"
-				class=${() => ['model', { on: selected() }]}
+				class="ghost model"
+				aria-pressed=${() => String(selected())}
 				onClick=${(event) => {
 					if (!event.shiftKey) return (setPick(null, [botAgent(bot)], null, thread()), close())
 					const others = askedBots(thread()).filter((to) => to.name !== bot.name)

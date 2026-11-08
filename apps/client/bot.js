@@ -90,7 +90,7 @@ export function BotSettings(props) {
 		<div class="bot">
 			<h3>Instructions</h3>
 			<textarea
-				class="field instructions"
+				class="instructions"
 				ref=${(el) => {
 					instructionsField = el
 				}}
@@ -107,7 +107,7 @@ export function BotSettings(props) {
 			<h3>Model</h3>
 			<button
 				type="button"
-				class="field bot-model"
+				class="bot-model"
 				title="The model it joins new threads with"
 				onClick=${(event) => openPicker(event.currentTarget)}
 			>
@@ -121,7 +121,7 @@ export function BotSettings(props) {
 						<${For} each=${active}>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//>
 					</ul>
 				<//>
-				<button type="button" class="field threads" onClick=${(event) => props.onThreads(event)}>
+				<button type="button" class="threads" onClick=${(event) => props.onThreads(event)}>
 					<span>${() => `All ${count()} ${count() === 1 ? 'thread' : 'threads'}`}</span>
 					<small aria-hidden="true">→</small>
 				</button>

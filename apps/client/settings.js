@@ -78,7 +78,7 @@ export function Settings() {
 	})
 	return html`
 		<button
-			class="ghost foot-toggle settings-toggle"
+			class="ghost small foot-toggle settings-toggle"
 			type="button"
 			ref=${(el) => (button = el)}
 			popovertarget=${id}
@@ -101,7 +101,7 @@ export function Settings() {
 				open=${() => selection() !== null}
 				close=${html`<button
 					type="button"
-					class="ghost close icon"
+					class="ghost small close"
 					aria-label="Close"
 					onClick=${() => panel.hidePopover()}
 				>
@@ -118,7 +118,7 @@ export function Settings() {
 						<div class="model-controls">
 							<button
 								type="button"
-								class=${() => ['model', { on: !selection()?.model }]}
+								class="ghost model"
 								aria-pressed=${() => String(!selection()?.model)}
 								onClick=${() => setSelection(agentTo(''))}
 							>

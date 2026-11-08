@@ -52,7 +52,7 @@ function PickerRunner(runner, props) {
 					>${(model) => html`
 						<button
 							type="button"
-							class=${() => ['model', { on: selected() && to().model === model }]}
+							class="ghost model"
 							aria-pressed=${() => String(selected() && to().model === model)}
 							onClick=${() => props.onChoose({ ...to(), model })}
 						>
