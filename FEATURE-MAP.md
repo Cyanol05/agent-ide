@@ -90,6 +90,11 @@ examples/17-memory-compaction.js   automatic and manual cuts, memory coverage an
 examples/27-watch-agents-work.js   socket snapshots, streaming entries, delivery identity and reconnects
 examples/all.js          suite queue, per-example timeout and interruption cleanup
 examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
+examples/86–90-*-real-model.js     move bench: introductions, another thread's fact, side question,
+                                 directed mention and web search; REAL=1 only
+examples/real-model-bench.js       real runner setup, delivery settling and transcript evidence
+examples/real-model-bench.md       how to run the move bench and its recorded baseline
+examples/91-wait-for-the-runner.js runner startup waits for ready or rejects on exit
 ```
 
 Where a feature lives:

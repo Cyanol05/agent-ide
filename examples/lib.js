@@ -93,9 +93,22 @@ export async function runner(name, { args = [], env = {}, wait = true } = {}) {
 		...env,
 	})
 	if (wait)
-		await until(() =>
-			api('GET', '/api/runners').then((r) => r.json.some((x) => x.name === name && x.online)),
-		)
+		await new Promise((resolve, reject) => {
+			let output = ''
+			const ready = (chunk) => {
+				output += chunk
+				if (!output.includes(`${name} online at`)) return
+				p.stdout.off('data', ready)
+				p.off('exit', exited)
+				resolve()
+			}
+			const exited = (code) => {
+				p.stdout.off('data', ready)
+				reject(new Error(`${name} exited before connecting: ${code}`))
+			}
+			p.stdout.on('data', ready)
+			p.once('exit', exited)
+		})
 	return p
 }
 

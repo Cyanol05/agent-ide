@@ -14,6 +14,8 @@ Its agents work in the folder you start it in, as a runner named after this mach
 
 From a clone, `npm install && node server.js` does the same; for development, `pnpm install --frozen-lockfile`. `pnpm examples` runs every example, each with its own server and runner, and `node examples/05-fork.js` runs one. The `real-model` ones use your pi login, so they run only on their own or with `REAL=1`.
 
+The [real-model move bench](examples/real-model-bench.md) checks five everyday decisions with `gpt-6-luna:low@oskar`. Its examples require `REAL=1`, even when run alone.
+
 ## Running it
 
 ```sh
