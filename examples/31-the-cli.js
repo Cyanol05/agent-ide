@@ -99,6 +99,21 @@ check(
 	'runners lists both',
 	runners,
 )
+const asAgent = await promisify(execFile)(
+	process.execPath,
+	['cli.js', '--server', base, 'post', '--to', 'echo/echo@laptop', 'from an agent shell'],
+	{
+		cwd: repo,
+		timeout: 8000,
+		env: { ...process.env, PI_SESSION_ID: 'sess-1', PI_MODEL: 'claude-opus-4-5', PI_REASONING_LEVEL: 'high' },
+	},
+).then(({ stdout, stderr }) => stdout + stderr)
+check(
+	asAgent.includes('echo@laptop heard: claude-opus-4-5:high: from an agent shell'),
+	"inside an agent's bash tool (PI_SESSION_ID set), post writes as its model, not whoever owns the shell",
+	asAgent,
+)
+
 const named = await cli('post', '--to', 'reviewer=echo/echo@desk', 'review this').catch(
 	(error) => error.stderr,
 )

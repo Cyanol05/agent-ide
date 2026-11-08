@@ -31,12 +31,19 @@ const parse = (options) => {
 		process.exit(1)
 	}
 }
+/** A person's own name, unless an agent's bash tool set PI_SESSION_ID: then it writes as its model, not whoever owns the shell */
+const defaultAs = () =>
+	(process.env.PI_SESSION_ID &&
+		`${process.env.PI_MODEL ?? 'agent'}${process.env.PI_REASONING_LEVEL ? `:${process.env.PI_REASONING_LEVEL}` : ''}`) ||
+	process.env.USER ||
+	'anon'
+
 const {
 	values: flags,
 	positionals: [command, ...rest],
 } = parse({
 	server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://127.0.0.1:3000' },
-	as: { type: 'string', default: process.env.USER || 'anon' },
+	as: { type: 'string', default: defaultAs() },
 	thread: { type: 'string' },
 	to: { type: 'string', multiple: true },
 	thinking: { type: 'string' },
