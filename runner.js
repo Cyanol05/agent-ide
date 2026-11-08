@@ -134,6 +134,8 @@ function folders() {
 	return [...new Set([...roots, ...found.sort()])].slice(0, 500)
 }
 
+let warnedOffers = false
+
 async function connect() {
 	const { model, thinkingLevel, error } = defaultModel()
 	const query = new URLSearchParams({
@@ -148,7 +150,12 @@ async function connect() {
 		...(args['read-only'] ? { readOnly: '1' } : {}),
 	})
 	if (error) console.log(`pi's default model doesn't resolve: ${error}`)
-	for (const ref of await offers().catch(() => [])) query.append('offer', ref)
+	const offered = await offers().catch((error) => {
+		if (!warnedOffers) console.error(`${name}: couldn't list models: ${error.message}`)
+		warnedOffers = true
+		return []
+	})
+	for (const ref of offered) query.append('offer', ref)
 	for (const who of args.allow) query.append('allow', who)
 	for (const folder of folders()) query.append('folder', folder)
 	const socket = new WebSocket(`${server.replace(/^http/, 'ws')}/ws?${query}`, {
