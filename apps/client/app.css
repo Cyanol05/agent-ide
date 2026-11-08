@@ -496,6 +496,11 @@ agent-memory {
 				margin-left: var(--space-5);
 			}
 
+			/* Its words a size down, on the same 24px lines, so it stays on the baseline. */
+			&.elsewhere:not(.reply) > .body {
+				font-size: var(--text-ui);
+			}
+
 			small {
 				display: block;
 				color: var(--mute);

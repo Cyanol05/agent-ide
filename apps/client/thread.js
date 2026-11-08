@@ -472,27 +472,33 @@ export function Message(props) {
 				elsewhere: !!(elsewhere() || props.sent),
 				reply: answered(),
 				mine: !elsewhere() && data().author === me,
-				same: !elsewhere() && data().author !== me && props.above === data().author,
+				same: !elsewhere() && !props.sent && data().author !== me && props.above === data().author,
 			})}
 		>
 			<${Show}
 				when=${() => answered()}
 				fallback=${html`
-					<small title=${() => data().author}
-						><span style=${() => colorOf(data().author)}>${() => authorLabel(data().author)}</span
-						><${Show} when=${() => elsewhere()}
-							>${' '}<${ThreadLink} id=${() => data().from}>${() => `from ${data().from}`}<//><//
-						></small
+					<${Show}
+						when=${() => props.sent}
+						fallback=${html`<small title=${() => data().author}
+							><${Show} when=${() => elsewhere()}><span class="cross">← </span><//><span
+								style=${() => colorOf(data().author)}
+								>${() => authorLabel(data().author)}</span
+							><${Show} when=${() => elsewhere()}
+								>${' '}<${ThreadLink} id=${() => data().from}>${() => `from ${data().from}`}<//><//
+							></small
+						>`}
 					>
+						<small title=${() => `sent to ${props.sent.data.author} in thread ${props.sent.data.from}`}
+							><span class="cross">→ </span>to${' '}<${ThreadLink} id=${() => props.sent.data.from}
+								><span style=${() => colorOf(props.sent.data.author)}
+									>${() => authorLabel(props.sent.data.author)}</span
+								><//
+							></small
+						>
+					<//>
 					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
-					<${Show} when=${() => props.sent}>
-						<div class="links mute">
-							${'→ sent to '}<${ThreadLink} id=${() => props.sent.data.from}
-								>${() => authorLabel(props.sent.data.author)}<//
-							>
-						</div>
-					<//>
 				`}
 			>
 				<details>
