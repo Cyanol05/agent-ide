@@ -8,3 +8,4 @@ third-party/
 bun.lock
 *.log
 
+.work/
