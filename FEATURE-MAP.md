@@ -38,8 +38,8 @@ modules/
   director.js            the `direct` hook: @mentions ask that bot, with picks a model picks bots or nobody (decide);
                          those asked take turns (`turns`); a bot's answer @mentioning a bot asks it, resting
                          after three bot answers in a row (botTurns); tells bots to @mention, not post (section)
-  search.js              `web_search`
-  status.js              OSC 7501 status on the runner's terminal
+  web-search.js          `web_search`
+  status.js              Program Status Protocol (OSC 7501) on the runner's terminal
   matrix.js              Matrix rooms as threads (MatrixSend, relay, sync)
 apps/client/             the web client, Solid 2, no build (README.md there)
   client.html            the walkthrough and the app's page; the promises every change serves
@@ -67,9 +67,10 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   agent.js               agents' labels and live work (doing); client's agentTo, formatAgent, toolLine
   model-picker.js        model, thinking and folder controls (composer and settings share them)
   runner.js              runner list, a runner's agents, ConnectRunner
-  bot.js                 a bot's settings, new bot
+  bot.js                 a bot's settings, its threads row, new bot
   thread-list.js         the thread list, its family rows
-  thread-details.js      title, people, family, tools and the memory switch for the open thread
+  thread-details.js      title, people, family, tools and the memory switch for the open thread;
+                         a bot's threads as a page of the sheet
   agent-memory.js        memory popover and compaction view for the visible thread
   settings.js            server settings: modules on/off, memory's model and which threads remember
   system.js, wires.js    the live system diagram and the wires between boxes

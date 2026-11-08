@@ -4,7 +4,6 @@ import {
 	createEffect,
 	createMemo,
 	createSignal,
-	For,
 	onSettled,
 	refresh,
 	Show,
@@ -14,7 +13,6 @@ import { api, bots, colorOf, current, followThread, hrefOf, openThread, threads 
 import { formatAgent } from './agent.js'
 import { agent, openPicker } from './composer.js'
 import { Dot } from './dot.js'
-import { ThreadItem } from './thread-list.js'
 import { report } from './notice.js'
 import { Sure } from './sure.js'
 
@@ -57,13 +55,21 @@ export function BotSettings(props) {
 			if (document.activeElement !== instructionsField) setInstructions(instructions)
 		},
 	)
-	const elsewhere = () =>
-		threads.filter(
+	// Its own threads, the home itself left out, plus the threads it joins elsewhere: what the row counts
+	const count = createMemo(() => {
+		const home = threads.find((thread) => thread.id === props.bot.home)
+		const family = new Set((home?.family ?? []).map((member) => member.id))
+		family.delete(props.bot.home)
+		const mine = threads.filter((thread) => family.has(thread.id))
+		const elsewhere = threads.filter(
 			(thread) =>
+				!family.has(thread.id) &&
 				thread.id !== props.bot.home &&
 				!thread.hidden &&
 				thread.agents.some((agent) => agent.name === props.bot.name),
 		)
+		return mine.length + elsewhere.length
+	})
 	return html`
 		<div class="bot">
 			<h3>Instructions</h3>
@@ -91,13 +97,13 @@ export function BotSettings(props) {
 			>
 				${() => formatAgent(props.bot.to)}
 			</button>
-			<${Show} when=${() => elsewhere().length}>
-				<h3 class="also">Also in</h3>
-				<ul class="thread-family">
-					<${For} each=${() => elsewhere()}
-						>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//
-					>
-				</ul>
+			${() => props.tools}
+			<${Show} when=${() => count() > 0}>
+				<h3>Threads</h3>
+				<button type="button" class="threads" onClick=${(event) => props.onThreads(event)}>
+					<span>${() => `${count()} ${count() === 1 ? 'thread' : 'threads'}`}</span>
+					<small aria-hidden="true">→</small>
+				</button>
 			<//>
 			<${Sure}
 				class="forget"

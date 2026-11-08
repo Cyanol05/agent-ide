@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { render } from '@solidjs/web'
 import { createEffect, createSignal, Errored, Loading, onSettled } from 'solid-js'
-import { current, drawer, newThreadTools, params, threads, titleOf } from './server.js'
+import { colorOf, current, drawer, homeBot, params, threads, titleOf } from './server.js'
 import { Dot } from './dot.js'
 import { System } from './system.js'
 import { ThreadDetails } from './thread-details.js'
@@ -32,14 +32,34 @@ function Client() {
 			document.documentElement.style.setProperty('--visual-height', `${viewport.height}px`)
 			if (viewport.offsetTop) scrollTo(0, 0)
 		}
+		// An installed app on iOS sometimes misses the resize as the keyboard slides in, so focus follows the viewport until it holds still.
+		let settling = 0
+		const settle = () => {
+			cancelAnimationFrame(settling)
+			let last = -1
+			let still = 0
+			let frames = 0
+			const step = () => {
+				fit()
+				still = viewport.height === last ? still + 1 : 0
+				last = viewport.height
+				if (still < 10 && ++frames < 120) settling = requestAnimationFrame(step)
+			}
+			step()
+		}
 		viewport?.addEventListener('resize', fit)
 		viewport?.addEventListener('scroll', fit)
+		if (viewport) addEventListener('focusin', settle)
+		if (viewport) addEventListener('focusout', settle)
 		addEventListener('keydown', close)
 		phone.addEventListener('change', resize)
 		return () => {
 			removeEventListener('keydown', close)
 			viewport?.removeEventListener('resize', fit)
 			viewport?.removeEventListener('scroll', fit)
+			removeEventListener('focusin', settle)
+			removeEventListener('focusout', settle)
+			cancelAnimationFrame(settling)
 			phone.removeEventListener('change', resize)
 		}
 	})
@@ -85,15 +105,9 @@ function Client() {
 						←
 					</button>
 					<button
-						class=${() => [
-							'thread-pill',
-							{
-								'hands-off': !!(current()
-									? threads.find((thread) => thread.id === current())?.tools
-									: newThreadTools()),
-							},
-						]}
+						class="thread-pill"
 						type="button"
+						style=${() => colorOf(homeBot(current())?.name ?? '')}
 						onClick=${() => drawer('side')}
 					>
 						<${Dot} state=${() => threads.find((thread) => thread.id === current())?.status} />

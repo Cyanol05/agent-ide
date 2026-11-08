@@ -15,6 +15,7 @@ import {
 import {
 	closeColumn,
 	colorOf,
+	columns,
 	current,
 	drawer,
 	entries,
@@ -335,12 +336,17 @@ export function Thread(props) {
 		>
 			<header>
 				<h2 class="title">
-					<button type="button" title="Thread details and tools" onClick=${titleClick}>
+					<button
+						type="button"
+						title="Thread details and tools"
+						style=${() => colorOf(homeBot(props.id)?.name ?? '')}
+						onClick=${titleClick}
+					>
 						<span>${() => (props.id ? thread()?.title || 'untitled' : 'a new thread')}</span>
 						<${Dot} state=${() => thread()?.status} />
 					</button>
 				</h2>
-				<${Show} when=${() => props.id}>
+				<${Show} when=${() => props.id && columns().length > 1}>
 					<button
 						type="button"
 						class="close"
