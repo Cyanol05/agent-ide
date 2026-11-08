@@ -560,11 +560,11 @@ const busiest = (statuses) =>
  * @returns {Promise<{ thread: number, conversation?: number, runner: string, row?: string, status: string }[]>}
  */
 async function work() {
-	const live = (await liveTasks()).filter((task) =>
-		[Deliver.definition.name, Shell.definition.name].includes(task.kind),
+	const live = (await harness.inspect(context)).tasks.filter(({ record }) =>
+		[Deliver.definition.name, Shell.definition.name].includes(record.kind),
 	)
 	return Promise.all(
-		live.map(async (task) => {
+		live.map(async ({ record: task }) => {
 			const shell = task.kind === Shell.definition.name
 			const to = shell ? task.input.to : await agentOf(task.input.agent)
 			return {
@@ -598,7 +598,6 @@ async function agentsIn(row, busy) {
 		}),
 	)
 }
-const liveTasks = async () => (await harness.inspect(context)).tasks.map(({ record }) => record)
 
 /** What an agent is doing, from Pi's live doc */
 function doing({ entries, docs }) {
@@ -921,11 +920,12 @@ async function threadRow(id, reader, all) {
 	}
 }
 /** Each shown thread with its `family`: its root, through parents and forks, and all beneath, each with its depth */
-const threadList = async (reader) => {
+const threadList = async (reader, archived = false) => {
 	const busy = await work()
 	const rows = (
 		await Promise.all((await threadIds()).map((id) => threadRow(id, reader, busy)))
-	).filter((row) => !row.archived)
+	).filter((row) => Boolean(row.archived) === archived)
+	if (archived) return rows
 	const byId = new Map(rows.map((row) => [row.id, row]))
 	const parentOf = (row) => row.parent ?? row.conversation?.parent?.conversationId
 	const families = new Map()
@@ -944,12 +944,6 @@ const threadList = async (reader) => {
 		row.family = families.get(root.id)
 	}
 	return rows
-}
-/** Archived threads, flat: the Archived page finds and brings them back, where the family tree doesn't show them */
-async function archivedThreads(reader) {
-	const busy = await work()
-	const rows = await Promise.all((await threadIds()).map((id) => threadRow(id, reader, busy)))
-	return rows.filter((row) => row.archived)
 }
 async function threadView(id, reader) {
 	await conversation(id)
@@ -1275,15 +1269,13 @@ const settings = await readConfig()
 core.config = settings.config
 const modules = await load('server', defaults, core, settings)
 for (const module of modules) if (module.extension) registry.install(module.extension)
+const customModules = (settings.config.modules ?? [])
+	.map((entry) => entry.replace(/^[+-]/, ''))
+	.filter((entry) => entry.includes('/'))
 /** Each module's name → what it does, from its own file */
 const aboutModules = Object.fromEntries(
 	await Promise.all(
-		[
-			...Object.keys(defaults),
-			...(settings.config.modules ?? [])
-				.map((entry) => entry.replace(/^[+-]/, ''))
-				.filter((entry) => entry.includes('/')),
-		].map(async (entry) => [
+		[...Object.keys(defaults), ...customModules].map(async (entry) => [
 			entry.includes('/') ? path.basename(entry, '.js') : entry,
 			await about(entry),
 		]),
@@ -1420,7 +1412,7 @@ const routes = [
 	['DELETE /api/runners/:name', (req, name) => revoke(name)],
 	['GET /runner/bundle', () => bundle],
 	['GET /api/threads', (req) => threadList(user(req))],
-	['GET /api/threads/archived', (req) => archivedThreads(user(req))],
+	['GET /api/threads/archived', (req) => threadList(user(req), true)],
 	['POST /api/threads', async (req) => createThread(await input(req))],
 	['GET /api/threads/:id', (req, id) => threadView(id, user(req))],
 	['POST /api/threads/:id/archive', async (req, id) => archiveThread(id, (await input(req)).archived)],
@@ -1879,10 +1871,10 @@ async function upgrade(req, raw, head) {
  */
 async function saveSettings({ modules: wanted = {}, memory }) {
 	const loaded = modules.map((module) => module.name)
-	const own = (settings.config.modules ?? [])
-		.map((entry) => entry.replace(/^[+-]/, ''))
-		.filter((entry) => entry.includes('/'))
-	const known = [...Object.keys(defaults), ...own.map((entry) => path.basename(entry, '.js'))]
+	const known = [
+		...Object.keys(defaults),
+		...customModules.map((entry) => path.basename(entry, '.js')),
+	]
 	for (const name of Object.keys(wanted))
 		if (!known.includes(name)) throw new Error(`No module named ${name}`)
 	const on = (name) => wanted[name] ?? loaded.includes(name)
@@ -1891,7 +1883,7 @@ async function saveSettings({ modules: wanted = {}, memory }) {
 		...Object.keys(defaults)
 			.filter((name) => on(name) !== defaults[name])
 			.map((name) => `${on(name) ? '+' : '-'}${name}`),
-		...own.filter((entry) => on(path.basename(entry, '.js'))).map((entry) => `+${entry}`),
+		...customModules.filter((entry) => on(path.basename(entry, '.js'))).map((entry) => `+${entry}`),
 	]
 	if (!next.modules.length) delete next.modules
 	if (memory !== undefined) {
