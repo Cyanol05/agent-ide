@@ -601,18 +601,17 @@ agent-memory {
 					color: var(--danger);
 				}
 
-				/* A message that crossed threads is a step too: → sent or ← received, messaged or answered, the other side
-				   in its bot's colour; opened, its words a size down, a question muted and an answer in ink. */
+				/* A message that crossed threads is a step too: → sent or ← received, the other side in its bot's colour, the
+				   first line fainter than the name; opened, its words a size down, a question muted and an answer in ink. */
 				> li:is(.sent, .received) {
 					> details > summary {
-						/* messaged and answered are one length, so the names start at one column */
 						.tool {
-							width: calc(8ch + 1ch);
+							width: auto;
+							padding-right: 1ch;
 						}
 
-						.who {
-							flex: none;
-							padding-right: 1ch;
+						.in {
+							opacity: 0.7;
 						}
 					}
 

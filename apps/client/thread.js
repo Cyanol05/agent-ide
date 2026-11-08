@@ -667,9 +667,8 @@ function Message(props) {
 }
 
 /**
- * A message that crossed threads, as a step of a run: → sent or ← received, what it did (messaged, or answered), the
- * other side in its bot's colour, the message's first line; opened, the whole of it. A question is muted, an answer ink. What went out starts closed, and so
- * does a question that came in; an answer that came in starts open.
+ * A message that crossed threads, as a step of a run: → sent or ← received, the other side in its bot's colour, then the
+ * message's first line, fainter; opened, the whole of it, a question muted and an answer in ink. Every row starts closed.
  * The other side is a bot by its name, a thread's agent by its thread's title, or its model while the thread has none.
  */
 export function Cross(props) {
@@ -677,15 +676,15 @@ export function Cross(props) {
 	const title = () => threads.find((thread) => thread.id === props.thread)?.title
 	const label = () =>
 		bot() || !title() ? shortLabel(props.author) || titleOf(props.thread) : title()
-	const answer = () => !!props.data.re
 	return html`
-		<li class=${() => ['call', props.sent ? 'sent' : 'received', { asked: !answer() }]}>
-			<details open=${() => !props.sent && answer()}>
+		<li class=${() => ['call', props.sent ? 'sent' : 'received', { asked: !props.data.re }]}>
+			<details>
 				<summary
-					title=${() => props.title ?? `${props.sent ? 'to' : 'from'} ${props.author || label()} in thread ${props.thread}`}
+					title=${() =>
+						props.title ??
+						`${props.sent ? 'to' : 'from'} ${props.author || label()} in thread ${props.thread}`}
 				>
-					<span class="tool">${() => (answer() ? 'answered' : 'messaged')}</span>
-					<span class="who" style=${() => colorOf(props.author)}
+					<span class="tool" style=${() => colorOf(props.author)}
 						><${ThreadLink} id=${() => props.thread}>${label}<//></span
 					>
 					<span class="in">${() => (props.data.body ?? '').replace(/\s+/g, ' ')}</span>
@@ -701,7 +700,7 @@ export function Cross(props) {
 
 /**
  * A question another thread asked here, a received step row at the moment it came, as a message that came in reads:
- * ← messaged, who asked in their colour, and its first line. Nothing more of it is copied in; the row opens the thread where it was asked and answered.
+ * ←, who asked in their colour, and its first line, fainter. Nothing more of it is copied in; the row opens the thread where it was asked and answered.
  */
 function Asked(props) {
 	const author = () => props.question.data.author
@@ -714,8 +713,7 @@ function Asked(props) {
 							title=${() => `${author()} asked in thread ${props.thread}`}
 							onClick=${(event) => followThread(event, props.thread)}
 						>
-							<span class="tool">messaged</span>
-							<span class="who" style=${() => colorOf(author())}
+							<span class="tool" style=${() => colorOf(author())}
 								><${ThreadLink} id=${() => props.thread}>${() => shortLabel(author())}<//></span
 							>
 							<span class="in">${() => firstLine(props.question.data.body)}</span>
