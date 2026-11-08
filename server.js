@@ -68,7 +68,7 @@ import {
  * @typedef {{ author: string, command: string, to: To }} Command
  */
 
-// ── Start-up: store lock and port ─────────────────────────────────────────
+// ── Start-up — store lock and port ─────────────────────────────────────────
 
 /** One store, whatever the port */
 const file = process.env.DB_PATH || 'agent-ide.sqlite'
