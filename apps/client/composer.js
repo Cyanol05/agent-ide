@@ -1,5 +1,6 @@
 /**
  * Each thread keeps its draft, images and pick when you move away; a new thread keeps its own.
+ * The draft's text, not its images, also lives in localStorage by thread id, so it survives a reload or closing the tab.
  * Asking a thread's agent as another model switches it. A pick is one model plus any bots; in a bot's home, it is the bot's model.
  * In a thread of bots with the director picking, a message whose sender chose no one goes without `to`, and a choice holds for one message.
  */
@@ -120,7 +121,17 @@ export function Composer(props) {
 		setCompose((store) => {
 			store.drafts[key] ??= { draft: '', images: [], sending: false }
 			change(store.drafts[key])
+			persistDraft(key, store.drafts[key].draft)
 		})
+	// A thread not yet touched this session picks up its saved text; typed-but-unsaved text stays as is
+	createEffect(
+		() => props.thread ?? 'new',
+		(key) => {
+			if (compose.drafts[key]) return
+			const saved = readDraft(key)
+			if (saved) setCompose((store) => void (store.drafts[key] = { draft: saved, images: [], sending: false }))
+		},
+	)
 	const touch = () => matchMedia('(pointer: coarse)').matches
 	const active = () => current() === props.thread
 	const busy = () => threads.find((thread) => thread.id === props.thread)?.status === 'working'
@@ -612,6 +623,21 @@ function PickerBot(bot, close, thread, mention) {
 
 const [compose, setCompose] = createRoot(() => createStore({ drafts: {}, picks: {}, settings: {} }))
 const emptyDraft = { draft: '', images: [], sending: false }
+/** Unsent text, kept in localStorage by thread id so it survives a reload; a new thread shares one key until it gets an id */
+const draftKey = (key) => `composer-draft:${key}`
+const readDraft = (key) => {
+	try {
+		return localStorage.getItem(draftKey(key))
+	} catch {
+		return null
+	}
+}
+const persistDraft = (key, text) => {
+	try {
+		if (text && text.trim()) localStorage.setItem(draftKey(key), text)
+		else localStorage.removeItem(draftKey(key))
+	} catch {}
+}
 /** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
 const pick = (thread = current()) => compose.picks[thread ?? 'new'] ?? null
 const here = (thread = current()) => threads.find((row) => row.id === thread)?.agents ?? []
