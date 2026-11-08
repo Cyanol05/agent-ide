@@ -5,11 +5,17 @@
  * them, and with neither, the lines wait for the first one asked. A model in the settings, `memory.model` in
  * agent-ide.json or MEMORY_MODEL=model@runner, has that one agent write every thread's lines instead. Past
  * `memory.compactAt` tokens, 100k unless set, an agent's context is compacted into the lines.
+ *
+ * Each thread has memory on or off. `memory.threads` picks the default: `bots`, unless set, for threads with a bot in
+ * them, `all` or `none`; MEMORY_THREADS wins over it. A thread's own switch, POST /api/threads/:id/memory {on}, overrides
+ * the default. A thread with memory off writes no lines and compacts as Pi does without memory, when a window is nearly
+ * full; switched on, it writes the lines it missed.
  */
 import { retryAssistantCall } from '@earendil-works/pi-ai'
 import { num, obj, opt } from '@earendil-works/pi-schema'
 import {
 	CompactionTask,
+	LiveDoc,
 	defineExtension,
 	defineTask,
 	defineTool,
@@ -19,6 +25,7 @@ import { messageText } from '../remote.js'
 import { AGENT, agentTo, collect, said, finished, background } from '../util.js'
 
 const KIND = 'agent-ide.line'
+const DEFAULTS = ['bots', 'all', 'none']
 const RETRY = { enabled: true, maxRetries: 10, baseDelayMs: 2000 }
 const LINE = 512,
 	PANEL = 64 * 1024,
@@ -83,6 +90,15 @@ export function server(core) {
 	if (name && !name.includes('@'))
 		throw new Error("memory's model is model@runner, or leave it out")
 	const override = name && agentTo(name)
+	const threads = process.env.MEMORY_THREADS || core.config?.memory?.threads || 'bots'
+	if (!DEFAULTS.includes(threads)) throw new Error("memory's threads is bots, all or none")
+
+	/** Whether a thread remembers: its own switch, else the default; `to` counts the bots a message is asking in */
+	const remembers = (row, to = []) =>
+		row.memory ??
+		(threads === 'all' ||
+			(threads === 'bots' &&
+				[...Object.keys(row.agents), ...to].some((name) => !name.includes('@') && name !== AGENT)))
 
 	/** Who writes a thread's lines: MEMORY_MODEL, else its agent as it runs now, else a bot there, else nobody yet */
 	async function writerOf(threadId, signal) {
@@ -167,13 +183,19 @@ export function server(core) {
 						await collect((cursor) =>
 							tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
 						)
-					).filter((message) => message.kind === 'agent-ide.message' && message.id < input.entry)
+					).filter(
+						(message) =>
+							message.kind === 'agent-ide.message' &&
+							(input.entry === undefined || message.id < input.entry),
+					)
 					for (const [i, message] of earlier.entries())
 						if (!have.has(key(0, i)))
 							await tx.createTask(Line, { entry: message.id }, background(threadId))
 					for (const { l, i } of have.values())
 						if (!(i & 1) && have.has(key(l, i + 1)) && !have.has(key(l + 1, i >> 1)))
 							await tx.createTask(Line, { l: l + 1, i: i >> 1 }, background(threadId))
+					// Switched on, it has no message of its own to write
+					if (input.entry === undefined) return finished()
 					return { status: 'running', checkpoint: { phase: 'write' } }
 				}, ctx),
 			async write({ conversationId: threadId, input }, rt, ctx) {
@@ -183,7 +205,8 @@ export function server(core) {
 					input.entry !== undefined
 						? [0, all.findIndex((entry) => entry.id === input.entry)]
 						: [input.l, input.i]
-				if (have.has(key(l, i))) return rt.commit(() => finished(), ctx)
+				if (have.has(key(l, i)) || !remembers(await core.thread(threadId)))
+					return rt.commit(() => finished(), ctx)
 				let text = await rt.memo('text', ctx)
 				if (text === undefined) {
 					const ask = `Line: ${l ? 'merge lines' : `compress message ${i}`}`
@@ -229,9 +252,15 @@ export function server(core) {
 		return (to && core.models.getModel(`runner:${to.runner}`, to.model)?.contextWindow) || PANEL
 	}
 
-	const beforeCompact = async ({ firstKept }, api) => {
+	const beforeCompact = async ({ firstKept, reason }, api, context) => {
 		const home = await core.home(api.conversationId)
 		if (!home?.thread) return undefined
+		if (!remembers(await core.thread(home.thread))) {
+			// Memory's early start isn't this thread's: Pi compacts it only once the window is nearly full
+			const { compactions = [] } = (await api.snapshot(LiveDoc, api.conversationId, context)) ?? {}
+			const early = compactions.find((status) => status.taskId === api.taskId)?.blocking === false
+			return reason === 'threshold' && early ? { decline: true } : undefined
+		}
 		const T = (await cutPosition(api.conversationId, firstKept, home.thread)) + 1
 		return T > 0
 			? {
@@ -247,6 +276,7 @@ export function server(core) {
 	}
 
 	async function catchUp(threadId, held, all, agent) {
+		if (!remembers(await core.thread(threadId))) return held.map(said).join('\n\n')
 		const most = await budget(agent)
 		let first = held.length - 1,
 			size = bytes(said(held[first]))
@@ -301,8 +331,9 @@ export function server(core) {
 		},
 	})
 
-	async function serve(thread, query) {
+	async function serve(thread, query, body) {
 		if (thread === undefined) throw new Error('Memory is per thread: /api/threads/:id/memory')
+		if (body !== undefined) return turn(thread, body)
 		if (query.has('zoom')) {
 			const opened = await open(thread, ...query.get('zoom').split(',').map(Number))
 			return typeof opened === 'string' ? { message: opened } : { lines: opened.map(span) }
@@ -312,12 +343,33 @@ export function server(core) {
 		return { lines: memory(await core.commit((tx) => lines(tx, thread)), T, budget).map(span) }
 	}
 
-	/** Each message gets a line; the one that asks a thread's first agent also brings back the lines that waited */
+	/** Told only to agents of a thread that remembers */
+	async function section({ conversationId }) {
+		const home = await core.home(conversationId)
+		return !home?.thread || remembers(await core.thread(home.thread)) ? SECTION : undefined
+	}
+
+	/** A thread's switch: on writes the lines it missed */
+	async function turn(threadId, { on }) {
+		if (typeof on !== 'boolean') throw new Error('on is true or false')
+		await core.conversation(threadId)
+		return core.commit(async (tx) => {
+			const row = await core.threadIn(tx, threadId)
+			if (on && !remembers(row)) await tx.createTask(Line, { backfill: true }, background(threadId))
+			row.memory = on
+			return { memory: on }
+		})
+	}
+
+	/**
+	 * Each message in a thread that remembers gets a line; the one that asks a thread's first agent, or turns its memory
+	 * on by asking a bot in, also brings back the lines that waited
+	 */
 	async function posted(tx, threadId, entry) {
-		const first =
-			!override &&
-			entry.data.to?.length > 0 &&
-			!Object.keys((await core.threadIn(tx, threadId)).agents).length
+		const row = await core.threadIn(tx, threadId)
+		const to = entry.data.to ?? []
+		if (!remembers(row, to)) return
+		const first = (!override && to.length > 0 && !Object.keys(row.agents).length) || !remembers(row)
 		await tx.createTask(
 			Line,
 			{ entry: entry.id, ...(first ? { backfill: true } : {}) },
@@ -330,12 +382,15 @@ export function server(core) {
 			name: 'agent-ide.memory',
 			tasks: [Line],
 			tools: [zoom],
-			sections: [{ key: 'memory', tag: false, render: () => SECTION }],
+			sections: [{ key: 'memory', tag: false, render: section }],
 			hooks: [hook(CompactionTask, { beforeCompact })],
 		}),
 		posted,
 		catchUp,
 		serve,
+		remembers: (row) => remembers(row),
+		/** The default for threads without their own switch */
+		memoryThreads: threads,
 		/** Past this many tokens an agent's context is compacted into the lines, so it never carries a full window */
 		compactAt: Number(core.config?.memory?.compactAt) || 100000,
 	}

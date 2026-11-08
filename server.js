@@ -138,6 +138,8 @@ const Thread = defineDoc({
 		reads: {},
 		agents: {},
 		tools: null,
+		/** With memory on, whether this thread remembers; null takes memory's default */
+		memory: null,
 	}),
 })
 /** By request id */
@@ -907,6 +909,8 @@ async function threadRow(id, reader, all) {
 	return {
 		id,
 		...row,
+		/** With memory on, whether it remembers; without, nothing */
+		memory: remembers?.(row),
 		readers: Object.keys(reads),
 		agents,
 		shells: [...shells.values()].filter((run) => run.threadId === id),
@@ -1155,7 +1159,10 @@ async function forkThread(id, { at, title }) {
 		{
 			...ownerless,
 			init: async (tx, forkId) => {
-				;(await tx.doc(Thread, forkId)).tools = source.tools
+				;Object.assign(await tx.doc(Thread, forkId), {
+					tools: source.tools,
+					memory: source.memory ?? null,
+				})
 				const row = {}
 				for (const { key, answer, unseen } of agents) {
 					row[key] = await newAgent(tx, forkId, unseen, answer)
@@ -1293,6 +1300,7 @@ const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames] = [
 	'botNames',
 ].map(hook)
 compactAt = hook('compactAt')
+const [remembers, memoryThreads] = [hook('remembers'), hook('memoryThreads')]
 for (const [name, runner] of Object.entries(await known()))
 	models.setProvider(runnerProvider(runners, name, runner.models))
 harness.resume()
@@ -1352,7 +1360,11 @@ const routes = [
 			runners: Object.keys(await keys()).length,
 			work: await harness.inspect(context),
 			settings: {
-				memory: { model: settings.config.memory?.model ?? '', compactAt: compactAt ?? null },
+				memory: {
+					model: settings.config.memory?.model ?? '',
+					compactAt: compactAt ?? null,
+					threads: memoryThreads ?? settings.config.memory?.threads ?? 'bots',
+				},
 				/** What modules say of their own settings, by name */
 				...Object.fromEntries(
 					modules
@@ -1360,7 +1372,7 @@ const routes = [
 						.map((module) => [module.name, module.settings]),
 				),
 				/** Set in the environment, these win over agent-ide.json */
-				overrides: ['MODULES', 'MEMORY_MODEL'].filter((name) => process.env[name]),
+				overrides: ['MODULES', 'MEMORY_MODEL', 'MEMORY_THREADS'].filter((name) => process.env[name]),
 				restarts: typeof process.execve === 'function',
 			},
 		}),
@@ -1878,6 +1890,12 @@ async function saveSettings({ modules: wanted = {}, memory }) {
 		if (memory.model !== undefined) {
 			if (model) next.memory = { ...next.memory, model }
 			else if (next.memory) delete next.memory.model
+		}
+		if (memory.threads !== undefined) {
+			if (!['bots', 'all', 'none'].includes(memory.threads))
+				throw new Error('memory remembers threads with bots, all or none')
+			if (memory.threads === 'bots') delete next.memory?.threads
+			else next.memory = { ...next.memory, threads: memory.threads }
 		}
 		if (memory.compactAt !== undefined) {
 			const tokens = Number(memory.compactAt)
