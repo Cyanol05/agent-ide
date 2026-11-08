@@ -26,7 +26,6 @@
 		"remote.js",
 		"README.md",
 		"!apps/client/fonts/BerkeleyMono*",
-		"!apps/client/fonts/concourse*",
 		"!apps/client/fonts/triplicate*",
 		"!apps/client/fonts/Iosevka*"
 	],

@@ -36,8 +36,8 @@
 /* Light or dark is the browser's: every grey is ink mixed into the page. */
 :root {
 	color-scheme: light dark;
-	--font-text: 'iA Writer Quattro S', 'Concourse T3', 'Triplicate T3', 'Berkeley Mono', 'Iosevka', system-ui, sans-serif;
-	--font-ui: 'iA Writer Quattro S', 'Concourse T3', 'Triplicate T3', 'Berkeley Mono', 'Iosevka', system-ui, sans-serif;
+	--font-text: 'iA Writer Quattro S', 'Triplicate T3', 'Berkeley Mono', 'Iosevka', system-ui, sans-serif;
+	--font-ui: 'iA Writer Quattro S', 'Triplicate T3', 'Berkeley Mono', 'Iosevka', system-ui, sans-serif;
 	--font-mono: 'Berkeley Mono', 'Triplicate T3 Code', 'Iosevka', ui-monospace, monospace;
 	--ink: CanvasText;
 	--mute: color-mix(in srgb, CanvasText 58%, Canvas);
