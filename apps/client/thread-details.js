@@ -15,17 +15,20 @@ import {
 	setNewThreadTools,
 	threads,
 } from './server.js'
-import { authorLabel } from './agent.js'
+import { shortLabel } from './agent.js'
 import { BotSettings, botThreads } from './bot.js'
 import { ThreadItem } from './thread-list.js'
 
 export function ThreadDetails() {
 	const here = () => threads.find((thread) => thread.id === current())
-	// A bot's home is named for it already, so only who else is there
-	const members = () =>
-		[...(people[current()] ?? []), ...(here()?.agents ?? []).map((agent) => agent.name)].filter(
-			(name) => name !== homeBot(current())?.name,
-		)
+	// A bot's home is named for it already, so only who else is there; each once, as an ask's line names them
+	const members = () => [
+		...new Map(
+			[...(people[current()] ?? []), ...(here()?.agents ?? []).map((agent) => agent.name)]
+				.filter((name) => name !== homeBot(current())?.name)
+				.map((name) => [shortLabel(name), name]),
+		).values(),
+	]
 	const depth = (id) => here()?.family.find((member) => member.id === id)?.depth ?? 0
 	/** A family member's parent, if it's also a member: the thread a fork or child points at */
 	const parentOf = (id) => {
@@ -90,7 +93,7 @@ export function ThreadDetails() {
 							${(name, index) => [
 								() => (index() ? ', ' : ''),
 								html`<span title=${() => name} style=${() => colorOf(name)}
-									>${() => authorLabel(name)}</span
+									>${() => shortLabel(name)}</span
 								>`,
 							]}
 						<//>

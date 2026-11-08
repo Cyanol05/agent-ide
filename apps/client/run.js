@@ -11,7 +11,7 @@ import {
 } from 'solid-js'
 import { bots, colorOf, entries, homeBot, threads, titleOf } from './server.js'
 import { Message, ThreadLink } from './thread.js'
-import { agentTo, authorLabel, doing, messageText, touched } from './agent.js'
+import { agentTo, authorLabel, doing, messageText, shortLabel, touched } from './agent.js'
 import { Dot } from './dot.js'
 
 /**
@@ -90,8 +90,7 @@ export function Exchange(props) {
 	const name = () => {
 		const author = who()
 		if (!author) return titleOf(asked())
-		const to = agentTo(author)
-		return to.name ?? to.model?.split('/').pop() ?? author
+		return shortLabel(author)
 	}
 	// A bot is known by its name; a thread's agent by its thread's title, its model after it
 	const bot = () => bots.some((bot) => bot.name === who())

@@ -37,6 +37,13 @@ export const formatAgent = (to) =>
 export const authorLabel = (author) =>
 	author?.includes('@') ? writtenTo(agentTo(author)) : (author ?? '')
 
+/** An author in a few words, as an ask's line says it: a bot's or person's name, or an agent's model alone */
+export const shortLabel = (author) => {
+	if (!author?.includes('@')) return author ?? ''
+	const to = agentTo(author)
+	return to.name ?? to.model?.split('/').pop() ?? author
+}
+
 /** A runner's row for a model, whatever its thinking: a bot's name, or `provider/id@runner`, as /api/runners keys its agents */
 export const rowOf = (to) => to.name ?? `${to.model}@${to.runner}`
 
