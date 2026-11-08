@@ -664,6 +664,7 @@ agent-memory {
 				.lead {
 					display: inline-flex;
 					align-items: center;
+					width: var(--space-3);
 					/* One em tall on the baseline, so the dot's middle is the words' middle, as a row centres it */
 					height: 1em;
 				}
@@ -671,7 +672,7 @@ agent-memory {
 				/* Opened, the question and its answer are the messages that crossed, under the line. */
 				.said {
 					list-style: none;
-					margin: 0 0 0 var(--space-2);
+					margin: 0 0 0 var(--space-3);
 					padding: 0;
 
 					> li.elsewhere {
