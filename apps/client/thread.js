@@ -381,7 +381,7 @@ export function Thread(props) {
 					<${Show} when=${() => props.id && !ready()}
 						><li class="mute asking">Asking for messages…</li><//
 					>
-					<${Show} when=${() => homeBot(props.id)?.instructions === ''}>
+					<${Show} when=${() => ready() && homeBot(props.id)?.instructions === ''}>
 						<li class="mute">
 							${() =>
 								`${homeBot(props.id).name} has no instructions yet. ` +
