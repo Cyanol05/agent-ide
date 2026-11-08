@@ -494,8 +494,13 @@ agent-memory {
 			}
 
 			/* What came from or went to another thread sits in by --space-5, its header with it. */
-			&:is(.elsewhere, .exchange) {
+			&.elsewhere {
 				margin-left: var(--space-5);
+			}
+
+			/* An ask's line starts where a turn's steps do; opened, what crossed sits in like any message from elsewhere. */
+			&.exchange {
+				margin-left: var(--space-1);
 			}
 
 			/* Its words a size down, on the same 24px lines, so it stays on the baseline. */
@@ -673,7 +678,7 @@ agent-memory {
 				/* Opened, the question and its answer are the messages that crossed, under the line. */
 				.said {
 					list-style: none;
-					margin: 0;
+					margin: 0 0 0 calc(var(--space-5) - var(--space-1));
 					padding: 0;
 
 					> li.elsewhere {
