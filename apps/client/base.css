@@ -547,9 +547,9 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 }
 
-/* ?grid draws the baseline on what sits on it: the thread's list, scrolling with its text, and the two bars at its foot, each lined up to its own box. */
+/* ?grid draws the baseline on what sits on it: the thread and the list of threads, each scrolling with its text, and the two bars at their foot, each lined up to its own box. */
 body.grid {
-	:is(.thread > ul, .list-foot, form.compose .bar) {
+	:is(.thread > ul, .thread-list, .list-foot, form.compose .bar) {
 		background-image: repeating-linear-gradient(
 			to bottom,
 			transparent 0 calc(var(--baseline) - 1px),
@@ -561,5 +561,9 @@ body.grid {
 	.thread > ul {
 		background-attachment: local;
 		background-position: bottom;
+	}
+
+	.thread-list {
+		background-attachment: local;
 	}
 }

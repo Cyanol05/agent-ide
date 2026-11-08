@@ -356,7 +356,7 @@ export function Composer(props) {
 			<div class="bar">
 				<button
 					type="button"
-					class="ghost add"
+					class="ghost small add"
 					title="Add images; you can also paste or drop them"
 					aria-label="Add images"
 					onClick=${(_e) => {
