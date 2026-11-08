@@ -65,7 +65,7 @@ function Client() {
 	})
 	return html`
 		<button
-			class="mode-toggle"
+			class="ghost mode-toggle"
 			type="button"
 			aria-pressed=${() => String(chat())}
 			title=${() => (chat() ? 'Back to the story' : '')}

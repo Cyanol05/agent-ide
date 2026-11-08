@@ -344,7 +344,7 @@ export function Composer(props) {
 				></textarea>
 				<${Show} when=${() => active()}>
 					<button
-						class="icon send"
+						class="primary icon send"
 						title="Send"
 						aria-label="Send"
 						disabled=${() =>
@@ -357,7 +357,7 @@ export function Composer(props) {
 			<div class="bar">
 				<button
 					type="button"
-					class="icon add"
+					class="ghost icon add"
 					title="Add images; you can also paste or drop them"
 					aria-label="Add images"
 					onClick=${(_e) => {
@@ -388,7 +388,7 @@ export function Composer(props) {
 				>
 					<button
 						type="button"
-						class="stop"
+						class="ghost stop"
 						aria-label="Stop"
 						title="Stop this thread"
 						onClick=${() => api(`/api/threads/${props.thread}/stop`, {}).catch(report)}
@@ -399,7 +399,7 @@ export function Composer(props) {
 				<${Show} when=${() => filled()}>
 					<button
 						type="button"
-						class="pick"
+						class="ghost pick"
 						aria-label="Context"
 						title="How full the agent's context is"
 						ref=${(el) => (recallButton = el)}
@@ -413,7 +413,7 @@ export function Composer(props) {
 				<//>
 				<button
 					type="button"
-					class="pick"
+					class="ghost pick"
 					aria-label=${() => `Asks ${asking() || 'no one yet; pick a model'}`}
 					ref=${(el) => (button = el)}
 					aria-expanded="false"
@@ -440,7 +440,7 @@ export function Composer(props) {
 					<span>${() => asking() || 'Pick a model'}</span>
 				</button>
 			</div>
-			<div class="model-picker mentions" popover="manual" ref=${(el) => (mentionList = el)}>
+			<div class="popover model-picker mentions" popover="manual" ref=${(el) => (mentionList = el)}>
 				<div class="model-controls">
 					<ul
 						role="listbox"
@@ -464,7 +464,7 @@ export function Composer(props) {
 				</div>
 			</div>
 			<div
-				class="settings recall"
+				class="popover recall"
 				popover
 				ref=${(el) => (recall = el)}
 				onToggle=${(event) => {
@@ -475,7 +475,7 @@ export function Composer(props) {
 				<${Show} when=${() => active()}>
 					<${Panes}
 						title="Context"
-						close=${html`<button type="button" class="close" aria-label="Close" onClick=${() => recall.hidePopover()}>×</button>`}
+						close=${html`<button type="button" class="ghost close" aria-label="Close" onClick=${() => recall.hidePopover()}>×</button>`}
 						detailTitle="Memory’s lines"
 						actions=${html`<button type="button" onClick=${() => recall.hidePopover()}>Done</button>`}
 						open=${() => lines()}
@@ -484,7 +484,7 @@ export function Composer(props) {
 					>
 						<${Compaction} />
 						<${Show} when=${() => server().modules?.includes('memory')}>
-							<ul class="modules">
+							<ul class="rows">
 								<li
 									role="button"
 									tabindex="0"
@@ -515,7 +515,7 @@ export function Composer(props) {
 				<//>
 			</div>
 			<div
-				class="model-picker"
+				class="popover model-picker"
 				popover
 				ref=${(el) => (picker = el)}
 				onToggle=${(event) => {
@@ -524,7 +524,7 @@ export function Composer(props) {
 					else anchor = button
 				}}
 			>
-				<button type="button" class="close" aria-label="Close" onClick=${() => picker.hidePopover()}>
+				<button type="button" class="ghost close" aria-label="Close" onClick=${() => picker.hidePopover()}>
 					×
 				</button>
 				<${ModelPicker}

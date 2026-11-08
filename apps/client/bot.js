@@ -201,7 +201,7 @@ export function NewBot(props) {
 						if (event.key === 'Escape') props.onDone()
 					}}
 				/>
-				<button type="submit" disabled=${() => saving()}>Create</button>
+				<button type="submit" class="ghost" disabled=${() => saving()}>Create</button>
 				<${Show} when=${() => error()}>
 					<small role="alert">${() => error()}</small>
 				<//>

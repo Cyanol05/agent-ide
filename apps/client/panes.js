@@ -42,6 +42,7 @@ export function Panes(props) {
 					<header>
 						<button
 							type="button"
+							class="ghost"
 							aria-label=${() => `Back to ${props.title}`}
 							ref=${(element) => (back = element)}
 							onClick=${(event) => props.onBack(event)}

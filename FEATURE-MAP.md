@@ -78,14 +78,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   panes.js, popover.js, sure.js, notice.js, dot.js   list/detail frame, popover placement,
                          two-press button, error line, status dot
   images.js, markdown.js image shrinking to pi's limits; message markdown
-  client.css             all styles, by comment-headed section
-    "The page"           layout: story left, live system right
-    "The live system", "Wires"   system diagram
-    .thread (~721)       the chat: messages, li.turn, .run steps, .ask boxes, .elsewhere/.reply
-    "A message's markdown"   message body
-    "A phone"            narrow layout, drawers
-    "The model picker and settings"   popovers and sheets
-    "Images waiting to go", "Where compaction cut", "A message folded"   composer images, cuts, memory
+  client.css             all styles, by comment-headed section; its reusable parts are under UI parts below
 scripts/
   try.js                 scratch server with a scripted bot, for clicking through
   page-spy.js            browser init script: fetches, socket frames, stalls
@@ -108,5 +101,20 @@ Where a feature lives:
 - Forks: server.js forkThread/seenBy, client server.js fork, thread.js Message (fork link).
 - `$ cmd`: server.js Shell, printed, shells.
 - Status dots: server.js status/busiest, client dot.js.
-- A new popover or panel: copy the context popover in composer.js (Settings in settings.js is the fuller model): `<div class="settings" popover>` placed by `placePopover`, holding `<Panes title actions>` (panes.js, its header and Done button) and rows as `ul.modules > li`, all styled by the `.settings` rules in client.css ("The model picker and settings"); add no CSS of your own.
 - Settings and modules: modules.js, server.js saveSettings/restart, client settings.js.
+
+## UI parts
+
+Build from these; a new panel, row or button takes its sibling's markup and class, and adds no CSS of its own. Quoted names are client.css's section comments.
+
+- Buttons, three variants ("Three buttons"): bordered is plain `button` (Done, Create, Copy, archive, fork, revoke); `button.ghost` has no border and gets a soft fill on hover and when `aria-pressed` or `aria-expanded` (composer bar, foot toggles, closes, backs, thinking levels); `button.primary` is filled with ink (send). `data-danger` turns any of them red on hover.
+- Popover: a `div.popover[popover]` placed by `placePopover` (popover.js), a bottom sheet on phones ("The model picker and settings"). Panes inside it (panes.js `Panes`, `.panes .pane`, "A detail covers") give it a header with a ghost close, a back and actions. Settings (settings.js), Runners (runner.js `.runner-list`) and Context (composer.js `.recall`) use it; the model picker and @mentions (composer.js `.model-picker`) are the same frame without panes.
+- Popover rows: `ul.rows > li` in a popover's pane body, one per module, runner or option ("One row across"); the picker's `.model-controls .who` and `.model` share the look.
+- Model controls: model-picker.js `ModelPicker`, `.model-controls` with its `.models` and the `.thinking` levels ("A runner, its models"); the composer and settings share it.
+- Left aside: thread-list.js `ThreadList`, `.thread-list`; each row is `li > .row` (a link, or a button, or `form.row` for a new bot), shared with the family list `.thread-family`; its foot is `.list-foot` with `.foot-toggle`s ("The list's foot").
+- Right aside: thread-details.js `ThreadDetails`, `.thread-details` with `.scrim` ("This thread's sheet"); a bot's part is bot.js `BotSettings`, `.bot`; its fields share "Every field in the bot panel"; a page of it has `.page-head`.
+- Thread head: the pill, `.thread-pill` and `.thread > header` with `h2.title > button` and a `.close` ("The thread's name is a pill"); on a phone `.app-bar` ("A phone").
+- Message list: thread.js `Message` in `.thread > ul > li` ("The chat: agents write"), its body `.markdown`, its images `div.images`, compaction's `li.cut` and `li.line`.
+- Tool calls: run.js `Turn`, `Exchange`, `Step`, `Call`; `li.turn` and `.exchange` are `<details>` whose open list is `.steps`, its tools `.tool` and its words `.said`. There's no thinking block: a live turn's summary says "thinking".
+- Composer: composer.js `Composer`, `.thread form`: the box, `.bar` with `.icon` buttons, `.pick` (whom it asks) and `.stop`, and `ul.images` waiting to go.
+- Small parts: sure.js `Sure` (`.sure`, a button that asks by changing its words), notice.js `Notice` (`.notice`, what went wrong), dot.js `Dot` (`.dot`, status).

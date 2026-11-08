@@ -78,7 +78,7 @@ export function Settings() {
 	})
 	return html`
 		<button
-			class="foot-toggle settings-toggle"
+			class="ghost foot-toggle settings-toggle"
 			type="button"
 			ref=${(el) => (button = el)}
 			popovertarget=${id}
@@ -86,7 +86,7 @@ export function Settings() {
 			Settings
 		</button>
 		<div
-			class="settings"
+			class="popover"
 			id=${id}
 			popover
 			ref=${(el) => (panel = el)}
@@ -101,7 +101,7 @@ export function Settings() {
 				open=${() => selection() !== null}
 				close=${html`<button
 					type="button"
-					class="close"
+					class="ghost close"
 					aria-label="Close"
 					onClick=${() => panel.hidePopover()}
 				>
@@ -136,7 +136,7 @@ export function Settings() {
 						onConfigure=${(to) => setSelection(to)}
 					/>`}
 			>
-				<ul class="modules">
+				<ul class="rows">
 					<${For} each=${all}
 						>${(module) => html`
 							<li class=${() => ({ off: !on(module) })}>

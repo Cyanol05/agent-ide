@@ -359,7 +359,7 @@ export function Thread(props) {
 				<${Show} when=${() => props.id && columns().length > 1}>
 					<button
 						type="button"
-						class="close"
+						class="ghost close"
 						title="Close here; the thread details still list it"
 						aria-label="Close"
 						onClick=${() => closeColumn(props.id)}

@@ -167,7 +167,7 @@ option {
 	color: CanvasText;
 }
 
-/* One button: white, a thin border; the one that's on gets a dark border. Its text sits in the middle, not on the page's 1.6 line. */
+/* Three buttons. Bordered, the default: white, a thin border; the one that's on gets a dark border. Its text sits in the middle, not on the page's 1.6 line. */
 button {
 	cursor: pointer;
 	line-height: 1;
@@ -175,6 +175,30 @@ button {
 	&[aria-pressed='true'],
 	&.current {
 		border-color: var(--edge);
+	}
+}
+
+/* Ghost: no border, quiet text; a soft fill while it's open or on, and under the mouse. */
+button.ghost {
+	border: 0;
+	background: none;
+	color: var(--mute);
+
+	&[aria-pressed='true'],
+	&[aria-expanded='true'] {
+		background: color-mix(in srgb, CanvasText 10%, transparent);
+		color: var(--ink);
+	}
+}
+
+/* Primary: filled with ink, for the one thing the view is for. */
+button.primary {
+	border: 0;
+	background: var(--ink);
+	color: Canvas;
+
+	&:disabled {
+		background: var(--edge);
 	}
 }
 
@@ -722,16 +746,7 @@ agent-memory {
 		> button {
 			flex: none;
 			padding: 0.2rem 0.3rem;
-			border: 0;
-			background: none;
-			color: var(--mute);
 			font-size: 12px;
-
-			@media (hover: hover) and (pointer: fine) {
-				&:hover:not(:disabled) {
-					color: var(--ink);
-				}
-			}
 		}
 
 		> small {
@@ -837,18 +852,9 @@ agent-memory {
 		flex: none;
 		margin: 0 -0.3rem 0 0.4rem;
 		padding: 0 0.3rem;
-		border: 0;
-		background: none;
-		color: var(--mute);
 		font: inherit;
 		font-weight: 400;
 		line-height: 1;
-
-		@media (hover: hover) and (pointer: fine) {
-			&:hover {
-				color: var(--ink);
-			}
-		}
 	}
 
 	/* The chat: agents write on the page, you write in a soft bubble on the right; who's talking is said once, small. */
@@ -1175,9 +1181,6 @@ agent-memory {
 		}
 
 		button.icon {
-			border: 0;
-			background: none;
-			color: var(--mute);
 			padding: 0.2rem 0.45rem;
 			font-size: 16px;
 			line-height: 1;
@@ -1199,16 +1202,9 @@ agent-memory {
 			justify-content: center;
 			align-items: center;
 			border-radius: 50%;
-			background: var(--ink);
-			color: Canvas;
 			font-weight: 700;
 
-			&:hover:not(:disabled) {
-				color: Canvas;
-			}
-
 			&:disabled {
-				background: var(--edge);
 				opacity: 1;
 			}
 		}
@@ -1222,10 +1218,6 @@ agent-memory {
 		}
 
 		.stop {
-			border: 0;
-			border-radius: 8px;
-			background: none;
-			color: var(--mute);
 			font-size: 12px;
 			white-space: nowrap;
 			padding: 0.25rem 0.5rem;
@@ -1237,10 +1229,6 @@ agent-memory {
 			gap: 0.4rem;
 			min-width: 0;
 			margin-left: auto;
-			border: 0;
-			border-radius: 8px;
-			background: none;
-			color: var(--mute);
 			font-size: 12px;
 			padding: 0.25rem 0.5rem;
 
@@ -1249,12 +1237,6 @@ agent-memory {
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
-			}
-
-			&[aria-expanded='true'],
-			&:focus-visible {
-				background: color-mix(in srgb, CanvasText 8%, transparent);
-				color: var(--ink);
 			}
 		}
 	}
@@ -1483,16 +1465,9 @@ body.chat {
 		width: 1.6rem;
 		height: 1.6rem;
 		padding: 0;
-		border-color: transparent;
+		/* On while you're in the chat, but that's the page itself: no fill for it */
 		background: none;
 		color: var(--mute);
-
-		@media (hover: hover) and (pointer: fine) {
-			&:hover {
-				border-color: var(--line);
-				color: inherit;
-			}
-		}
 	}
 
 	.system {
@@ -1815,10 +1790,7 @@ body.side .thread-details {
 	margin: 0 0.6rem 0.4rem;
 
 	button {
-		border: 0;
-		background: none;
 		padding: 0 0.2rem;
-		color: var(--mute);
 	}
 
 	h2 {
@@ -1930,18 +1902,12 @@ button[data-danger]:focus-visible:not(:disabled) {
 		text-decoration: underline;
 	}
 
-	.thread form button.icon:hover:not(:disabled) {
-		color: var(--ink);
-	}
-
 	.card:hover {
 		border-color: var(--mute);
 	}
 
-	.thread form .pick:hover,
-	.thread form .stop:hover,
-	.model-controls .model:hover,
-	.model-controls .steps button:hover {
+	button.ghost:hover:not(:disabled),
+	.model-controls .model:hover {
 		background: color-mix(in srgb, CanvasText 8%, transparent);
 		color: var(--ink);
 	}
@@ -2108,8 +2074,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 /* The model picker and settings: popovers on desktop, bottom sheets on phones. */
-.model-picker,
-.settings {
+.popover {
 	position: fixed;
 	inset: auto;
 	margin: 0;
@@ -2127,8 +2092,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 .model-controls > ul,
-.runner-list .pane-body > ul,
-.settings .modules {
+.popover .rows {
 	list-style: none;
 	margin: 0;
 	padding: 0;
@@ -2140,8 +2104,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 :is(
 	.model-controls .who,
 	.model-controls .model,
-	.runner-list .pane-body > ul > li,
-	.settings .modules > li
+	.popover .rows > li
 ) {
 	display: flex;
 	align-items: start;
@@ -2164,7 +2127,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 }
 
-:where(.runner-list .pane-body > ul > li, .settings .modules > li) small {
+:where(.popover .rows > li) small {
 	display: block;
 	overflow-wrap: anywhere;
 }
@@ -2172,8 +2135,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 @media (hover: hover) and (pointer: fine) {
 	:is(
 		.model-controls .model:not(.on),
-		.runner-list .pane-body > ul > li,
-		.settings .modules > li
+		.popover .rows > li
 	):hover {
 		background: var(--tint);
 	}
@@ -2230,24 +2192,15 @@ button[data-danger]:focus-visible:not(:disabled) {
 		color: var(--mute);
 	}
 
-	.steps {
+	.thinking {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.15rem;
 		padding: 0 0.3rem 0.3rem;
 
 		button {
-			border: 0;
-			border-radius: 8px;
-			background: none;
 			padding: 0.3rem 0.5rem;
 			font-size: 13px;
-			color: var(--mute);
-
-			&[aria-pressed='true'] {
-				background: color-mix(in srgb, CanvasText 10%, transparent);
-				color: var(--ink);
-			}
 		}
 	}
 }
@@ -2290,12 +2243,12 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 }
 
-/* A module a row, as a runner is: its dot, its name, what it does, on or off at the end. */
-.settings {
+/* A popover with panes: the header and body pad themselves. A module a row, as a runner is: its dot, its name, what it does, on or off at the end. */
+.popover:has(> .panes) {
 	padding: 0;
 	overflow: hidden;
 
-	.modules > li.off b {
+	.rows > li.off b {
 		color: var(--mute);
 		font-weight: 500;
 	}
@@ -2400,10 +2353,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 			}
 
 			button:first-child {
-				border: 0;
-				background: none;
 				padding: 0;
-				color: inherit;
 			}
 		}
 	}
@@ -2429,7 +2379,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 /* Revoke waits at the row's end, like a thread's archive button. */
-.runner-list .pane-body > ul > li {
+.runner-list .rows > li {
 	flex-wrap: wrap;
 
 	.revoke {
@@ -2452,13 +2402,13 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 @media (hover: hover) and (pointer: fine) {
-	.runner-list .pane-body > ul > li:hover .revoke {
+	.runner-list .rows > li:hover .revoke {
 		visibility: visible;
 	}
 }
 
 @media (hover: none) {
-	.runner-list .pane-body > ul > li .revoke {
+	.runner-list .rows > li .revoke {
 		visibility: visible;
 	}
 }
@@ -2536,11 +2486,6 @@ body.chat {
 		align-items: center;
 		/* Same dot-to-text gap as a thread row, so the text lines up with it too */
 		gap: 0.4rem;
-		/* 0 width, not just a transparent colour: a real border's width would offset the dot and text from a thread row's, which has none */
-		border: 0;
-		border-radius: 6px;
-		background: none;
-		color: var(--mute);
 		font-size: 12px;
 		height: 1.6rem;
 		padding: 0 0.6rem;
@@ -2555,14 +2500,6 @@ body.chat {
 			text-overflow: ellipsis;
 			white-space: nowrap;
 		}
-
-		@media (hover: hover) and (pointer: fine) {
-			&:hover {
-				/* A shadow, not a border: it doesn't add width, so the hover ring can't nudge the row's own alignment */
-				box-shadow: inset 0 0 0 1px var(--line);
-				color: var(--ink);
-			}
-		}
 	}
 
 	.runners {
@@ -2571,8 +2508,7 @@ body.chat {
 }
 
 @media (max-width: 700px) {
-	.model-picker,
-	.settings {
+	.popover {
 		/* Lifted off the edge, clear of the home bar, like the composer. */
 		inset: auto 0.6rem calc(0.6rem + env(safe-area-inset-bottom)) 0.6rem;
 		width: auto;
@@ -2583,10 +2519,6 @@ body.chat {
 
 	.thread-details > .thread-title {
 		width: calc(100% - 3.6rem);
-	}
-
-	.settings {
-		padding-bottom: 0;
 	}
 
 	.panes .pane-body {
@@ -2609,9 +2541,6 @@ body.chat {
 	.panes .pane > header > button.close {
 		display: block;
 		font-size: 16px;
-		border: 0;
-		background: none;
-		color: var(--mute);
 		line-height: 1;
 	}
 
@@ -2621,8 +2550,7 @@ body.chat {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-	.model-picker,
-	.settings {
+	.popover {
 		transition:
 			opacity 0.18s,
 			translate 0.25s cubic-bezier(0.23, 1, 0.32, 1),
@@ -2630,15 +2558,13 @@ body.chat {
 			overlay 0.25s allow-discrete;
 	}
 
-	.model-picker:not(:popover-open),
-	.settings:not(:popover-open) {
+	.popover:not(:popover-open) {
 		opacity: 0;
 		translate: 0 8px;
 	}
 
 	@starting-style {
-		.model-picker:popover-open,
-		.settings:popover-open {
+		.popover:popover-open {
 			opacity: 0;
 			translate: 0 8px;
 		}
@@ -2799,9 +2725,6 @@ body.resizing {
 
 	button {
 		flex: none;
-		border: 0;
-		background: none;
-		color: var(--mute);
 		padding: 0 0.4rem;
 	}
 }
@@ -2877,7 +2800,7 @@ body.resizing {
 }
 
 /* The context popover is Settings' frame and rows; its own part is the tape. */
-.recall .modules > li {
+.recall .rows > li {
 	cursor: pointer;
 }
 

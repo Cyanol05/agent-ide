@@ -62,7 +62,7 @@ export function ThreadDetails() {
 			aria-label="Thread details"
 			ref=${(element) => (sheet = element)}
 		>
-			<button type="button" class="close" aria-label="Close" onClick=${() => drawer(null)}>
+			<button type="button" class="ghost close" aria-label="Close" onClick=${() => drawer(null)}>
 				×
 			</button>
 			<${Show} when=${() => !page()}>
@@ -107,7 +107,7 @@ export function ThreadDetails() {
 			<//>
 			<${Show} when=${page}>
 				<header class="page-head">
-					<button type="button" aria-label="Back to the bot" onClick=${() => setPage(false)}>
+					<button type="button" class="ghost" aria-label="Back to the bot" onClick=${() => setPage(false)}>
 						<span aria-hidden="true">←</span>
 					</button>
 					<h2>Threads</h2>

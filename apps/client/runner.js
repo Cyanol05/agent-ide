@@ -118,7 +118,7 @@ export function RunnerList() {
 	const online = () => runners.filter((runner) => runner.online).length
 	return html`
 		<button
-			class="foot-toggle runner-toggle"
+			class="ghost foot-toggle runner-toggle"
 			type="button"
 			title=${() => `${online()} runner${online() === 1 ? '' : 's'} online`}
 			ref=${(el) => (button = el)}
@@ -130,7 +130,7 @@ export function RunnerList() {
 			<span>${() => `${online()} online`}</span>
 		</button>
 		<div
-			class="settings runner-list"
+			class="popover runner-list"
 			id=${id}
 			popover
 			ref=${(el) => (panel = el)}
@@ -141,9 +141,9 @@ export function RunnerList() {
 			<${Panes}
 				title="Runners"
 				open=${() => false}
-				close=${html`<button type="button" class="close" aria-label="Close" onClick=${() => panel.hidePopover()}>×</button>`}
+				close=${html`<button type="button" class="ghost close" aria-label="Close" onClick=${() => panel.hidePopover()}>×</button>`}
 			>
-				<ul>
+				<ul class="rows">
 					<${For} each=${() => runners}
 						>${(runner) => html`<${RunnerItem} runner=${() => runner} />`}<//
 					>

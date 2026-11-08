@@ -46,12 +46,6 @@ function PickerRunner(runner, props) {
 				<${Dot} state=${() => (runner.status === 'idle' ? 'on' : runner.status)} /><b
 					>${() => runner.name}</b
 				>
-				<small title=${() => runner.dir}
-					>${() =>
-						runner.busy
-							? `busy in ${runner.busy} thread${runner.busy > 1 ? 's' : ''}`
-							: runner.dir}</small
-				>
 			</div>
 			<div class="models">
 				<${For} each=${() => models()}
@@ -69,11 +63,12 @@ function PickerRunner(runner, props) {
 				>
 			</div>
 			<h3>Thinking</h3>
-			<div class="steps">
+			<div class="thinking">
 				<${For} each=${() => THINKING_LEVELS}
 					>${(level) => html`
 						<button
 							type="button"
+							class="ghost"
 							title=${() => level}
 							aria-pressed=${() => String(to().thinkingLevel === level)}
 							onClick=${() =>
