@@ -1013,6 +1013,12 @@ const once = (requestId, command, work) =>
 		return result
 	})
 
+/** The director first, then an explicit recipient, otherwise whom the caller last asked. */
+async function recipients(id, message, { explicit, fallback = () => lastAsked(id), director = true } = {}) {
+	const directed = director && await direct?.(id, message, explicit === undefined)
+	return directed || { to: await (explicit ?? fallback)() }
+}
+
 /** No `to` asks whom the thread last asked, unless the director says otherwise */
 async function postEntry(id, author, input) {
 	const saved = await receipt(input.requestId, `post ${id}`)
@@ -1021,12 +1027,10 @@ async function postEntry(id, author, input) {
 	const images = imageList(input.images)
 	const body = images ? (input.body ?? '').trim() : field(input.body, 'body')
 	const command = !images && body.match(/^\$\s+([\s\S]+)/)?.[1]
-	const directed = !command && (await direct?.(id, { author, body }, !('to' in input)))
-	const to = directed
-		? directed.to
-		: 'to' in input
-			? await addresses(input.to, Boolean(command), id)
-			: await lastAsked(id)
+	const { to, picked } = await recipients(id, { author, body }, {
+		director: !command,
+		explicit: 'to' in input ? () => addresses(input.to, Boolean(command), id) : undefined,
+	})
 	if (command && !to.length) throw new Error('Pick a runner to run the command on')
 	if (command) await reach(to, author, await known())
 	if (!command && to.filter((to) => !to.name).length > 1)
@@ -1043,7 +1047,7 @@ async function postEntry(id, author, input) {
 						body,
 						...(images ? { images } : {}),
 						...(to.length ? { to } : {}),
-						...(directed?.picked ? { picked: directed.picked } : {}),
+						...(picked ? { picked } : {}),
 					},
 					{ steer: input.steer === true },
 				),
@@ -1267,7 +1271,7 @@ const core = {
 	entries,
 	messages,
 	lastAsked,
-	direct: (...args) => direct?.(...args),
+	recipients,
 	instructionsOf: (name) => instructionsOf?.(name),
 	botAgent: (name) => botAgent?.(name),
 	botNames: () => botNames?.() ?? [],
@@ -1847,7 +1851,6 @@ async function upgrade(req, raw, head) {
 	const resolved = (await known())[name]?.models ?? {}
 	if (connection.phase === 'closed') return
 	const runner = {
-		alias: query('alias'),
 		owner: query('owner') && speaker(query('owner')),
 		allow: url.searchParams.getAll('allow').map(speaker),
 		host: query('host'),

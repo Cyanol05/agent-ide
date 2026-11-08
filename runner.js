@@ -22,7 +22,6 @@ const { values: args } = parseArgs({
 	options: {
 		server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://localhost:3000' },
 		name: { type: 'string', default: os.hostname() },
-		alias: { type: 'string', default: '' },
 		/** Each --dir is one more folder agents work in */
 		dir: { type: 'string', multiple: true, default: [process.cwd()] },
 		'discover-dirs': { type: 'boolean', default: false },
@@ -39,7 +38,6 @@ if (args.help) {
 
   --server url      server to dial (AGENT_IDE_SERVER or http://localhost:3000)
   --name name       runner's name (this machine's hostname)
-  --alias name      another name for this runner
   --dir folder      folder agents work in (current folder); repeat for more
   --discover-dirs   offer git and jj checkouts beneath the folders
   --owner name      take work only from this person and those allowed
@@ -142,7 +140,6 @@ async function connect() {
 	const { model, thinkingLevel, error } = defaultModel()
 	const query = new URLSearchParams({
 		runner: name,
-		alias: args.alias,
 		owner: args.owner,
 		host: os.hostname(),
 		dir,

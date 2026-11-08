@@ -11,7 +11,7 @@
  */
 import { defineExtension } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
-import { AGENT, agentTo, writtenTo } from '../util.js'
+import { AGENT, agentTo, writtenTo, mentioned } from '../util.js'
 
 const MODEL = 'gpt-6-luna:low@oskar'
 /** The messages it reads before the new one, how much of each, and of a bot's instructions */
@@ -37,17 +37,6 @@ Answer with one line and nothing else: the candidates' names separated by commas
 Kira: she knows roses
 Kira, Ada: both have a view
 nobody: they're talking to each other`
-
-/** The bots a message @mentions among those here, by name in any case: bot names are written as they read, but people type them in any case */
-function mentioned(body, here) {
-	const bots = new Map(
-		here.filter((agent) => agent.name).map((bot) => [bot.name.toLowerCase(), bot]),
-	)
-	const named = [...body.matchAll(/@([\w.-]+)/g)]
-		.map(([, name]) => bots.get(name.replace(/\.+$/, '').toLowerCase()))
-		.filter(Boolean)
-	return [...new Set(named)]
-}
 
 export function server(core) {
 	const own = core.config?.director ?? {}
@@ -152,7 +141,8 @@ export function server(core) {
 				Object.entries(agents).map(([key, agent]) => core.agentOf(agent.conversation, key)),
 			)
 		).filter((agent) => agent && agent.name !== message.author)
-		const named = mentioned(message.body, here)
+		const named = mentioned(message.body, here.filter((agent) => agent.name).map((agent) => agent.name))
+			.map((name) => here.find((agent) => agent.name === name))
 		if (message.answer)
 			return named.length && (await botTurns(threadId)) + 1 < REST ? { to: named } : undefined
 		if (named.length) return { to: named }

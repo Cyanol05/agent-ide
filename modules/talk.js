@@ -6,7 +6,7 @@
 import { num, obj, opt, str } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
-import { AGENT, writtenTo, field, keyOf, said } from '../util.js'
+import { AGENT, writtenTo, field, keyOf, said, mentioned } from '../util.js'
 
 export function server(core) {
 	const { agentOf, home } = core
@@ -54,18 +54,11 @@ export function server(core) {
 				keyOf(name) !== AGENT &&
 				Boolean((await core.thread(thread)).agents[keyOf(name)])
 			if (member) {
-				const directed = await core.direct(
-					thread,
-					{ author: name, body: args.body },
-					args.to === undefined,
-				)
-				const to = directed
-					? directed.to
-					: args.to === 'nobody'
-						? []
-						: args.to !== undefined
-							? [await core.whom(thread, args.to, false, context.abortSignal)]
-							: (await core.lastAsked(thread)).filter((agent) => agent?.name !== name)
+				const { to, picked } = await core.recipients(thread, { author: name, body: args.body }, {
+					explicit: args.to === undefined ? undefined : async () => args.to === 'nobody'
+						? [] : [await core.whom(thread, args.to, false, context.abortSignal)],
+					fallback: async () => (await core.lastAsked(thread)).filter((agent) => agent?.name !== name),
+				})
 				return core.once(`post ${api.taskId}`, 'post', async (tx) => {
 					context.abortSignal?.throwIfAborted()
 					await core.post(
@@ -75,7 +68,7 @@ export function server(core) {
 							author: name,
 							body: args.body,
 							...(to.length ? { to } : {}),
-							...(directed?.picked ? { picked: directed.picked } : {}),
+							...(picked ? { picked } : {}),
 						},
 						{ steer: true, member: true },
 					)
@@ -101,7 +94,7 @@ export function server(core) {
 				)
 			const named = [
 				...(args.to !== undefined ? [botNamed(args.to)] : []),
-				...[...args.body.matchAll(/@([\w.-]+)/g)].map(([, mention]) => botNamed(mention)),
+				...mentioned(args.body, bots),
 			].filter((bot) => bot && bot !== name)
 			if (new Set(named).size > 1 && (args.to === undefined || botNamed(args.to))) {
 				const to = await Promise.all(
@@ -140,21 +133,13 @@ export function server(core) {
 				asked &&
 				(await agentOf((await core.thread(thread)).agents[askerKey]?.conversation, askerKey))
 			/** An answer goes back to its asker; any other post to a thread asks the bots it @mentions there, or with no `to`, whom the director picks */
-			const directed =
-				thread !== undefined &&
-				!asked &&
-				(await core.direct(thread, { author: name, body: args.body }, args.to === undefined))
-			const to = directed
-				? directed.to
-				: args.to === 'nobody'
-					? []
-					: args.to !== undefined
-						? [await core.whom(thread, args.to, false, context.abortSignal)]
-						: thread === undefined
-							? [await agentOf(api.conversationId)]
-							: asker
-								? [asker]
-								: await core.lastAsked(thread)
+			const { to, picked } = await core.recipients(thread, { author: name, body: args.body }, {
+				director: thread !== undefined && !asked,
+				explicit: args.to === undefined ? undefined : async () => args.to === 'nobody'
+					? [] : [await core.whom(thread, args.to, false, context.abortSignal)],
+				fallback: async () => thread === undefined ? [await agentOf(api.conversationId)]
+					: asker ? [asker] : await core.lastAsked(thread),
+			})
 			return core.once(`post ${api.taskId}`, 'post', async (tx) => {
 				context.abortSignal?.throwIfAborted()
 				const id = thread ?? (await core.startThread(tx, title, from))
@@ -167,7 +152,7 @@ export function server(core) {
 						...(to.length ? { to } : {}),
 						from,
 						...(asked ? { re: [asked.id] } : {}),
-						...(directed?.picked ? { picked: directed.picked } : {}),
+						...(picked ? { picked } : {}),
 					},
 					// Like a person's Enter, a post joins the run its agent is in, as answers coming back do
 					{ empty: thread === undefined, steer: true },

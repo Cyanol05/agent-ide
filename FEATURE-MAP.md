@@ -7,6 +7,7 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   Thread, Runners, Keys, Receipts   the docs it keeps (defineDoc)
   Anchor, Admit, Deliver, Shell     the tasks: own an agent, take a message in, hand it over, run `$ cmd`
   address, whom, modelOn, reach     whom a `to` asks, on which runner and model
+  recipients                       director → explicit recipient → last-asked choice
   post, append, postEntry           write a message and hand it to each agent it asks
   reconfigure, newAgent, setUp      an agent switching model/thinking/runner/folder in place, or starting
   outcome, tell, restore, faulted   what a finished delivery posts back (a bot's answer asks whom direct says), or a failure says
@@ -25,7 +26,7 @@ runner-updater.js        what `curl <server>/connect-runner | sh` starts; keeps 
 remote.js                the runner protocol, both ends: createRunners (server), serveRunner (runner),
                          runnerProvider (a model over the wire), remoteEnv (tools in the runner's folder)
 cli.js                   the API from a terminal
-util.js                  helpers server and modules share: agentTo, writtenTo, keyOf, speaker, said,
+util.js                  helpers server and modules share: agentTo, writtenTo, mentioned, keyOf, speaker, said,
                          finished (task result), background (thread-owned task)
 modules.js               agent-ide.json, MODULES, and loading each module's server/runner half
 modules/
@@ -99,6 +100,7 @@ examples/86–90-*-real-model.js     move bench: introductions, another thread's
 examples/real-model-bench.js       real runner setup, delivery settling and transcript evidence
 examples/real-model-bench.md       how to run the move bench and its recorded baseline
 examples/91-wait-for-the-runner.js runner startup waits for ready or rejects on exit
+examples/95-cli-address-options.js CLI folder/thinking flags preserve model addresses and reject bot-only names
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 

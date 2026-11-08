@@ -1,4 +1,5 @@
 /** The API from a terminal */
+import { agentTo } from './util.js'
 import { defaultTitle } from './apps/client/title.js'
 import { parseArgs } from 'node:util'
 import { on, once } from 'node:events'
@@ -71,10 +72,9 @@ async function api(method, route, body) {
 /** Names belong to the API; only --thinking and --dir need an object. */
 function agent(name) {
 	if (!flags.thinking && !flags.dir) return name
-	const at = name.lastIndexOf('@')
+	if (!name.includes('@')) throw new Error('--thinking and --dir require a model@runner, not a bot name')
 	return {
-		runner: name.slice(at + 1),
-		model: at < 0 ? '' : name.slice(0, at),
+		...agentTo(name),
 		...(flags.thinking ? { thinkingLevel: flags.thinking } : {}),
 		...(flags.dir ? { dir: flags.dir } : {}),
 	}

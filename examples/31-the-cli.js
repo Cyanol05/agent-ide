@@ -22,7 +22,6 @@ for (const flag of ['--help', '-h']) {
 		[
 			'server',
 			'name',
-			'alias',
 			'dir',
 			'discover-dirs',
 			'owner',
