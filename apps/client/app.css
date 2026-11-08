@@ -679,6 +679,15 @@ agent-memory {
 					> li.elsewhere {
 						margin-left: 0;
 					}
+
+					/* The line above already says where it went: no headers, the question muted, the answer plain. */
+					> li > small {
+						display: none;
+					}
+
+					> li:first-child {
+						color: var(--mute);
+					}
 				}
 			}
 
