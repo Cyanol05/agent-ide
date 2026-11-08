@@ -112,7 +112,8 @@ DELETE /api/runners/:name                  takes its key away
 GET    /api/threads
 POST   /api/threads {title, parent?, tools?, requestId?}
 GET    /api/threads/:id                    the thread, its messages and who's in it
-DELETE /api/threads/:id                    hides it
+GET    /api/threads/archived               archived threads, flat, with no family tree
+POST   /api/threads/:id/archive {archived: true|false}   archives it, or brings it back
 POST   /api/threads/:id/entries {body, to?, images?, steer?, requestId?}   images as pi's ImageContent, base64
 POST   /api/threads/:id/fork {at, title?}
 POST   /api/threads/:id/title {title}

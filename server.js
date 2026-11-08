@@ -903,12 +903,13 @@ async function people(id) {
 }
 
 async function threadRow(id, reader, all) {
-	const { reads, ...row } = await thread(id)
+	const { reads, hidden, ...row } = await thread(id)
 	const busy = all.filter((job) => job.thread === id)
 	const agents = await agentsIn(row, busy)
 	return {
 		id,
 		...row,
+		archived: hidden,
 		/** With memory on, whether it remembers; without, nothing */
 		memory: remembers?.(row),
 		readers: Object.keys(reads),
@@ -923,7 +924,7 @@ const threadList = async (reader) => {
 	const busy = await work()
 	const rows = (
 		await Promise.all((await threadIds()).map((id) => threadRow(id, reader, busy)))
-	).filter((row) => !row.hidden)
+	).filter((row) => !row.archived)
 	const byId = new Map(rows.map((row) => [row.id, row]))
 	const parentOf = (row) => row.parent ?? row.conversation?.parent?.conversationId
 	const families = new Map()
@@ -1295,7 +1296,7 @@ const hook = (name) => {
 	return first?.[name]
 }
 const posted = modules.flatMap((module) => module.posted ?? [])
-const hiding = modules.flatMap((module) => module.hiding ?? [])
+const archiving = modules.flatMap((module) => module.archiving ?? [])
 const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames] = [
 	'direct',
 	'turns',
@@ -1324,13 +1325,13 @@ async function input(req) {
 	return JSON.parse(body || '{}')
 }
 
-async function hideThread(id) {
+async function archiveThread(id, archived) {
 	await conversation(id)
 	await commit(async (tx) => {
-		;(await tx.doc(Thread, id)).hidden = true
-		for (const hook of hiding) await hook(tx, id)
+		if (archived) for (const hook of archiving) await hook(tx, id)
+		;(await tx.doc(Thread, id)).hidden = Boolean(archived)
 	})
-	return { id }
+	return { id, archived: Boolean(archived) }
 }
 
 async function markRead(id, reader) {
@@ -1421,7 +1422,7 @@ const routes = [
 	['GET /api/threads/archived', (req) => archivedThreads(user(req))],
 	['POST /api/threads', async (req) => createThread(await input(req))],
 	['GET /api/threads/:id', (req, id) => threadView(id, user(req))],
-	['DELETE /api/threads/:id', (req, id) => hideThread(id)],
+	['POST /api/threads/:id/archive', async (req, id) => archiveThread(id, (await input(req)).archived)],
 	['POST /api/threads/:id/entries', async (req, id) => postEntry(id, user(req), await input(req))],
 	['POST /api/threads/:id/fork', async (req, id) => forkThread(id, await input(req))],
 	['POST /api/threads/:id/title', async (req, id) => setTitle(id, await input(req))],

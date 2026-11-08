@@ -130,12 +130,12 @@ check(
 	JSON.stringify([atHome, v.agents, told]),
 )
 
-const hide = await api('DELETE', `/api/threads/${home}`)
+const hide = await api('POST', `/api/threads/${home}/archive`, { archived: true })
 check(
 	hide.status === 400 &&
 		/ada's home/.test(hide.json.error) &&
-		(await api('GET', '/api/threads')).json.some((t) => t.id === home && !t.hidden),
-	"ada's home can't be hidden while she's a bot",
+		(await api('GET', '/api/threads')).json.some((t) => t.id === home && !t.archived),
+	"ada's home can't be archived while she's a bot",
 	JSON.stringify(hide.json),
 )
 
@@ -145,7 +145,7 @@ v = await answered(shed, 3)
 check(
 	gone.status === 200 &&
 		!(await bots()).some((b) => b.name === 'ada') &&
-		(await api('GET', '/api/threads')).json.some((t) => t.id === home && !t.hidden) &&
+		(await api('GET', '/api/threads')).json.some((t) => t.id === home && !t.archived) &&
 		answers(v)[2]?.data.author === 'ada' &&
 		JSON.parse(prompt.laptop).at(-1).sections?.bot === null,
 	'forgetting ada keeps every thread: her agents stay, without her instructions',
@@ -172,10 +172,10 @@ check(
 	'a name that is no bot is refused',
 	JSON.stringify(nameless2.json),
 )
-const hidden = await api('DELETE', `/api/threads/${home}`)
+const archived = await api('POST', `/api/threads/${home}/archive`, { archived: true })
 check(
-	hidden.status === 200,
-	'forgotten, her home hides like any thread',
-	JSON.stringify(hidden.json),
+	archived.status === 201,
+	'forgotten, her home archives like any thread',
+	JSON.stringify(archived.json),
 )
 done()
