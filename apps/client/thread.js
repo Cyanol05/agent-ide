@@ -300,7 +300,51 @@ export function Thread(props) {
 			room.style.height = `${free}px`
 			if (!free) sent = null
 		}
+		/** The line you tap holds still: what opens grows downward, and what closes near the end leaves room under it until something new comes */
+		let held = null,
+			padded = false
+		list.addEventListener(
+			'click',
+			(event) => {
+				const summary = event.target.closest?.('summary')
+				if (!summary || !list.contains(summary)) return
+				const details = summary.parentElement
+				const was = details.open
+				const hold = (held = { summary, top: summary.getBoundingClientRect().top })
+				const release = () =>
+					requestAnimationFrame(() =>
+						requestAnimationFrame(() => {
+							if (held === hold) held = null
+						}),
+					)
+				// A line fills in once it hears its own toggle, so the hold lasts until that has been laid out
+				details.addEventListener('toggle', release, { once: true })
+				// A click that toggled nothing, like a link in the line, lets go at once
+				requestAnimationFrame(() => {
+					if (details.open === was) {
+						details.removeEventListener('toggle', release)
+						release()
+					}
+				})
+			},
+			true,
+		)
+		const keep = () => {
+			const shift = held.summary.getBoundingClientRect().top - held.top
+			const short = list.scrollTop + shift + list.clientHeight - list.scrollHeight
+			if (short > 0) {
+				room.style.height = `${room.offsetHeight + short}px`
+				padded = true
+			}
+			if (shift) list.scrollTop += shift
+			// Opening a line is the reader's move: following goes on only if the view still ends at the bottom
+			stuck = list.scrollTop + list.clientHeight >= list.scrollHeight - 4
+			followed = list.scrollHeight
+		}
 		bottom = () => {
+			if (held) return keep()
+			if (padded && sent === null) room.style.height = '0px'
+			padded = false
 			fill()
 			if (stuck) list.scrollTop = list.scrollHeight
 			followed = list.scrollHeight
