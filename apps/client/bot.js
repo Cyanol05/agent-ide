@@ -18,13 +18,14 @@ import {
 	followThread,
 	hrefOf,
 	hueOf,
+	homeBot,
 	hues,
 	openThread,
 	paint,
 	reloadBots,
 	threads,
 } from './server.js'
-import { formatAgent } from './agent.js'
+import { formatAgent, shortLabel } from './agent.js'
 import { agent, openPicker } from './composer.js'
 import { Dot } from './dot.js'
 import { report } from './notice.js'
@@ -48,10 +49,35 @@ export function botThreads(bot) {
 	return { own, elsewhere }
 }
 
+/** Unarchived threads another thread started with this bot as their agent, which live in the asker's family */
+const askedOf = (bot) => {
+	const family = familyOf(bot)
+	return threads.filter(
+		(thread) =>
+			threads.some((other) => other.id === thread.parent) &&
+			!thread.archived &&
+			!family.has(thread.id) &&
+			thread.agents.some((agent) => agent.name === bot.name),
+	)
+}
+
+/** Who asked: the bot in the parent thread, or its agent */
+const askerOf = (thread) => {
+	const parent = threads.find((other) => other.id === thread.parent)
+	if (!parent) return ''
+	const names = parent.agents.map((agent) => agent.name)
+	return (
+		homeBot(parent.id)?.name ??
+		names.find((name) => bots.some((bot) => bot.name === name)) ??
+		shortLabel(names[0])
+	)
+}
+
 export function BotItem(props) {
+	const asked = createMemo(() => askedOf(props.bot))
 	const family = createMemo(() => {
 		const members = familyOf(props.bot)
-		return threads.filter((thread) => members.has(thread.id))
+		return [...threads.filter((thread) => members.has(thread.id)), ...asked()]
 	})
 	const working = createMemo(() => family().filter((thread) => thread.status === 'working').length)
 	const status = createMemo(
@@ -75,6 +101,10 @@ export function BotItem(props) {
 				<//>
 			</a>
 		</li>
+		<${For} each=${asked}
+			>${(thread) =>
+				html`<${ThreadItem} thread=${() => thread} depth=${1} from=${() => askerOf(thread)} />`}<//
+		>
 	`
 }
 
