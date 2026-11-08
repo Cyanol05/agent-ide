@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { For, Show } from 'solid-js'
 import { runners } from './server.js'
-import { THINKING_LEVELS } from './agent.js'
+import { THINKING_LEVELS, thinkingWord } from './agent.js'
 import { Dot } from './dot.js'
 import { ConnectRunner } from './runner.js'
 
@@ -77,7 +77,7 @@ function PickerRunner(runner, props) {
 									thinkingLevel: to().thinkingLevel === level ? undefined : level,
 								})}
 						>
-							${() => ({ minimal: 'min', medium: 'med' })[level] ?? level}
+							${() => thinkingWord(level)}
 						</button>
 					`}<//
 				>

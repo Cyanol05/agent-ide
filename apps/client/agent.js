@@ -5,6 +5,9 @@ export const [doing, setDoing] = createRoot(() => createStore({}))
 
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
+/** A thinking level in the picker's short words */
+export const thinkingWord = (level) => ({ minimal: 'min', medium: 'med' })[level] ?? level
+
 /** `model:thinking@runner`, as pi names a model, or `ada=model@runner` for a bot: util.js's agentTo, with the thinking split off */
 export function agentTo(text) {
 	const eq = text.indexOf('='),

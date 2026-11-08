@@ -32,7 +32,7 @@ import {
 	server,
 	threads,
 } from './server.js'
-import { agentTo, formatAgent, writtenTo } from './agent.js'
+import { agentTo, formatAgent, thinkingWord } from './agent.js'
 import { placePopover } from './popover.js'
 import { ModelPicker } from './model-picker.js'
 import { Dot } from './dot.js'
@@ -436,7 +436,21 @@ export function Composer(props) {
 									: 'on'
 								: ''}
 					/>
-					<span>${() => asking() || 'Pick a model'}</span>
+					<span
+						><${Show}
+							when=${() => !directed(props.thread) && recipients(props.thread).length}
+							fallback=${() => asking() || 'Pick a model'}
+							><${For} each=${() => recipients(props.thread)}
+								>${(to, index) => [
+									() => (index() ? ' + ' : ''),
+									() => recipientWords(to, props.thread)[0],
+									html`<${Show} when=${() => recipientWords(to, props.thread)[1]}
+										><span class="thinking-word"> · ${() => recipientWords(to, props.thread)[1]}</span><//
+									>`,
+								]}<//
+							><//
+						></span
+					>
 				</button>
 			</div>
 			<div class="popover model-picker mentions" popover="manual" ref=${(el) => (mentionList = el)}>
@@ -676,18 +690,18 @@ const directing = (thread) =>
 const directed = (thread) => directing(thread) && !pick(thread)
 export const recipients = (thread = current()) =>
 	[agent(thread), ...askedBots(thread)].filter(Boolean)
-/** An agent asked without thinking keeps the running level, or uses the runner's known pi default. */
-const recipientLabel = (to, thread) => {
+/** A bot by its name, an agent by its model and the picker's word for its thinking; the runner is the picker's to show. Without thinking asked, it keeps the running level, or the runner's known pi default. */
+const recipientWords = (to, thread) => {
 	const running = here(thread).find(
 		(agent) =>
 			agent.to?.name === to.name && agent.to?.model === to.model && agent.to?.runner === to.runner,
 	)?.to
 	const runner = runners.find((runner) => runner.name === to.runner)
-	return writtenTo({
-		...to,
-		thinkingLevel: to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel),
-	})
+	const thinkingLevel = to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel)
+	if (to.name) return [to.name]
+	return [to.model?.split('/').pop(), thinkingLevel && thinkingWord(thinkingLevel)]
 }
+const recipientLabel = (to, thread) => recipientWords(to, thread).filter(Boolean).join(' · ')
 /** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
 export const toFor = (runner, thread = current()) =>
 	agent(thread)?.runner === runner.name ? agent(thread) : fallback(runner)

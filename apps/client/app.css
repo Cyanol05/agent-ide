@@ -838,6 +838,13 @@ agent-memory {
 	}
 }
 
+/* A phone's bar has room for the model, not how hard it thinks; the picker still says. */
+@media (max-width: 700px) {
+	.thread form .pick .thinking-word {
+		display: none;
+	}
+}
+
 /* A message's markdown: as compact as the chat around it, headings barely bigger than text. */
 .markdown {
 	white-space: normal;
