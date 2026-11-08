@@ -348,6 +348,7 @@ export function Thread(props) {
 				<h2 class="title">
 					<button
 						type="button"
+						class="thread-pill"
 						title="Thread details and tools"
 						style=${() => colorOf(homeBot(props.id)?.name ?? '')}
 						onClick=${titleClick}
@@ -359,7 +360,7 @@ export function Thread(props) {
 				<${Show} when=${() => props.id && columns().length > 1}>
 					<button
 						type="button"
-						class="ghost close"
+						class="round close"
 						title="Close here; the thread details still list it"
 						aria-label="Close"
 						onClick=${() => closeColumn(props.id)}

@@ -1,3 +1,5 @@
+/* A control's look is its element's or its variant class's, here; a rule for a place in the app sets only its layout. */
+
 /* iA Writer Quattro S, the same face as the oskar bb theme. */
 @font-face {
 	font-family: 'iA Writer Quattro S';
@@ -54,20 +56,12 @@ html {
 	-webkit-tap-highlight-color: transparent;
 	-webkit-text-size-adjust: 100%;
 	overscroll-behavior-y: none;
-	scrollbar-gutter: stable;
 }
 
-/* Only the mouse gets the page's scrollbar gutter reserved; touch scrollbars overlay. */
 @media (any-pointer: coarse) {
 	html {
 		overscroll-behavior-y: auto;
-		scrollbar-gutter: auto;
 	}
-}
-
-/* The chat never scrolls the page, so nothing waits for a scrollbar: the stage reaches the window's edge. */
-html:has(body.chat) {
-	scrollbar-gutter: auto;
 }
 
 button,
@@ -104,12 +98,6 @@ body {
 :focus-visible {
 	outline: 2px solid var(--pick);
 	outline-offset: 2px;
-}
-
-/* A list that scrolls keeps its bounce to itself. */
-.thread > ul,
-.thread-list > ul {
-	overscroll-behavior: contain;
 }
 
 h1,
@@ -331,8 +319,8 @@ input[type='checkbox'] {
 	display: flex;
 	align-items: center;
 	gap: 0.4rem;
-	padding: 0.2rem 0.4rem;
-	padding-left: calc(0.4rem + var(--depth, 0) * 1rem);
+	padding: 0.4rem 0.6rem;
+	padding-left: calc(0.6rem + var(--depth, 0) * 1rem);
 	border: 0;
 	background: none;
 	color: inherit;
@@ -400,8 +388,310 @@ input.recipients {
 	}
 }
 
+/* The thread's name, a pill: in each thread's head on a big screen, in the bar on a phone. Raised like the composer box, so it doesn't blend into the page behind it; its light first. */
+.thread-pill {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
+	max-width: 60%;
+	height: 2.125rem;
+	padding: 0 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: var(--tint);
+	color: var(--ink);
+	font-size: 13px;
+	font-weight: 400;
+
+	> span:not(.dot) {
+		flex: 0 1 auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	> .dot {
+		order: -1;
+	}
+}
+
+/* Round: the pill's square sibling, for one glyph. */
+button.round {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 2.125rem;
+	height: 2.125rem;
+	padding: 0;
+	background: var(--tint);
+	color: var(--mute);
+}
+
+/* A foot toggle: a dot and a word, its dot where a row's sits. */
+button.foot-toggle {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	height: 1.6rem;
+	padding: 0 0.6rem;
+	font-size: 12px;
+	text-align: left;
+
+	span:last-child {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+/* The way back to the story: an arrow, quiet even while it's on. */
+button.ghost.mode-toggle {
+	display: grid;
+	place-items: center;
+	width: 1.6rem;
+	height: 1.6rem;
+	padding: 0;
+	font-size: 12px;
+	background: none;
+	color: var(--mute);
+}
+
 .mute {
 	color: var(--mute);
+}
+
+.dot {
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 50%;
+	background: var(--line);
+	flex: none;
+
+	&.on {
+		background: var(--ok);
+	}
+
+	&.blocked {
+		background: var(--wait);
+	}
+
+	&.working {
+		background: var(--ok);
+		animation: blink 1s ease-in-out infinite;
+	}
+}
+
+@keyframes appear {
+	from {
+		visibility: hidden;
+	}
+}
+
+@keyframes blink {
+	50% {
+		opacity: 0.3;
+	}
+}
+
+/* Popup anchors stay still: their pressed scale would shift the position measured on opening. */
+button:active:not(:disabled):not([popovertarget], [aria-expanded]) {
+	transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	button {
+		transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
+	}
+}
+
+button[data-danger]:focus-visible:not(:disabled) {
+	color: var(--danger);
+	border-color: var(--danger);
+}
+
+/* Hover is for a mouse; on touch it sticks after a tap. */
+@media (hover: hover) and (pointer: fine) {
+	button:hover {
+		border-color: var(--edge);
+	}
+
+	button[data-danger]:hover:not(:disabled) {
+		color: var(--danger);
+		border-color: var(--danger);
+	}
+
+	input.bare:hover {
+		border-color: var(--line);
+	}
+
+	button.round:hover {
+		color: var(--ink);
+	}
+
+	button.ghost:hover:not(:disabled),
+	button.model:hover {
+		background: color-mix(in srgb, CanvasText 8%, transparent);
+		color: var(--ink);
+	}
+}
+
+/* The model picker and settings: popovers on desktop, bottom sheets on phones. */
+.popover {
+	position: fixed;
+	inset: auto;
+	margin: 0;
+	width: min(24rem, calc(100vw - 1rem));
+	max-height: min(70dvh, 32rem);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	background: Canvas;
+	color: var(--ink);
+	font-size: 14px;
+	box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+
+.model-controls > ul,
+.popover .rows {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.25rem;
+}
+
+/* One row across models, runners and modules, also inside the phone sheets. */
+:is(.model-controls .who, button.model, .popover .rows > li) {
+	display: flex;
+	align-items: start;
+	gap: 0.6rem;
+	padding: 0.45rem 0.5rem;
+	border-radius: 8px;
+
+	> .dot {
+		margin-top: 0.45rem;
+	}
+
+	> div {
+		flex: 1;
+		min-width: 0;
+	}
+
+	small {
+		color: var(--mute);
+		font-size: 12px;
+	}
+}
+
+:where(.popover .rows > li) small {
+	display: block;
+	overflow-wrap: anywhere;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	:is(button.model:not(.on), .popover .rows > li):hover {
+		background: var(--tint);
+	}
+}
+
+/* A detail covers its list without unmounting it or changing the frame's size. */
+.panes {
+	position: relative;
+	max-height: inherit;
+
+	.pane {
+		display: flex;
+		flex-direction: column;
+		max-height: inherit;
+
+		> header {
+			display: grid;
+			grid-template-columns: 1.25rem 1fr auto;
+			align-items: center;
+			gap: 0.4rem;
+			flex: none;
+			min-height: 2.25rem;
+			font-size: 12px;
+			color: var(--mute);
+			padding: 0.25rem 0.7rem;
+			border-bottom: 1px solid var(--line);
+
+			h2 {
+				margin: 0;
+				font: inherit;
+				font-weight: 500;
+			}
+		}
+	}
+
+	.pane-body {
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding: 0.5rem 0.7rem 0.7rem;
+	}
+
+	.detail {
+		position: absolute;
+		inset: 0;
+		background: Canvas;
+	}
+}
+
+/* A pane's close × is for phones. */
+.panes .pane > header > button.close {
+	display: none;
+}
+
+@media (max-width: 700px) {
+	.popover {
+		/* Lifted off the edge, clear of the home bar, like the composer. */
+		inset: auto 0.6rem calc(0.6rem + env(safe-area-inset-bottom)) 0.6rem;
+		width: auto;
+		max-height: 70dvh;
+		border-radius: 14px;
+		padding-bottom: 0.7rem;
+	}
+
+	.panes .pane-body {
+		padding-bottom: calc(0.7rem + env(safe-area-inset-bottom));
+	}
+
+	.panes .pane > header > button.close {
+		display: block;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.popover {
+		transition:
+			opacity 0.18s,
+			translate 0.25s cubic-bezier(0.23, 1, 0.32, 1),
+			display 0.25s allow-discrete,
+			overlay 0.25s allow-discrete;
+	}
+
+	.popover:not(:popover-open) {
+		opacity: 0;
+		translate: 0 8px;
+	}
+
+	@starting-style {
+		.popover:popover-open {
+			opacity: 0;
+			translate: 0 8px;
+		}
+	}
+}
+/* The app: the chat fills the window. The walkthrough, when it's on, lays its story over this. */
+
+/* A list that scrolls keeps its bounce to itself. */
+.thread > ul,
+.thread-list > ul {
+	overscroll-behavior: contain;
 }
 
 /* The two lists that scroll: a thin bar, quiet until you touch it. */
@@ -428,63 +718,59 @@ input.recipients {
 	background: none;
 }
 
-/* The page: prose on the left, the live system pinned on the right. On a narrow screen, one column. */
-.page {
-	display: grid;
-	grid-template-columns: minmax(0, 34rem) minmax(0, 1fr);
-	gap: 0 3rem;
-	padding: 0 2rem;
-
-	> section {
-		grid-column: 1;
-		padding: 3rem 0;
-		min-height: 60vh;
-		min-height: 60svh;
-
-		&:first-child {
-			padding-top: 4rem;
-		}
-
-		&:last-of-type {
-			min-height: 90vh;
-			min-height: 90svh;
-		}
-	}
+/* Just the chat: the stage takes the page. */
+.page > section {
+	display: none;
 }
 
 .stage {
-	grid-column: 2;
-	grid-row: 1 / span 30;
-	position: sticky;
-	top: 0;
-	align-self: start;
+	position: relative;
 	height: 100vh;
-	overflow-y: auto;
-	padding: 2rem 0;
+	height: 100dvh;
+	height: var(--visual-height, 100dvh);
+	overflow: hidden;
 }
 
-@media (max-width: 1000px) {
-	/* The stage comes right after the server is introduced. */
-	.page {
-		display: flex;
-		flex-direction: column;
-		padding: 0 1rem;
+/* Out of the way: a small arrow at the end of the runners row, under the thread list. */
+.mode-toggle {
+	position: absolute;
+	bottom: 0.55rem;
+	left: calc(var(--list-width, 15rem) - 2.4rem);
+	z-index: 2;
+}
 
-		> section {
-			min-height: 0;
-			padding: 2rem 0;
+/* The live system, flattened: the server's box is the app's frame; the client, the wires and the runners' cards are the story's. */
+.system {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	height: 100%;
+	font-size: 14px;
+}
 
-			&:nth-child(n + 3) {
-				order: 2;
-			}
-		}
-	}
+.client,
+.wires,
+.runners,
+.server > b,
+.server > small {
+	display: none;
+}
 
-	.stage {
-		order: 1;
-		position: static;
-		height: auto;
-		padding: 1rem 0;
+.server {
+	position: relative;
+	z-index: 1;
+	flex: 1;
+	min-height: 0;
+	background: Canvas;
+
+	> .body {
+		display: grid;
+		grid-template-columns: var(--list-width, 15rem) minmax(0, 1fr);
+		grid-template-rows: minmax(0, 1fr);
+		align-items: start;
+		position: relative;
+		height: 100%;
 	}
 }
 
@@ -602,13 +888,6 @@ agent-memory {
 	}
 }
 
-.try {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.5rem;
-	margin: 1rem 0;
-}
-
 /* The title reads as a heading and edits in place. */
 .thread-details > .thread-title {
 	display: block;
@@ -637,174 +916,26 @@ agent-memory {
 	}
 }
 
-/* The live system: plumbing is quiet; the route your next message takes is loud, and shows the agent's state. */
-.system {
-	position: relative;
-	display: grid;
-	grid-template-columns: max-content minmax(0, 1fr);
-	gap: 2.5rem;
-	align-items: start;
-	font-size: 14px;
-}
-
-.runners {
-	grid-column: 2;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 1rem;
-
-	.node {
-		width: 17rem;
-	}
-}
-
-/* Wires run behind the boxes, so they come out of a box's edge and never cross its text. */
-.system > .node,
-.runners .node,
-.thread {
-	position: relative;
-	z-index: 1;
-}
-
-.wires path {
-	stroke: var(--line);
-	stroke-width: 1.5;
-
-	&.off {
-		stroke-dasharray: 4 4;
-	}
-
-	&.route {
-		stroke: var(--pick);
-		stroke-width: 2.5;
-	}
-
-	&.working {
-		stroke: var(--ok);
-		stroke-width: 2.5;
-		stroke-dasharray: 6 6;
-		animation: flow 0.6s linear infinite;
-	}
-
-	&.blocked {
-		stroke: var(--wait);
-		stroke-width: 2.5;
-		stroke-dasharray: 6 6;
-	}
-}
-
-@keyframes flow {
-	to {
-		stroke-dashoffset: -12;
-	}
-}
-
-.node {
-	border: 1px solid var(--line);
-	border-radius: 8px;
-	background: var(--tint);
-	padding: 0.6rem 0.8rem;
-	transition:
-		opacity 0.3s,
-		box-shadow 0.3s;
-
-	&.off {
-		background: Canvas;
-		border-style: dashed;
-	}
-
-	&.routed {
-		border-color: var(--pick);
-	}
-
-	> b {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-	}
-
-	/* A runner's name, as the button that asks it with a keyboard. */
-	> button.ask {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		margin: 0;
-		padding: 0;
-		border: 0;
-		background: none;
-		color: inherit;
-		font: inherit;
-		font-weight: 700;
-	}
-
-	> small {
-		display: block;
-		color: var(--mute);
-		overflow-wrap: anywhere;
-	}
-}
-
-.dot {
-	width: 0.55rem;
-	height: 0.55rem;
-	border-radius: 50%;
-	background: var(--line);
-	flex: none;
-
-	&.on {
-		background: var(--ok);
-	}
-
-	&.blocked {
-		background: var(--wait);
-	}
-
-	&.working {
-		background: var(--ok);
-		animation: blink 1s ease-in-out infinite;
-	}
-}
-
-@keyframes appear {
-	from {
-		visibility: hidden;
-	}
-}
-
-@keyframes blink {
-	50% {
-		opacity: 0.3;
-	}
-}
-
-/* What the section in view talks about gets a soft glow; nothing else changes, so the live parts stay readable. */
-.stage[data-focus='server'] .server,
-.stage[data-focus='runners'] .runners .node,
-.stage[data-focus='hands'] .runners .node,
-.stage[data-focus='thread'] .thread {
-	box-shadow: 0 0 0 3px #2f6fd633;
-}
-
-.server > .body {
-	display: grid;
-	grid-template-columns: 10rem minmax(0, 1fr);
-	gap: 0.75rem;
-	margin-top: 0.5rem;
-	align-items: start;
-}
-
 .threads {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 0.75rem;
 	align-items: start;
 	min-width: 0;
+	height: 100%;
+	overflow-x: auto;
 }
 
 .thread-list {
-	font-size: 13px;
 	position: relative;
 	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	align-self: stretch;
+	min-height: 0;
+	/* The same inset on every side as the composer's own margin, so its foot row floats the same distance off the bottom edge */
+	padding: 0.6rem;
+	border-right: 1px solid var(--line);
+	overflow-y: auto;
+	font-size: 13px;
 
 	/* A new row reads like the rows it makes, its + where their dot sits. */
 	li.new {
@@ -834,7 +965,6 @@ agent-memory {
 }
 
 .thread-list > ul {
-	max-height: 24rem;
 	overflow-y: auto;
 }
 
@@ -844,7 +974,8 @@ agent-memory {
 	min-width: 0;
 	align-items: center;
 	gap: 0.1rem;
-	border-radius: 4px;
+	border-radius: 8px;
+	font-size: 14px;
 	--step: color-mix(in srgb, CanvasText 4%, transparent);
 
 	/* The row is the control: a link to the thread, or the button that makes one. */
@@ -899,85 +1030,105 @@ agent-memory {
 	background: color-mix(in srgb, CanvasText 13%, transparent);
 }
 
-@media (max-width: 1300px) {
-	.server > .body {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
-	.thread-list > ul {
-		max-height: 7rem;
-	}
-}
-
+/* A thread: a column with its name on top and the composer at the foot, the messages scrolling between them, fading out under both. */
 .thread {
-	background: Canvas;
-	border: 1px solid var(--line);
-	border-radius: 10px;
-	flex: 1 1 16rem;
+	--chat-width: 50rem;
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	flex: 1 0 min(100%, 26rem);
 	min-width: 0;
+	height: 100%;
+	background: Canvas;
+	border-right: 1px solid var(--line);
 	transition: opacity 0.3s;
 
-	&.current {
-		border-color: var(--edge);
+	/* Only the columns beside it get a line; at the window's edge there is nothing to divide. */
+	&:last-child {
+		border-right: 0;
 	}
 
+	/* A wash of the page's own colour above the list and below the pill and composer. Not a mask on the list, which iOS paints over the pill. */
+	&::before,
+	&::after {
+		content: '';
+		position: absolute;
+		inset-inline: 0;
+		z-index: 1;
+		pointer-events: none;
+	}
+
+	&::before {
+		top: 0;
+		height: var(--fade-top, 3.4rem);
+		background: linear-gradient(Canvas, transparent);
+	}
+
+	&::after {
+		bottom: 0;
+		height: var(--compose-height, 7rem);
+		background: linear-gradient(transparent, Canvas calc(100% - 2.2rem));
+	}
+
+	/* The head is no bar, just the pill and, beside it, its own quiet close. */
 	> header {
+		position: absolute;
+		inset: 0 0 auto;
+		z-index: 2;
 		display: flex;
 		align-items: center;
-		padding: 0.5rem 0.9rem;
-		margin-block-end: 0.5rem;
-		border-bottom: 1px solid var(--line);
+		justify-content: center;
+		gap: 0.4rem;
+		margin: 0.5rem 0.9rem;
+		pointer-events: none;
 		font-size: 13px;
 		font-weight: 600;
 
-		/* Its name is a heading, in it the button that opens the details; the header sets the box. */
+		button {
+			pointer-events: auto;
+		}
+
+		/* The heading only wraps the pill, so all of the pill is its button. */
 		> h2.title {
 			display: flex;
-			flex: 1;
+			flex: 0 1 auto;
 			min-width: 0;
+			max-width: 60%;
 			margin: 0;
 			font: inherit;
 
 			> button {
-				display: flex;
-				align-items: center;
-				gap: 0.4rem;
 				flex: 1;
-				min-width: 0;
+				max-width: none;
 				margin: 0;
-				padding: 0;
-				border: 0;
-				background: none;
-				color: inherit;
-				font: inherit;
 				text-align: start;
 
-				span:first-child {
+				> span:not(.dot) {
 					flex: 1;
-					overflow: hidden;
-					text-overflow: ellipsis;
-					white-space: nowrap;
 				}
 			}
 		}
 	}
 
-	/* A family member's column closes quietly, in this page only. */
-	> header > button.close {
-		flex: none;
-		margin: 0 -0.3rem 0 0.4rem;
-		padding: 0 0.3rem;
-		font: inherit;
-		font-weight: 400;
-		line-height: 1;
+	> p.from {
+		position: absolute;
+		inset: 3.125rem 0 auto;
+		z-index: 2;
+
+		&:empty {
+			display: none;
+		}
 	}
 
-	/* The chat: agents write on the page, you write in a soft bubble on the right; who's talking is said once, small. */
 	> ul {
+		flex: 1;
+		min-height: 0;
 		list-style: none;
 		margin: 0;
-		padding: 0.4rem 0.6rem 1.4rem;
-		max-height: 26rem;
+		padding-block: max(3.4rem, var(--thread-top, 0px)) calc(var(--compose-height, 7rem) + 2.5rem);
+		/* Keep the scrollbar at the edge, with messages aligned to the composer. */
+		padding-inline: max(0.6rem, calc((100% - var(--chat-width)) / 2));
 		overflow-y: auto;
 		font-size: 15px;
 		line-height: 1.6;
@@ -1230,11 +1381,6 @@ agent-memory {
 		}
 	}
 
-	/* A hands-off thread's box is dashed: its agents touch nothing. */
-	&.hands-off {
-		border-style: dashed;
-	}
-
 	p.from:not(:empty) {
 		font-size: 12px;
 		padding: 0.2rem 1.2rem 0;
@@ -1252,7 +1398,16 @@ agent-memory {
 
 	form {
 		/* The composer: a rounded box to write in, and under it a quiet bar with what's coming and whom it asks. */
-		margin: 0 0.6rem 0.6rem;
+		width: calc(100% - 1.2rem);
+		max-width: var(--chat-width);
+		margin: 0 auto 0.6rem;
+
+		/* Its own height reserves room in the list, even as the draft grows. */
+		&.compose {
+			position: absolute;
+			inset: auto 0 0;
+			z-index: 2;
+		}
 
 		.box {
 			/* One line of the field; Send sits centred on it at the bottom, and stays there as the field grows. */
@@ -1287,7 +1442,6 @@ agent-memory {
 		}
 
 		/* The bar is there in every thread, so the composer moving in doesn't change a thread's height. */
-
 		.bar {
 			display: flex;
 			align-items: center;
@@ -1421,344 +1575,6 @@ agent-memory {
 .thread-link {
 	color: var(--mute);
 	text-decoration: none;
-}
-
-.models {
-	list-style: none;
-	margin: 0.5rem 0 0;
-	padding: 0;
-
-	> li {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.4rem;
-		padding: 0.15rem 0.4rem;
-		border-radius: 4px;
-		overflow-wrap: anywhere;
-
-		&:first-child {
-			background: Canvas;
-			border: 1px solid var(--line);
-		}
-
-		&:not(:first-child) {
-			color: var(--mute);
-			font-size: 13px;
-		}
-
-		> span.name {
-			flex: 1;
-			min-width: 0;
-		}
-
-		input[type='range'] {
-			width: 4rem;
-			padding: 0;
-			accent-color: var(--pick);
-		}
-
-		.hands {
-			flex-basis: 100%;
-			font:
-				12px ui-monospace,
-				monospace;
-			color: var(--ok);
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-	}
-
-	select.swap {
-		border: 0;
-		padding: 0;
-		background-color: transparent;
-		min-width: 0;
-		flex: 1;
-		font: inherit;
-		cursor: pointer;
-	}
-}
-
-/* The whole card is the switch: lit blue when your next message goes there. */
-.card {
-	cursor: pointer;
-	user-select: none;
-
-	&.routed {
-		border-color: var(--pick);
-		box-shadow: 0 0 0 1px var(--pick);
-		background: color-mix(in srgb, var(--pick) 7%, Canvas);
-
-		.models > li:first-child {
-			border-color: var(--pick);
-		}
-	}
-}
-
-/* Just the chat: the story goes, the stage takes the page, and the diagram flattens to a chat app. */
-.mode-toggle {
-	display: block;
-	margin: 0 0 0.5rem auto;
-	font-size: 12px;
-	padding: 0.15rem 0.5rem;
-}
-
-body.chat {
-	.page {
-		display: block;
-		padding: 0;
-
-		> section {
-			display: none;
-		}
-	}
-
-	.stage {
-		position: relative;
-		height: 100vh;
-		height: 100dvh;
-		height: var(--visual-height, 100dvh);
-		padding: 0;
-		overflow: hidden;
-	}
-
-	/* Out of the way: a small arrow at the end of the runners row, under the thread list. */
-	.mode-toggle {
-		position: absolute;
-		bottom: 0.55rem;
-		left: calc(var(--list-width, 15rem) - 2.4rem);
-		z-index: 2;
-		margin: 0;
-		display: grid;
-		place-items: center;
-		width: 1.6rem;
-		height: 1.6rem;
-		padding: 0;
-		/* On while you're in the chat, but that's the page itself: no fill for it */
-		background: none;
-		color: var(--mute);
-	}
-
-	.system {
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		height: 100%;
-		gap: 0;
-	}
-
-	.client,
-	.wires,
-	.server > b,
-	.server > small {
-		display: none;
-	}
-
-	.server {
-		flex: 1;
-		min-height: 0;
-		border: 0;
-		border-radius: 0;
-		padding: 0;
-		background: Canvas;
-
-		> .body {
-			height: 100%;
-			margin: 0;
-			gap: 0;
-			grid-template-columns: var(--list-width, 15rem) minmax(0, 1fr);
-			position: relative;
-			grid-template-rows: minmax(0, 1fr);
-		}
-	}
-
-	.thread-list {
-		min-height: 0;
-		align-self: stretch;
-		display: flex;
-		flex-direction: column;
-		/* The same inset on every side as the composer's own margin, so its foot row floats the same distance off the bottom edge */
-		padding: 0.6rem;
-		border-right: 1px solid var(--line);
-		overflow-y: auto;
-
-		> ul {
-			max-height: none;
-		}
-	}
-
-	.threads {
-		height: 100%;
-		flex-wrap: nowrap;
-		overflow-x: auto;
-		gap: 0;
-	}
-
-	.thread {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		height: 100%;
-		border: 0;
-		border-right: 1px solid var(--line);
-		border-radius: 0;
-		flex: 1 0 min(100%, 26rem);
-
-		/* Only the columns beside it get a line; at the window's edge there is nothing to divide. */
-		&:last-child {
-			border-right: 0;
-		}
-	}
-}
-
-body.chat .thread-list > ul > li,
-ul.thread-family > li {
-	font-size: 14px;
-	border-radius: 8px;
-}
-
-body.chat .thread-list > ul > li > .row,
-ul.thread-family > li > .row {
-	padding: 0.4rem 0.6rem;
-	padding-left: calc(0.6rem + var(--depth, 0) * 1rem);
-}
-
-/* The thread's name is a pill at the top, sized like the new-thread button, its light first: in each thread's head on a big screen, in the bar on a phone. */
-.thread-pill,
-body.chat .thread > header > h2.title > button,
-body.chat .thread > header > button.close {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	min-width: 0;
-	max-width: 60%;
-	height: 2.125rem;
-	padding: 0 0.75rem;
-	border: 1px solid var(--line);
-	border-radius: 6px;
-	/* Opaque, with no blur: the messages already fade out beneath, and Safari's blur over the faded list dims the pill. Raised like the composer box, so it doesn't blend into the page behind it. */
-	background: var(--tint);
-	color: var(--ink);
-	font-size: 13px;
-	font-weight: 400;
-}
-
-.thread-pill span:last-child,
-body.chat .thread > header span:first-child {
-	flex: 0 1 auto;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-/* On a big screen the head is no bar, just the pill and, beside it, its own quiet close. */
-body.chat .thread > header {
-	position: absolute;
-	inset: 0 0 auto;
-	z-index: 2;
-	pointer-events: none;
-
-	button {
-		pointer-events: auto;
-	}
-
-	justify-content: center;
-	gap: 0.4rem;
-	margin: 0.5rem 0.9rem;
-	padding: 0;
-	border: 0;
-
-	/* The heading only wraps the pill, so all of the pill is its button. */
-	> h2.title {
-		flex: 0 1 auto;
-		max-width: 60%;
-
-		> button {
-			max-width: none;
-		}
-	}
-
-	> button.close {
-		flex: none;
-		justify-content: center;
-		width: 2.125rem;
-		margin: 0;
-		padding: 0;
-		color: var(--mute);
-
-		@media (hover: hover) and (pointer: fine) {
-			&:hover {
-				color: var(--ink);
-			}
-		}
-	}
-
-	.dot {
-		order: -1;
-	}
-}
-
-body.chat {
-	.thread {
-		--chat-width: 50rem;
-
-		/* Messages fade out under the title and the composer: a wash of the page's own colour above the list and below the pill and composer. Not a mask on the list, which iOS paints over the pill. */
-		&::before,
-		&::after {
-			content: '';
-			position: absolute;
-			inset-inline: 0;
-			z-index: 1;
-			pointer-events: none;
-		}
-
-		&::before {
-			top: 0;
-			height: var(--fade-top, 3.4rem);
-			background: linear-gradient(Canvas, transparent);
-		}
-
-		&::after {
-			bottom: 0;
-			height: var(--compose-height, 7rem);
-			background: linear-gradient(transparent, Canvas calc(100% - 2.2rem));
-		}
-
-		> p.from {
-			position: absolute;
-			inset: 3.125rem 0 auto;
-			z-index: 2;
-
-			&:empty {
-				display: none;
-			}
-		}
-
-		> ul {
-			flex: 1;
-			min-height: 0;
-			max-height: none;
-			padding-block: max(3.4rem, var(--thread-top, 0px)) calc(var(--compose-height, 7rem) + 2.5rem);
-			/* Keep the scrollbar at the edge, with messages aligned to the composer. */
-			padding-inline: max(0.6rem, calc((100% - var(--chat-width)) / 2));
-		}
-
-		form {
-			width: calc(100% - 1.2rem);
-			max-width: var(--chat-width);
-			margin-inline: auto;
-
-			/* Its own height reserves room in the list, even as the draft grows. */
-			&.compose {
-				position: absolute;
-				inset: auto 0 0;
-				z-index: 2;
-				margin-top: 0;
-			}
-		}
-	}
 }
 
 /* This thread's sheet, from the right at every size, in chat and beside the story: its family, and whether its hands are off. */
@@ -1895,50 +1711,29 @@ body.side .thread-details {
 
 @media (prefers-reduced-motion: no-preference) {
 	/* Visible the moment it opens, so what's inside can take focus; hidden only once it has slid away. */
-	body.chat .thread-details {
+	.thread-details {
 		transition:
 			transform 0.32s cubic-bezier(0.23, 1, 0.32, 1),
 			visibility 0s 0.32s;
 	}
 
-	body.chat.side .thread-details {
+	body.side .thread-details {
 		transition:
 			transform 0.32s cubic-bezier(0.23, 1, 0.32, 1),
 			visibility 0s;
 	}
-}
 
-/* Popup anchors stay still: their pressed scale would shift the position measured on opening. */
-body.chat button:active:not(:disabled):not([popovertarget], [aria-expanded]),
-.thread-family > li:active,
-body.chat .thread-list > ul > li:active {
-	transform: scale(0.97);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-	body.chat button,
-	.thread-family > li,
-	body.chat .thread-list > ul > li {
+	:is(.thread-list > ul, .thread-family) > li {
 		transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
 	}
 }
 
-button[data-danger]:focus-visible:not(:disabled) {
-	color: var(--danger);
-	border-color: var(--danger);
+:is(.thread-list > ul, .thread-family) > li:active {
+	transform: scale(0.97);
 }
 
 /* Hover is for a mouse; on touch it sticks after a tap. */
 @media (hover: hover) and (pointer: fine) {
-	button:hover {
-		border-color: var(--edge);
-	}
-
-	button[data-danger]:hover:not(:disabled) {
-		color: var(--danger);
-		border-color: var(--danger);
-	}
-
 	.memory li:hover {
 		border-left-color: var(--pick);
 		background: var(--tint);
@@ -1961,241 +1756,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 		color: var(--ink);
 		text-decoration: underline;
 	}
-
-	.card:hover {
-		border-color: var(--mute);
-	}
-
-	input.bare:hover {
-		border-color: var(--line);
-	}
-
-	button.ghost:hover:not(:disabled),
-	button.model:hover {
-		background: color-mix(in srgb, CanvasText 8%, transparent);
-		color: var(--ink);
-	}
-}
-
-/* A phone: one thread, an app bar on top, all threads in a drawer on the left, the thread's family and runners on the right. */
-.app-bar,
-.scrim,
-.thread-details {
-	display: none;
-}
-
-@media (max-width: 700px) {
-	body.chat {
-		overscroll-behavior: none;
-		/* The bar's own height, so the thread below knows where it ends. */
-		--bar-height: calc(3.125rem + env(safe-area-inset-top));
-
-		.mode-toggle {
-			position: fixed;
-			left: auto;
-			right: 0.6rem;
-			bottom: calc(0.55rem + env(safe-area-inset-bottom));
-			z-index: 4;
-		}
-
-		/* No surface of its own: the messages scroll up behind it and past it, and only the pill, the back button and the dot are drawn on top of them. */
-		.app-bar {
-			display: grid;
-			grid-template-columns: 1fr auto 1fr;
-			align-items: center;
-			gap: 0.5rem;
-			position: fixed;
-			inset: 0 0 auto;
-			z-index: 6;
-			padding: calc(0.5rem + env(safe-area-inset-top)) 0.7rem 0.5rem;
-			background: none;
-
-			/* A slight wash from the very top, gone by the pill's middle: a message fades out as it slides out, and reads solid until then. */
-			&::before {
-				content: '';
-				position: absolute;
-				inset: 0 0 auto;
-				height: calc(var(--bar-height) / 2);
-				background: linear-gradient(Canvas, transparent);
-				z-index: -1;
-				pointer-events: none;
-			}
-		}
-	}
-
-	.app-bar {
-		button {
-			border: 1px solid var(--line);
-			background: Canvas;
-			color: var(--ink);
-		}
-
-		.thread-pill {
-			max-width: calc(100vw - 8rem);
-		}
-
-		.round {
-			width: 2.125rem;
-			height: 2.125rem;
-			border-radius: 6px;
-			padding: 0;
-			display: grid;
-			place-items: center;
-			flex: none;
-		}
-	}
-
-	body.chat {
-		.server > .body {
-			display: block;
-		}
-
-		.thread:not(.current) {
-			display: none;
-		}
-
-		.server {
-			z-index: auto;
-		}
-
-		.thread {
-			border: 0;
-
-			> header {
-				display: none;
-			}
-
-			/* The app bar carries the top fade. */
-			&::before {
-				display: none;
-			}
-
-			> p.from {
-				top: calc(var(--bar-height) + 0.4rem);
-			}
-
-			> ul {
-				/* A touch more air either side than a mouse needs, the composer keeping pace below. */
-				padding-inline: 0.8rem;
-				/* The bar, and a breath under it, so the top message reads whole. */
-				padding-top: calc(var(--bar-height) + 0.6rem + var(--thread-top, 0px));
-				overscroll-behavior: contain;
-			}
-
-			/* The same composer as on a big screen, edge to edge and clear of the home bar. */
-			form.compose {
-				width: calc(100% - 1.6rem);
-				margin-bottom: calc(0.9rem + env(safe-area-inset-bottom));
-			}
-		}
-
-		/* All threads are a screen of their own, under the thread: back slides the thread off to the right and the list in after it, like a mail inbox. */
-		.thread-list {
-			position: fixed;
-			inset: 0;
-			z-index: 3;
-			width: auto;
-			overscroll-behavior: contain;
-			border: 0;
-			background: Canvas;
-			padding: calc(0.6rem + env(safe-area-inset-top)) 0.6rem 0;
-		}
-
-		.threads {
-			display: block;
-			position: relative;
-			z-index: 5;
-			background: Canvas;
-		}
-
-		&.list .threads,
-		&.list .app-bar {
-			transform: translateX(100%);
-		}
-
-		&:not(.list) .thread-list,
-		&:not(.list) .mode-toggle {
-			transform: translateX(-30%);
-			visibility: hidden;
-		}
-
-		&.list .scrim {
-			opacity: 0;
-			pointer-events: none;
-		}
-	}
-
-	@media (prefers-reduced-motion: no-preference) {
-		body.chat .threads,
-		body.chat .app-bar,
-		body.chat .thread-list,
-		body.chat .mode-toggle {
-			transition:
-				transform 0.35s cubic-bezier(0.32, 0.72, 0, 1),
-				visibility 0.35s;
-		}
-	}
-}
-
-/* The model picker and settings: popovers on desktop, bottom sheets on phones. */
-.popover {
-	position: fixed;
-	inset: auto;
-	margin: 0;
-	width: min(24rem, calc(100vw - 1rem));
-	max-height: min(70dvh, 32rem);
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	padding: 0.7rem;
-	border: 1px solid var(--line);
-	border-radius: 14px;
-	background: Canvas;
-	color: var(--ink);
-	font-size: 14px;
-	box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
-}
-
-.model-controls > ul,
-.popover .rows {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	display: grid;
-	gap: 0.25rem;
-}
-
-/* One row across models, runners and modules, also inside the phone sheets. */
-:is(.model-controls .who, button.model, .popover .rows > li) {
-	display: flex;
-	align-items: start;
-	gap: 0.6rem;
-	padding: 0.45rem 0.5rem;
-	border-radius: 8px;
-
-	> .dot {
-		margin-top: 0.45rem;
-	}
-
-	> div {
-		flex: 1;
-		min-width: 0;
-	}
-
-	small {
-		color: var(--mute);
-		font-size: 12px;
-	}
-}
-
-:where(.popover .rows > li) small {
-	display: block;
-	overflow-wrap: anywhere;
-}
-
-@media (hover: hover) and (pointer: fine) {
-	:is(button.model:not(.on), .popover .rows > li):hover {
-		background: var(--tint);
-	}
 }
 
 /* A runner, its models as rows with a check on the one asked, and how hard it thinks as a row of steps. */
@@ -2217,6 +1777,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 
 	.models {
 		display: grid;
+		margin-top: 0.5rem;
 	}
 
 	h3 {
@@ -2325,53 +1886,8 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 }
 
-/* A detail covers its list without unmounting it or changing the frame's size. */
-.panes {
-	position: relative;
-	max-height: inherit;
-
-	.pane {
-		display: flex;
-		flex-direction: column;
-		max-height: inherit;
-
-		> header {
-			display: grid;
-			grid-template-columns: 1.25rem 1fr auto;
-			align-items: center;
-			gap: 0.4rem;
-			flex: none;
-			min-height: 2.25rem;
-			font-size: 12px;
-			color: var(--mute);
-			padding: 0.25rem 0.7rem;
-			border-bottom: 1px solid var(--line);
-
-			h2 {
-				margin: 0;
-				font: inherit;
-				font-weight: 500;
-			}
-		}
-	}
-
-	.pane-body {
-		min-height: 0;
-		overflow-y: auto;
-		overscroll-behavior: contain;
-		padding: 0.5rem 0.7rem 0.7rem;
-	}
-
-	.detail {
-		position: absolute;
-		inset: 0;
-		background: Canvas;
-	}
-}
-
 /* The sheets' close × is for phones. */
-:is(.thread-details, .model-picker) > button.close,
-.panes .pane > header > button.close {
+:is(.thread-details, .model-picker) > button.close {
 	display: none;
 }
 
@@ -2450,113 +1966,27 @@ connect-runner {
 	}
 }
 
-.list-foot {
-	display: none;
-}
-
 /* The list's foot: runners, then settings, then the arrow back to the story that sits over its end. */
-body.chat {
-	.list-foot {
-		position: sticky;
-		bottom: 0;
-		margin-top: auto;
-		flex: none;
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-		/* Same height and padding as the composer's bar below it, so the two rows share a baseline across the divider. */
-		height: 2rem;
-		padding: 0 2.2rem 0 0;
-		background: Canvas;
-	}
-
-	.foot-toggle {
-		flex: none;
-		min-width: 0;
-		display: flex;
-		align-items: center;
-		/* Same dot-to-text gap as a thread row, so the text lines up with it too */
-		gap: 0.4rem;
-		font-size: 12px;
-		height: 1.6rem;
-		padding: 0 0.6rem;
-		text-align: left;
-
-		&.runner-toggle {
-			flex: 0 1 auto;
-		}
-
-		span:last-child {
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-	}
-
-	.runners {
-		display: none;
-	}
+.list-foot {
+	position: sticky;
+	bottom: 0;
+	margin-top: auto;
+	flex: none;
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	/* Same height and padding as the composer's bar below it, so the two rows share a baseline across the divider. */
+	height: 2rem;
+	padding: 0 2.2rem 0 0;
+	background: Canvas;
 }
 
-@media (max-width: 700px) {
-	.popover {
-		/* Lifted off the edge, clear of the home bar, like the composer. */
-		inset: auto 0.6rem calc(0.6rem + env(safe-area-inset-bottom)) 0.6rem;
-		width: auto;
-		max-height: 70dvh;
-		border-radius: 14px;
-		padding-bottom: 0.7rem;
-	}
+.foot-toggle {
+	flex: none;
+	min-width: 0;
 
-	.thread-details > .thread-title {
-		width: calc(100% - 3.6rem);
-	}
-
-	.panes .pane-body {
-		padding-bottom: calc(0.7rem + env(safe-area-inset-bottom));
-	}
-
-	/* A sheet closes from its top corner; on a big screen a click outside does it. */
-	:is(.thread-details, .model-picker:not(.mentions)) > button.close {
-		display: flex;
-		position: absolute;
-		top: calc(0.5rem + env(safe-area-inset-top));
-		right: 0.6rem;
-		z-index: 1;
-	}
-
-	.model-picker:not(.mentions) > button.close {
-		top: 0.5rem;
-	}
-
-	.panes .pane > header > button.close {
-		display: block;
-	}
-
-	body.chat .list-foot {
-		margin: auto -0.6rem 0;
-	}
-}
-
-@media (prefers-reduced-motion: no-preference) {
-	.popover {
-		transition:
-			opacity 0.18s,
-			translate 0.25s cubic-bezier(0.23, 1, 0.32, 1),
-			display 0.25s allow-discrete,
-			overlay 0.25s allow-discrete;
-	}
-
-	.popover:not(:popover-open) {
-		opacity: 0;
-		translate: 0 8px;
-	}
-
-	@starting-style {
-		.popover:popover-open {
-			opacity: 0;
-			translate: 0 8px;
-		}
+	&.runner-toggle {
+		flex: 0 1 auto;
 	}
 }
 
@@ -2570,79 +2000,8 @@ body.chat {
 	padding: 0.4rem;
 }
 
-/* Under it all: the page's last section, after the walk-through. */
-.reference {
-	pre.mermaid {
-		display: none;
-	}
-
-	.diagram {
-		margin: 1.5rem 0 0.5rem;
-		padding: 1rem;
-		background: #fff;
-		border: 1px solid var(--line);
-		border-radius: 10px;
-		overflow-x: auto;
-
-		svg {
-			display: block;
-			margin: 0 auto;
-		}
-	}
-
-	.name {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		margin: 2rem 0 0.4rem;
-		font:
-			600 clamp(1.4rem, 5vw, 2rem) ui-monospace,
-			monospace;
-
-		span {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-		}
-
-		i {
-			font:
-				500 0.78rem system-ui,
-				sans-serif;
-			color: var(--mute);
-			margin-top: 0.5rem;
-			padding-top: 0.35rem;
-			border-top: 3px solid;
-			width: 100%;
-			text-align: center;
-		}
-
-		.m i {
-			border-color: #a02f6f;
-		}
-		.t i {
-			border-color: #ad8301;
-		}
-		.r i {
-			border-color: #66800b;
-		}
-		.sep {
-			color: var(--mute);
-			font-weight: 400;
-		}
-	}
-}
-
-ol.promises li {
-	margin: 0.35rem 0;
-}
-
 /* The thread list's right edge drags; a line shows where while you hover or drag. */
 .list-edge {
-	display: none;
-}
-
-body.chat .list-edge {
 	display: block;
 	position: absolute;
 	top: 0;
@@ -2665,12 +2024,6 @@ body.chat .list-edge {
 body.resizing {
 	cursor: col-resize;
 	user-select: none;
-}
-
-@media (max-width: 700px) {
-	body.chat .list-edge {
-		display: none;
-	}
 }
 
 /* A button that asks by changing its words; why it asks sits on its own line beneath. */
@@ -2850,5 +2203,690 @@ body.resizing {
 			position: absolute;
 			inset: min(0px, (100% - 44px) / 2);
 		}
+	}
+}
+
+/* A phone: one thread, an app bar on top, all threads in a drawer on the left, the thread's family and runners on the right. */
+.app-bar {
+	display: none;
+}
+
+@media (max-width: 700px) {
+	body {
+		overscroll-behavior: none;
+		/* The bar's own height, so the thread below knows where it ends. */
+		--bar-height: calc(3.125rem + env(safe-area-inset-top));
+	}
+
+	.mode-toggle {
+		position: fixed;
+		left: auto;
+		right: 0.6rem;
+		bottom: calc(0.55rem + env(safe-area-inset-bottom));
+		z-index: 4;
+	}
+
+	/* No surface of its own: the messages scroll up behind it and past it, and only the pill, the back button and the dot are drawn on top of them. */
+	.app-bar {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		gap: 0.5rem;
+		position: fixed;
+		inset: 0 0 auto;
+		z-index: 6;
+		padding: calc(0.5rem + env(safe-area-inset-top)) 0.7rem 0.5rem;
+
+		/* A slight wash from the very top, gone by the pill's middle: a message fades out as it slides out, and reads solid until then. */
+		&::before {
+			content: '';
+			position: absolute;
+			inset: 0 0 auto;
+			height: calc(var(--bar-height) / 2);
+			background: linear-gradient(Canvas, transparent);
+			z-index: -1;
+			pointer-events: none;
+		}
+
+		.thread-pill {
+			max-width: calc(100vw - 8rem);
+		}
+	}
+
+	.server {
+		z-index: auto;
+
+		> .body {
+			display: block;
+		}
+	}
+
+	.thread:not(.current) {
+		display: none;
+	}
+
+	.thread {
+		border: 0;
+
+		> header {
+			display: none;
+		}
+
+		/* The app bar carries the top fade. */
+		&::before {
+			display: none;
+		}
+
+		> p.from {
+			top: calc(var(--bar-height) + 0.4rem);
+		}
+
+		> ul {
+			/* A touch more air either side than a mouse needs, the composer keeping pace below. */
+			padding-inline: 0.8rem;
+			/* The bar, and a breath under it, so the top message reads whole. */
+			padding-top: calc(var(--bar-height) + 0.6rem + var(--thread-top, 0px));
+			overscroll-behavior: contain;
+		}
+
+		/* The same composer as on a big screen, edge to edge and clear of the home bar. */
+		form.compose {
+			width: calc(100% - 1.6rem);
+			margin-bottom: calc(0.9rem + env(safe-area-inset-bottom));
+		}
+	}
+
+	/* All threads are a screen of their own, under the thread: back slides the thread off to the right and the list in after it, like a mail inbox. */
+	.thread-list {
+		position: fixed;
+		inset: 0;
+		z-index: 3;
+		width: auto;
+		overscroll-behavior: contain;
+		border: 0;
+		background: Canvas;
+		padding: calc(0.6rem + env(safe-area-inset-top)) 0.6rem 0;
+	}
+
+	.threads {
+		display: block;
+		position: relative;
+		z-index: 5;
+		background: Canvas;
+	}
+
+	body.list :is(.threads, .app-bar) {
+		transform: translateX(100%);
+	}
+
+	body:not(.list) :is(.thread-list, .mode-toggle) {
+		transform: translateX(-30%);
+		visibility: hidden;
+	}
+
+	body.list .scrim {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.list-foot {
+		margin: auto -0.6rem 0;
+	}
+
+	.list-edge {
+		display: none;
+	}
+
+	.thread-details > .thread-title {
+		width: calc(100% - 3.6rem);
+	}
+
+	/* A sheet closes from its top corner; on a big screen a click outside does it. */
+	:is(.thread-details, .model-picker:not(.mentions)) > button.close {
+		display: flex;
+		position: absolute;
+		top: calc(0.5rem + env(safe-area-inset-top));
+		right: 0.6rem;
+		z-index: 1;
+	}
+
+	.model-picker:not(.mentions) > button.close {
+		top: 0.5rem;
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		:is(.threads, .app-bar, .thread-list, .mode-toggle) {
+			transition:
+				transform 0.35s cubic-bezier(0.32, 0.72, 0, 1),
+				visibility 0.35s;
+		}
+	}
+}
+/* The walkthrough: the story on the left, the live system on the right, each part of the app in its own box. It lays itself over the app only while the page isn't just the chat. */
+body:not(.chat) {
+	overscroll-behavior: auto;
+
+	/* Only the mouse gets the page's scrollbar gutter reserved; touch scrollbars overlay. */
+	@media not (any-pointer: coarse) {
+		html:has(&) {
+			scrollbar-gutter: stable;
+		}
+	}
+
+	/* The page: prose on the left, the live system pinned on the right. On a narrow screen, one column. */
+	.page {
+		display: grid;
+		grid-template-columns: minmax(0, 34rem) minmax(0, 1fr);
+		gap: 0 3rem;
+		padding: 0 2rem;
+
+		> section {
+			display: block;
+			grid-column: 1;
+			padding: 3rem 0;
+			min-height: 60vh;
+			min-height: 60svh;
+
+			&:first-child {
+				padding-top: 4rem;
+			}
+
+			&:last-of-type {
+				min-height: 90vh;
+				min-height: 90svh;
+			}
+		}
+	}
+
+	.stage {
+		grid-column: 2;
+		grid-row: 1 / span 30;
+		position: sticky;
+		top: 0;
+		align-self: start;
+		height: 100vh;
+		overflow: auto;
+		padding: 2rem 0;
+	}
+
+	@media (max-width: 1000px) {
+		/* The stage comes right after the server is introduced. */
+		.page {
+			display: flex;
+			flex-direction: column;
+			padding: 0 1rem;
+
+			> section {
+				min-height: 0;
+				padding: 2rem 0;
+
+				&:nth-child(n + 3) {
+					order: 2;
+				}
+			}
+		}
+
+		.stage {
+			order: 1;
+			position: static;
+			height: auto;
+			padding: 1rem 0;
+		}
+	}
+
+	.try {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin: 1rem 0;
+	}
+
+	/* Just the chat: a quiet button above the system. */
+	.mode-toggle {
+		position: static;
+		display: block;
+		width: auto;
+		height: auto;
+		z-index: auto;
+		margin: 0 0 0.5rem auto;
+		padding: 0.15rem 0.5rem;
+		transform: none;
+		visibility: visible;
+	}
+
+	/* The live system: plumbing is quiet; the route your next message takes is loud, and shows the agent's state. */
+	.system {
+		display: grid;
+		grid-template-columns: max-content minmax(0, 1fr);
+		gap: 2.5rem;
+		align-items: start;
+		height: auto;
+	}
+
+	.client,
+	.wires {
+		display: block;
+	}
+
+	.runners {
+		grid-column: 2;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+
+		.node {
+			width: 17rem;
+		}
+	}
+
+	.wires path {
+		stroke: var(--line);
+		stroke-width: 1.5;
+
+		&.off {
+			stroke-dasharray: 4 4;
+		}
+
+		&.route {
+			stroke: var(--pick);
+			stroke-width: 2.5;
+		}
+
+		&.working {
+			stroke: var(--ok);
+			stroke-width: 2.5;
+			stroke-dasharray: 6 6;
+			animation: flow 0.6s linear infinite;
+		}
+
+		&.blocked {
+			stroke: var(--wait);
+			stroke-width: 2.5;
+			stroke-dasharray: 6 6;
+		}
+	}
+
+	/* Wires run behind the boxes, so they come out of a box's edge and never cross its text. */
+	.node {
+		position: relative;
+		z-index: 1;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--tint);
+		padding: 0.6rem 0.8rem;
+		transition:
+			opacity 0.3s,
+			box-shadow 0.3s;
+
+		&.off {
+			background: Canvas;
+			border-style: dashed;
+		}
+
+		&.routed {
+			border-color: var(--pick);
+		}
+
+		> b {
+			display: flex;
+			align-items: center;
+			gap: 0.4rem;
+		}
+
+		/* A runner's name, as the button that asks it with a keyboard. */
+		> button.ask {
+			display: flex;
+			align-items: center;
+			gap: 0.4rem;
+			margin: 0;
+			padding: 0;
+			border: 0;
+			background: none;
+			color: inherit;
+			font: inherit;
+			font-weight: 700;
+		}
+
+		> small {
+			display: block;
+			color: var(--mute);
+			overflow-wrap: anywhere;
+		}
+	}
+	/* What the section in view talks about gets a soft glow; nothing else changes, so the live parts stay readable. */
+	.stage[data-focus='server'] .server,
+	.stage[data-focus='runners'] .runners .node,
+	.stage[data-focus='hands'] .runners .node,
+	.stage[data-focus='thread'] .thread {
+		box-shadow: 0 0 0 3px #2f6fd633;
+	}
+
+	/* The server's box holds the thread list and the threads side by side, each thread its own box. */
+	.server > .body {
+		display: grid;
+		grid-template-columns: 10rem minmax(0, 1fr);
+		grid-template-rows: none;
+		gap: 0.75rem;
+		margin-top: 0.5rem;
+		position: static;
+		height: auto;
+	}
+
+	.threads {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		position: static;
+		z-index: auto;
+		height: auto;
+		overflow: visible;
+		background: none;
+		transform: none;
+		transition: none;
+	}
+
+	.thread-list {
+		display: block;
+		position: relative;
+		inset: auto;
+		z-index: 1;
+		align-self: auto;
+		min-height: auto;
+		padding: 0;
+		border: 0;
+		overflow: visible;
+		background: none;
+		transform: none;
+		visibility: visible;
+		transition: none;
+
+		> ul {
+			max-height: 24rem;
+
+			> li {
+				border-radius: 4px;
+				font-size: inherit;
+				transition: none;
+
+				&:active {
+					transform: none;
+				}
+
+				> .row {
+					padding: 0.2rem 0.4rem;
+					padding-left: calc(0.4rem + var(--depth, 0) * 1rem);
+				}
+			}
+		}
+	}
+
+	@media (max-width: 1300px) {
+		.server > .body {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.thread-list > ul {
+			max-height: 7rem;
+		}
+	}
+
+	.thread {
+		display: block;
+		flex: 1 1 16rem;
+		height: auto;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+
+		&.current {
+			border-color: var(--edge);
+		}
+
+		/* A hands-off thread's box is dashed: its agents touch nothing. */
+		&.hands-off {
+			border-style: dashed;
+		}
+
+		&::before,
+		&::after {
+			content: none;
+		}
+
+		/* The head is a bar: the name, then a quiet close for a family member's column. */
+		> header {
+			display: flex;
+			position: static;
+			justify-content: normal;
+			gap: normal;
+			margin: 0 0 0.5rem;
+			padding: 0.5rem 0.9rem;
+			border-bottom: 1px solid var(--line);
+			pointer-events: auto;
+
+			> h2.title {
+				flex: 1;
+				max-width: none;
+
+				> button {
+					gap: 0.4rem;
+					height: auto;
+					padding: 0;
+					border: 0;
+					background: none;
+					color: inherit;
+					font: inherit;
+
+					> .dot {
+						order: 0;
+					}
+				}
+			}
+
+			> button.close {
+				display: inline-block;
+				width: auto;
+				height: auto;
+				margin: 0 -0.3rem 0 0.4rem;
+				padding: 0 0.3rem;
+				border: 0;
+				background: none;
+				font: inherit;
+				font-weight: 400;
+				line-height: 1;
+			}
+		}
+
+		> p.from {
+			position: static;
+
+			&:empty {
+				display: block;
+			}
+		}
+
+		> ul {
+			flex: initial;
+			min-height: auto;
+			max-height: 26rem;
+			padding: 0.4rem 0.6rem 1.4rem;
+		}
+
+		form {
+			width: auto;
+			max-width: none;
+			margin: 0 0.6rem 0.6rem;
+
+			&.compose {
+				position: static;
+			}
+		}
+	}
+
+	/* The chat's own parts: its list's foot and edge, a phone's bar, and its motion. */
+	.list-foot,
+	.list-edge,
+	.app-bar {
+		display: none;
+	}
+
+	.thread-details,
+	button {
+		transition: none;
+	}
+
+	button:active:not(:disabled) {
+		transform: none;
+	}
+
+	/* A runner's card: its models, the first the one it runs. The whole card is the switch: lit blue when your next message goes there. */
+	.card .models {
+		list-style: none;
+		margin: 0.5rem 0 0;
+		padding: 0;
+
+		> li {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 0.4rem;
+			padding: 0.15rem 0.4rem;
+			border-radius: 4px;
+			overflow-wrap: anywhere;
+
+			&:first-child {
+				background: Canvas;
+				border: 1px solid var(--line);
+			}
+
+			&:not(:first-child) {
+				color: var(--mute);
+				font-size: 13px;
+			}
+
+			> span.name {
+				flex: 1;
+				min-width: 0;
+			}
+
+			input[type='range'] {
+				width: 4rem;
+				padding: 0;
+				accent-color: var(--pick);
+			}
+
+			.hands {
+				flex-basis: 100%;
+				font:
+					12px ui-monospace,
+					monospace;
+				color: var(--ok);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+		}
+
+		select.swap {
+			border: 0;
+			padding: 0;
+			background-color: transparent;
+			min-width: 0;
+			flex: 1;
+			font: inherit;
+			cursor: pointer;
+		}
+	}
+
+	.card {
+		cursor: pointer;
+		user-select: none;
+
+		&.routed {
+			border-color: var(--pick);
+			box-shadow: 0 0 0 1px var(--pick);
+			background: color-mix(in srgb, var(--pick) 7%, Canvas);
+
+			.models > li:first-child {
+				border-color: var(--pick);
+			}
+		}
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.card:hover {
+			border-color: var(--mute);
+		}
+	}
+
+	/* Under it all: the page's last section, after the walk-through. */
+	.reference {
+		pre.mermaid {
+			display: none;
+		}
+
+		.diagram {
+			margin: 1.5rem 0 0.5rem;
+			padding: 1rem;
+			background: #fff;
+			border: 1px solid var(--line);
+			border-radius: 10px;
+			overflow-x: auto;
+
+			svg {
+				display: block;
+				margin: 0 auto;
+			}
+		}
+
+		.name {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+			margin: 2rem 0 0.4rem;
+			font:
+				600 clamp(1.4rem, 5vw, 2rem) ui-monospace,
+				monospace;
+
+			span {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+			}
+
+			i {
+				font:
+					500 0.78rem system-ui,
+					sans-serif;
+				color: var(--mute);
+				margin-top: 0.5rem;
+				padding-top: 0.35rem;
+				border-top: 3px solid;
+				width: 100%;
+				text-align: center;
+			}
+
+			.m i {
+				border-color: #a02f6f;
+			}
+			.t i {
+				border-color: #ad8301;
+			}
+			.r i {
+				border-color: #66800b;
+			}
+			.sep {
+				color: var(--mute);
+				font-weight: 400;
+			}
+		}
+	}
+
+	ol.promises li {
+		margin: 0.35rem 0;
+	}
+}
+
+@keyframes flow {
+	to {
+		stroke-dashoffset: -12;
 	}
 }
