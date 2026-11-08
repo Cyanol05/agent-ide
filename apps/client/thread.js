@@ -99,10 +99,20 @@ export function Thread(props) {
 			const answerOf = answersIn(all)
 			// An answer said here to a question from another thread names where it went
 			const byId = new Map(all.map((entry) => [entry.id, entry]))
-			const sentTo = (entry) => {
-				const question = entry.data.from ? undefined : byId.get(entry.data.re?.[0])
-				return question?.data.from ? question : undefined
-			}
+			// Only a question goes back, and only once: an answer that came back here sends nothing on, nor does what follows the first answer
+			const firstAnswer = new Map()
+			for (const entry of all)
+				if (!entry.data.from)
+					for (const id of entry.data.re ?? []) if (!firstAnswer.has(id)) firstAnswer.set(id, entry.id)
+			const sentTo = (entry) =>
+				entry.data.from
+					? undefined
+					: (entry.data.re ?? [])
+							.map((id) => byId.get(id))
+							.find(
+								(question) =>
+									question?.data.from && !question.data.re && firstAnswer.get(question.id) === entry.id,
+							)
 			// An answer to an ask line shows in it; one with no line stays a message
 			const answers = new Set(
 				turns.flatMap((row) => (row.turn ? row.turn.steps.map((step) => answerOf(step)?.id) : [])),
@@ -457,8 +467,9 @@ export function Thread(props) {
 
 export function Message(props) {
 	const data = () => props.entry.data
-	const elsewhere = () => !props.embedded && data().from && data().from !== props.thread
-	const answered = () => elsewhere() && data().re
+	const elsewhere = () => data().from && data().from !== props.thread
+	// Opened inside an ask line, an answer is shown whole, not folded again
+	const answered = () => !props.embedded && elsewhere() && data().re
 	const forks = () =>
 		threads.filter(
 			(thread) =>
@@ -545,7 +556,7 @@ function Crossing(props) {
 	const data = () => props.data
 	const name = () => authorLabel(data().author)
 	// A thread's agent is known by its thread's title, its model after it
-	const title = () => threads.find((thread) => thread.id === data().from)?.title
+	const title = () => threads.find((thread) => thread.id === data().from)?.title?.trim()
 	const model = () => agentTo(data().author).model?.split('/').pop() ?? name()
 	return html`
 		<span class="cross">${() => `${props.arrow} `}</span>

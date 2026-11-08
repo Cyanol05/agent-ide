@@ -115,7 +115,10 @@ export function Exchange(props) {
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<small>
-						<span class="cross">→ </span
+						<span class="lead"
+							><${Show} when=${working} fallback=${html`<span class="cross">→</span>`}
+								><${Dot} state="working" title="Working on it" /><//
+						></span
 						><${Show}
 							when=${title}
 							fallback=${() => html`${() => (bot() ? '' : 'Messaged ')}<span
@@ -126,7 +129,7 @@ export function Exchange(props) {
 							>${() => (model() ? ` · ${model()}` : '')}<//
 						><${Show} when=${() => props.answer}
 							>${() => ` · ${['answered', took()].filter(Boolean).join(' ')}`}<//
-						><${Show} when=${working}> <${Dot} state="working" /><//>
+						>
 					</small>
 				</summary>
 				<${Show} when=${open}>
@@ -134,6 +137,7 @@ export function Exchange(props) {
 						<${Message}
 							thread=${() => props.thread}
 							entry=${() => ({ data: { ...props.step.args, author: props.agent?.name } })}
+							sent=${() => ({ data: { author: who() ?? '', from: asked() } })}
 							embedded=${true}
 						/>
 						<${Show} when=${() => props.answer}>

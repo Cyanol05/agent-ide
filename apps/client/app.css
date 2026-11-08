@@ -628,31 +628,40 @@ agent-memory {
 				> details > summary {
 					font-size: var(--text-small);
 				}
+
+				/* Opened, its words read like any message that crossed: a size down on the same lines, no box. */
+				> details > .body {
+					padding: 0;
+					border: 0;
+					font-size: var(--text-ui);
+				}
 			}
 
 			/* Light sea green says it crossed threads: the box's frame and its arrows. The names keep their author's colour, the words plain ink. */
-			/* An ask is one quiet line in the flow; opened, the exchange in the same box a question gets over there. */
+			/* An ask is one quiet line in the flow; opened, the question and its answer as the messages that crossed. */
 			&.exchange {
 				summary > small {
 					display: inline;
 					margin: 0;
 				}
 
-				summary .dot {
-					display: inline-block;
-					width: 0.35rem;
-					height: 0.35rem;
-					vertical-align: middle;
+				/* Its arrow, or while the other side works the dot that stands in for it, in one slot so the words don't move. */
+				.lead {
+					display: inline-flex;
+					align-items: center;
+					width: 1.5em;
+					/* One em tall on the baseline, so the dot's middle is the words' middle, as a row centres it */
+					height: 1em;
 				}
 
+				/* Opened, the question and its answer are the messages that crossed, under the line. */
 				.said {
 					list-style: none;
-					margin: var(--space-2) 0 0 1em;
+					margin: 0;
 					padding: 0;
 
-					.body {
-						font-size: var(--text-small);
-						line-height: var(--text-small-line);
+					> li.elsewhere {
+						margin-left: 0;
 					}
 				}
 			}
