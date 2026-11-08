@@ -4,6 +4,7 @@
  * Asking a thread's agent as another model switches it. A pick is one model plus any bots; in a bot's home, it is the bot's model.
  * In a thread of bots with the director picking, a message whose sender chose no one goes without `to`, and a choice holds for one message.
  */
+import { defaultTitle } from './title.js'
 import html from '@solidjs/html'
 import {
 	createEffect,
@@ -191,7 +192,7 @@ export function Composer(props) {
 		const drop =
 			id && !/^\$\s/.test(body) ? sending(id, { body, ...(images.length && { images }) }) : () => {}
 		try {
-			id ??= await createThread(body.slice(0, 60) || 'An image')
+			id ??= await createThread(defaultTitle(body))
 			await api(`/api/threads/${id}/entries`, {
 				body,
 				...(free ? {} : { to }),

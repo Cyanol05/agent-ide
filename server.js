@@ -1126,10 +1126,14 @@ async function seenBy(id, cut) {
 async function setTitle(id, { title }) {
 	await conversation(id)
 	title = field(title, 'title')
-	return commit(async (tx) => {
-		;(await tx.doc(Thread, id)).title = title
-		return { title }
-	})
+	return commit((tx) => setTitleIn(tx, id, title))
+}
+
+/** The title's one write path; an automatic title must still match its default. */
+async function setTitleIn(tx, id, title, expected) {
+	const row = await tx.doc(Thread, id)
+	if (expected === undefined || row.title === expected) row.title = title
+	return { title: row.title }
 }
 
 /** Changes the thread's tools and its agent's and bots' selection together */
@@ -1268,6 +1272,7 @@ const core = {
 	botAgent: (name) => botAgent?.(name),
 	botNames: () => botNames?.() ?? [],
 	startThread,
+	setTitleIn,
 	post,
 	seenBy,
 	commit,
@@ -1279,6 +1284,7 @@ const defaults = {
 	talk: true,
 	status: true,
 	memory: true,
+	'auto-title': false,
 	matrix: false,
 	context: true,
 	'web-search': false,

@@ -14,7 +14,7 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   threadList, threadRow, threadView, people   what GET /api/threads returns
   forkThread, seenBy                forks
   compact, compactingAt             compaction now, or early
-  setTitle, setTools, toolList, toolsOf   a thread's title and tools
+  setTitle, setTitleIn, setTools, toolList, toolsOf   a thread's title and tools
   receipt, once                     a retried request does its work once
   routes                            every HTTP route, as the README lists them
   watch, rewatch, told, doing       /ws: a browser watching one thread and its agents' live work
@@ -32,6 +32,7 @@ modules/
   talk.js                `post` and `threads` tools; reply sends answers back to askers; a bot in the
                          thread it posts to speaks there as itself (member), and so does a bot that
                          starts a thread for two or more bots (opener in server.js's post)
+  auto-title.js          first-answer title generation (AutoTitle), sanitizeThreadTitle, one attempt per thread
   memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut, each thread's switch (remembers, turn); render, memory
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
   context.js             AGENTS.md and skills from the runner's folder; listed skills stay readable outside it
@@ -72,6 +73,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
                          a bot's threads as a page of the sheet
   agent-memory.js        memory popover and compaction view for the visible thread
+  title.js               defaultTitle shared by new-thread client paths, CLI and auto-title
   settings.js            server settings: modules on/off and memory's model
   system.js, wires.js    the live system diagram and the wires between boxes
   tutorial.js            walkthrough buttons wired to the real server
@@ -90,6 +92,7 @@ examples/17-memory-compaction.js   automatic and manual cuts, memory coverage an
 examples/27-watch-agents-work.js   socket snapshots, streaming entries, delivery identity and reconnects
 examples/all.js          suite queue, per-example timeout and interruption cleanup
 examples/92-the-server-keeps-a-log.js   the log next to the store: output, crash stack, exit code
+examples/93-auto-title.js          one-shot default titles, explicit titles, edits in flight and failures
 examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
 examples/86–90-*-real-model.js     move bench: introductions, another thread's fact, side question,
                                  directed mention and web search; REAL=1 only

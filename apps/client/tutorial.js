@@ -1,4 +1,5 @@
 /** The story's buttons use the same server and picker as the chat. */
+import { defaultTitle } from './title.js'
 import html from '@solidjs/html'
 import { Portal } from '@solidjs/web'
 import { onSettled, Show, snapshot } from 'solid-js'
@@ -54,7 +55,7 @@ const defaults = () =>
 async function ask(body, to, was = current()) {
 	if (!to) throw new Error('Pick a model first.')
 	choose(to)
-	const id = was ?? (await createThread(body.slice(0, 60)))
+	const id = was ?? (await createThread(defaultTitle(body)))
 	await api(`/api/threads/${id}/entries`, { body, to: snapshot(to) })
 }
 

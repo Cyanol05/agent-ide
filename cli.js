@@ -1,4 +1,5 @@
 /** The API from a terminal */
+import { defaultTitle } from './apps/client/title.js'
 import { parseArgs } from 'node:util'
 import { on, once } from 'node:events'
 import WebSocket from 'ws'
@@ -100,7 +101,7 @@ async function post() {
 	if (!body) throw new Error('post what?')
 	const id = flags.thread
 		? Number(flags.thread)
-		: (await api('POST', '/api/threads', { title: flags.title ?? body.slice(0, 60) })).id
+		: (await api('POST', '/api/threads', { title: flags.title ?? defaultTitle(body) })).id
 	if (!flags.thread) console.error(`thread ${id}`)
 	const seen = (await api('GET', `/api/threads/${id}`)).entries.at(-1)?.id ?? 0
 	const to = flags.to && (flags.to.includes('nobody') ? null : flags.to.map(agent))
