@@ -43,6 +43,10 @@ import { report } from './notice.js'
 import { imageUrl } from './images.js'
 import { markdown } from './markdown.js'
 
+/** A folded summary's text, without the literal <summary> wrapper tags some memories still carry */
+const stripSummaryTag = (text) =>
+	(text ?? '').replace(/^\s*<\/?summary>\s*\n?/im, '').replace(/\n\s*<\/?summary>\s*$/im, '')
+
 export function Thread(props) {
 	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
 	const messages = () => entries[props.id] ?? []
@@ -392,7 +396,7 @@ export function Thread(props) {
 												title=${() => `messages ${row().at} to ${row().at + row().n - 1}`}
 											>
 												<small>${() => `${row().at}+${row().n}`}</small>
-												<span>${() => row().text}</span>
+												<div class="body markdown" innerHTML=${() => markdown(stripSummaryTag(row().text))} />
 											</li>
 										`}
 									>
