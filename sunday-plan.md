@@ -9,7 +9,8 @@
 - Bots and director on by default.
 
 ## v1, in flight
-- Memory per thread (#39): on by default in bot threads, `memory.threads` setting.
+- Memory per thread: on by default in bot threads, `memory.threads` setting.
+- Slash commands like /compact do nothing in a thread (#35).
 
 ## v1, Oskar
 - Homepage copy against the README (Sol's list, thread 40837).
@@ -18,12 +19,10 @@
 - Phone checks: top-bar blur, Send arrow, panel ×, Enter behavior.
 
 ## After v1
-- Bench: does a cheap model reach for the right move, judged by eye on Luna low.
+- Bench: scored scenarios on Luna low, not judged by eye.
 - Memory notes, a folder per bot (#39).
 - Trim the client: client.css ~3000 lines, client ~7300.
 - Worker's CLI posts should show as the agent, not Oskar.
 - Drop Claude cache_control retry once pi-claude-code#10 lands.
 - The name: keep agent-ide for now.
 
-## Open issues
-- #35 Slash commands like /compact do nothing in a thread.
