@@ -14,6 +14,7 @@ import {
 	onSettled,
 	Show,
 	snapshot,
+	untrack,
 } from 'solid-js'
 import {
 	api,
@@ -123,7 +124,7 @@ export function Composer(props) {
 	createEffect(
 		() => props.thread ?? 'new',
 		(key) => {
-			if (compose.drafts[key]) return
+			if (untrack(() => compose.drafts[key])) return
 			const saved = readDraft(key)
 			if (saved) setCompose((store) => void (store.drafts[key] = { draft: saved, images: [], sending: false }))
 		},
