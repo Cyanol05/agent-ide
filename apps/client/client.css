@@ -1598,8 +1598,8 @@ body.chat .thread > header > button.close {
 	padding: 0 0.75rem;
 	border: 1px solid var(--line);
 	border-radius: 6px;
-	/* Opaque, with no blur: the messages already fade out beneath, and Safari's blur over the faded list dims the pill. */
-	background: Canvas;
+	/* Opaque, with no blur: the messages already fade out beneath, and Safari's blur over the faded list dims the pill. Raised like the composer box, so it doesn't blend into the page behind it. */
+	background: var(--tint);
 	color: var(--ink);
 	font-size: 13px;
 	font-weight: 400;
