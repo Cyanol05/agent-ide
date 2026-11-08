@@ -467,7 +467,7 @@ export function Message(props) {
 	const forks = () =>
 		threads.filter(
 			(thread) =>
-				!thread.hidden &&
+				!thread.archived &&
 				forkedFrom(thread) === props.thread &&
 				thread.conversation.parent.at === props.entry.id,
 		)
