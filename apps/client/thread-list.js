@@ -60,6 +60,7 @@ export function ThreadList() {
 					<${Show} when=${() => archivedThreads.length}>
 						<li class="new">
 							<button type="button" class="row" onClick=${() => setArchivedPage(true)}>
+								<span class="plus" aria-hidden="true"></span>
 								<span>Archived</span>
 								<small aria-hidden="true">${() => archivedThreads.length}</small>
 							</button>

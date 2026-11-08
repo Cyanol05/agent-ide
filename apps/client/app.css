@@ -47,7 +47,9 @@
 .mode-toggle {
 	position: absolute;
 	bottom: calc(var(--space-3) + (var(--foot-height) - var(--foot-button)) / 2);
-	left: calc(var(--list-width, 15rem) - 2.4rem);
+	/* Its right edge on the list's, where a row's count ends. */
+	left: calc(var(--list-width, 15rem) - 1px - var(--space-2));
+	translate: -100% 0;
 	z-index: 2;
 	height: var(--foot-button);
 }
@@ -276,7 +278,6 @@ agent-memory {
 .thread-list > ul,
 .thread-family {
 	display: grid;
-	gap: 1px;
 	list-style: none;
 	margin: 0;
 	padding: 0;
@@ -287,6 +288,7 @@ agent-memory {
 }
 
 :is(.thread-list > ul, .thread-family) > li {
+	position: relative;
 	display: flex;
 	/* A grid row is as wide as its title otherwise; this keeps the ellipsis and no sideways scroll. */
 	min-width: 0;
@@ -321,11 +323,13 @@ agent-memory {
 		}
 	}
 
+	/* Over the title's end, not beside it: hidden, it takes no room from the title. */
 	> button.archive {
-		margin-left: auto;
-		margin-right: var(--space-2);
+		position: absolute;
+		top: 50%;
+		right: var(--space-2);
+		translate: 0 -50%;
 		visibility: hidden;
-		flex: none;
 	}
 
 	&:focus-within {
@@ -1079,6 +1083,8 @@ body.side .thread-details {
 	display: flex;
 	justify-content: space-between;
 	margin-inline: var(--space-2);
+	/* Two baselines, so the rows under each heading start on the grid. */
+	line-height: calc(2 * var(--baseline));
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1402,8 +1408,8 @@ button.foot-toggle {
 	gap: var(--space-2);
 	min-width: 0;
 	height: var(--foot-button);
-	/* Its dot where a row's sits, so the words line up with the threads above. */
-	padding-inline: var(--space-2);
+	/* Its dot where a row's sits, so the words line up with the threads above; a row has no border to make up for. */
+	padding-inline: calc(var(--space-2) - 1px);
 
 	span:last-child {
 		overflow: hidden;
@@ -1650,6 +1656,7 @@ body.resizing {
 		position: fixed;
 		left: auto;
 		right: var(--space-2);
+		translate: none;
 		bottom: calc((var(--foot-height) - var(--foot-button)) / 2);
 		z-index: 4;
 	}
@@ -1766,6 +1773,7 @@ body.resizing {
 
 	.list-foot {
 		margin: auto calc(-1 * var(--space-2)) 0;
+		padding-left: var(--space-2);
 	}
 
 	.list-edge {
