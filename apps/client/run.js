@@ -103,7 +103,7 @@ export function Exchange(props) {
 	const [open, setOpen] = createSignal(false)
 
 	return html`
-		<li class="exchange">
+		<li class="exchange" style=${() => colorOf(who() ?? '', '--bot')}>
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<small>

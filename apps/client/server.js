@@ -257,9 +257,17 @@ export const fork = async (id, at) => openThread((await api(`/api/threads/${id}/
 
 export const homeBot = (id) => bots.find((bot) => bot.home === id)
 export const botAgent = (bot) => ({ ...bot.to, name: bot.name })
-export const colorOf = (name) => {
-	const hue = [...name].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 360, 7)
-	return bots.some((bot) => bot.name === name) ? `color: oklch(0.6 0.14 ${hue})` : ''
+/**
+ * A bot's colour, as a style for `property`; anyone else has none. Bots take golden-angle hues in the order they were
+ * made, so the first several sit far apart and a new bot changes no one's; forgetting one shifts the bots made after it.
+ */
+export const colorOf = (name, property = 'color') => {
+	const index = [...bots]
+		.sort((a, b) => a.home - b.home)
+		.findIndex((bot) => bot.name === name)
+	if (index < 0) return ''
+	const hue = (50 + index * 137.508) % 360
+	return `${property}: light-dark(oklch(0.56 0.15 ${hue}), oklch(0.74 0.13 ${hue}))`
 }
 export const forkedFrom = (thread) => thread?.conversation?.parent?.conversationId
 export const titleOf = (id) => {

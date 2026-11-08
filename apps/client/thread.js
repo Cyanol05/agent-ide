@@ -537,7 +537,9 @@ export function Message(props) {
 				reply: answered(),
 				mine: !elsewhere() && data().author === me,
 				same: !elsewhere() && !props.sent && data().author !== me && props.above === data().author,
+				asked: !!(elsewhere() || props.sent) && !data().re,
 			})}
+			style=${() => (elsewhere() || props.sent ? colorOf(props.sent?.data.author ?? data().author, '--bot') : '')}
 		>
 			<${Show}
 				when=${() => answered()}

@@ -5,7 +5,7 @@
  * engineer, design), else nobody.
  * `node scripts/try.js &`, open the address it prints, stop it with the `kill` line it prints. Every server it starts goes with it.
  * The bot's model, echo/echo, thinks, writes, reads, edits and runs a command in its folder, then answers in markdown.
- * A message with "post" in it makes it post to a new thread too; "slow" makes the command take five seconds, to watch live work, and passes on to the thread it posts to. */
+ * A message with "post" in it makes it post to a new thread too, or to a bot it names; "slow" makes the command take five seconds, to watch live work, and passes on to the thread it posts to. */
 import {
 	fauxAssistantMessage,
 	fauxThinking,
@@ -78,7 +78,8 @@ const step = (request) => {
 		return call('post', {
 			title: 'side question',
 			body: `${asked.includes('slow') ? 'slow: ' : ''}what did you find?`,
-			to: 'echo/echo@bot',
+			// "post ada" asks the bot ada instead
+			to: Object.keys(personas).find((name) => asked.includes(name)) ?? 'echo/echo@bot',
 		})
 	return say(
 		`Done. I wrote, read and edited \`notes.md\`, then ran a command:\n\n\`\`\`\n${text(request.messages.at(-1)).slice(0, 400)}\n\`\`\`\n\n- one\n- two`,

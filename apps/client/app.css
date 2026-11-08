@@ -467,11 +467,28 @@ agent-memory {
 
 		/* What crossed sits one step under its label, like the steps under a run summary. */
 		> li.elsewhere {
+			--inset: var(--space-2);
+
 			> .body,
 			> .images,
 			> details > .body,
 			> details > .images {
-				margin-left: var(--space-2);
+				margin-left: var(--inset);
+			}
+		}
+
+		/* Whose words crossed: a thin rule in their bot's colour down the inset, grey for anyone else. */
+		> li.elsewhere > .body,
+		> li.elsewhere > details > .body,
+		> li.exchange .said {
+			position: relative;
+
+			&::before {
+				content: '';
+				position: absolute;
+				inset: 0 auto 0 calc(-1 * var(--inset));
+				width: 2px;
+				background: color-mix(in oklch, var(--bot, var(--edge)) 50%, transparent);
 			}
 		}
 
@@ -503,6 +520,11 @@ agent-memory {
 			/* One rhythm on the baseline: a new speaker's message opens a block two baselines down; what follows inside it sits one baseline down. */
 			&:is(.turn, .exchange, .reply) {
 				margin-top: var(--space-3);
+			}
+
+			/* Across threads, a question is muted and an answer is ink: what was asked, then what came of it. */
+			&.asked {
+				color: var(--mute);
 			}
 
 			/* Its words a size down, on the same 24px lines, so it stays on the baseline. */
@@ -652,9 +674,10 @@ agent-memory {
 				}
 			}
 
-			/* Light sea green says it crossed threads: the box's frame and its arrows. The names keep their author's colour, the words plain ink. */
 			/* An ask is one quiet line in the flow; opened, the question and its answer as the messages that crossed. */
 			&.exchange {
+				--inset: var(--space-3);
+
 				summary > small {
 					display: inline;
 					margin: 0;
@@ -672,26 +695,23 @@ agent-memory {
 				/* Opened, the question and its answer are the messages that crossed, under the line. */
 				.said {
 					list-style: none;
-					margin: 0 0 0 var(--space-3);
+					margin: 0 0 0 var(--inset);
 					padding: 0;
 
 					> li.elsewhere {
 						margin-left: 0;
 					}
 
-					/* The line above already says where it went: no headers, the question muted, the answer plain. */
+					/* The line above already says where it went: no headers. */
 					> li > small {
 						display: none;
-					}
-
-					> li:first-child {
-						color: var(--mute);
 					}
 				}
 			}
 
+			/* The arrows say it crossed threads, in the colour of the bot it crossed with, grey for anyone else. */
 			.cross {
-				color: lightseagreen;
+				color: var(--bot, var(--edge));
 			}
 
 			small span[style] > .thread-link,
