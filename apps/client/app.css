@@ -683,13 +683,16 @@ agent-memory {
 					margin: 0;
 				}
 
-				/* The dot while the other side works. */
+				/* The dot while the other side works hangs in the margin, so the words start where every run line does and never move. */
 				.lead {
+					position: absolute;
+					top: 0;
+					right: 100%;
 					display: inline-flex;
 					align-items: center;
-					width: var(--space-3);
-					/* One em tall on the baseline, so the dot's middle is the words' middle, as a row centres it */
-					height: 1em;
+					padding-right: var(--space-1);
+					/* As tall as the summary's line, so the dot's middle is the words' middle */
+					height: var(--text-line);
 				}
 
 				/* Opened, the question and its answer are the messages that crossed, under the line. */
