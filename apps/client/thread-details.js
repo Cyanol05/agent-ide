@@ -28,7 +28,9 @@ export function ThreadDetails() {
 	return html`
 		<div class="scrim" onClick=${() => drawer(null)}></div>
 		<section class="thread-details" aria-label="Thread details">
-			<button type="button" class="close" aria-label="Close" onClick=${() => drawer(null)}>×</button>
+			<button type="button" class="close" aria-label="Close" onClick=${() => drawer(null)}>
+				×
+			</button>
 			<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
 			<${Show} when=${() => members().length > 1}>
 				<h2>In this thread</h2>
@@ -121,6 +123,16 @@ function Tools(props) {
 			setError(failure.message)
 		}
 	}
+	const here = () => props.thread && threads.find((thread) => thread.id === props.thread)
+	const remember = async (on) => {
+		setError('')
+		try {
+			await api(`/api/threads/${props.thread}/memory`, { on })
+			refresh(threads)
+		} catch (failure) {
+			setError(failure.message)
+		}
+	}
 	return html`
 		<div class="hands">
 			<label title="Its agents can look things up, but every change has to go through a thread">
@@ -153,6 +165,20 @@ function Tools(props) {
 				}}
 			/>
 		</div>
+		<${Show} when=${() => typeof here()?.memory === 'boolean'}>
+			<div class="hands">
+				<label
+					title="Memory writes a line for each message, so its agents remember the whole thread"
+				>
+					<input
+						type="checkbox"
+						checked=${() => here().memory}
+						onChange=${(event) => remember(event.currentTarget.checked)}
+					/>
+					Memory
+				</label>
+			</div>
+		<//>
 	`
 }
 

@@ -84,7 +84,7 @@ async function round(env) {
 	return { offered, prompt, results: results ?? [] }
 }
 
-const on = await round({ MODULES: '+memory', MEMORY_MODEL: 'echo/echo@bot' })
+const on = await round({ MODULES: '+memory', MEMORY_THREADS: 'all', MEMORY_MODEL: 'echo/echo@bot' })
 const [one, two, three, four, five] = on.results
 const rows = text(one ?? {}).split('\n')
 check(

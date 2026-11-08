@@ -2240,7 +2240,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 
 		flex-wrap: wrap;
 
-		:is(button, input) {
+		:is(button, input, select) {
 			font: inherit;
 			color: var(--ink);
 			white-space: nowrap;

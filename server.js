@@ -1159,7 +1159,7 @@ async function forkThread(id, { at, title }) {
 		{
 			...ownerless,
 			init: async (tx, forkId) => {
-				;Object.assign(await tx.doc(Thread, forkId), {
+				Object.assign(await tx.doc(Thread, forkId), {
 					tools: source.tools,
 					memory: source.memory ?? null,
 				})
@@ -1372,7 +1372,9 @@ const routes = [
 						.map((module) => [module.name, module.settings]),
 				),
 				/** Set in the environment, these win over agent-ide.json */
-				overrides: ['MODULES', 'MEMORY_MODEL', 'MEMORY_THREADS'].filter((name) => process.env[name]),
+				overrides: ['MODULES', 'MEMORY_MODEL', 'MEMORY_THREADS'].filter(
+					(name) => process.env[name],
+				),
 				restarts: typeof process.execve === 'function',
 			},
 		}),

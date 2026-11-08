@@ -16,6 +16,7 @@ import { messageText as text, serveRunner } from '../remote.js'
 for (const name of [
 	'MODULES',
 	'MEMORY_MODEL',
+	'MEMORY_THREADS',
 	'SEARCH_URL',
 	'STATUS',
 	'AGENT_IDE_KEY',

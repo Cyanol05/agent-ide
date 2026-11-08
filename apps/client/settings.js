@@ -32,6 +32,7 @@ export function Settings() {
 	const on = (module) => draft.modules[module.name] ?? module.on
 	const model = () => draft.model ?? server().settings?.memory.model ?? ''
 	const compactAt = () => draft.compactAt ?? server().settings?.memory.compactAt ?? 100000
+	const memoryThreads = () => draft.threads ?? server().settings?.memory.threads ?? 'bots'
 	const toggle = (module) =>
 		setDraft((store) => {
 			if (!module.on === !on(module)) store.modules[module.name] = !module.on
@@ -48,10 +49,13 @@ export function Settings() {
 		try {
 			const { restarts } = await api('/api/settings', {
 				modules: snapshot(draft.modules),
-				...((draft.model !== undefined || draft.compactAt !== undefined) && {
+				...((draft.model !== undefined ||
+					draft.compactAt !== undefined ||
+					draft.threads !== undefined) && {
 					memory: {
 						...(draft.model !== undefined && { model: draft.model }),
 						...(draft.compactAt !== undefined && { compactAt: draft.compactAt }),
+						...(draft.threads !== undefined && { threads: draft.threads }),
 					},
 				}),
 			})
@@ -59,6 +63,7 @@ export function Settings() {
 				store.modules = {}
 				store.model = undefined
 				store.compactAt = undefined
+				store.threads = undefined
 				store.state = restarts ? 'restarting' : 'stopped'
 			})
 		} catch (error) {
@@ -94,7 +99,12 @@ export function Settings() {
 				title="Settings"
 				detailTitle="Memory’s agent"
 				open=${() => selection() !== null}
-				close=${html`<button type="button" class="close" aria-label="Close" onClick=${() => panel.hidePopover()}>
+				close=${html`<button
+					type="button"
+					class="close"
+					aria-label="Close"
+					onClick=${() => panel.hidePopover()}
+				>
 					×
 				</button>`}
 				onBack=${(event) => back()}
@@ -155,6 +165,23 @@ export function Settings() {
 												</button>
 											<//>
 										</div>
+										<div class="option">
+											<span>Remembers</span>
+											<select
+												aria-label="Which threads remember"
+												title="A thread’s own Memory switch, in its details, overrides this"
+												disabled=${() => !editable() || overridden('MEMORY_THREADS')}
+												value=${memoryThreads}
+												onChange=${(event) => {
+													const value = event.currentTarget.value
+													setDraft((store) => void (store.threads = value))
+												}}
+											>
+												<option value="bots">threads with a bot</option>
+												<option value="all">every thread</option>
+												<option value="none">no thread</option>
+											</select>
+										</div>
 										<div class="option compact-option">
 											<span>Compacts past</span>
 											<input
@@ -193,6 +220,11 @@ export function Settings() {
 					<${Show} when=${() => overridden('MODULES')}>
 						<p class="mute">Module switches are locked by MODULES in the server’s environment.</p>
 					<//>
+					<${Show} when=${() => overridden('MEMORY_THREADS')}>
+						<p class="mute">
+							Which threads remember is locked by MEMORY_THREADS in the server’s environment.
+						</p>
+					<//>
 					<${Show} when=${() => overridden('MEMORY_MODEL')}>
 						<p class="mute">
 							Memory’s agent is locked by MEMORY_MODEL in the server’s environment.
@@ -221,9 +253,16 @@ export function Settings() {
 
 /** Changes not saved yet, kept if the settings close before saving */
 const [draft, setDraft] = createRoot(() =>
-	createStore({ modules: {}, model: undefined, compactAt: undefined, state: '' }),
+	createStore({
+		modules: {},
+		model: undefined,
+		compactAt: undefined,
+		threads: undefined,
+		state: '',
+	}),
 )
 const changed = () =>
 	Object.keys(draft.modules).length > 0 ||
 	draft.model !== undefined ||
-	draft.compactAt !== undefined
+	draft.compactAt !== undefined ||
+	draft.threads !== undefined

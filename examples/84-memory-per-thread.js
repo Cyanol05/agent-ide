@@ -1,5 +1,16 @@
 /** With memory on, a thread with a bot in it remembers and one without doesn't, unless `memory.threads` or its own switch says otherwise */
-import { answered, api, check, done, linesOf, say, scriptedRunner, server, sleep, until } from './lib.js'
+import {
+	answered,
+	api,
+	check,
+	done,
+	linesOf,
+	say,
+	scriptedRunner,
+	server,
+	sleep,
+	until,
+} from './lib.js'
 
 await server({ MODULES: '+memory,+bots' })
 await scriptedRunner('bot', () => say('ok'))
@@ -15,7 +26,10 @@ check(
 const withBot = await thread('with ada')
 const alone = await thread('alone')
 await api('POST', `/api/threads/${alone}/entries`, { body: 'nobody asked', to: null })
-await api('POST', `/api/threads/${alone}/entries`, { body: 'the agent asked', to: ['echo/echo@bot'] })
+await api('POST', `/api/threads/${alone}/entries`, {
+	body: 'the agent asked',
+	to: ['echo/echo@bot'],
+})
 await api('POST', `/api/threads/${withBot}/entries`, { body: 'hello ada', to: ['ada'] })
 await answered(alone, 1)
 await answered(withBot, 1)
@@ -38,10 +52,7 @@ check(
 	JSON.stringify(await linesOf(alone)),
 )
 await api('POST', `/api/threads/${alone}/entries`, { body: 'and now', to: null })
-check(
-	Boolean(await until(async () => (await linesOf(alone)).length >= 4)),
-	'and every line after',
-)
+check(Boolean(await until(async () => (await linesOf(alone)).length >= 4)), 'and every line after')
 
 await api('POST', `/api/threads/${withBot}/memory`, { on: false })
 const before = (await linesOf(withBot)).length

@@ -32,7 +32,7 @@ modules/
   talk.js                `post` and `threads` tools; reply sends answers back to askers; a bot in the
                          thread it posts to speaks there as itself (member), and so does a bot that
                          starts a thread for two or more bots (opener in server.js's post)
-  memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut; render, memory
+  memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut, each thread's switch (remembers, turn); render, memory
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
   context.js             AGENTS.md and skills from the runner's folder; listed skills stay readable outside it
   director.js            the `direct` hook: @mentions ask that bot, with picks a model picks bots or nobody (decide);
@@ -69,9 +69,9 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   runner.js              runner list, a runner's agents, ConnectRunner
   bot.js                 a bot's settings, new bot
   thread-list.js         the thread list, its family rows
-  thread-details.js      title, people, family, tools for the open thread
+  thread-details.js      title, people, family, tools and the memory switch for the open thread
   agent-memory.js        memory popover and compaction view for the visible thread
-  settings.js            server settings: modules on/off, memory's model
+  settings.js            server settings: modules on/off, memory's model and which threads remember
   system.js, wires.js    the live system diagram and the wires between boxes
   tutorial.js            walkthrough buttons wired to the real server
   panes.js, popover.js, sure.js, notice.js, dot.js   list/detail frame, popover placement,
