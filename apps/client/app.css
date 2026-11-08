@@ -465,6 +465,16 @@ agent-memory {
 		font-size: var(--text);
 		line-height: var(--text-line);
 
+		/* What crossed sits one step under its label, like the steps under a run summary. */
+		> li.elsewhere {
+			> .body,
+			> .images,
+			> details > .body,
+			> details > .images {
+				margin-left: var(--space-1);
+			}
+		}
+
 		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
 		> li,
 		> li.exchange .said > li {
@@ -661,7 +671,7 @@ agent-memory {
 				/* Opened, the question and its answer are the messages that crossed, under the line. */
 				.said {
 					list-style: none;
-					margin: 0 0 0 calc(var(--space-5) - var(--space-1));
+					margin: 0 0 0 var(--space-1);
 					padding: 0;
 
 					> li.elsewhere {
