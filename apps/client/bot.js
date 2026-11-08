@@ -82,8 +82,10 @@ export function BotSettings(props) {
 		return [...mine, ...elsewhere]
 	})
 	const count = createMemo(() => own().length)
-	// Of its hundreds, the ones worth a look: everything that isn't sitting idle
-	const active = createMemo(() => own().filter((thread) => thread.status !== 'idle'))
+	// Of its hundreds, the ones happening now or needing a hand; an unread answer already shows its dot in the thread list
+	const active = createMemo(() =>
+		own().filter((thread) => ['working', 'blocked', 'error'].includes(thread.status)),
+	)
 	return html`
 		<div class="bot">
 			<h3>Instructions</h3>
