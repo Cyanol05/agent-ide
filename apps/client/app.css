@@ -815,8 +815,9 @@ agent-memory {
 			padding: 0 var(--space-1);
 			min-height: var(--foot-height);
 
+			/* Its + on the field's first letter above it. */
 			button.add {
-				height: var(--foot-button);
+				margin-left: calc(-1 * var(--space-1));
 			}
 		}
 
