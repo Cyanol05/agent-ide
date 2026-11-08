@@ -485,6 +485,11 @@ agent-memory {
 				}
 			}
 
+			/* One rhythm: a new speaker's message opens a block with --space-5 above it; what follows inside it sits --space-3 below. */
+			&:is(.turn, .exchange, .reply) {
+				margin-top: var(--space-3);
+			}
+
 			/* What came from or went to another thread sits in by --space-5, its header with it. */
 			&:is(.elsewhere, .exchange) {
 				margin-left: var(--space-5);
