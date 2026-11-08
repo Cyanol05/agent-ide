@@ -99,6 +99,7 @@ examples/86–90-*-real-model.js     move bench: introductions, another thread's
 examples/real-model-bench.js       real runner setup, delivery settling and transcript evidence
 examples/real-model-bench.md       how to run the move bench and its recorded baseline
 examples/91-wait-for-the-runner.js runner startup waits for ready or rejects on exit
+examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 
 Where a feature lives:
