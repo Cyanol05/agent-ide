@@ -258,6 +258,7 @@ export function Composer(props) {
 								<img src=${() => imageUrl(image)} alt="" />
 								<button
 									type="button"
+									class="remove"
 									aria-label="Take this image off"
 									onClick=${(_e) =>
 										changeDraft((draft) => {
@@ -273,6 +274,7 @@ export function Composer(props) {
 			<//>
 			<div class="box">
 				<textarea
+					class=${() => ({ draft: true, elsewhere: !active() })}
 					ref=${(el) => (input = el)}
 					rows="1"
 					autocomplete="off"
@@ -388,7 +390,7 @@ export function Composer(props) {
 				>
 					<button
 						type="button"
-						class="ghost stop"
+						class="ghost small stop"
 						aria-label="Stop"
 						title="Stop this thread"
 						onClick=${() => api(`/api/threads/${props.thread}/stop`, {}).catch(report)}
@@ -399,7 +401,7 @@ export function Composer(props) {
 				<${Show} when=${() => filled()}>
 					<button
 						type="button"
-						class="ghost pick"
+						class="ghost small pick"
 						aria-label="Context"
 						title="How full the agent's context is"
 						ref=${(el) => (recallButton = el)}
@@ -413,7 +415,7 @@ export function Composer(props) {
 				<//>
 				<button
 					type="button"
-					class="ghost pick"
+					class="ghost small pick"
 					aria-label=${() => `Asks ${asking() || 'no one yet; pick a model'}`}
 					ref=${(el) => (button = el)}
 					aria-expanded="false"
@@ -475,9 +477,9 @@ export function Composer(props) {
 				<${Show} when=${() => active()}>
 					<${Panes}
 						title="Context"
-						close=${html`<button type="button" class="ghost close" aria-label="Close" onClick=${() => recall.hidePopover()}>×</button>`}
+						close=${html`<button type="button" class="ghost close icon" aria-label="Close" onClick=${() => recall.hidePopover()}>×</button>`}
 						detailTitle="Memory’s lines"
-						actions=${html`<button type="button" onClick=${() => recall.hidePopover()}>Done</button>`}
+						actions=${html`<button type="button" class="small" onClick=${() => recall.hidePopover()}>Done</button>`}
 						open=${() => lines()}
 						onBack=${() => setLines(false)}
 						detail=${html`<${Show} when=${() => lines()}><${Memory} /><//>`}

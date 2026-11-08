@@ -90,7 +90,7 @@ export function BotSettings(props) {
 		<div class="bot">
 			<h3>Instructions</h3>
 			<textarea
-				class="instructions"
+				class="field instructions"
 				ref=${(el) => {
 					instructionsField = el
 				}}
@@ -107,7 +107,7 @@ export function BotSettings(props) {
 			<h3>Model</h3>
 			<button
 				type="button"
-				class="model"
+				class="field bot-model"
 				title="The model it joins new threads with"
 				onClick=${(event) => openPicker(event.currentTarget)}
 			>
@@ -121,7 +121,7 @@ export function BotSettings(props) {
 						<${For} each=${active}>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//>
 					</ul>
 				<//>
-				<button type="button" class="threads" onClick=${(event) => props.onThreads(event)}>
+				<button type="button" class="field threads" onClick=${(event) => props.onThreads(event)}>
 					<span>${() => `All ${count()} ${count() === 1 ? 'thread' : 'threads'}`}</span>
 					<small aria-hidden="true">→</small>
 				</button>
@@ -188,7 +188,7 @@ export function NewBot(props) {
 					autocomplete="off"
 					autocapitalize="none"
 					spellcheck="false"
-					class=${() => ({ bad: !!error() })}
+					class=${() => ['bare', { bad: !!error() }]}
 					aria-invalid=${() => !!error()}
 					title=${() => error() || 'How anyone asks it, in any thread'}
 					value=${() => name()}
@@ -203,7 +203,7 @@ export function NewBot(props) {
 						if (event.key === 'Escape') props.onDone()
 					}}
 				/>
-				<button type="submit" class="ghost" disabled=${() => saving()}>Create</button>
+				<button type="submit" class="ghost small" disabled=${() => saving()}>Create</button>
 				<${Show} when=${() => error()}>
 					<small role="alert">${() => error()}</small>
 				<//>

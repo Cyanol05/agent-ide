@@ -68,7 +68,7 @@ function PickerRunner(runner, props) {
 					>${(level) => html`
 						<button
 							type="button"
-							class="ghost"
+							class="ghost small"
 							title=${() => level}
 							aria-pressed=${() => String(to().thinkingLevel === level)}
 							onClick=${() =>

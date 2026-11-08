@@ -135,7 +135,7 @@ export function ThreadDetails() {
 			<//>
 			<${Show} when=${page}>
 				<header class="page-head">
-					<button type="button" class="ghost" aria-label="Back to the bot" onClick=${() => setPage(false)}>
+					<button type="button" class="ghost back" aria-label="Back to the bot" onClick=${() => setPage(false)}>
 						<span aria-hidden="true">←</span>
 					</button>
 					<h2>Threads</h2>
@@ -177,7 +177,7 @@ function Title(props) {
 	}
 	return html`
 		<input
-			class=${() => ['thread-title', { bad: !!error() }]}
+			class=${() => ['bare thread-title', { bad: !!error() }]}
 			aria-label="Thread title"
 			title=${() => error() || 'Rename this thread'}
 			value=${title}
@@ -243,7 +243,7 @@ function Tools(props) {
 					field = el
 				}}
 				spellcheck="false"
-				class=${() => ['tools', { bad: !!error() }]}
+				class=${() => ['field tools', { bad: !!error() }]}
 				title=${() => error() || 'tools, as pi --tools takes them: read,post or -write,-edit,-bash'}
 				value=${() => text()}
 				onInput=${(event) => setText(event.currentTarget.value)}

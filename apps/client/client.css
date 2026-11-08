@@ -167,6 +167,8 @@ option {
 	color: CanvasText;
 }
 
+/* A control's look is its element's or its variant's, here; a rule for a place sets only its layout. */
+
 /* Three buttons. Bordered, the default: white, a thin border; the one that's on gets a dark border. Its text sits in the middle, not on the page's 1.6 line. */
 button {
 	cursor: pointer;
@@ -199,6 +201,202 @@ button.primary {
 
 	&:disabled {
 		background: var(--edge);
+	}
+}
+
+/* Small: a quiet control's words, in a bar, an option, a pane's header. */
+:is(button, input, select).small {
+	font-size: 12px;
+	padding: 0.25rem 0.5rem;
+	white-space: nowrap;
+}
+
+/* Tiny: a row's own action at its end. */
+button.tiny {
+	padding: 0 0.35rem;
+	font-size: 11px;
+	line-height: 1.4;
+}
+
+/* Back: the arrow at a page's start. */
+button.back {
+	padding: 0 0.2rem;
+}
+
+/* Icon: one glyph, a size up. Send is a filled round arrow, like a messages app's. */
+button.icon {
+	display: inline-flex;
+	padding: 0.2rem 0.45rem;
+	font-size: 16px;
+	line-height: 1;
+
+	&:disabled {
+		cursor: default;
+		opacity: 0.7;
+	}
+}
+
+button.send {
+	width: 1.6rem;
+	height: 1.6rem;
+	padding: 0;
+	justify-content: center;
+	align-items: center;
+	border-radius: 50%;
+	font-weight: 700;
+
+	&:disabled {
+		opacity: 1;
+	}
+}
+
+/* Remove: a small round × on a corner. */
+button.remove {
+	display: grid;
+	place-items: center;
+	width: 1.3rem;
+	height: 1.3rem;
+	padding: 0;
+	border-radius: 50%;
+	font-size: 12px;
+	line-height: 1;
+}
+
+/* Field: a soft box to type in, or a button that stands for one. */
+.field {
+	padding: 0.4rem 0.6rem;
+	font-size: 14px;
+	font-family: inherit;
+	color: var(--ink);
+	background: var(--tint);
+	border: 1px solid var(--line);
+	border-radius: 6px;
+
+	&:focus {
+		outline: none;
+		border-color: var(--mute);
+	}
+
+	small {
+		color: var(--mute);
+	}
+}
+
+/* Bare: reads as text until you point at it or write in it. */
+input.bare {
+	padding: 0.2rem 0.3rem;
+	border-color: transparent;
+	background: none;
+
+	&:focus {
+		outline: none;
+		border-color: var(--line);
+	}
+}
+
+/* The thread's name, as a heading you can edit. */
+input.thread-title {
+	font-size: 15px;
+	font-weight: 600;
+}
+
+/* Draft: what you're writing, at the messages' size, with the box around it as its frame. */
+textarea.draft {
+	padding: 0.4rem 0;
+	border: 0;
+	background: none;
+	outline: none;
+	font: inherit;
+	font-size: 15px;
+	line-height: 1.4;
+	color: inherit;
+
+	&.elsewhere {
+		color: var(--mute);
+	}
+}
+
+:is(input, textarea).bad {
+	color: var(--wait);
+}
+
+input[type='checkbox'] {
+	margin: 0;
+	padding: 0;
+	accent-color: var(--ink);
+}
+
+/* A row in a list: a link or a button, the whole width, its title cut at the edge. */
+.row {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.2rem 0.4rem;
+	padding-left: calc(0.4rem + var(--depth, 0) * 1rem);
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-decoration: none;
+	text-align: start;
+
+	> span:not(.dot, .plus) {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	> small {
+		flex: none;
+		color: var(--mute);
+	}
+}
+
+/* A model: a row with a check on the one asked. */
+button.model {
+	width: 100%;
+	border: 0;
+	background: none;
+	text-align: left;
+
+	small {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	&.on {
+		background: color-mix(in srgb, CanvasText 8%, transparent);
+
+		&::after {
+			content: '✓';
+			margin-left: auto;
+			color: var(--pick);
+		}
+	}
+
+	&[aria-selected='true'] {
+		background: var(--tint);
+	}
+}
+
+/* The asked list as one line you can write: mono, under a rule. */
+input.recipients {
+	padding: 0.55rem 0.5rem 0.35rem;
+	border: 0;
+	border-top: 1px solid var(--line);
+	border-radius: 0;
+	background: none;
+	font:
+		12px ui-monospace,
+		monospace;
+	color: var(--mute);
+	text-overflow: ellipsis;
+
+	&:focus {
+		color: var(--ink);
+		outline: none;
 	}
 }
 
@@ -416,22 +614,6 @@ agent-memory {
 	display: block;
 	width: calc(100% - 0.6rem);
 	margin: 0.4rem 0.3rem 0;
-	padding: 0.2rem 0.3rem;
-	border: 1px solid transparent;
-	border-radius: 6px;
-	font-size: 15px;
-	font-weight: 600;
-	color: var(--ink);
-	background: none;
-
-	&:hover,
-	&:focus {
-		border-color: var(--line);
-	}
-
-	&.bad {
-		color: var(--wait);
-	}
 }
 
 /* A checkbox and the list it writes; the list is a field you can read and type in. Nested inside a bot's own panel too, not only the thread-level one. */
@@ -450,34 +632,8 @@ agent-memory {
 		cursor: pointer;
 	}
 
-	input[type='checkbox'] {
-		margin: 0;
-		padding: 0;
-		accent-color: var(--ink);
-	}
-
 	input.tools {
 		flex: 1;
-	}
-}
-
-/* Every field in the bot panel — tools, model, instructions — reads as one kind of box: same text size, padding, border, background. */
-:is(.thread-details .hands input.tools, .thread-details .bot > button.model, .thread-details .instructions) {
-	padding: 0.4rem 0.6rem;
-	font-size: 14px;
-	font-family: inherit;
-	color: var(--ink);
-	background: var(--tint);
-	border: 1px solid var(--line);
-	border-radius: 6px;
-
-	&:focus {
-		outline: none;
-		border-color: var(--mute);
-	}
-
-	&.bad {
-		color: var(--wait);
 	}
 }
 
@@ -693,31 +849,8 @@ agent-memory {
 
 	/* The row is the control: a link to the thread, or the button that makes one. */
 	> .row {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
 		flex: 1;
 		min-width: 0;
-		padding: 0.2rem 0.4rem;
-		padding-left: calc(0.4rem + var(--depth, 0) * 1rem);
-		border: 0;
-		background: none;
-		color: inherit;
-		font: inherit;
-		text-decoration: none;
-		text-align: start;
-
-		> span:not(.dot, .plus) {
-			flex: 1;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-
-		> small {
-			flex: none;
-			color: var(--mute);
-		}
 	}
 
 	/* A new bot is named in the row its + made: a field where a row's title sits, and Create at its quiet end. */
@@ -728,25 +861,10 @@ agent-memory {
 			flex: 1;
 			min-width: 0;
 			margin-left: 0.65rem;
-			padding: 0.2rem 0.3rem;
-			border-color: transparent;
-			background: none;
-			font: inherit;
-
-			&:focus {
-				outline: none;
-				border-color: var(--line);
-			}
-
-			&.bad {
-				color: var(--wait);
-			}
 		}
 
 		> button {
 			flex: none;
-			padding: 0.2rem 0.3rem;
-			font-size: 12px;
 		}
 
 		> small {
@@ -757,9 +875,6 @@ agent-memory {
 	> button.archive {
 		margin-left: auto;
 		margin-right: 0.4rem;
-		padding: 0 0.3rem;
-		font-size: 11px;
-		line-height: 1.4;
 		visibility: hidden;
 		flex: none;
 	}
@@ -1109,8 +1224,6 @@ agent-memory {
 				position: absolute;
 				right: 0;
 				top: -0.2rem;
-				font-size: 11px;
-				padding: 0 0.35rem;
 				white-space: nowrap;
 				opacity: 0;
 			}
@@ -1141,10 +1254,6 @@ agent-memory {
 		/* The composer: a rounded box to write in, and under it a quiet bar with what's coming and whom it asks. */
 		margin: 0 0.6rem 0.6rem;
 
-		&.elsewhere textarea {
-			color: var(--mute);
-		}
-
 		.box {
 			/* One line of the field; Send sits centred on it at the bottom, and stays there as the field grows. */
 			--field: calc(1.4 * 15px + 0.8rem);
@@ -1169,45 +1278,15 @@ agent-memory {
 				max-height: min(12rem, 40dvh);
 				overflow-y: auto;
 				resize: none;
-				border: 0;
-				background: none;
-				padding: 0.4rem 0;
-				outline: none;
-				font: inherit;
-				font-size: 15px;
-				line-height: 1.4;
-				color: inherit;
 			}
 		}
 
-		button.icon {
-			padding: 0.2rem 0.45rem;
-			font-size: 16px;
-			line-height: 1;
-			display: inline-flex;
-
-			&:disabled {
-				cursor: default;
-				opacity: 0.7;
-			}
+		/* Send sits centred on the field's first line. */
+		button.send {
+			margin-bottom: var(--edge-gap);
 		}
 
 		/* The bar is there in every thread, so the composer moving in doesn't change a thread's height. */
-		/* Send is a filled round arrow, like a messages app's. */
-		button.icon.send {
-			width: 1.6rem;
-			height: 1.6rem;
-			margin-bottom: var(--edge-gap);
-			padding: 0;
-			justify-content: center;
-			align-items: center;
-			border-radius: 50%;
-			font-weight: 700;
-
-			&:disabled {
-				opacity: 1;
-			}
-		}
 
 		.bar {
 			display: flex;
@@ -1217,20 +1296,12 @@ agent-memory {
 			min-height: 2rem;
 		}
 
-		.stop {
-			font-size: 12px;
-			white-space: nowrap;
-			padding: 0.25rem 0.5rem;
-		}
-
 		.pick {
 			display: flex;
 			align-items: center;
 			gap: 0.4rem;
 			min-width: 0;
 			margin-left: auto;
-			font-size: 12px;
-			padding: 0.25rem 0.5rem;
 
 			/* One line each, cut with a dot once space runs out: the bar never grows a second row. */
 			span:not(.dot) {
@@ -1755,7 +1826,7 @@ body.side .thread-details {
 }
 
 /* Its model opens the composer's picker, and reads as the field it stands for. */
-.thread-details .bot > button.model {
+.thread-details .bot > button.bot-model {
 	display: block;
 	box-sizing: border-box;
 	width: calc(100% - 1.2rem);
@@ -1772,14 +1843,7 @@ body.side .thread-details {
 	width: calc(100% - 1.2rem);
 	justify-content: space-between;
 	align-items: center;
-	padding: 0.25rem 0.45rem;
-	font-size: 14px;
 	text-align: left;
-	background: var(--tint);
-
-	small {
-		color: var(--mute);
-	}
 }
 
 /* A page of the sheet: its header is the way back to the bot. */
@@ -1788,10 +1852,6 @@ body.side .thread-details {
 	align-items: center;
 	gap: 0.4rem;
 	margin: 0 0.6rem 0.4rem;
-
-	button {
-		padding: 0 0.2rem;
-	}
 
 	h2 {
 		margin: 0;
@@ -1906,8 +1966,12 @@ button[data-danger]:focus-visible:not(:disabled) {
 		border-color: var(--mute);
 	}
 
+	input.bare:hover {
+		border-color: var(--line);
+	}
+
 	button.ghost:hover:not(:disabled),
-	.model-controls .model:hover {
+	button.model:hover {
 		background: color-mix(in srgb, CanvasText 8%, transparent);
 		color: var(--ink);
 	}
@@ -2101,11 +2165,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 /* One row across models, runners and modules, also inside the phone sheets. */
-:is(
-	.model-controls .who,
-	.model-controls .model,
-	.popover .rows > li
-) {
+:is(.model-controls .who, button.model, .popover .rows > li) {
 	display: flex;
 	align-items: start;
 	gap: 0.6rem;
@@ -2133,10 +2193,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 }
 
 @media (hover: hover) and (pointer: fine) {
-	:is(
-		.model-controls .model:not(.on),
-		.popover .rows > li
-	):hover {
+	:is(button.model:not(.on), .popover .rows > li):hover {
 		background: var(--tint);
 	}
 }
@@ -2162,29 +2219,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 		display: grid;
 	}
 
-	.model {
-		width: 100%;
-		border: 0;
-		background: none;
-		text-align: left;
-
-		small {
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-
-		&.on {
-			background: color-mix(in srgb, CanvasText 8%, transparent);
-
-			&::after {
-				content: '✓';
-				margin-left: auto;
-				color: var(--pick);
-			}
-		}
-	}
-
 	h3 {
 		margin: 0.5rem 0.5rem 0.2rem;
 		font-size: 12px;
@@ -2197,11 +2231,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 		flex-wrap: wrap;
 		gap: 0.15rem;
 		padding: 0 0.3rem 0.3rem;
-
-		button {
-			padding: 0.3rem 0.5rem;
-			font-size: 13px;
-		}
 	}
 }
 
@@ -2212,21 +2241,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 		width: 100%;
 		margin: 0.2rem 0 0;
 		text-align: left;
-		border: 0;
-		border-top: 1px solid var(--line);
-		border-radius: 0;
-		background: none;
-		padding: 0.55rem 0.5rem 0.35rem;
-		font:
-			12px ui-monospace,
-			monospace;
-		color: var(--mute);
-		text-overflow: ellipsis;
-
-		&:focus {
-			color: var(--ink);
-			outline: none;
-		}
 	}
 }
 
@@ -2263,13 +2277,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 		color: var(--mute);
 
 		flex-wrap: wrap;
-
-		:is(button, input, select) {
-			font: inherit;
-			color: var(--ink);
-			white-space: nowrap;
-			padding: 0.15rem 0.5rem;
-		}
 	}
 
 	.compact-option {
@@ -2345,16 +2352,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 				font: inherit;
 				font-weight: 500;
 			}
-
-			button {
-				font: inherit;
-				padding: 0.15rem 0.45rem;
-				white-space: nowrap;
-			}
-
-			button:first-child {
-				padding: 0;
-			}
 		}
 	}
 
@@ -2384,10 +2381,6 @@ button[data-danger]:focus-visible:not(:disabled) {
 
 	.revoke {
 		flex: none;
-		padding: 0 0.35rem;
-		font-size: 11px;
-		line-height: 1.4;
-		color: var(--mute);
 		visibility: hidden;
 	}
 
@@ -2445,8 +2438,6 @@ connect-runner {
 			position: absolute;
 			top: 0.4rem;
 			right: 0.4rem;
-			padding: 0 0.45rem;
-			font-size: 12px;
 		}
 	}
 
@@ -2540,8 +2531,6 @@ body.chat {
 
 	.panes .pane > header > button.close {
 		display: block;
-		font-size: 16px;
-		line-height: 1;
 	}
 
 	body.chat .list-foot {
@@ -2579,10 +2568,6 @@ body.chat {
 	border: 1px solid var(--line);
 	border-radius: 14px;
 	padding: 0.4rem;
-
-	.model[aria-selected='true'] {
-		background: var(--tint);
-	}
 }
 
 /* Under it all: the page's last section, after the walk-through. */
@@ -2725,7 +2710,6 @@ body.resizing {
 
 	button {
 		flex: none;
-		padding: 0 0.4rem;
 	}
 }
 
@@ -2768,14 +2752,6 @@ body.resizing {
 		position: absolute;
 		top: -0.4rem;
 		right: -0.4rem;
-		width: 1.3rem;
-		height: 1.3rem;
-		padding: 0;
-		border-radius: 50%;
-		font-size: 12px;
-		line-height: 1;
-		display: grid;
-		place-items: center;
 	}
 }
 

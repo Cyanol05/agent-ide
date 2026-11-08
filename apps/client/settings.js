@@ -101,14 +101,14 @@ export function Settings() {
 				open=${() => selection() !== null}
 				close=${html`<button
 					type="button"
-					class="ghost close"
+					class="ghost close icon"
 					aria-label="Close"
 					onClick=${() => panel.hidePopover()}
 				>
 					×
 				</button>`}
 				onBack=${(event) => back()}
-				actions=${html`<button type="button" onClick=${done}>Done</button>`}
+				actions=${html`<button type="button" class="small" onClick=${done}>Done</button>`}
 				detail=${html` <div class="memory-model">
 						<p>
 							<b>Memory’s model</b><br />
@@ -149,6 +149,7 @@ export function Settings() {
 											<span>Writes its lines</span>
 											<button
 												type="button"
+												class="small"
 												disabled=${() => !editable() || overridden('MEMORY_MODEL')}
 												title=${() => model() || "Each thread's own agent writes its lines"}
 												onClick=${pickModel}
@@ -158,6 +159,7 @@ export function Settings() {
 											<${Show} when=${() => model() && editable() && !overridden('MEMORY_MODEL')}>
 												<button
 													type="button"
+													class="small"
 													title="Each thread's own agent writes its lines"
 													onClick=${() => setDraft((store) => void (store.model = ''))}
 												>
@@ -168,6 +170,7 @@ export function Settings() {
 										<div class="option">
 											<span>Remembers</span>
 											<select
+												class="small"
 												aria-label="Which threads remember"
 												title="A thread’s own Memory switch, in its details, overrides this"
 												disabled=${() => !editable() || overridden('MEMORY_THREADS')}
@@ -186,6 +189,7 @@ export function Settings() {
 											<span>Compacts past</span>
 											<input
 												type="number"
+												class="small"
 												min="10"
 												step="10"
 												aria-label="Compacts past, in thousands of tokens"

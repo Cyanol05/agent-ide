@@ -558,7 +558,7 @@ export function Message(props) {
 			>
 			<${Show} when=${() => !props.embedded && !props.entry.sending}>
 				<button
-					class="fork"
+					class="tiny fork"
 					title="A new thread from this message"
 					onClick=${() => fork(props.thread, props.entry.id).catch(report)}
 				>

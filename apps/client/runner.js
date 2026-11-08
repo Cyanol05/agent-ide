@@ -141,7 +141,7 @@ export function RunnerList() {
 			<${Panes}
 				title="Runners"
 				open=${() => false}
-				close=${html`<button type="button" class="ghost close" aria-label="Close" onClick=${() => panel.hidePopover()}>×</button>`}
+				close=${html`<button type="button" class="ghost close icon" aria-label="Close" onClick=${() => panel.hidePopover()}>×</button>`}
 			>
 				<ul class="rows">
 					<${For} each=${() => runners}
@@ -199,7 +199,7 @@ function RunnerItem(props) {
 			</div>
 			<${Show} when=${() => server().local}>
 				<${Sure}
-					class="revoke"
+					class="tiny revoke"
 					title="Take its key away"
 					ask="revoke?"
 					why=${() =>
@@ -280,7 +280,7 @@ export function ConnectRunner(props) {
 				<${Show} when=${minted}>
 					<div class="command">
 						<pre>${() => minted().connect}</pre>
-						<button type="button" onClick=${copy}>${() => (copied() ? 'Copied' : 'Copy')}</button>
+						<button type="button" class="small" onClick=${copy}>${() => (copied() ? 'Copied' : 'Copy')}</button>
 					</div>
 					<p class="mute">
 						${() =>

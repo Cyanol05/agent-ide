@@ -122,7 +122,7 @@ export function ThreadItem(props) {
 			<${Show} when=${() => !homeBot(props.thread.id)}>
 				<button
 					type="button"
-					class="archive"
+					class="tiny archive"
 					title=${() => (props.archived ? 'Bring this thread back' : 'Archive this thread')}
 					onClick=${() => archiveThread(props.thread.id, !props.archived).catch(report)}
 				>
