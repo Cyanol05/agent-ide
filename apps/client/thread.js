@@ -14,6 +14,7 @@ import {
 } from 'solid-js'
 import {
 	api,
+	bots,
 	closeColumn,
 	colorOf,
 	columns,
@@ -35,7 +36,7 @@ import {
 	titleOf,
 	watch,
 } from './server.js'
-import { agentTo, authorLabel, doing, setDoing, shortLabel } from './agent.js'
+import { authorLabel, doing, setDoing, shortLabel } from './agent.js'
 import { answersIn, asksOf, conversations, cutsOf, Exchange, heard, newestCut, Turn, turnsOf } from './run.js'
 import { Composer } from './composer.js'
 import { Dot } from './dot.js'
@@ -521,8 +522,7 @@ export function Thread(props) {
 export function Message(props) {
 	const data = () => props.entry.data
 	const elsewhere = () => data().from && data().from !== props.thread
-	// Opened inside an ask line, an answer is shown whole, not folded again
-	const answered = () => !props.embedded && elsewhere() && data().re
+	const crossed = () => !!(elsewhere() || props.sent)
 	const forks = () =>
 		threads.filter(
 			(thread) =>
@@ -533,51 +533,31 @@ export function Message(props) {
 	return html`
 		<li
 			class=${() => ({
-				elsewhere: !!(elsewhere() || props.sent),
-				reply: answered(),
+				elsewhere: crossed(),
 				mine: !elsewhere() && data().author === me,
-				same: !elsewhere() && !props.sent && data().author !== me && props.above === data().author,
-				asked: !!(elsewhere() || props.sent) && !data().re,
+				same: !crossed() && data().author !== me && props.above === data().author,
 			})}
-			style=${() => (elsewhere() || props.sent ? colorOf(props.sent?.data.author ?? data().author, '--bot') : '')}
 		>
 			<${Show}
-				when=${() => answered()}
+				when=${crossed}
 				fallback=${html`
-					<${Show}
-						when=${() => props.sent}
-						fallback=${html`<small title=${() => data().author}
-							><${Show}
-								when=${() => elsewhere()}
-								fallback=${html`<span style=${() => colorOf(data().author)}
-									>${() => authorLabel(data().author)}</span
-								>`}
-								><span class="cross">← </span
-								><${Across} author=${() => data().author} thread=${() => data().from} /><//
-							></small
-						>`}
+					<small title=${() => data().author}
+						><span style=${() => colorOf(data().author)}>${() => authorLabel(data().author)}</span></small
 					>
-						<small title=${() => `sent to ${props.sent.data.author} in thread ${props.sent.data.from}`}
-							><span class="cross">→ </span>to${' '}<${Across}
-								author=${() => props.sent.data.author}
-								thread=${() => props.sent.data.from}
-								to=${true}
-							/></small
-						>
-					<//>
 					<${Body} data=${() => data()} />
 					<${Images} images=${() => data().images} />
 				`}
 			>
-				<details>
-					<summary>
-						<${Crossing} data=${() => data()} />
-					</summary>
-					<${Body} data=${() => data()} />
-					<${Images} images=${() => data().images} />
-				</details>
+				<ol class="steps">
+					<${Cross}
+						sent=${() => !!props.sent}
+						author=${() => props.sent?.data.author ?? data().author}
+						thread=${() => props.sent?.data.from ?? data().from}
+						data=${() => data()}
+					/>
+				</ol>
 			<//>
-			<${Show} when=${() => !props.embedded && data().picked}>
+			<${Show} when=${() => data().picked}>
 				<div class="links" title="The director chose whom this asks">
 					${() => (data().to?.length ? 'director picked ' : 'director picked nobody: ')}
 					<${For} each=${() => data().to ?? []}
@@ -585,14 +565,14 @@ export function Message(props) {
 					>${() => data().picked}
 				</div>
 			<//>
-			<${For} each=${() => (props.embedded ? [] : forks())}
+			<${For} each=${forks}
 				>${(fork) => html`
 					<div class="links">
 						<${ThreadLink} id=${() => fork.id}>${() => `forked → ${fork.title}`}<//>
 					</div>
 				`}<//
 			>
-			<${Show} when=${() => !props.embedded && !props.entry.sending}>
+			<${Show} when=${() => !props.entry.sending}>
 				<button
 					class="small fork"
 					title="A new thread from this message"
@@ -606,58 +586,32 @@ export function Message(props) {
 }
 
 /**
- * Who a message crossed to or from, by its thread: a thread's agent by the thread's title, or its model while
- * the thread has none; a bot in its own thread by its name; anyone else by name, then the thread.
- * `to` leaves out the "from" a title would have.
+ * A message that crossed threads, as a step of a run: → sent or ← received, the other side in its bot's colour, the
+ * message's first line; opened, the whole of it. A question is muted and starts closed, an answer is ink and starts open.
+ * The other side is a bot by its name, a thread's agent by its thread's title, or its model while the thread has none.
  */
-function Across(props) {
-	const agent = () => props.author?.includes('@') && !agentTo(props.author).name
+export function Cross(props) {
+	const bot = () => bots.some((bot) => bot.name === props.author)
 	const title = () => threads.find((thread) => thread.id === props.thread)?.title
-	const name = () => (agent() ? shortLabel(props.author) : authorLabel(props.author))
+	const label = () => (bot() || !title() ? shortLabel(props.author) || titleOf(props.thread) : title())
+	const answer = () => !!props.data.re
 	return html`
-		<${Show}
-			when=${() => agent() && title()}
-			fallback=${() => html`<${ThreadLink} id=${() => props.thread}
-					><span style=${() => colorOf(props.author)}>${name}</span><//
-				><${Show} when=${() => !agent() && !props.to && homeBot(props.thread)?.name !== props.author}
-					>${' from '}<${ThreadLink} id=${() => props.thread}>${() => titleOf(props.thread)}<//><//
-				>`}
-			>${() => (props.to ? '' : 'from ')}<${ThreadLink} id=${() => props.thread}>${title}<//><//
-		>
-	`
-}
-
-/**
- * Who crossed threads: a bot answering from its own thread is named by a link to it; anyone else is named, then the thread.
- */
-function Crossing(props) {
-	const data = () => props.data
-	const name = () => authorLabel(data().author)
-	// A thread's agent is known by its thread's title, its model after it
-	const title = () => threads.find((thread) => thread.id === data().from)?.title
-	const model = () => agentTo(data().author).model?.split('/').pop() ?? name()
-	return html`
-		<span class="cross">← </span>
-		<${Show}
-			when=${() => homeBot(data().from)?.name === data().author}
-			fallback=${() => html`
-				<${Show}
-					when=${title}
-					fallback=${() => html`
-						<span style=${() => colorOf(data().author)}>${name}</span>
-						${' answered in '}
-						<${ThreadLink} id=${() => data().from}>${() => titleOf(data().from)}<//>
-					`}
-					><${ThreadLink} id=${() => data().from}>${title}<//
-					>${() => ` · ${model()} · answered`}<//
+		<li class=${() => ['call', props.sent ? 'sent' : 'received', { asked: !answer() }]}>
+			<details open=${answer}>
+				<summary
+					title=${() => props.title ?? `${props.sent ? 'to' : 'from'} ${props.author || label()} in thread ${props.thread}`}
 				>
-			`}
-		>
-			<span style=${() => colorOf(data().author)}>
-				<${ThreadLink} id=${() => data().from}>${name}<//>
-			</span>
-			${' answered'}
-		<//>
+					<span class="tool" style=${() => colorOf(props.author)}
+						><${ThreadLink} id=${() => props.thread}>${label}<//></span
+					>
+					<span class="in">${() => (props.data.body ?? '').replace(/\s+/g, ' ')}</span>
+				</summary>
+				<div class="whole">
+					<${Body} data=${() => props.data} />
+					<${Images} images=${() => props.data.images} />
+				</div>
+			</details>
+		</li>
 	`
 }
 

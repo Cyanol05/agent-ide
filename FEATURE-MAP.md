@@ -53,7 +53,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     Thread               subscribes to the thread over /ws, keeps its messages, follows the bottom (follow)
     rows                 projection: messages plus each agent's turns, which run sits in which ask box,
                          live turn, compaction cuts, folded memory lines
-    Message              one message: author, reply/elsewhere (cross-thread), the director's pick, fork link, Body, Images
+    Message              one message: author, the director's pick, fork link, Body, Images; one that crossed threads is a `Cross` step row
   run.js                 an agent's turns, from its own conversation
     heard, conversations the conversation entries the socket brings
     turnsOf, cutsOf      a conversation cut into turns, and where its newest compaction cut it
@@ -109,7 +109,7 @@ examples/94-head-matches-get.js    HEAD on a static file matches GET: same statu
 
 Where a feature lives:
 
-- Talk between threads: modules/talk.js (post, threads, reply), server.js append/whom, client thread.js rows (ask boxes), run.js Ask.
+- Talk between threads: modules/talk.js (post, threads, reply), server.js append/whom, client thread.js `Cross` (a crossed message as a step row), run.js `Exchange`.
 - Asking a model / switching it: composer.js pick/choose, model-picker.js, server.js whom/reconfigure.
 - Live work you watch: server.js work/doing/watch, client agent.js doing, run.js Turn.
 - Memory and compaction: modules/memory.js, server.js compact/compactingAt, client agent-memory.js, thread.js rows (cuts, folded lines), run.js cutsOf.
@@ -132,6 +132,6 @@ Build from these; a new panel, row or button takes its sibling's markup and clas
 - Right aside: thread-details.js `ThreadDetails`, `.thread-details` with `.scrim` ("This thread's sheet"); a bot's part is bot.js `BotSettings`, `.bot`; its fields are plain inputs; a page of it has `.page-head`.
 - Thread head: the pill, `h2.title > button.thread-pill` in `.thread > header` and its `.close` ("The head is no bar"); `.thread-pill` is layout only; on a phone `.app-bar` ("A phone").
 - Message list: thread.js `Message` in `.thread > ul > li` ("The chat: agents write"), its body `.markdown`, its images `div.images`, compaction's `li.cut` and `li.line`.
-- Tool calls: run.js `Turn`, `Exchange`, `Step`, `Call`; `li.turn` and `.exchange` are `<details>` whose open list is `.steps`, its tools `.tool` and its words `.said`. There's no thinking block: a live turn's summary says "thinking".
+- Tool calls: run.js `Turn`, `Exchange`, `Step`, `Call`; `li.turn` is a `<details>` whose open list is `.steps`, its tools `.tool` and its words `.said`; `.exchange` and a crossed message are a `.steps` list of thread.js `Cross` rows (`li.sent`, `li.received`). There's no thinking block: a live turn's summary says "thinking".
 - Composer: composer.js `Composer`, `.thread form`: the box, `.bar` with `.icon` buttons, `.pick` (whom it asks) and `.stop`, and `ul.images` waiting to go.
 - Small parts: sure.js `Sure` (`.sure`, a button that asks by changing its words), notice.js `Notice` (`.notice`, what went wrong, above the active composer's input), dot.js `Dot` (`.dot`, status).

@@ -465,36 +465,7 @@ agent-memory {
 		font-size: var(--text);
 		line-height: var(--text-line);
 
-		/* What crossed sits one step under its label, like the steps under a run summary. */
-		> li.elsewhere {
-			--inset: var(--space-2);
-
-			> .body,
-			> .images,
-			> details > .body,
-			> details > .images {
-				margin-left: var(--inset);
-			}
-		}
-
-		/* Whose words crossed: a thin rule in their bot's colour down the inset, grey for anyone else. */
-		> li.elsewhere > .body,
-		> li.elsewhere > details > .body,
-		> li.exchange .said {
-			position: relative;
-
-			&::before {
-				content: '';
-				position: absolute;
-				inset: 0 auto 0 calc(-1 * var(--inset));
-				width: 2px;
-				background: color-mix(in oklch, var(--bot, var(--edge)) 50%, transparent);
-			}
-		}
-
-		/* A box's run, between a question from another thread and the answer it wrote, is a run line like any other. */
-		> li,
-		> li.exchange .said > li {
+		> li {
 			margin: var(--space-5) 0 0;
 			white-space: pre-wrap;
 			overflow-wrap: anywhere;
@@ -518,18 +489,8 @@ agent-memory {
 			}
 
 			/* One rhythm on the baseline: a new speaker's message opens a block two baselines down; what follows inside it sits one baseline down. */
-			&:is(.turn, .exchange, .reply) {
+			&:is(.turn, .exchange, .elsewhere) {
 				margin-top: var(--space-3);
-			}
-
-			/* Across threads, a question is muted and an answer is ink: what was asked, then what came of it. */
-			&.asked {
-				color: var(--mute);
-			}
-
-			/* Its words a size down, on the same 24px lines, so it stays on the baseline. */
-			&.elsewhere:not(.reply) > .body {
-				font-size: var(--text-ui);
 			}
 
 			small {
@@ -579,76 +540,126 @@ agent-memory {
 					margin: 0;
 				}
 
-				.steps {
-					list-style: none;
-					tab-size: 2;
-					margin: var(--space-2) 0 0;
-					padding: 0 0 0 var(--space-1);
-					font-size: var(--text-small);
-					line-height: var(--text-small-line);
+			}
 
-					> li {
-						margin: var(--space-1) 0 0;
+			/* A run's steps, and the messages that crossed threads, one line each; open, the whole of it. */
+			.steps {
+				list-style: none;
+				tab-size: 2;
+				margin: var(--space-2) 0 0;
+				padding: 0 0 0 var(--space-1);
+				font-size: var(--text-small);
+				line-height: var(--text-small-line);
+
+				> li {
+					margin: var(--space-1) 0 0;
+				}
+
+				> li.said {
+					white-space: pre-wrap;
+					color: var(--ink);
+				}
+
+				/* Closed, a step is one line: its label, then its input as stored, cut at the edge. */
+				> li.call > details > summary {
+					display: flex;
+					align-items: baseline;
+					white-space: nowrap;
+
+					&::before {
+						content: '•';
+						flex: none;
+						width: 1rem;
 					}
 
-					> li.said {
-						white-space: pre-wrap;
-						color: var(--ink);
+					.tool {
+						flex: none;
+						width: calc(var(--label) + 1ch);
+						font-weight: 600;
 					}
 
-					/* Closed, a step is one line: its label, then its input as stored, cut at the edge. */
-					> li.call > details > summary {
-						display: flex;
-						align-items: baseline;
-						white-space: nowrap;
+					.in {
+						min-width: 0;
+						overflow: hidden;
+						text-overflow: ellipsis;
+					}
+				}
 
-						&::before {
-							content: '•';
-							flex: none;
-							width: 1rem;
-						}
+				> li.told.handed > details > summary::before {
+					content: '→';
+				}
 
+				> li.told.thought > details > summary::before {
+					content: '∴';
+				}
+
+				> li.call.running > details > summary::before {
+					animation: blink 1s ease-in-out infinite;
+				}
+
+				> li.call.failed > details > summary::before {
+					color: var(--danger);
+				}
+
+				/* A message that crossed threads is a step too: → sent, ← received, the other side in its bot's colour;
+				   opened, its words a size down, a question muted and an answer in ink. */
+				> li:is(.sent, .received) {
+					> details > summary {
 						.tool {
-							flex: none;
-							width: calc(var(--label) + 1ch);
-							font-weight: 600;
-						}
-
-						.in {
-							min-width: 0;
-							overflow: hidden;
-							text-overflow: ellipsis;
+							width: auto;
+							padding-right: 1ch;
 						}
 					}
 
-					> li.told.handed > details > summary::before {
-						content: '→';
-					}
-
-					> li.told.thought > details > summary::before {
-						content: '∴';
-					}
-
-					> li.call.running > details > summary::before {
-						animation: blink 1s ease-in-out infinite;
-					}
-
-					> li.call.failed > details > summary::before {
-						color: var(--danger);
+					/* Open, its words are under it, so the line drops its preview. */
+					> details[open] > summary .in {
+						display: none;
 					}
 
 					.whole {
-						padding-left: var(--space-5);
+						color: var(--ink);
+						font-size: var(--text-ui);
+						line-height: var(--text-ui-line);
 
-						pre {
-							margin: var(--space-1) 0 0;
-							font-size: var(--text-small);
-							white-space: pre-wrap;
-							overflow-wrap: anywhere;
-							max-height: 20rem;
-							overflow-y: auto;
+						> .body {
+							margin-top: var(--space-1);
 						}
 					}
+
+					&.asked .whole {
+						color: var(--mute);
+					}
+				}
+
+				> li.sent > details > summary::before {
+					content: '→';
+				}
+
+				> li.received > details > summary::before {
+					content: '←';
+				}
+
+				.whole {
+					padding-left: var(--space-5);
+
+					pre {
+						margin: var(--space-1) 0 0;
+						font-size: var(--text-small);
+						white-space: pre-wrap;
+						overflow-wrap: anywhere;
+						max-height: 20rem;
+						overflow-y: auto;
+					}
+				}
+			}
+
+			/* Messages that crossed sit in the flow like a run's line, not indented under one. */
+			&:is(.exchange, .elsewhere) > .steps {
+				margin: 0;
+				padding: 0;
+
+				> li:first-child {
+					margin-top: 0;
 				}
 			}
 
@@ -657,64 +668,15 @@ agent-memory {
 				animation: appear 0s 0.4s both;
 			}
 
-			/* A post's answer is the post's result: one line in the flow the size of a run line, opened to read it. */
-			&.elsewhere.reply {
-				padding: 0;
-				border: 0;
-
-				> details > summary {
-					font-size: var(--text-small);
-				}
-
-				/* Opened, its words read like any message that crossed: a size down on the same lines, no box. */
-				> details > .body {
-					padding: 0;
-					border: 0;
-					font-size: var(--text-ui);
-				}
-			}
-
-			/* An ask is one quiet line in the flow; opened, the question and its answer as the messages that crossed. */
-			&.exchange {
-				--inset: var(--space-3);
-
-				summary > small {
-					display: inline;
-					margin: 0;
-				}
-
-				/* The dot while the other side works hangs in the margin, so the words start where every run line does and never move. */
-				.lead {
-					position: absolute;
-					top: 0;
-					right: 100%;
-					display: inline-flex;
-					align-items: center;
-					padding-right: var(--space-1);
-					/* As tall as the summary's line, so the dot's middle is the words' middle */
-					height: var(--text-line);
-				}
-
-				/* Opened, the question and its answer are the messages that crossed, under the line. */
-				.said {
-					list-style: none;
-					margin: 0 0 0 var(--inset);
-					padding: 0;
-
-					> li.elsewhere {
-						margin-left: 0;
-					}
-
-					/* The line above already says where it went: no headers. */
-					> li > small {
-						display: none;
-					}
-				}
-			}
-
-			/* The arrows say it crossed threads, in the colour of the bot it crossed with, grey for anyone else. */
-			.cross {
-				color: var(--bot, var(--edge));
+			/* The dot while the asked thread works hangs in the margin, so the words never move; a row's gap from them, centred on their line as a row centres it. */
+			&.exchange .lead {
+				position: absolute;
+				top: 0;
+				right: 100%;
+				display: flex;
+				align-items: center;
+				padding-right: var(--space-2);
+				height: var(--text-small-line);
 			}
 
 			small span[style] > .thread-link,

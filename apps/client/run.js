@@ -9,9 +9,9 @@ import {
 	For,
 	Show,
 } from 'solid-js'
-import { bots, colorOf, homeBot, threads, titleOf } from './server.js'
-import { Message, ThreadLink } from './thread.js'
-import { authorLabel, doing, messageText, shortLabel, touched } from './agent.js'
+import { homeBot, threads, titleOf } from './server.js'
+import { Cross } from './thread.js'
+import { authorLabel, doing, messageText, touched } from './agent.js'
 import { Dot } from './dot.js'
 
 /**
@@ -75,8 +75,8 @@ export function Turn(props) {
 }
 
 /**
- * A post, from the thread that sent it: one quiet line saying whom it messaged and what, with that thread's dot while it works;
- * a reply, if one comes, says so. Opened, the message and its reply as ordinary messages.
+ * A post, from the thread that sent it: the message as a sent step, with the asked thread's dot hanging beside it while
+ * it works, then the answer as a received one when it comes.
  */
 export function Exchange(props) {
 	const asked = () => askedThread(props.step)
@@ -84,15 +84,8 @@ export function Exchange(props) {
 		props.answer?.data.author ??
 		homeBot(asked())?.name ??
 		threads.find((thread) => thread.id === asked())?.agents?.[0]?.name ??
-		props.step.args.to
-	const name = () => {
-		const author = who()
-		if (!author) return titleOf(asked())
-		return shortLabel(author)
-	}
-	// A bot is known by its name; a thread's agent by its thread's title, or its model while it has none
-	const bot = () => bots.some((bot) => bot.name === who())
-	const title = () => !bot() && threads.find((thread) => thread.id === asked())?.title
+		props.step.args.to ??
+		''
 	const took = () => {
 		const start = props.step.result?.time
 		const end = props.back
@@ -100,45 +93,26 @@ export function Exchange(props) {
 	}
 	const working = () =>
 		!props.answer && threads.find((thread) => thread.id === asked())?.status === 'working'
-	const [open, setOpen] = createSignal(false)
 
 	return html`
-		<li class="exchange" style=${() => colorOf(who() ?? '', '--bot')}>
-			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
-				<summary>
-					<small>
-						<span class="lead"
-							><${Show} when=${working}><${Dot} state="working" title="Working on it" /><//></span
-						>${() => (props.answer ? 'Messaged ' : 'Messaging ')}<${Show}
-							when=${title}
-							fallback=${() => html`<span style=${() => colorOf(who() ?? '')}
-								><${ThreadLink} id=${() => asked()}>${name}<//></span
-							>`}
-							><${ThreadLink} id=${() => asked()}>${title}<//><//
-						><${Show} when=${() => props.answer}
-							>${() => ` · ${['answered', took()].filter(Boolean).join(' ')}`}<//
-						>
-					</small>
-				</summary>
-				<${Show} when=${open}>
-					<ul class="said">
-						<${Message}
-							thread=${() => props.thread}
-							entry=${() => ({ data: { ...props.step.args, author: props.agent?.name } })}
-							sent=${() => ({ data: { author: who() ?? '', from: asked() } })}
-							embedded=${true}
-						/>
-						<${Show} when=${() => props.answer}>
-							<${Message}
-								thread=${() => props.thread}
-								entry=${() => props.answer}
-								embedded=${true}
-								above=${() => props.agent?.name}
-							/>
-						<//>
-					</ul>
+		<li class="exchange">
+			<span class="lead"><${Show} when=${working}><${Dot} state="working" title="Working on it" /><//></span>
+			<ol class="steps">
+				<${Cross}
+					sent=${true}
+					author=${who}
+					thread=${asked}
+					data=${() => ({ ...props.step.args, author: props.agent?.name })}
+				/>
+				<${Show} when=${() => props.answer}>
+					<${Cross}
+						author=${who}
+						thread=${asked}
+						data=${() => props.answer.data}
+						title=${() => (took() ? `answered in ${took()}` : undefined)}
+					/>
 				<//>
-			</details>
+			</ol>
 		</li>
 	`
 }
