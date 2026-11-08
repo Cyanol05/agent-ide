@@ -465,7 +465,7 @@ export function Message(props) {
 	return html`
 		<li
 			class=${() => ({
-				elsewhere: answered(),
+				elsewhere: !!(elsewhere() || props.sent),
 				reply: answered(),
 				mine: !elsewhere() && data().author === me,
 				same: !elsewhere() && data().author !== me && props.above === data().author,
