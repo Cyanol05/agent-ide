@@ -43,7 +43,9 @@ export function Runner(props) {
 			<${Show} when=${() => runner().dir && !models().length}
 				><small>No models here yet: run pi there and /login.</small><//
 			>
-			<${Show} when=${() => !runner().dir}><small>Waiting for it to dial in.</small><//>
+			<${Show} when=${() => !runner().dir}
+				><small>Not connected yet. Run the command on ${() => runner().name}.</small><//
+			>
 			<ul class="models">
 				<${Show} when=${() => models().length}>
 					<${AgentRow} to=${() => to()} runner=${() => runner()} agents=${() => agents()}>

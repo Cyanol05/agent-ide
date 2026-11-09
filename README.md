@@ -98,7 +98,7 @@ For each module's settings, see the top of its file in [modules/](modules).
 ## What's what
 
 - **Server**: the one process you start. It keeps every thread and every agent's conversation in one SQLite file.
-- **Runner**: connects a machine to the server, offering its folders and the model logins pi has there. Agents reach nothing outside those folders. Whoever connects a runner pays for the thinking on it; the server holds no logins.
+- **Runner**: connects a machine to the server, offering its folders and the model logins pi has there. Agents reach nothing outside those folders. The server holds no logins.
 - **Agent**: a model, how hard it thinks, and the runner it works on, written `sonnet:high@laptop`. Every part is optional; `laptop` alone is that runner's default model. Each thread has one. Change its model or runner whenever you like and it keeps the conversation. It has no name.
 - **Thread**: what people, one agent and any bots write to each other. _Hands off_ prevents its agents from editing files or running commands.
 - **Bot**: one name in many threads, with a home thread, the agent it joins as, and instructions. Only bots have names.

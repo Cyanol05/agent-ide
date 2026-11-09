@@ -49,12 +49,14 @@
 					<li>
 						<b>Threads that talk.</b> An agent asks another thread, and the answer comes back once.
 					</li>
+					<li><b>Memory.</b> Long threads become short lines an agent can zoom back into.</li>
 					<li><b>Forks.</b> Start a new thread from any message.</li>
-					<li><b>Stays on.</b> A restart or a stop loses nothing.</li>
+					<li><b>Stays on.</b> A restart or a crash loses nothing.</li>
 				</ol>
 				<p>
-					It runs on your own computer, with nothing third-party except the model. About five
-					thousand lines: fork it, point your AI at it, change it.
+					It runs on a server you own, with agents on your own machines, and nothing third-party
+					except the model. The core is about five thousand lines: fork it, point your AI at it,
+					change it.
 				</p>
 				<p>The rest of this page walks you through it.</p>
 			</section>
@@ -78,10 +80,7 @@
 
 			<section data-focus="hands">
 				<h2>Where the work happens</h2>
-				<p>
-					The thinking happens on the server, the work on the runner. Each tool the agent calls
-					travels down its wire and runs in the runner's folder.
-				</p>
+				<p>The agent lives on the server. Its tools and model calls run on the runner.</p>
 				<div class="try">
 					<button data-try="hands">Ask which file here is biggest</button>
 				</div>
@@ -184,8 +183,9 @@ sequenceDiagram
   A-->>You: its answer, live as it lands
 </pre>
 				<p>
-					Bots, @mentions, Matrix rooms and search are modules, switched on in settings beside the
-					runners. The words, the principles and the API are in the
+					Everything is a module. Bots, memory and @mentions are on; Matrix rooms and web search you
+					switch on in settings, beside the runners. The words, the principles and the API are in
+					the
 					<a href="https://github.com/oskarrough/agent-ide#readme">README</a>. The code is small
 					enough to read in an evening.
 				</p>

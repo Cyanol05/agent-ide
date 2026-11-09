@@ -50,6 +50,29 @@ export function Tutorial(props) {
 	`
 }
 
+const providerOf = (model) => model.split('/')[0]
+/** Written with its provider, exactly as the runner lists it, so it can't resolve to another provider's login */
+const named = (to) => `${to.model}@${to.runner}`
+/** Two small models the online runners offer: Haiku, Luna, Sonnet or Terra, from two providers if possible, then the
+ * model the thread is on to fill up. `anthropic/…` is never picked from the list: its login can be expired. */
+const smallTwo = () => {
+	const small = runners
+		.filter((runner) => runner.online && toFor(runner).model)
+		.flatMap((runner) =>
+			(runner.offers ?? [])
+				.filter(
+					(model) => /haiku|luna|sonnet|terra/.test(model) && providerOf(model) !== 'anthropic',
+				)
+				.map((model) => ({ ...toFor(runner), model })),
+		)
+	const [one = defaults()[0]] = small
+	if (!one) return []
+	const two =
+		small.find((option) => providerOf(option.model) !== providerOf(one.model)) ??
+		small.find((option) => option !== one) ??
+		defaults()[0]
+	return [one, two]
+}
 const defaults = () =>
 	runners.filter((runner) => runner.online && toFor(runner).model).map((runner) => toFor(runner))
 async function ask(body, to, was = current()) {
@@ -161,20 +184,11 @@ const TRIES = {
 	},
 	talk: () => {
 		fresh()
-		const [first, ...others] = defaults()
-		if (!first) throw new Error('Pick a model first.')
-		// Two runners, or two models on one runner, or the one model twice
-		const offer = runners
-			.find((runner) => runner.name === first.runner)
-			?.offers?.find((model) => model !== first.model)
-		const [one, two] = others.length
-			? others.length > 1
-				? others
-				: [first, others[0]]
-			: [first, { ...first, ...(offer && { model: offer }) }]
+		const [one, two] = smallTwo()
+		if (!one) throw new Error('Pick a model first.')
 		return ask(
-			`With your post tool, start two threads at once: one asking ${formatAgent(one)}, one asking ${formatAgent(two)}, which machine and model each is, in one line. Wait for both answers, then tell me in two lines.`,
-			first,
+			`With your post tool, start two threads at once: one asking ${named(one)}, one asking ${named(two)}, which machine and folder it is in, in one line. Wait for both answers, then tell me in two lines.`,
+			one,
 			null,
 		)
 	},
