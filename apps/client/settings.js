@@ -23,7 +23,7 @@ import { markdown } from './markdown.js'
 export function Settings() {
 	let button, panel
 	const id = createUniqueId()
-	const [selection, setSelection] = createSignal(null)
+	const [picking, setPicking] = createSignal(false)
 	const all = () => [
 		...server().modules.map((name) => ({ name, on: true })),
 		...(server().off ?? []).map((name) => ({ name, on: false })),
@@ -38,12 +38,9 @@ export function Settings() {
 			if (!module.on === !on(module)) store.modules[module.name] = !module.on
 			else delete store.modules[module.name]
 		})
-	const pickModel = () => setSelection(agentTo(model()))
-	const back = () => setSelection(null)
-	const done = () => {
-		setDraft((store) => void (store.model = selection().model ? formatAgent(selection()) : ''))
-		back()
-	}
+	// A pick counts at once, like a module's switch; Save and restart sends it with the rest
+	const choose = (to) => setDraft((store) => void (store.model = to.model ? formatAgent(to) : ''))
+	const chosen = () => agentTo(model())
 	const save = async () => {
 		setDraft((store) => void (store.state = 'saving'))
 		try {
@@ -82,13 +79,13 @@ export function Settings() {
 			ref=${(el) => (panel = el)}
 			onToggle=${(event) => {
 				if (event.newState === 'open') placePopover(panel, button)
-				else back()
+				else setPicking(false)
 			}}
 		>
 			<${Panes}
 				title="Settings"
 				detailTitle="Memory’s agent"
-				open=${() => selection() !== null}
+				open=${picking}
 				close=${html`<button
 					type="button"
 					class="ghost small close"
@@ -97,8 +94,7 @@ export function Settings() {
 				>
 					×
 				</button>`}
-				onBack=${(event) => back()}
-				actions=${html`<button type="button" class="small" onClick=${done}>Done</button>`}
+				onBack=${(event) => setPicking(false)}
 				detail=${html` <div class="memory-model">
 						<p>
 							<b>Memory’s model</b><br />
@@ -108,22 +104,22 @@ export function Settings() {
 					</div>
 					<${ModelPicker}
 						getTo=${(runner) =>
-							selection()?.runner === runner.name
-								? selection()
+							chosen().runner === runner.name
+								? chosen()
 								: { runner: runner.name, model: runner.model }}
-						selectedRunner=${() => selection()?.runner}
+						selectedRunner=${() => chosen().runner}
 						first=${html`<li class="models">
 							<button
 								type="button"
 								class="ghost model"
-								aria-pressed=${() => String(!selection()?.model)}
-								onClick=${() => setSelection(agentTo(''))}
+								aria-pressed=${() => String(!chosen().model)}
+								onClick=${() => choose(agentTo(''))}
 							>
 								<span>Each thread’s agent</span>
 							</button>
 						</li>`}
-						onChoose=${(to) => setSelection(to)}
-						onConfigure=${(to) => setSelection(to)}
+						onChoose=${(to) => choose(to)}
+						onConfigure=${(to) => choose(to)}
 					/>`}
 			>
 				<ul class="rows modules">
@@ -159,7 +155,7 @@ export function Settings() {
 												class="small"
 												disabled=${() => !editable() || overridden('MEMORY_MODEL')}
 												title=${() => model() || "Each thread's own agent writes its lines"}
-												onClick=${pickModel}
+												onClick=${(event) => setPicking(true)}
 											>
 												${() => (model() ? writtenTo(agentTo(model())) : "thread's agent")}
 											</button>
