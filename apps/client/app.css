@@ -605,9 +605,13 @@ agent-memory {
 				   first line fainter than the name; opened, its words a size down, a question muted and an answer in ink. */
 				> li:is(.sent, .received) {
 					> details > summary {
+						/* A long name gives way at three quarters of the row, so the first line always shows. */
 						.tool {
 							width: auto;
+							max-width: 75%;
 							padding-right: 1ch;
+							overflow: hidden;
+							text-overflow: ellipsis;
 						}
 
 						.in {

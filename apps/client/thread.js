@@ -684,7 +684,7 @@ export function Cross(props) {
 						props.title ??
 						`${props.sent ? 'to' : 'from'} ${props.author || label()} in thread ${props.thread}`}
 				>
-					<span class="tool" style=${() => colorOf(props.author)}
+					<span class="tool" title=${label} style=${() => colorOf(props.author)}
 						><${ThreadLink} id=${() => props.thread}>${label}<//></span
 					>
 					<span class="in">${() => (props.data.body ?? '').replace(/\s+/g, ' ')}</span>
@@ -713,7 +713,10 @@ function Asked(props) {
 							title=${() => `${author()} asked in thread ${props.thread}`}
 							onClick=${(event) => followThread(event, props.thread)}
 						>
-							<span class="tool" style=${() => colorOf(author())}
+							<span
+								class="tool"
+								title=${() => shortLabel(author())}
+								style=${() => colorOf(author())}
 								><${ThreadLink} id=${() => props.thread}>${() => shortLabel(author())}<//></span
 							>
 							<span class="in">${() => firstLine(props.question.data.body)}</span>
