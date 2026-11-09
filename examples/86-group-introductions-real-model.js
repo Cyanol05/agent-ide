@@ -1,6 +1,16 @@
 /** Each bot introduces itself once, without trying to post to its own thread. */
 import { answers } from './lib.js'
-import { bench, bot, check, done, evidence, post, settled, thread } from './real-model-bench.js'
+import {
+	bench,
+	bot,
+	check,
+	done,
+	evidence,
+	post,
+	settled,
+	steps,
+	thread,
+} from './real-model-bench.js'
 await bench()
 await bot('Kira', 'You are Kira, a gardener.')
 await bot('Vera', 'You are Vera, a cook.')
@@ -31,4 +41,6 @@ check(
 	),
 	'no post to own thread',
 )
+steps('Kira', 1)
+steps('Vera', 1)
 done()

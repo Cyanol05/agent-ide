@@ -1,6 +1,6 @@
 /** One side question, one recipient, with its answer delivered back home. */
 import { randomUUID } from 'node:crypto'
-import { bench, bot, check, done, evidence, post, settled } from './real-model-bench.js'
+import { bench, bot, check, done, evidence, post, settled, steps } from './real-model-bench.js'
 await bench()
 const nonce = randomUUID()
 const home = await bot('Kira')
@@ -36,4 +36,6 @@ check(
 	),
 	'Kira tells the person the answer',
 )
+steps('Kira', 3)
+steps('Vera', 1)
 done()

@@ -1,53 +1,10 @@
-/** Promise 6 at depth */
-import { readFileSync } from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-import { fauxProvider } from '@earendil-works/pi-ai/providers/faux'
-import { ModelRuntime, resolveCliModel } from '@earendil-works/pi-coding-agent'
-import {
-	answered,
-	answers,
-	api,
-	check,
-	conversationOf,
-	done,
-	linesOf,
-	localRunner,
-	server,
-	until,
-} from './lib.js'
-
-const model = process.argv[2] || 'openai-codex/gpt-6-luna'
-const writer = process.argv[3] || model
-const N = Number(process.argv[4] || 1024)
-const NEEDLE = 7,
-	CODE = '4417'
-let logins = {}
-try {
-	logins = JSON.parse(readFileSync(path.join(os.homedir(), '.pi', 'agent', 'auth.json'), 'utf8'))
-} catch {}
-const missing = [model, writer]
-	.map((m) => m.split('/')[0])
-	.find((p) => !logins[p] && !process.env[`${p.toUpperCase().replace(/-/g, '_')}_API_KEY`])
-if (missing) {
-	console.log(
-		`skip: no pi login for ${missing} on this machine (run pi, then /login, or set its API key)`,
-	)
-	process.exit(0)
-}
-
-const models = await ModelRuntime.create()
-const echo = fauxProvider({ provider: 'echo', models: [{ id: 'echo' }] })
-models.registerNativeProvider(echo.provider)
-function resolve(pattern) {
-	const found = resolveCliModel({ cliModel: pattern, modelRuntime: models })
-	if (!found.model) throw new Error(found.error ?? `no model ${pattern}`)
-	return {
-		model: found.model,
-		...(found.thinkingLevel ? { thinkingLevel: found.thinkingLevel } : {}),
-	}
-}
-
+/** A fact deep in a long thread survives every merge above it, and the agent finds it. */
+import { answers, check as checked, linesOf, until, view } from './lib.js'
+import { bench, bot, check, done, evidence, post, settled, steps } from './real-model-bench.js'
+await bench()
+const N = 64,
+	NEEDLE = 7,
+	CODE = String(1000 + Math.floor(Math.random() * 9000))
 /** Each message is about 300 bytes of distinct small facts, so it is its own line and every pair needs the writer */
 const teams = ['build', 'garden', 'kitchen', 'archive', 'radio', 'harbour', 'library', 'workshop']
 const fact = (k) =>
@@ -55,51 +12,42 @@ const fact = (k) =>
 	`logged ${(k * 11) % 60} minutes, and asked whether the ${teams[(k + 3) % 8]} rota for week ${k % 52} still stands.`
 const body = (k) => (k === NEEDLE ? `${fact(k)} Also: the locker code is ${CODE}.` : fact(k))
 
-const srv = await server({
-	MEMORY_MODEL: `${writer}@laptop`,
-})
-await localRunner('laptop', { models, resolve, echo })
-const {
-	json: { id },
-} = await api('POST', '/api/threads', { title: 'deep recall' })
-await api('POST', `/api/threads/${id}/memory`, { on: true })
-for (let k = 0; k < N; k++)
-	await api('POST', `/api/threads/${id}/entries`, { body: body(k), to: null })
+const home = await bot('Kira')
+// Asked once first, so the bot is in its home and writes the lines as the messages come
+await post(home, 'Facts follow, one per message. Just read them.', 'Kira')
+await settled()
+for (let k = 0; k < N; k++) await post(home, body(k), null)
+// The needle's place in the thread, after the first question and its answer
+const at = (await view(home)).entries.findIndex((entry) => entry.data.body.includes(CODE))
+const levels = [...Array(Math.log2(N) + 1).keys()]
+/** Every message's line, and each merge above the needle up to one over the first N messages */
 const all = await until(
 	async () => {
-		const ls = await linesOf(id)
-		return ls.length === 2 * N - 1 && ls
+		const lines = await linesOf(home)
+		const has = (l, i) => lines.find((x) => x.l === l && x.i === i)
+		return (
+			lines.filter((x) => x.l === 0).length >= N + 2 &&
+			levels.every((l) => has(l, at >> l)) &&
+			lines
+		)
 	},
-	60 * 60000,
+	30 * 60000,
 	2000,
 )
-check(Boolean(all), `all ${2 * N - 1} lines are built`)
-
-/** The lines above the needle, leaf to root, and whether each still holds the code */
-const above = [...Array(Math.log2(N) + 1).keys()].map((l) =>
-	all.find((x) => x.l === l && x.i === NEEDLE >> l),
-)
-for (const x of above)
-	console.log(
-		`  ${(NEEDLE >> x.l) << x.l}+${2 ** x.l}: ${x.text.includes(CODE) ? 'holds' : 'lost'} the code`,
+check(Boolean(all), 'the lines above the needle are built')
+const above = levels.map((l) => (all || []).find((x) => x.l === l && x.i === at >> l))
+for (const [l, x] of above.entries())
+	checked(
+		x?.text.includes(CODE),
+		`line ${(at >> l) << l}+${2 ** l} holds the code`,
+		'(lost in a merge; reported, not scored)',
 	)
+await post(home, 'What is the locker code?', 'Kira')
+await settled(600000)
+const [result] = await evidence([home])
 check(
-	above.every((x) => x.text.includes(CODE)),
-	'every line above the message holds the code',
+	answers(result).some((entry) => entry.data.author === 'Kira' && entry.data.body.includes(CODE)),
+	'the answer has the locker code',
 )
-
-await api('POST', `/api/threads/${id}/entries`, {
-	body: 'What is the locker code?',
-	to: { runner: 'laptop', model },
-})
-const v = await answered(id, 1, 600000)
-const last = answers(v ?? { entries: [] }).at(-1)?.data.body ?? ''
-const conversation = await conversationOf(v, `${model}@laptop`)
-const zooms = (conversation?.entries ?? [])
-	.filter((e) => e.kind === 'pi.assistant')
-	.flatMap((e) => JSON.stringify(e.model ?? '').match(/"zoom"/g) ?? []).length
-console.log(`  zooms: ${zooms}; answer: ${last.slice(0, 300)}`)
-check(last.includes(CODE), 'the answer has the locker code')
-
-srv.kill()
+steps('Kira', 4)
 done()

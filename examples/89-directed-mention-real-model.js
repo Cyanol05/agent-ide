@@ -1,6 +1,16 @@
 /** A mention in a group asks only that bot. */
 import { answers } from './lib.js'
-import { bench, bot, check, done, evidence, post, settled, thread } from './real-model-bench.js'
+import {
+	bench,
+	bot,
+	check,
+	done,
+	evidence,
+	post,
+	settled,
+	steps,
+	thread,
+} from './real-model-bench.js'
 await bench()
 await bot('Kira', 'You are Kira, a gardener.')
 await bot('Vera', 'You are Vera, a cook.')
@@ -17,4 +27,6 @@ check(
 	replies.length === 1 && replies[0].data.author === 'Vera',
 	'only Vera answers the directed mention',
 )
+steps('Kira', 1)
+steps('Vera', 1)
 done()

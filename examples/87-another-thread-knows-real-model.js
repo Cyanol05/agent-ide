@@ -1,7 +1,17 @@
 /** A fact found only in another thread must be read or asked for, not guessed. */
 import { randomUUID } from 'node:crypto'
 import { answers } from './lib.js'
-import { bench, bot, check, done, evidence, post, settled, thread } from './real-model-bench.js'
+import {
+	bench,
+	bot,
+	check,
+	done,
+	evidence,
+	post,
+	settled,
+	steps,
+	thread,
+} from './real-model-bench.js'
 await bench()
 const source = await thread('locker record')
 const nonce = randomUUID()
@@ -23,4 +33,5 @@ check(
 	),
 	'reads or asks the source thread',
 )
+steps('Kira', 3)
 done()

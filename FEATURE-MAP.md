@@ -100,10 +100,10 @@ examples/92-the-server-keeps-a-log.js   the log next to the store: output, crash
 examples/93-auto-title.js          one-shot default titles, explicit titles, edits in flight, failures, a new title on request
 examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
 examples/64-settings-restart-the-server.js   settings write agent-ide.json and restart in place; only the server's machine may
-examples/86–90-*-real-model.js     move bench: introductions, another thread's fact, side question,
-                                 directed mention and web search; REAL=1 only
-examples/real-model-bench.js       real runner setup, delivery settling and transcript evidence
-examples/real-model-bench.md       how to run the move bench and its recorded baseline
+examples/19, 23, 86–90-*-real-model.js   bench: memory recall, deep recall, introductions, another thread's
+                                 fact, side question, directed mention and web search; REAL=1 only
+examples/real-model-bench.js       real runner setup, delivery settling, evidence, step budgets and the `score` line
+examples/real-model-bench.md       how to run the bench and its recorded baseline
 examples/91-wait-for-the-runner.js runner startup waits for ready or rejects on exit
 examples/95-cli-address-options.js CLI folder/thinking flags preserve model addresses and reject bot-only names
 examples/96-one-executable.js installed executable dispatch, including leading CLI options

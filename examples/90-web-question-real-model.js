@@ -1,7 +1,7 @@
 /** A current question calls the enabled web search before answering. */
 import { answers } from './lib.js'
-import { bench, bot, check, done, evidence, post, settled } from './real-model-bench.js'
-await bench(true)
+import { bench, bot, check, done, evidence, post, settled, steps } from './real-model-bench.js'
+await bench({ web: true })
 const home = await bot('Kira')
 await post(
 	home,
@@ -20,4 +20,5 @@ check(
 	),
 	'answers with a source URL',
 )
+steps('Kira', 3)
 done()
