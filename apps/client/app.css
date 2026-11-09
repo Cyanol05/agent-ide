@@ -45,7 +45,7 @@
 /* Out of the way: a small arrow at the end of the runners row, under the thread list. */
 .mode-toggle {
 	position: absolute;
-	bottom: calc(var(--space-3) + (var(--foot-height) - var(--foot-button)) / 2);
+	bottom: calc(var(--space-2) + (var(--foot-height) - var(--foot-button)) / 2);
 	/* Its right edge on the list's, where a row's count ends. */
 	left: calc(var(--list-width, 15rem) - 1px - var(--space-2));
 	translate: -100% 0;
@@ -246,7 +246,7 @@ agent-memory {
 	align-self: stretch;
 	min-height: 0;
 	/* The same inset as the composer's own margins, so its foot row floats the same distance off the bottom edge */
-	padding: var(--space-2) var(--space-2) var(--space-3);
+	padding: var(--space-2);
 	border-right: 1px solid var(--line);
 	overflow-y: auto;
 	font-size: var(--text-ui);
@@ -765,7 +765,7 @@ agent-memory {
 		/* The composer: a rounded box to write in, and under it a quiet bar with what's coming and whom it asks. */
 		width: calc(100% - 2 * var(--space-4));
 		max-width: var(--chat-width);
-		margin: 0 auto var(--space-3);
+		margin: 0 auto var(--space-2);
 
 		/* Its own height reserves room in the list, even as the draft grows. */
 		&.compose {
