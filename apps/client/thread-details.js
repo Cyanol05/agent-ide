@@ -209,7 +209,7 @@ function Title(props) {
 					}
 				}}
 			/>
-			<${Show} when=${() => server().modules.includes('auto-title')}>
+			<${Show} when=${() => server().modules.includes('auto-title') && !homeBot(props.thread)}>
 				<button
 					type="button"
 					class="ghost small"
