@@ -1,5 +1,6 @@
 /** Details and tools for the thread on screen, or the one about to start. */
 import html from '@solidjs/html'
+import { Icon } from './icons.js'
 import { createEffect, createSignal, For, Show } from 'solid-js'
 import {
 	api,
@@ -19,7 +20,7 @@ import {
 import { shortLabel } from './agent.js'
 import { BotSettings, botThreads } from './bot.js'
 import { ThreadItem } from './thread-list.js'
-import { Switch } from './dot.js'
+import { Dot, Switch } from './dot.js'
 
 export function ThreadDetails() {
 	const here = () => threads.find((thread) => thread.id === current())
@@ -83,8 +84,13 @@ export function ThreadDetails() {
 			aria-label="Thread details"
 			ref=${(element) => (sheet = element)}
 		>
-			<button type="button" class="ghost close" aria-label="Close" onClick=${() => drawer(null)}>
-				×
+			<button
+				type="button"
+				class="ghost small close"
+				aria-label="Close"
+				onClick=${() => drawer(null)}
+			>
+				<${Icon} name="close" />
 			</button>
 			<${Show} when=${() => !page()}>
 				<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
@@ -134,7 +140,7 @@ export function ThreadDetails() {
 						aria-label="Back to the bot"
 						onClick=${() => setPage(false)}
 					>
-						<span aria-hidden="true">←</span>
+						<${Icon} name="back" />
 					</button>
 					<h2>Threads</h2>
 				</header>
@@ -172,54 +178,55 @@ function Title(props) {
 			field.value = title()
 		}
 	}
-	// The model writes a new one; it arrives as the thread's usual update
-	// and the button rests until it lands, so a press can't be taken twice; a model that fails gives it back after a while
+	// The model writes a new one, and the request answers once it's written or why it wasn't; till then the button blinks
 	const [asking, setAsking] = createSignal(false)
-	let giveBack
-	createEffect(title, () => {
-		clearTimeout(giveBack)
-		setAsking(false)
-	})
+	const [failed, setFailed] = createSignal('')
 	const regenerate = async () => {
 		setError('')
+		setFailed('')
 		setAsking(true)
-		giveBack = setTimeout(() => setAsking(false), 30000)
 		try {
 			await api(`/api/threads/${props.thread}/auto-title`, {})
+			reloadThreads()
 		} catch (failure) {
-			clearTimeout(giveBack)
-			setError(failure.message)
+			setFailed(`No new title: ${failure.message}`)
+		} finally {
 			setAsking(false)
 		}
 	}
 	return html`<h2 class="thread-title">
-		<input
-			class=${() => ['bare', { bad: !!error() }]}
-			aria-label="Thread title"
-			title=${() => error() || 'Rename this thread'}
-			value=${title}
-			onChange=${(event) => save(event.currentTarget)}
-			onKeyDown=${(event) => {
-				if (event.key === 'Enter') event.currentTarget.blur()
-				if (event.key === 'Escape') {
-					event.currentTarget.value = title()
-					event.currentTarget.blur()
-				}
-			}}
-		/>
-		<${Show} when=${() => server().modules.includes('auto-title')}>
-			<button
-				type="button"
-				class="ghost small"
-				aria-label="New title"
-				title="Ask the model for a new title"
-				disabled=${asking}
-				onClick=${(_event) => regenerate()}
-			>
-				<span aria-hidden="true">↻</span>
-			</button>
-		<//>
-	</h2>`
+			<input
+				class=${() => ['bare', { bad: !!error() }]}
+				aria-label="Thread title"
+				title=${() => error() || 'Rename this thread'}
+				value=${title}
+				onChange=${(event) => save(event.currentTarget)}
+				onKeyDown=${(event) => {
+					if (event.key === 'Enter') event.currentTarget.blur()
+					if (event.key === 'Escape') {
+						event.currentTarget.value = title()
+						event.currentTarget.blur()
+					}
+				}}
+			/>
+			<${Show} when=${() => server().modules.includes('auto-title')}>
+				<button
+					type="button"
+					class="ghost small"
+					aria-label=${() => (asking() ? 'Writing a new title' : 'New title')}
+					title=${() => (asking() ? 'Writing a new title…' : 'Ask the model for a new title')}
+					disabled=${asking}
+					onClick=${(_event) => regenerate()}
+				>
+					<${Show} when=${asking} fallback=${html`<${Icon} name="again" />`}>
+						<${Dot} state="working" />
+					<//>
+				</button>
+			<//>
+		</h2>
+		<${Show} when=${failed}>
+			<small class="title-failed" role="alert">${failed}</small>
+		<//>`
 }
 
 function Tools(props) {

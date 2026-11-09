@@ -1,5 +1,6 @@
 /** The same thread row in the list, its family, and a bot's other threads. */
 import html from '@solidjs/html'
+import { Icon } from './icons.js'
 import { createSignal, For, Show } from 'solid-js'
 import {
 	archivedThreads,
@@ -85,7 +86,7 @@ function ArchivedPage(props) {
 				aria-label="Back to threads"
 				onClick=${() => props.onBack()}
 			>
-				<span aria-hidden="true">←</span>
+				<${Icon} name="back" />
 			</button>
 			<h2>Archived</h2>
 		</header>
@@ -101,7 +102,7 @@ function NewRow(props) {
 	return html`
 		<li class=${() => ['new', { current: props.current }]}>
 			<button type="button" class="row" onClick=${() => props.onPick()}>
-				<span class="plus" aria-hidden="true">+</span>
+				<span class="plus" aria-hidden="true"><${Icon} name="plus" /></span>
 				<span>${() => props.label}</span>
 			</button>
 		</li>

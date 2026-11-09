@@ -62,6 +62,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     Exchange             an ask's own line in the asking thread; opened, question and answer as messages
     answersIn, answerOf  a post step's answer from the thread it asked
     Turn, Step, Call, Told, Ask   a turn's line, opened into steps; Ask is the post step
+    handedStep, light, litIn   the handed step as a count (none for the one message above); opened, it lights those messages
   composer.js            the box you type in
     pick, agent, askedBots, recipients   whom the next message asks, per thread
     mention, pickMention, mentionsFor   typing @ lists bots (a combobox); picking one asks it, which is how it joins
@@ -76,6 +77,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
                          a bot's threads as a page of the sheet
   agent-memory.js        memory popover and compaction view for the visible thread
+  icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again), one viewBox and weight
   title.js               defaultTitle shared by new-thread client paths, CLI and auto-title
   settings.js            server settings: modules on/off and memory's model
   system.js, wires.js    the live system diagram and the wires between boxes

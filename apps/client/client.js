@@ -1,5 +1,6 @@
 /** Just the chat, or the live system around it. */
 import html from '@solidjs/html'
+import { Icon } from './icons.js'
 import { render } from '@solidjs/web'
 import { createEffect, createSignal, Errored, Loading, onSettled } from 'solid-js'
 import { colorOf, current, drawer, homeBot, params, threads, titleOf } from './server.js'
@@ -71,21 +72,7 @@ function Client() {
 			aria-label=${() => (chat() ? 'Back to the story' : 'Just the chat')}
 			onClick=${() => setChat(!chat())}
 		>
-			${() =>
-				chat()
-					? html`<svg
-							width="15"
-							height="15"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<path d="M12 19V5M6 11l6-6 6 6" />
-						</svg>`
-					: 'Just the chat'}
+			${() => (chat() ? html`<${Icon} name="up" />` : 'Just the chat')}
 		</button>
 		<${Errored}
 			fallback=${(error, retry) => html`
@@ -94,7 +81,9 @@ function Client() {
 		>
 			<${Loading}>
 				<header class="app-bar">
-					<button type="button" aria-label="All threads" onClick=${() => drawer('list')}>←</button>
+					<button type="button" aria-label="All threads" onClick=${() => drawer('list')}>
+						<${Icon} name="back" />
+					</button>
 					<button
 						class="thread-pill"
 						type="button"

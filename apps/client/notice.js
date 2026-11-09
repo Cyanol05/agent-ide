@@ -1,5 +1,6 @@
 /** What went wrong, above the active composer's input; goes by itself. */
 import html from '@solidjs/html'
+import { Icon } from './icons.js'
 import { createEffect, createRoot, createSignal, Show } from 'solid-js'
 
 const [notice, setNotice] = createRoot(() => createSignal('', { equals: false }))
@@ -21,7 +22,7 @@ export function Notice() {
 					aria-label="Dismiss"
 					onClick=${(_e) => setNotice('')}
 				>
-					×
+					<${Icon} name="close" />
 				</button>
 			</p>
 		<//>

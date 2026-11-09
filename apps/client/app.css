@@ -45,12 +45,11 @@
 /* Out of the way: a small arrow at the end of the runners row, under the thread list. */
 .mode-toggle {
 	position: absolute;
-	bottom: calc(var(--space-2) + (var(--foot-height) - var(--foot-button)) / 2);
+	bottom: calc(var(--space-2) + (var(--foot-height) - var(--small-button)) / 2);
 	/* Its right edge on the list's, where a row's count ends. */
 	left: calc(var(--list-width, 15rem) - 1px - var(--space-2));
 	translate: -100% 0;
 	z-index: 2;
-	height: var(--foot-button);
 }
 
 /* The live system, flattened: the server's box is the app's frame; the client, the wires and the runners' cards are the story's. */
@@ -105,7 +104,7 @@
 
 		small {
 			color: var(--mute);
-			font-family: ui-monospace, monospace;
+			font-family: var(--font-mono);
 			margin-right: var(--space-2);
 		}
 	}
@@ -174,7 +173,7 @@ agent-memory {
 
 		span {
 			min-width: 4.5rem;
-			font-family: ui-monospace, monospace;
+			font-family: var(--font-mono);
 			font-size: var(--text-small);
 			color: var(--mute);
 		}
@@ -188,7 +187,7 @@ agent-memory {
 		margin: var(--space-2) 0;
 
 		span {
-			border-radius: 3px;
+			border-radius: var(--radius-small);
 			min-width: 3px;
 			cursor: pointer;
 			transition: flex-grow var(--duration-popover) var(--ease-out);
@@ -200,6 +199,14 @@ agent-memory {
 			}
 		}
 	}
+}
+
+/* Why the model wrote no new title, under the title, in its words' muted size. */
+.thread-details > .title-failed {
+	display: block;
+	margin: 0 var(--space-2);
+	color: var(--wait);
+	font-size: var(--text-small);
 }
 
 .thread-details > h2.thread-title {
@@ -260,9 +267,9 @@ agent-memory {
 :is(.thread-list, .thread-family) {
 	li.new .plus {
 		flex: none;
-		width: 0.55rem;
-		text-align: center;
-		font-weight: 600;
+		display: flex;
+		justify-content: center;
+		width: var(--dot);
 	}
 }
 
@@ -285,7 +292,7 @@ agent-memory {
 	min-width: 0;
 	align-items: center;
 	gap: var(--space-1);
-	border-radius: 8px;
+	border-radius: var(--radius-small);
 	font-size: var(--text-ui);
 	--step: color-mix(in srgb, CanvasText 4%, transparent);
 
@@ -456,8 +463,8 @@ agent-memory {
 				calc(var(--compose-height, 7rem) + var(--fade-bottom) + var(--space-2)),
 				var(--baseline)
 			);
-		/* Keep the scrollbar at the edge, with messages aligned to the composer; never closer than a phone's gutter, so the composer's box, which reaches out past them, keeps its own margin. */
-		padding-inline: max(var(--space-4), calc((100% - var(--chat-width)) / 2));
+		/* Keep the scrollbar at the edge, with messages aligned to the composer; never closer than a gutter with room for a folded row's dot and for the composer's box, which reaches out past them. */
+		padding-inline: max(var(--space-5), calc((100% - var(--chat-width)) / 2));
 		overflow-y: auto;
 		font-size: var(--text);
 		line-height: var(--text-line);
@@ -505,12 +512,18 @@ agent-memory {
 				width: fit-content;
 				max-width: min(85%, 32rem);
 				padding: var(--space-3) var(--space-4);
-				border-radius: 14px;
+				border-radius: var(--radius-large);
 				background: var(--tint);
 
 				> small {
 					display: none;
 				}
+			}
+
+			/* What an opened handed step was given, lit where it already is, as the memory panel lights the cut an agent reads. */
+			&.handed {
+				box-shadow: inset 2px 0 var(--pick);
+				background: color-mix(in srgb, var(--pick) 7%, Canvas);
 			}
 
 			/* What the agent reads instead of the messages above: its first line, quiet as a run line; opened, the whole of it at a message's size, on the thread's lines. */
@@ -534,6 +547,11 @@ agent-memory {
 				summary > small {
 					display: inline;
 					margin: 0;
+
+					/* A live turn's dot, a word's space before what it's doing. */
+					> .dot {
+						margin-right: var(--space-1);
+					}
 				}
 			}
 
@@ -708,7 +726,7 @@ agent-memory {
 				margin-top: var(--space-2);
 				padding: var(--space-2) var(--space-4);
 				border: 1px solid var(--line);
-				border-radius: 12px;
+				border-radius: var(--radius);
 			}
 
 			.fork {
@@ -767,9 +785,12 @@ agent-memory {
 
 	form {
 		/* The composer: a rounded box to write in, and under it a quiet bar with what's coming and whom it asks. */
-		width: calc(100% - 2 * var(--space-4));
+		width: calc(100% - 2 * var(--space-5));
 		max-width: var(--chat-width);
 		margin: 0 auto var(--space-2);
+		/* One line of the field, and how far Send sits in from the box's edge; the box's own margins count on them. */
+		--field: calc(4 * var(--baseline) - 2px - 2 * var(--space-1));
+		--edge-gap: calc((var(--field) - var(--space-5)) / 2);
 
 		/* Its own height reserves room in the list, even as the draft grows. */
 		&.compose {
@@ -779,9 +800,7 @@ agent-memory {
 		}
 
 		.box {
-			/* One line of the field; Send sits centred on it at the bottom, and stays there as the field grows. */
-			--field: calc(4 * var(--baseline) - 2px - 2 * var(--space-1));
-			--edge-gap: calc((var(--field) - var(--space-5)) / 2);
+			/* Send sits centred on one line of the field at the bottom, and stays there as the field grows. */
 			display: flex;
 			align-items: flex-end;
 			gap: var(--space-1);
@@ -790,7 +809,7 @@ agent-memory {
 			margin-inline: calc(-1 * (var(--space-2) + 1px))
 				calc(-1 * (var(--space-1) + var(--edge-gap) + 1px));
 			border: 1px solid var(--line);
-			border-radius: 12px;
+			border-radius: var(--radius);
 			background: var(--tint);
 
 			&:focus-within {
@@ -911,7 +930,7 @@ agent-memory {
 
 	code {
 		padding: 0.1em 0.3em;
-		border-radius: 4px;
+		border-radius: var(--radius-small);
 		background: var(--tint);
 	}
 
@@ -1012,6 +1031,8 @@ body.side .thread-details {
 		font-size: var(--text-small);
 		font-weight: 500;
 		color: var(--mute);
+		/* Two baselines, so the rows under each heading start on the grid. */
+		line-height: calc(2 * var(--baseline));
 		margin: var(--space-4) var(--space-2) var(--space-2);
 
 		&:first-child {
@@ -1115,8 +1136,6 @@ body.side .thread-details {
 	display: flex;
 	justify-content: space-between;
 	margin-inline: var(--space-2);
-	/* Two baselines, so the rows under each heading start on the grid. */
-	line-height: calc(2 * var(--baseline));
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1223,8 +1242,8 @@ body.side .thread-details {
 	}
 
 	/* A model is a row; the one asked carries a check. */
-	.model[aria-pressed='true']::after {
-		content: '✓';
+	.model > svg.icon {
+		align-self: center;
 		margin-left: auto;
 		color: var(--pick);
 	}
@@ -1289,7 +1308,7 @@ body.side .thread-details {
 		}
 
 		> div {
-			padding-left: calc(0.55rem + var(--space-2));
+			padding-left: calc(var(--dot) + var(--space-2));
 		}
 	}
 
@@ -1447,7 +1466,6 @@ button.foot-toggle {
 	align-items: center;
 	gap: var(--space-2);
 	min-width: 0;
-	height: var(--foot-button);
 	/* Its dot where a row's sits, so the words line up with the threads above; a row has no border to make up for. */
 	padding-inline: calc(var(--space-2) - 1px);
 
@@ -1468,7 +1486,7 @@ button.foot-toggle {
 	width: min(20rem, calc(100vw - 1rem));
 	max-height: min(40dvh, 20rem);
 	border: 1px solid var(--line);
-	border-radius: 14px;
+	border-radius: var(--radius-large);
 	padding: var(--space-2);
 }
 
@@ -1519,7 +1537,7 @@ body.resizing {
 	margin: 0 0 var(--space-2);
 	padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
 	border: 1px solid var(--line);
-	border-radius: 10px;
+	border-radius: var(--radius);
 	background: var(--tint);
 	color: var(--ink);
 	font-size: var(--text-ui);
@@ -1548,7 +1566,7 @@ body.resizing {
 		width: 4rem;
 		height: 4rem;
 		object-fit: cover;
-		border-radius: 8px;
+		border-radius: var(--radius);
 	}
 
 	button {
@@ -1577,7 +1595,7 @@ body.resizing {
 		width: auto;
 		max-width: 100%;
 		object-fit: contain;
-		border-radius: 8px;
+		border-radius: var(--radius);
 	}
 }
 
@@ -1599,7 +1617,7 @@ body.resizing {
 
 		> span {
 			min-width: 2px;
-			border-radius: 2px;
+			border-radius: var(--radius-small);
 		}
 	}
 
@@ -1665,7 +1683,7 @@ body.resizing {
 		left: auto;
 		right: var(--space-2);
 		translate: none;
-		bottom: calc((var(--foot-height) - var(--foot-button)) / 2);
+		bottom: calc((var(--foot-height) - var(--small-button)) / 2);
 		z-index: 4;
 	}
 
@@ -1730,7 +1748,9 @@ body.resizing {
 			top: calc(var(--bar-height) + var(--space-2));
 		}
 
+		/* A phone's narrower gutter, the composer keeping pace. */
 		> ul {
+			padding-inline: var(--space-4);
 			/* The bar, and a breath under it, so the top message reads whole. */
 			padding-top: calc(var(--bar-height) + var(--space-2) + var(--thread-top, 0px));
 			overscroll-behavior: contain;
@@ -1738,6 +1758,7 @@ body.resizing {
 
 		/* The same composer as on a big screen, edge to edge and clear of the home bar. */
 		form.compose {
+			width: calc(100% - 2 * var(--space-4));
 			margin-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
 		}
 	}

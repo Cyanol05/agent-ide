@@ -4,6 +4,7 @@ import { For, Show } from 'solid-js'
 import { runners } from './server.js'
 import { modelsOf, THINKING_LEVELS, thinkingWord } from './agent.js'
 import { Dot } from './dot.js'
+import { Icon } from './icons.js'
 import { ConnectRunner } from './runner.js'
 
 /** getTo(runner) supplies each runner's choice; the caller decides when a choice is applied or closes the view. */
@@ -56,7 +57,10 @@ function PickerRunner(runner, props) {
 							onClick=${() => props.onChoose({ ...to(), model })}
 						>
 							<span>${() => model.split('/').pop()}</span
-							><small>${() => (model.includes('/') ? model.split('/')[0] : '')}</small>
+							><small>${() => (model.includes('/') ? model.split('/')[0] : '')}</small
+							><${Show} when=${() => selected() && to().model === model}
+								><${Icon} name="check"
+							/><//>
 						</button>
 					`}<//
 				>

@@ -1,5 +1,6 @@
 /** Runners show their agents and choose whom the composer asks. */
 import html from '@solidjs/html'
+import { Icon } from './icons.js'
 import { createMemo, createSignal, createUniqueId, For, Show } from 'solid-js'
 import { api, minted, runners, server, setMinted, threads } from './server.js'
 import { rowOf, doing, lastToolCall, modelsOf, THINKING_LEVELS } from './agent.js'
@@ -139,7 +140,7 @@ export function RunnerList() {
 			<${Panes}
 				title="Runners"
 				open=${() => false}
-				close=${html`<button type="button" class="ghost small close" aria-label="Close" onClick=${() => panel.hidePopover()}>×</button>`}
+				close=${html`<button type="button" class="ghost small close" aria-label="Close" onClick=${() => panel.hidePopover()}><${Icon} name="close" /></button>`}
 			>
 				<ul class="rows">
 					<${For} each=${() => runners}

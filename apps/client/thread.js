@@ -1,5 +1,6 @@
 /** A thread owns its message subscription while it is on screen. */
 import html from '@solidjs/html'
+import { Icon } from './icons.js'
 import {
 	createEffect,
 	createMemo,
@@ -47,6 +48,7 @@ import {
 	cutsOf,
 	Exchange,
 	heard,
+	litIn,
 	newestCut,
 	Turn,
 	turnsOf,
@@ -348,7 +350,7 @@ export function Thread(props) {
 			}
 		},
 	)
-	/** Where your last message ends in the list; the room under it is what the answer hasn't filled yet */
+	/** Your last message's row; the room under it is what the answer hasn't filled yet. The row, not its offset, so rows folding above it (a compaction) move it too */
 	let sent = null,
 		room,
 		bottom = () => {}
@@ -358,10 +360,7 @@ export function Thread(props) {
 		(mine) => {
 			if (!mine || !list) return
 			stuck = true
-			const row = [...list.querySelectorAll(':scope > li.mine')].at(-1)
-			sent = row
-				? row.getBoundingClientRect().bottom - list.getBoundingClientRect().top + list.scrollTop
-				: null
+			sent = [...list.querySelectorAll(':scope > li.mine')].at(-1) ?? null
 			bottom()
 		},
 	)
@@ -369,13 +368,18 @@ export function Thread(props) {
 	const follow = (list) => {
 		const fill = () => {
 			if (sent === null) return
+			// Your message comes back from the server as a new row
+			if (!sent.isConnected) sent = [...list.querySelectorAll(':scope > li.mine')].at(-1) ?? null
+			if (sent === null) return void (room.style.height = '0px')
 			const style = getComputedStyle(list)
 			const top = parseFloat(style.paddingTop)
 			const seen = list.clientHeight - top - parseFloat(style.paddingBottom)
-			const end =
-				room.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
+			const offset = (element, edge) =>
+				element.getBoundingClientRect()[edge] - list.getBoundingClientRect().top + list.scrollTop
+			const mine = offset(sent, 'bottom')
+			const end = offset(room, 'top')
 			// A short thread already has the room, below the view's own end
-			const free = sent + 0.4 * seen <= top + seen ? 0 : Math.max(0, sent + 0.4 * seen - end)
+			const free = mine + 0.4 * seen <= top + seen ? 0 : Math.max(0, mine + 0.4 * seen - end)
 			room.style.height = `${free}px`
 			if (!free) sent = null
 		}
@@ -490,7 +494,7 @@ export function Thread(props) {
 						aria-label="Close"
 						onClick=${() => closeColumn(props.id)}
 					>
-						×
+						<${Icon} name="close" />
 					</button>
 				<//>
 			</header>
@@ -572,6 +576,7 @@ export function Thread(props) {
 										when=${() => !row().ask}
 										fallback=${() => html`
 											<${Exchange}
+												thread=${() => props.id}
 												step=${() => row().ask}
 												agent=${() => row().agent}
 												answer=${() => row().answer}
@@ -625,6 +630,7 @@ function Message(props) {
 	return html`
 		<li
 			class=${() => ({
+				handed: litIn(props.thread, props.entry.id),
 				elsewhere: crossed(),
 				mine: !elsewhere() && data().author === me,
 				same: !crossed() && data().author !== me && props.above === data().author,

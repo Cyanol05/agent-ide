@@ -6,6 +6,7 @@
  */
 import { defaultTitle } from './title.js'
 import html from '@solidjs/html'
+import { Icon } from './icons.js'
 import {
 	createEffect,
 	createSignal,
@@ -262,7 +263,7 @@ export function Composer(props) {
 											draft.images.splice(index(), 1)
 										})}
 								>
-									×
+									<${Icon} name="close" />
 								</button>
 							</li>
 						`}<//
@@ -349,7 +350,7 @@ export function Composer(props) {
 						disabled=${() =>
 							draft().sending || (!directed(props.thread) && !recipients(props.thread).length)}
 					>
-						↑
+						<${Icon} name="up" />
 					</button>
 				<//>
 			</div>
@@ -364,7 +365,7 @@ export function Composer(props) {
 						chooser.click()
 					}}
 				>
-					+
+					<${Icon} name="plus" />
 				</button>
 				<input
 					type="file"
@@ -490,7 +491,7 @@ export function Composer(props) {
 				<${Show} when=${() => active()}>
 					<${Panes}
 						title="Context"
-						close=${html`<button type="button" class="ghost small close" aria-label="Close" onClick=${() => recall.hidePopover()}>×</button>`}
+						close=${html`<button type="button" class="ghost small close" aria-label="Close" onClick=${() => recall.hidePopover()}><${Icon} name="close" /></button>`}
 						detailTitle="Memory’s lines"
 						actions=${html`<button type="button" class="small" onClick=${() => recall.hidePopover()}>Done</button>`}
 						open=${() => lines()}
@@ -510,7 +511,7 @@ export function Composer(props) {
 										<b>Inspect memory</b>
 										<small>The lines the agent reads instead of its old messages.</small>
 									</div>
-									<span aria-hidden="true">›</span>
+									<${Icon} name="next" />
 								</li>
 							</ul>
 						<//>
@@ -542,11 +543,11 @@ export function Composer(props) {
 			>
 				<button
 					type="button"
-					class="ghost close"
+					class="ghost small close"
 					aria-label="Close"
 					onClick=${() => picker.hidePopover()}
 				>
-					×
+					<${Icon} name="close" />
 				</button>
 				<${ModelPicker}
 					getTo=${(runner) => toFor(runner, props.thread)}

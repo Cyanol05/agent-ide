@@ -53,13 +53,19 @@
 	--duration-press: 140ms;
 	--duration-popover: 200ms;
 	--duration-sheet: 350ms;
-	/* One scale on a 4px grid: every margin, padding and gap is one of these, but the walkthrough's page margins, markdown's em and hairlines. */
+	/* One scale on a 4px grid: every margin, padding and gap is one of these, but markdown's em and hairlines; the two largest are the walkthrough's page margins. */
 	--space-1: 0.25rem;
 	--space-2: 0.5rem;
 	--space-3: 0.75rem;
 	--space-4: 1rem;
 	--space-5: 1.5rem;
 	--space-6: 2rem;
+	--space-7: 3rem;
+	--space-8: 4rem;
+	/* Three corners: a control or row, a box or picture, a bubble or popover. A dot or pill stays round. */
+	--radius-small: 6px;
+	--radius: 10px;
+	--radius-large: 14px;
 	/* Three sizes, each on lines of the 4px grid: text to read, ui for rows, panels, fields and buttons, small for run lines, headers and the foot. */
 	--text: 16px;
 	--text-line: 24px;
@@ -71,9 +77,11 @@
 	--baseline: var(--space-3);
 	/* Every control and row is a multiple of 4px tall: a control 32px, a small one 20px, a row 36px. */
 	--control: 2rem;
-	/* The list's foot and the composer's bar share a height, and their buttons one size, so both rows share a line. */
+	/* The list's foot and the composer's bar share a height, so both rows share a line; every small control is one height, a whole number of grid steps, wherever it sits. */
 	--foot-height: calc(3 * var(--baseline));
-	--foot-button: 1.5rem;
+	--small-button: 1.5rem;
+	/* A status dot, and the column a row's dot or + sits in. */
+	--dot: 0.55rem;
 }
 
 * {
@@ -147,7 +155,7 @@ pre {
 	color: var(--ink);
 	border: 1px solid var(--line);
 	padding: var(--space-2) var(--space-4);
-	border-radius: 6px;
+	border-radius: var(--radius-small);
 	font-size: var(--text-ui);
 	overflow-x: auto;
 	white-space: pre-wrap;
@@ -197,7 +205,7 @@ textarea {
 	line-height: var(--text-ui-line);
 	padding: calc(var(--space-1) + 1px) var(--space-2);
 	border: 1px solid var(--line);
-	border-radius: 6px;
+	border-radius: var(--radius-small);
 	background: Canvas;
 	color: var(--ink);
 	min-width: 0;
@@ -243,12 +251,27 @@ button.primary {
 	}
 }
 
-/* Small: a quiet control's words, in a bar, at a row's end, in an option, in a pane's header. */
+/* Small: a quiet control's words, in a bar, at a row's end, in an option, in a pane's header; one height everywhere, its words or icon centred in it. */
 :is(button, input, select).small {
+	min-height: var(--small-button);
 	font-size: var(--text-small);
 	line-height: var(--text-small-line);
 	padding: 1px var(--space-2);
 	white-space: nowrap;
+}
+
+/* An icon: icons.js's strokes in the button's own colour, one size and weight everywhere; a button holding only one centres it. */
+svg.icon {
+	display: block;
+	flex: none;
+	width: 14px;
+	height: 14px;
+}
+
+button:has(> svg.icon:only-child) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 /* Send: the one round button, a filled arrow like a messages app's; a circle is a look, so its place can't give it. */
@@ -260,8 +283,6 @@ button.send {
 	justify-content: center;
 	align-items: center;
 	border-radius: 50%;
-	font-size: var(--text);
-	font-weight: 700;
 }
 
 /* Fields: one soft box to type in, a shade off the page, its border darker while you write. */
@@ -348,8 +369,9 @@ input[type='checkbox'] {
 }
 
 .dot {
-	width: 0.55rem;
-	height: 0.55rem;
+	display: inline-block;
+	width: var(--dot);
+	height: var(--dot);
 	border-radius: 50%;
 	background: var(--line);
 	flex: none;
@@ -429,7 +451,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 	overscroll-behavior: contain;
 	padding: var(--space-2);
 	border: 1px solid var(--line);
-	border-radius: 14px;
+	border-radius: var(--radius-large);
 	background: Canvas;
 	color: var(--ink);
 	font-size: var(--text-ui);
@@ -451,7 +473,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 	align-items: start;
 	gap: var(--space-2);
 	padding: var(--space-2) var(--space-2);
-	border-radius: 8px;
+	border-radius: var(--radius-small);
 
 	> .dot {
 		margin-top: var(--space-2);
@@ -543,7 +565,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 		inset: auto var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom)) var(--space-2);
 		width: auto;
 		max-height: 70dvh;
-		border-radius: 14px;
+		border-radius: var(--radius-large);
 		padding-bottom: var(--space-2);
 	}
 

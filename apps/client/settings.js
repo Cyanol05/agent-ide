@@ -1,5 +1,6 @@
 /** The server's settings: its modules, on or off, and memory's model. Its own machine changes them; saving restarts it. */
 import html from '@solidjs/html'
+import { Icon } from './icons.js'
 import {
 	createEffect,
 	createRoot,
@@ -92,7 +93,7 @@ export function Settings() {
 					aria-label="Close"
 					onClick=${() => panel.hidePopover()}
 				>
-					×
+					<${Icon} name="close" />
 				</button>`}
 				onBack=${(event) => setPicking(false)}
 				detail=${html` <div class="memory-model">

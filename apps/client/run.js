@@ -7,9 +7,10 @@ import {
 	createSignal,
 	createStore,
 	For,
+	onSettled,
 	Show,
 } from 'solid-js'
-import { homeBot, threads, titleOf } from './server.js'
+import { entries, homeBot, threads, titleOf } from './server.js'
 import { Cross } from './thread.js'
 import { authorLabel, doing, messageText, touched } from './agent.js'
 import { Dot } from './dot.js'
@@ -25,7 +26,13 @@ export function Turn(props) {
 		() => props.live,
 		(on) => (on ? tick() : undefined),
 	)
-	const steps = () => props.turn?.steps ?? []
+	/** Its steps, the handed one as what it adds to the thread: nothing for the one message above, else a count that opens onto them */
+	const steps = createMemo(() => {
+		const all = props.turn?.steps ?? []
+		if (all[0]?.label !== 'handed') return all
+		const step = handedStep(all[0], props.thread, entries[props.thread] ?? [])
+		return step ? [step, ...all.slice(1)] : all.slice(1)
+	})
 	const now = () => {
 		const running = steps().findLast((step) => step.name && !step.result)
 		if (running)
@@ -95,7 +102,7 @@ export function Exchange(props) {
 		!props.answer && threads.find((thread) => thread.id === asked())?.status === 'working'
 
 	return html`
-		<li class="exchange">
+		<li class=${() => ({ exchange: true, handed: litIn(props.thread, props.answer?.id) })}>
 			<span class="lead"
 				><${Show} when=${working}><${Dot} state="working" title="Working on it" /><//
 			></span>
@@ -137,6 +144,12 @@ const labelWidth = (steps) =>
 function Call(props) {
 	const result = () => props.step.result
 	const [open, setOpen] = createSignal(false)
+	const toggle = (on) => {
+		setOpen(on)
+		if (props.step.held) light(on ? props.step : null, props.step)
+	}
+	// Closed with its turn, it lets go of what it lit
+	onSettled(() => () => props.step.held && light(null, props.step))
 	return html`
 		<li
 			class=${() =>
@@ -144,15 +157,17 @@ function Call(props) {
 					? { call: true, failed: result()?.error, running: !result() }
 					: `call told ${props.step.label}`}
 		>
-			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
+			<details onToggle=${(event) => toggle(event.currentTarget.open)}>
 				<summary>
 					<span class="tool">${() => props.step.name ?? props.step.label}</span>
 					<span class="in">${() => input(props.step)}</span>
 				</summary>
 				<${Show} when=${open}>
 					<div class="whole">
-						<pre>
+						<${Show} when=${() => props.step.name || props.step.text}>
+							<pre>
 ${() => (props.step.name ? JSON.stringify(props.step.args, null, 2) : props.step.text)}</pre>
+						<//>
 						<${Show} when=${() => result()?.text}><pre>${() => result().text}</pre><//>
 					</div>
 				<//>
@@ -161,7 +176,55 @@ ${() => (props.step.name ? JSON.stringify(props.step.args, null, 2) : props.step
 	`
 }
 
-const input = (step) => (step.name ? JSON.stringify(step.args) : (step.text ?? ''))
+const input = (step) => (step.name ? JSON.stringify(step.args) : (step.in ?? step.text ?? ''))
+
+/** The messages an opened handed step lights where they are in the thread */
+const [lit, setLit] = createRoot(() => createSignal(null))
+/** Lights a step's messages, or with `null` puts out what `step` lit */
+const light = (on, step) =>
+	setLit((now) =>
+		on
+			? { thread: on.thread, ids: new Set(on.held), step: on.key }
+			: now?.step === step.key
+				? null
+				: now,
+	)
+export const litIn = (thread, id) => lit()?.thread === thread && !!lit()?.ids.has(id)
+
+/** What a delivery carried that the thread doesn't show: a note that the agent moved, and memory's lines for what didn't fit */
+const unseenIn = (text) =>
+	[
+		[/^\[You now run as [^\n]*\]/, 'a note'],
+		[/<chat>\n[\s\S]*?\n<\/chat>/, 'memory lines'],
+	].flatMap(([pattern, word]) => {
+		const found = text.match(pattern)
+		return found ? [{ word, text: found[0] }] : []
+	})
+
+/**
+ * A turn's handed step as the thread sees it: none when it was handed just the one message above it, else a count of
+ * the messages and a reply from each thread that answered, and only the words the thread doesn't show.
+ */
+function handedStep(step, thread, messages) {
+	const byId = new Map(messages.map((entry) => [entry.id, entry]))
+	const held = step.held.map((id) => byId.get(id) ?? { id, data: {} })
+	const replies = held.filter((entry) => entry.data.from && entry.data.re)
+	const said = held.length - replies.length
+	const unseen = unseenIn(step.text ?? '')
+	if (said === 1 && !replies.length && !unseen.length) return null
+	return {
+		...step,
+		thread,
+		in: [
+			said && plural(said, 'message'),
+			...replies.map((entry) => `a reply from ${titleOf(entry.data.from)}`),
+			...unseen.map((part) => part.word),
+		]
+			.filter(Boolean)
+			.join(' + '),
+		text: unseen.map((part) => part.text).join('\n\n'),
+	}
+}
 
 /** What a turn did, in a few words; its asks have their own lines */
 function summary(turn) {
@@ -289,7 +352,14 @@ export function turnsOf(conversation) {
 				after: Math.max(0, ...(entry.data?.held ?? [])),
 				start: message?.timestamp,
 				end: message?.timestamp,
-				steps: [{ key: `${entry.id}:handed`, label: 'handed', text: handedText(message) }],
+				steps: [
+					{
+						key: `${entry.id}:handed`,
+						label: 'handed',
+						text: handedText(message),
+						held: entry.data?.held ?? [],
+					},
+				],
 			})
 			continue
 		}

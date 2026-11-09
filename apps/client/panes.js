@@ -1,5 +1,6 @@
 /** A list and its detail share one frame. The list stays mounted, keeping its scroll and draft. */
 import html from '@solidjs/html'
+import { Icon } from './icons.js'
 import { createEffect, createMemo, onSettled, Show } from 'solid-js'
 
 export function Panes(props) {
@@ -45,7 +46,7 @@ export function Panes(props) {
 							ref=${(element) => (back = element)}
 							onClick=${(event) => props.onBack(event)}
 						>
-							<span aria-hidden="true">←</span>
+							<${Icon} name="back" />
 						</button>
 						<h2>${() => props.title}</h2>
 						${() => props.actions}
