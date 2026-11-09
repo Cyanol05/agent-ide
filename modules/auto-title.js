@@ -107,7 +107,12 @@ export function server(core) {
 								},
 							],
 						},
-						{ signal: rt.signal, ...(to.thinkingLevel ? { reasoning: to.thinkingLevel } : {}) },
+						{
+							signal: rt.signal,
+							...(to.thinkingLevel && to.thinkingLevel !== 'off'
+								? { reasoning: to.thinkingLevel }
+								: {}),
+						},
 					)
 					if (reply.stopReason === 'error' || reply.stopReason === 'aborted')
 						throw new Error(reply.errorMessage ?? reply.stopReason)

@@ -12,6 +12,7 @@ import {
 	newThreadTools,
 	people,
 	reloadThreads,
+	server,
 	setNewThreadTools,
 	threads,
 } from './server.js'
@@ -171,6 +172,26 @@ function Title(props) {
 			field.value = title()
 		}
 	}
+	// The model writes a new one; it arrives as the thread's usual update
+	// and the button rests until it lands, so a press can't be taken twice; a model that fails gives it back after a while
+	const [asking, setAsking] = createSignal(false)
+	let giveBack
+	createEffect(title, () => {
+		clearTimeout(giveBack)
+		setAsking(false)
+	})
+	const regenerate = async () => {
+		setError('')
+		setAsking(true)
+		giveBack = setTimeout(() => setAsking(false), 30000)
+		try {
+			await api(`/api/threads/${props.thread}/auto-title`, {})
+		} catch (failure) {
+			clearTimeout(giveBack)
+			setError(failure.message)
+			setAsking(false)
+		}
+	}
 	return html`<h2 class="thread-title">
 		<input
 			class=${() => ['bare', { bad: !!error() }]}
@@ -186,6 +207,18 @@ function Title(props) {
 				}
 			}}
 		/>
+		<${Show} when=${() => server().modules.includes('auto-title')}>
+			<button
+				type="button"
+				class="ghost small"
+				aria-label="New title"
+				title="Ask the model for a new title"
+				disabled=${asking}
+				onClick=${(_event) => regenerate()}
+			>
+				<span aria-hidden="true">↻</span>
+			</button>
+		<//>
 	</h2>`
 }
 

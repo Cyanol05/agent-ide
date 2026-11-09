@@ -69,7 +69,10 @@ export function server(core) {
 					{ role: 'user', content: ask, timestamp: Date.now() },
 				],
 			},
-			{ signal, ...(to.thinkingLevel ? { reasoning: to.thinkingLevel } : {}) },
+			{
+				signal,
+				...(to.thinkingLevel && to.thinkingLevel !== 'off' ? { reasoning: to.thinkingLevel } : {}),
+			},
 		)
 		if (reply.stopReason === 'error' || reply.stopReason === 'aborted')
 			throw new Error(reply.errorMessage ?? reply.stopReason)

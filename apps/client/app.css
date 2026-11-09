@@ -203,13 +203,17 @@ agent-memory {
 }
 
 .thread-details > h2.thread-title {
+	display: flex;
+	gap: var(--space-1);
+	align-items: center;
 	margin: var(--space-2) var(--space-1) 0;
 	font-size: var(--text);
 	font-weight: 600;
 
 	> input {
 		display: block;
-		width: 100%;
+		flex: 1;
+		min-width: 0;
 	}
 }
 
