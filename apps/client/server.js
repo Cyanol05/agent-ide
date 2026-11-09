@@ -22,7 +22,7 @@ const DEFAULT_SERVER = {
 	settings: {
 		overrides: [],
 		director: {},
-		memory: { model: '', compactAt: null, threads: 'bots' },
+		memory: { model: '', compactAt: null },
 	},
 }
 /** What's on screen survives a reload: read before first paint, written after every answer */

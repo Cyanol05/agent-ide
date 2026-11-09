@@ -8,16 +8,16 @@
 - Your message appears on Enter, room left for the answer.
 - Posts read "Messaged …"; failed post shows as a failed step.
 - Bots and director on by default.
+- Memory: on for bot threads, with a per-thread override; no global `memory.threads` setting.
+- Client and FEATURE-MAP edits committed.
+- Publish: "private" dropped.
 
 ## v1, in flight
-
-- Memory per thread: on by default in bot threads, `memory.threads` setting.
 
 ## v1, Oskar
 
 - Homepage copy against the README (Sol's list, thread 40837).
-- Commit client and FEATURE-MAP edits.
-- Publish: drop "private", version 0.1.0.
+- Publish: version 0.1.0.
 - Phone checks: top-bar blur, Send arrow, panel ×, Enter behavior.
 
 ## After v1
