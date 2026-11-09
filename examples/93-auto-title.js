@@ -1,4 +1,4 @@
-/** A default title is polished once after the first answer; chosen titles stay put. */
+/** A default title is polished once after the first answer; chosen titles stay put until a new one is asked for. */
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { api, answered, check, db, done, say, scriptedRunner, server, until, view } from './lib.js'
@@ -96,5 +96,44 @@ await idle()
 check(
 	(await view(failed)).title === body.slice(0, 60) && titles === tried,
 	'best-effort: a failed title is left alone and never retried',
+)
+mode = 'again'
+const again = await create('My chosen title')
+await post(again)
+await answered(again)
+const asked = await api('POST', `/api/threads/${again}/auto-title`, {})
+check(
+	asked.status === 201 && asked.json.title === 'Fix production 500 errors',
+	'asked again, the answer waits for the new title',
+	JSON.stringify(asked.json),
+)
+check(
+	(await view(again)).title === 'Fix production 500 errors',
+	'asked again, even a chosen title is replaced',
+)
+mode = 'hold'
+release = undefined
+const renaming = api('POST', `/api/threads/${again}/auto-title`, {})
+check(await until(async () => release), 'the new title is in flight')
+await api('POST', `/api/threads/${again}/title`, { title: 'Renamed meanwhile' })
+release()
+const renamed = await renaming
+check(
+	renamed.status === 201 && renamed.json.title === 'Renamed meanwhile',
+	'a rename while it writes wins, and the answer says so',
+	JSON.stringify(renamed.json),
+)
+check((await view(again)).title === 'Renamed meanwhile', 'the rename stays')
+mode = 'empty'
+const refused = await api('POST', `/api/threads/${again}/auto-title`, {})
+check(
+	refused.status === 400 && refused.json.error === 'model returned no usable title',
+	'a failed new title answers with why',
+	JSON.stringify(refused.json),
+)
+const unanswered = await create('Nobody here yet')
+check(
+	(await api('POST', `/api/threads/${unanswered}/auto-title`, {})).status >= 400,
+	'a thread nobody has answered has no model to ask',
 )
 done()

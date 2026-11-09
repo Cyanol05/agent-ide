@@ -1,4 +1,5 @@
 /** Polishes a default thread title once after its first answer, leaving chosen titles alone. MODULES=+auto-title.
+ * `POST /api/threads/:id/auto-title` writes a new one on request, whatever the title is, and answers once it's written; a rename meanwhile wins.
  * `auto-title.model` in agent-ide.json selects a model:thinking, optionally @runner; the default is
  * the thread agent's own model and runner with thinking off (or the answering bot's with no thread agent). Failed attempts are logged, never retried.
  */
@@ -83,7 +84,10 @@ export function server(core) {
 					const messages = await core.messages(threadId)
 					const opening = messages[0]?.data.body ?? ''
 					const row = await core.thread(threadId)
-					if (row.title !== defaultTitle(opening)) return rt.commit(() => finished(), ctx)
+					// Asked for again, it replaces the title it was asked to replace; otherwise only the default
+					const expected = input.replaces ?? defaultTitle(opening)
+					if (row.title !== expected)
+						return rt.commit(() => finished('completed', { title: row.title }), ctx)
 					const own = await core.agentOf(row.agents[AGENT]?.conversation ?? input.conversation)
 					const choice = modelName
 						? agentTo(modelName.includes('@') ? modelName : `${modelName}@${own.runner}`)
@@ -110,19 +114,35 @@ export function server(core) {
 					const title = sanitizeThreadTitle(messageText(reply))
 					if (!title) throw new Error('model returned no usable title')
 					return rt.commit(async (tx) => {
-						await core.setTitleIn(tx, threadId, title, defaultTitle(opening))
-						return finished()
+						return finished('completed', await core.setTitleIn(tx, threadId, title, expected))
 					}, ctx)
 				} catch (error) {
 					if (rt.signal.aborted) throw error
 					console.error(`auto-title: thread ${threadId}: ${error.message}`)
+					return rt.commit(() => finished('completed', { error: error.message }), ctx)
 				}
-				return rt.commit(() => finished(), ctx)
 			},
 		},
 		abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),
 	})
+	/** A new title on request, from the same model; it answers once the title is written, or with why it wasn't */
+	async function serve(threadId, query, body) {
+		if (threadId === undefined || body === undefined)
+			throw new Error('POST /api/threads/:id/auto-title writes a new title')
+		await core.conversation(threadId)
+		const row = await core.thread(threadId)
+		const conversation =
+			row.agents[AGENT]?.conversation ?? Object.values(row.agents)[0]?.conversation
+		if (!conversation) throw new Error('Nobody has answered here yet')
+		const task = await core.commit((tx) =>
+			tx.createTask(AutoTitle, { conversation, replaces: row.title }, background(threadId)),
+		)
+		const { result } = (await core.waitForTask(task)).state.outcome
+		if (result?.error) throw new Error(result.error)
+		return { title: result?.title ?? row.title }
+	}
 	return {
+		serve,
 		extension: defineExtension({ name: 'agent-ide.auto-title', tasks: [AutoTitle] }),
 		async posted(tx, threadId, entry) {
 			if (!entry.data.answer) return

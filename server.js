@@ -1283,6 +1283,7 @@ const core = {
 	botNames: () => botNames?.() ?? [],
 	startThread,
 	setTitleIn,
+	waitForTask: (id) => harness.waitForTask(id, context),
 	post,
 	seenBy,
 	commit,

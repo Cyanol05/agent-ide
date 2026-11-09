@@ -34,7 +34,7 @@ modules/
   talk.js                `post` and `threads` tools; reply sends answers back to the parent thread that asked; a bot in the
                          thread it posts to speaks there as itself (member), and so does a bot that
                          starts a thread for two or more bots (opener in server.js's post)
-  auto-title.js          first-answer title generation (AutoTitle), sanitizeThreadTitle, one attempt per thread
+  auto-title.js          first-answer title generation (AutoTitle), sanitizeThreadTitle, one attempt per thread; serve: a new title on request
   memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut, each thread's switch (remembers, turn); render, memory
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
   context.js             AGENTS.md, skills and the folder's path (cwd) from the runner; listed skills stay readable outside it
@@ -95,7 +95,7 @@ examples/17-memory-compaction.js   automatic and manual cuts, memory coverage an
 examples/27-watch-agents-work.js   socket snapshots, streaming entries, delivery identity and reconnects
 examples/all.js          suite queue, per-example timeout and interruption cleanup
 examples/92-the-server-keeps-a-log.js   the log next to the store: output, crash stack, exit code
-examples/93-auto-title.js          one-shot default titles, explicit titles, edits in flight and failures
+examples/93-auto-title.js          one-shot default titles, explicit titles, edits in flight, failures, a new title on request
 examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
 examples/64-settings-restart-the-server.js   settings write agent-ide.json and restart in place; only the server's machine may
 examples/86–90-*-real-model.js     move bench: introductions, another thread's fact, side question,
