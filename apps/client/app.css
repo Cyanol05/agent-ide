@@ -602,7 +602,7 @@ agent-memory {
 				}
 
 				/* A message that crossed threads is a step too: → sent or ← received, the other side in its bot's colour, the
-				   first line fainter than the name; opened, its words a size down, a question muted and an answer in ink. */
+				   first line fainter than the name; opened, its words at the step's size, a question muted and an answer in ink. */
 				> li:is(.sent, .received) {
 					> details > summary {
 						/* A long name gives way at three quarters of the row, so the first line always shows. */
@@ -625,8 +625,14 @@ agent-memory {
 
 					.whole {
 						color: var(--ink);
-						font-size: var(--text-ui);
-						line-height: var(--text-ui-line);
+						font-size: var(--text-small);
+						line-height: var(--text-small-line);
+
+						/* Its code blocks too, not a size up from the words around them. */
+						pre {
+							font-size: inherit;
+							line-height: inherit;
+						}
 
 						> .body {
 							margin-top: var(--space-1);
