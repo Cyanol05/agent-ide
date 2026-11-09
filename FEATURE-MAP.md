@@ -37,7 +37,7 @@ modules/
   auto-title.js          first-answer title generation (AutoTitle), sanitizeThreadTitle, one attempt per thread
   memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut, each thread's switch (remembers, turn); render, memory
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
-  context.js             AGENTS.md and skills from the runner's folder; listed skills stay readable outside it
+  context.js             AGENTS.md, skills and the folder's path (cwd) from the runner; listed skills stay readable outside it
   director.js            the `direct` hook: @mentions ask that bot, with picks a model picks bots or nobody (decide);
                          those asked take turns (`turns`); a bot's answer @mentioning a bot asks it, resting
                          after three bot answers in a row (botTurns); tells bots to @mention, not post (section)

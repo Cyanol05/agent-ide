@@ -53,6 +53,11 @@ check(
 	first.includes('<name>greet</name>') && first.includes('Greet someone warmly.'),
 	'its skills are listed by name and description',
 )
+check(
+	first.includes(`<cwd>\\n${dir}\\n</cwd>`),
+	'its folder is in the prompt, so paths start there',
+	first.slice(-300),
+)
 check(!first.includes('Say bonjour.'), "a skill's body is not; the agent reads it when it needs it")
 
 writeFileSync(path.join(dir, 'AGENTS.md'), 'Always answer in Danish.')

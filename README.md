@@ -87,7 +87,7 @@ Off: auto-title, web-search and matrix.
 - **memory** summarizes messages so agents can keep working in long threads. It's used by default in threads with bots; you can switch it on or off for any thread.
 - **director** asks the bots a message @mentions, one after another. It can also pick who answers when nobody's named.
 - **bots** lets you create named bots and give them instructions and a colour. A bot without a picked colour (`color`, a hue) gets one from the order bots were made.
-- **context** hands agents the AGENTS.md and skills in their folder, the way pi does.
+- **context** hands agents the AGENTS.md and skills in their folder, and the folder itself, the way pi does.
 - **status** shows what agents are doing on a runner's terminal.
 - **auto-title** turns a thread's first message into a short title.
 - **web-search** gives agents a `web_search` tool.

@@ -1,5 +1,6 @@
 /**
- * Gives each agent what pi reads in its folder before it starts, AGENTS.md and skills, found on the runner before every request.
+ * Gives each agent what pi reads in its folder before it starts, AGENTS.md and skills, found on the runner before every request,
+ * and, as pi does, the folder itself, so paths and commands start there.
  * On by default; MODULES=-context turns it off.
  */
 import path from 'node:path'
@@ -19,13 +20,13 @@ export function server({ runners }) {
 		render: async ({ env }, context) => {
 			const runner = env?.id?.replace(/^runner:/, '')
 			if (!runner) return undefined
-			return (
-				(await runners.call(
-					runner,
-					{ op: 'context', dir: env.cwd },
-					{ signal: context.abortSignal },
-				)) ?? undefined
+			const found = await runners.call(
+				runner,
+				{ op: 'context', dir: env.cwd },
+				{ signal: context.abortSignal },
 			)
+			const folder = `<cwd>\n${env.cwd}\n</cwd>`
+			return found ? `${found}\n\n${folder}` : folder
 		},
 	}
 	return { extension: defineExtension({ name: 'agent-ide.context', sections: [section] }) }
