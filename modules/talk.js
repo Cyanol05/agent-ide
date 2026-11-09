@@ -23,7 +23,8 @@ export function server(core) {
 			'Ask someone. Leave out `thread` for a side question: a new child thread that holds only what you write; a bot starting one for other bots is in it and speaks there as itself. ' +
 			'Give a `thread` to ask whoever is there, with all they already know there. Posting to a thread that asked you something answers it. ' +
 			"A thread you start answers you here on its own, even mid-turn; don't read it to check. Any other thread answers only if its agent posts back. " +
-			"A bot posting to a thread it's in speaks there as itself instead, and replies stay there.",
+			"A bot posting to a thread it's in speaks there as itself instead, and replies stay there. " +
+			'People see posts folded, as agent-to-agent talk; anything a person must know or do, say plainly in your own reply to them.',
 		parameters: obj({
 			thread: opt(num({ description: 'The thread to post to. Leave out to start a new one.' })),
 			title: opt(str({ description: "The new thread's title" })),
