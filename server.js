@@ -20,7 +20,12 @@ import {
 	Harness,
 } from '@earendil-works/pi-durable'
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node'
-import { CodingTools } from '@earendil-works/pi-durable/tools'
+import {
+	createBashTool,
+	createEditTool,
+	createReadTool,
+	createWriteTool,
+} from '@earendil-works/pi-durable/tools'
 import { createCodemodeExtension } from '@earendil-works/pi-durable/codemode'
 import { CodemodeSandbox } from '@earendil-works/pi-codemode'
 import { about, load, readConfig } from './modules.js'
@@ -362,7 +367,27 @@ const models = createModels()
 /** Tokens past which a module compacts each agent early; Pi reads it from the start, before the modules load */
 let compactAt
 const registry = createRegistry()
-registry.install(CodingTools)
+// The coding tools, whose bash tells a command who runs it, whatever the model: cli.js posts as that agent
+registry.install(
+	defineExtension({
+		name: 'coding-tools',
+		tools: [
+			createReadTool(),
+			createWriteTool(),
+			createEditTool(),
+			createBashTool({
+				prepare: async (execution, api, context) => {
+					const { model, thinkingLevel } = await api.agent(context)
+					Object.assign(execution.env, {
+						PI_SESSION_ID: String(api.conversationId),
+						...(model && { PI_MODEL: model.modelId.replace(/^[^/]+\//, '') }),
+						...(thinkingLevel && thinkingLevel !== 'off' && { PI_REASONING_LEVEL: thinkingLevel }),
+					})
+				},
+			}),
+		],
+	}),
+)
 // Scripts that call the other tools, so a run of calls costs the model one turn
 registry.install(
 	createCodemodeExtension({

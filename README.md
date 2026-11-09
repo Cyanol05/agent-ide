@@ -157,6 +157,8 @@ node cli.js wait 3                             # waits for its agents, then prin
 node cli.js stop 3
 ```
 
+Run from an agent's own shell, `post` writes as that agent (its model and thinking, like `sonnet:high`), whatever its model; anywhere else it writes as you.
+
 A new thread prints `thread N` on stdout, followed by any answers; progress and errors go to stderr. To capture just its id without waiting:
 
 ```sh
