@@ -484,13 +484,6 @@ export function serveRunner({
 				['start', 'done', 'error'].includes(event.type) ||
 				event.type.endsWith('_end') ||
 				Date.now() - sentAt > 100
-			// Claude Code's first request after a system prompt change can exceed the cache-marker cap;
-			// the next request doesn't, so make the error recognizable to Pi's retry.
-			if (
-				event.type === 'error' &&
-				/maximum of 4 blocks with cache_control/.test(event.error.errorMessage)
-			)
-				event.error.errorMessage += ' (try your request again)'
 			const { partial, ...slim } = event
 			if (due && partial) sentAt = Date.now()
 			reply({ id, event: due ? event : slim })
