@@ -681,8 +681,8 @@ function Message(props) {
 
 /**
  * A message that crossed threads, as a step of a run: → sent or ← received, the other side in its bot's colour, then the
- * message's first line, fainter. Every row starts closed; a tap opens it to the whole message, a question muted and an
- * answer in ink, then any answer that came of it, and last a way to the other thread.
+ * message's first line, quieter. Every row starts closed; a tap opens it to the whole message in ink, then any answer that
+ * came of it, and last a way to the other thread.
  * The other side is `name` when given, else a bot by its name, a thread's agent by its thread's title, or its model while
  * the thread has none.
  */
@@ -692,7 +692,7 @@ export function Cross(props) {
 	const label = () =>
 		props.name ?? (bot() || !title() ? shortLabel(props.author) || titleOf(props.thread) : title())
 	return html`
-		<li class=${() => ['call', props.sent ? 'sent' : 'received', { asked: !props.data.re }]}>
+		<li class=${() => ['call', props.sent ? 'sent' : 'received']}>
 			<details>
 				<summary
 					title=${() =>

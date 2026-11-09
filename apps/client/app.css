@@ -602,7 +602,7 @@ agent-memory {
 				}
 
 				/* A message that crossed threads is a step too: → sent or ← received, the other side in its bot's colour, the
-				   first line fainter than the name; opened, its words at the step's size, a question muted and an answer in ink. */
+				   first line quieter than the name; opened, its words at the step's size, in ink, and any answer under them. */
 				> li:is(.sent, .received) {
 					> details > summary {
 						/* A long name gives way at three quarters of the row, so the first line always shows. */
@@ -612,10 +612,6 @@ agent-memory {
 							padding-right: 1ch;
 							overflow: hidden;
 							text-overflow: ellipsis;
-						}
-
-						.in {
-							opacity: 0.7;
 						}
 					}
 
@@ -639,14 +635,9 @@ agent-memory {
 						}
 					}
 
-					&.asked .whole {
-						color: var(--mute);
-					}
-
-					/* What came of a question, under it, in ink. */
+					/* What came of a question, under it. */
 					.whole > .answer {
 						margin-top: var(--space-2);
-						color: var(--ink);
 					}
 
 					/* The way to the other thread, last, quiet as a step's line. */
