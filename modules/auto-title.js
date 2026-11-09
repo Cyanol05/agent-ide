@@ -16,8 +16,8 @@ Your output must be a single line, at most 36 characters, with no explanation.
 </task>
 
 <rules>
-- Use the same language as the message you are titling
-- Silently reduce the message to its subject (what is this about?) and outcome (what does the person want?); title those and drop incidental instructions such as "hey", "can someone", "please", or how the work should be done
+- Use the same language as the conversation you are titling
+- Silently reduce the conversation, weighting its newest messages, to its subject (what is this about?) and outcome (what does the person want?); title those and drop incidental instructions such as "hey", "can someone", "please", or how the work should be done
 - A compact noun phrase or a clear action phrase, 2–5 words where possible, grammatically natural — no word salad
 - Start with a verb when the message asks for work (Fix, Add, Find); otherwise use a noun phrase
 - Keep exact: names, technical terms, numbers, filenames, dates, and ticket IDs like ABC-123
@@ -36,6 +36,15 @@ Your output must be a single line, at most 36 characters, with no explanation.
 "@ada can you add refresh token support to auth" → Auth refresh token support
 "hello!" → Greeting
 </examples>`
+
+/** The opening and the newest messages, each cut short, so a thread that moved on from "hey hey" is titled for where it is now */
+function recent(messages) {
+	const shown = messages.length > 7 ? [messages[0], ...messages.slice(-6)] : messages
+	return shown
+		.map((message) => `${message.data.author}: ${(message.data.body ?? '').trim().slice(0, 500)}`)
+		.join('\n\n')
+		.slice(0, 3000)
+}
 
 function sanitizeThreadTitle(raw) {
 	const line = raw
@@ -102,7 +111,7 @@ export function server(core) {
 								{ role: 'system', content: SYSTEM_PROMPT, timestamp: Date.now() },
 								{
 									role: 'user',
-									content: `Title this message:\n\n${opening.trim().slice(0, 2000)}`,
+									content: `Title this conversation:\n\n${recent(messages)}`,
 									timestamp: Date.now(),
 								},
 							],

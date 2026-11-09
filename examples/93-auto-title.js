@@ -14,6 +14,7 @@ check(srv.exitCode === null, 'auto-title loads as a module')
 let titles = 0
 let release
 let mode = 'normal'
+let seen = ''
 await scriptedRunner('title', async (request) => {
 	if (
 		request.messages.some(
@@ -21,6 +22,7 @@ await scriptedRunner('title', async (request) => {
 		)
 	) {
 		titles++
+		seen = JSON.stringify(request.messages.at(-1))
 		if (mode === 'hold')
 			await new Promise((resolve) => {
 				release = resolve
@@ -110,6 +112,14 @@ check(
 check(
 	(await view(again)).title === 'Fix production 500 errors',
 	'asked again, even a chosen title is replaced',
+)
+await post(again, 'now the sidebar grays need work')
+await answered(again, 2)
+await api('POST', `/api/threads/${again}/auto-title`, {})
+check(
+	seen.includes(body) && seen.includes('now the sidebar grays need work'),
+	'a new title is written from the opening and the newest messages, not the first alone',
+	seen,
 )
 mode = 'hold'
 release = undefined
