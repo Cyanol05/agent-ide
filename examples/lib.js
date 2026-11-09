@@ -1,6 +1,6 @@
 /** What every example shares */
 import { spawn } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { createModels } from '@earendil-works/pi-ai/models'
@@ -34,7 +34,8 @@ export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 export let base
 let port = 0
 
-const tmp = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-example-'))
+/** Its on-disk path, case as stored, since a shell's `pwd` prints that and macOS's temp folder sits behind a symlink */
+const tmp = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'agent-ide-example-')))
 export const db = path.join(tmp, 'store.sqlite')
 export const dir = path.join(tmp, 'folder')
 mkdirSync(dir)

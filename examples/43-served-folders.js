@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { answered, answers, api, check, dir, done, runner, server, until, view } from './lib.js'
 
-const other = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'agent-ide-other-')))
+const other = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'agent-ide-other-')))
 for (const d of [
 	'app/.git',
 	'org/lib/.jj',
