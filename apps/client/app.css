@@ -452,8 +452,8 @@ agent-memory {
 				calc(var(--compose-height, 7rem) + var(--fade-bottom) + var(--space-2)),
 				var(--baseline)
 			);
-		/* Keep the scrollbar at the edge, with messages aligned to the composer. */
-		padding-inline: max(var(--space-2), calc((100% - var(--chat-width)) / 2));
+		/* Keep the scrollbar at the edge, with messages aligned to the composer; never closer than a phone's gutter, so the composer's box, which reaches out past them, keeps its own margin. */
+		padding-inline: max(var(--space-4), calc((100% - var(--chat-width)) / 2));
 		overflow-y: auto;
 		font-size: var(--text);
 		line-height: var(--text-line);
@@ -763,7 +763,7 @@ agent-memory {
 
 	form {
 		/* The composer: a rounded box to write in, and under it a quiet bar with what's coming and whom it asks. */
-		width: calc(100% - 2 * var(--space-2));
+		width: calc(100% - 2 * var(--space-4));
 		max-width: var(--chat-width);
 		margin: 0 auto var(--space-3);
 
@@ -1727,8 +1727,6 @@ body.resizing {
 		}
 
 		> ul {
-			/* Room either side for a live exchange's dot, hanging left of its label; the composer keeps pace below. */
-			padding-inline: var(--space-4);
 			/* The bar, and a breath under it, so the top message reads whole. */
 			padding-top: calc(var(--bar-height) + var(--space-2) + var(--thread-top, 0px));
 			overscroll-behavior: contain;
@@ -1736,7 +1734,6 @@ body.resizing {
 
 		/* The same composer as on a big screen, edge to edge and clear of the home bar. */
 		form.compose {
-			width: calc(100% - 2 * var(--space-4));
 			margin-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
 		}
 	}
