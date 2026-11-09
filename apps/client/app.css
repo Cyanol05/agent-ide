@@ -636,6 +636,20 @@ agent-memory {
 					&.asked .whole {
 						color: var(--mute);
 					}
+
+					/* What came of a question, under it, in ink. */
+					.whole > .answer {
+						margin-top: var(--space-2);
+						color: var(--ink);
+					}
+
+					/* The way to the other thread, last, quiet as a step's line. */
+					.whole > .open {
+						margin-top: var(--space-1);
+						color: var(--mute);
+						font-size: var(--text-small);
+						line-height: var(--text-small-line);
+					}
 				}
 
 				> li.sent > details > summary::before {
@@ -644,11 +658,6 @@ agent-memory {
 
 				> li.received > details > summary::before {
 					content: '←';
-				}
-
-				/* A question asked here from another thread opens that thread instead of expanding, so it has no ▸. */
-				> li.opens > details > summary::after {
-					content: none;
 				}
 
 				.whole {

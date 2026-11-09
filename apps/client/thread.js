@@ -72,7 +72,7 @@ const firstLine = (text) =>
 		.replace(/[*_`]/g, '')
 		.trim()
 
-/** Each asked thread's first message, the question, fetched once for the home of the bot it asks; `null` when it isn't one */
+/** Each asked thread's first message, the question, and its answer if it had one yet, fetched once for the home of the bot it asks; `null` when it isn't one */
 const [questions, setQuestions] = createRoot(() => createStore({}, { shallow: true }))
 const asking = new Set()
 
@@ -103,8 +103,9 @@ export function Thread(props) {
 							const first = view.entries[0]
 							// Asked a moment ago, its question may not be in yet; the next look asks again
 							if (!first) return asking.delete(id)
+							const answer = view.entries.find((entry) => entry.data.re?.includes(first.id))
 							setQuestions((all) => {
-								all[id] = first.data.from ? first : null
+								all[id] = first.data.from ? { question: first, answer } : null
 							})
 						})
 						.catch(report)
@@ -204,11 +205,19 @@ export function Thread(props) {
 							}
 						}),
 				)
-			// A question from another thread, where it came in, on one line that opens it there
+			// A question from another thread, where it came in, on one line that opens to it and its answer
 			const asked = askedHere().flatMap((other) => {
-				const question = questions[other.id]
-				return question
-					? [{ key: `asked:${other.id}`, asked: other.id, question, at: question.id }]
+				const fetched = questions[other.id]
+				return fetched
+					? [
+							{
+								key: `asked:${other.id}`,
+								asked: other.id,
+								question: fetched.question,
+								answer: fetched.answer,
+								at: fetched.question.id,
+							},
+						]
 					: []
 			})
 			const said = shown.map((entry) => ({
@@ -552,7 +561,11 @@ export function Thread(props) {
 								<${Show}
 									when=${() => !row().asked}
 									fallback=${() => html`
-										<${Asked} thread=${() => row().asked} question=${() => row().question} />
+										<${Asked}
+											thread=${() => row().asked}
+											question=${() => row().question}
+											answer=${() => row().answer}
+										/>
 									`}
 								>
 									<${Show}
@@ -668,14 +681,16 @@ function Message(props) {
 
 /**
  * A message that crossed threads, as a step of a run: → sent or ← received, the other side in its bot's colour, then the
- * message's first line, fainter; opened, the whole of it, a question muted and an answer in ink. Every row starts closed.
- * The other side is a bot by its name, a thread's agent by its thread's title, or its model while the thread has none.
+ * message's first line, fainter. Every row starts closed; a tap opens it to the whole message, a question muted and an
+ * answer in ink, then any answer that came of it, and last a way to the other thread.
+ * The other side is `name` when given, else a bot by its name, a thread's agent by its thread's title, or its model while
+ * the thread has none.
  */
 export function Cross(props) {
 	const bot = () => bots.some((bot) => bot.name === props.author)
 	const title = () => threads.find((thread) => thread.id === props.thread)?.title
 	const label = () =>
-		bot() || !title() ? shortLabel(props.author) || titleOf(props.thread) : title()
+		props.name ?? (bot() || !title() ? shortLabel(props.author) || titleOf(props.thread) : title())
 	return html`
 		<li class=${() => ['call', props.sent ? 'sent' : 'received', { asked: !props.data.re }]}>
 			<details>
@@ -684,49 +699,40 @@ export function Cross(props) {
 						props.title ??
 						`${props.sent ? 'to' : 'from'} ${props.author || label()} in thread ${props.thread}`}
 				>
-					<span class="tool" title=${label} style=${() => colorOf(props.author)}
-						><${ThreadLink} id=${() => props.thread}>${label}<//></span
-					>
+					<span class="tool" title=${label} style=${() => colorOf(props.author)}>${label}</span>
 					<span class="in">${() => (props.data.body ?? '').replace(/\s+/g, ' ')}</span>
 				</summary>
 				<div class="whole">
 					<${Body} data=${() => props.data} />
 					<${Images} images=${() => props.data.images} />
+					<${Show} when=${() => props.answer}>
+						<div class="answer">
+							<${Body} data=${() => props.answer.data} />
+							<${Images} images=${() => props.answer.data.images} />
+						</div>
+					<//>
+					<div class="open"><${ThreadLink} id=${() => props.thread}>open thread<//></div>
 				</div>
 			</details>
 		</li>
 	`
 }
 
-/**
- * A question another thread asked here, a received step row at the moment it came, as a message that came in reads:
- * ←, who asked in their colour, and its first line, fainter. Nothing more of it is copied in; the row opens the thread where it was asked and answered.
- */
-function Asked(props) {
-	const author = () => props.question.data.author
-	return html`
-		<li class="elsewhere">
-			<ol class="steps">
-				<li class="call received asked opens">
-					<details>
-						<summary
-							title=${() => `${author()} asked in thread ${props.thread}`}
-							onClick=${(event) => followThread(event, props.thread)}
-						>
-							<span
-								class="tool"
-								title=${() => shortLabel(author())}
-								style=${() => colorOf(author())}
-								><${ThreadLink} id=${() => props.thread}>${() => shortLabel(author())}<//></span
-							>
-							<span class="in">${() => firstLine(props.question.data.body)}</span>
-						</summary>
-					</details>
-				</li>
-			</ol>
-		</li>
-	`
-}
+/** A question another thread asked here, as a received row at the moment it came; opened, its answer under it if it had one when fetched */
+const Asked = (props) => html`
+	<li class="elsewhere">
+		<ol class="steps">
+			<${Cross}
+				author=${() => props.question.data.author}
+				name=${() => shortLabel(props.question.data.author)}
+				thread=${() => props.thread}
+				data=${() => props.question.data}
+				answer=${() => props.answer}
+				title=${() => `${props.question.data.author} asked in thread ${props.thread}`}
+			/>
+		</ol>
+	</li>
+`
 
 /** What a message says: markdown, except a `$ cmd` and an error, which stay as written */
 const Body = (props) => html`

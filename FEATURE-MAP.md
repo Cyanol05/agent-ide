@@ -53,7 +53,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     Thread               subscribes to the thread over /ws, keeps its messages, follows the bottom (follow)
     rows                 projection: messages plus each agent's turns, which run sits in which ask box,
                          live turn, compaction cuts, folded memory lines
-    Asked                in a bot's home, a question another thread asked it, a received step row that opens that thread (askedHere)
+    Asked                in a bot's home, a question another thread asked it, a received `Cross` row that opens to the question and its answer (askedHere)
     Message              one message: author, the director's pick, fork link, Body, Images; one that crossed threads is a `Cross` step row
   run.js                 an agent's turns, from its own conversation
     heard, conversations the conversation entries the socket brings
