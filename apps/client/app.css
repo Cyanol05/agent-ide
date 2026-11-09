@@ -252,22 +252,13 @@ agent-memory {
 	font-size: var(--text-ui);
 }
 
-/* A new row reads like the rows it makes, its + where their dot sits; a row that opens a page of them, its count at the end. */
+/* A new row reads like the rows it makes, in their ink, its + where their dot sits; the muted headings above are the only labels. */
 :is(.thread-list, .thread-family) {
-	li.new {
-		color: var(--mute);
-
-		.plus {
-			flex: none;
-			width: 0.55rem;
-			text-align: center;
-			font-weight: 600;
-		}
-	}
-
-	li.new:hover,
-	li.new.current {
-		color: inherit;
+	li.new .plus {
+		flex: none;
+		width: 0.55rem;
+		text-align: center;
+		font-weight: 600;
 	}
 }
 
