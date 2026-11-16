@@ -40,6 +40,7 @@ import {
 	threads,
 	titleOf,
 	watch,
+	threadOf,
 } from './server.js'
 import { authorLabel, doing, setDoing, shortLabel } from './agent.js'
 import {
@@ -78,10 +79,10 @@ const firstLine = (text) =>
 
 /** Each asked thread's first message, the question, and its answer if it had one yet, fetched once for the home of the bot it asks; `null` when it isn't one */
 const [questions, setQuestions] = createRoot(() => createStore({}, { shallow: true }))
-const asking = new Set()
+const fetching = new Set()
 
 export function Thread(props) {
-	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
+	const thread = createMemo(() => threadOf(props.id))
 	const messages = () => entries[props.id] ?? []
 	/** In a bot's home, the threads others asked it in: it's their one agent, and they started outside its family. A room has more than one. */
 	const askedHere = createMemo(() => {
@@ -100,13 +101,13 @@ export function Thread(props) {
 		() => askedHere().map((other) => other.id),
 		(ids) => {
 			for (const id of ids)
-				if (!asking.has(id)) {
-					asking.add(id)
+				if (!fetching.has(id)) {
+					fetching.add(id)
 					api(`/api/threads/${id}`)
 						.then((view) => {
 							const first = view.entries[0]
 							// Asked a moment ago, its question may not be in yet; the next look asks again
-							if (!first) return asking.delete(id)
+							if (!first) return fetching.delete(id)
 							const answer = view.entries.find((entry) => entry.data.re?.includes(first.id))
 							setQuestions((all) => {
 								all[id] = first.data.from ? { question: first, answer } : null
@@ -188,7 +189,7 @@ export function Thread(props) {
 			)
 			const shown = all.filter((entry) => !answers.has(entry.id))
 			// What a turn changed beyond itself, each on its own row after it: an ask, with its answer, or a bot rewriting itself
-			const asks = turns
+			const lasting = turns
 				.filter((row) => row.turn)
 				.flatMap((row) =>
 					lastingOf(row.turn.steps).map((step, index) => {
@@ -250,7 +251,7 @@ export function Thread(props) {
 			const rows = [
 				...said.filter((row) => !above(row)),
 				...turns.filter((row) => !above(row)),
-				...asks.filter((row) => !above(row)),
+				...lasting.filter((row) => !above(row)),
 				...asked.filter((row) => !above(row)),
 				...lines,
 				...(newest ? [newest] : []),
@@ -710,7 +711,7 @@ function Message(props) {
  */
 export function Cross(props) {
 	const bot = () => bots.some((bot) => bot.name === props.author)
-	const title = () => threads.find((thread) => thread.id === props.thread)?.title
+	const title = () => threadOf(props.thread)?.title
 	const label = () =>
 		props.name ?? (bot() || !title() ? shortLabel(props.author) || titleOf(props.thread) : title())
 	return html`

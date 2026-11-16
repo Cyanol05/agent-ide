@@ -15,6 +15,7 @@ import {
 	paint,
 	reloadBots,
 	threads,
+	threadOf,
 } from './server.js'
 import { formatAgent } from './agent.js'
 import { agent, openPicker } from './composer.js'
@@ -23,10 +24,7 @@ import { report } from './notice.js'
 import { Sure } from './sure.js'
 import { ThreadItem } from './thread-list.js'
 
-const familyOf = (bot) =>
-	new Set(
-		(threads.find((thread) => thread.id === bot.home)?.family ?? []).map((member) => member.id),
-	)
+const familyOf = (bot) => new Set((threadOf(bot.home)?.family ?? []).map((member) => member.id))
 
 /** Its own threads without the home, and the unarchived threads it joins elsewhere. */
 export function botThreads(bot) {

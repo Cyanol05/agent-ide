@@ -34,6 +34,7 @@ import {
 	sending,
 	server,
 	threads,
+	threadOf,
 } from './server.js'
 import { agentTo, formatAgent, thinkingWord } from './agent.js'
 import { placePopover } from './popover.js'
@@ -55,8 +56,7 @@ export function Composer(props) {
 			: mention().slash
 				? skillsFor(mention().query, props.thread)
 				: mentionsFor(mention().query, props.thread)
-	const optionId = (option) =>
-		`mention-${props.thread ?? 'new'}-${option.skill ? `skill-${option.skill}` : (option.name ?? `thread-${option.id}`)}`
+	const optionId = (option) => `mention-${props.thread ?? 'new'}-${option.key}`
 	/** `@` anywhere lists bots and threads; `/` opening the message lists the skills of the runner it asks */
 	const findMention = () => {
 		const before = input.value.slice(0, input.selectionStart)
@@ -80,7 +80,7 @@ export function Composer(props) {
 	/** A bot goes in as `@name` and asks it; a thread as `@"its title"`, which the message shows as a link to it */
 	const pickMention = (option) => {
 		const { start } = mention()
-		const text = `${input.value.slice(0, start)}${option.skill ? `/skill:${option.skill}` : option.name ? `@${option.name}` : threadMention(option.title)} `
+		const text = `${input.value.slice(0, start)}${option.written} `
 		const value = text + input.value.slice(input.selectionStart).replace(/^\s/, '')
 		changeDraft((draft) => {
 			draft.draft = value
@@ -89,8 +89,8 @@ export function Composer(props) {
 		input.setSelectionRange(text.length, text.length)
 		setMention(null)
 		input.focus()
-		if (!option.name) return
-		const bot = option
+		const { bot } = option
+		if (!bot) return
 		// It asks the bots the draft mentions, as a mention of bots already here does
 		const named = value.toLowerCase()
 		const kept = askedBots(props.thread).filter(
@@ -156,7 +156,7 @@ export function Composer(props) {
 	)
 	const touch = () => matchMedia('(pointer: coarse)').matches
 	const active = () => current() === props.thread
-	const busy = () => threads.find((thread) => thread.id === props.thread)?.status === 'working'
+	const busy = () => threadOf(props.thread)?.status === 'working'
 	createEffect(
 		() => [draft().draft, active()],
 		() => {
@@ -500,24 +500,19 @@ export function Composer(props) {
 						id=${() => `mentions-${props.thread ?? 'new'}`}
 						aria-label=${() => (mention()?.slash ? 'Skills' : 'Bots and threads to mention')}
 					>
-						<${For} each=${() => mentionable()}>
-							${(option, index) => {
-								const mention = {
-									id: () => optionId(option),
+						<${For} each=${() => mentionable()} keyed=${(option) => option.key}>
+							${(option, index) =>
+								MentionRow(option, {
+									id: () => optionId(option()),
 									highlighted: () => highlighted() === index(),
-									pick: () => pickMention(option),
-								}
-								return option.name
-									? PickerBot(
-											option,
-											() => setMention(null),
-											() => props.thread,
-											mention,
-										)
-									: option.skill
-										? MentionRow(option.skill, 'skill', mention, option.description)
-										: MentionRow(option.title, 'thread', mention)
-							}}
+									pick: () => pickMention(option()),
+									note: () =>
+										option().bot
+											? isHere(option().bot, props.thread)
+												? formatAgent(option().bot.to)
+												: 'not in this thread yet'
+											: option().kind,
+								})}
 						<//>
 					</ul>
 				</div>
@@ -615,27 +610,16 @@ export function Composer(props) {
 	`
 }
 
-/**
- * A click asks only the bot; shift-click adds it beside the agent, or takes it off.
- * As an @mention option, the row is highlighted by the keys, says whether the bot is here yet, and a tap picks it.
- */
-function PickerBot(bot, close, thread, mention) {
+/** A click asks only the bot; shift-click adds it beside the agent, or takes it off */
+function PickerBot(bot, close, thread) {
 	const selected = () => askedBots(thread()).some((to) => to.name === bot.name)
 	return html`
-		<li role=${() => (mention ? 'presentation' : undefined)}>
+		<li>
 			<button
 				type="button"
-				role=${() => (mention ? 'option' : undefined)}
-				id=${mention?.id}
-				tabindex=${() => (mention ? '-1' : undefined)}
-				aria-selected=${() => (mention ? String(mention.highlighted()) : undefined)}
 				class="ghost model"
-				aria-pressed=${() => (mention ? undefined : String(selected()))}
-				onMouseDown=${(event) => {
-					if (mention) event.preventDefault()
-				}}
+				aria-pressed=${() => String(selected())}
 				onClick=${(event) => {
-					if (mention) return mention.pick()
 					if (!event.shiftKey) return (setPick(null, [botAgent(bot)], thread()), close())
 					const others = askedBots(thread()).filter((to) => to.name !== bot.name)
 					setPick(
@@ -646,19 +630,14 @@ function PickerBot(bot, close, thread, mention) {
 				}}
 			>
 				<span style=${() => colorOf(bot.name)}>${() => bot.name}</span>
-				<small
-					>${() =>
-						mention && !isHere(bot, thread())
-							? 'not in this thread yet'
-							: formatAgent(bot.to)}</small
-				>
+				<small>${() => formatAgent(bot.to)}</small>
 			</button>
 		</li>
 	`
 }
 
-/** A thread or a skill as an option in the list: a row like a bot's, its name and what it is */
-function MentionRow(label, kind, mention, description) {
+/** An option in the @ and / list: a row like a bot's in the picker, its name and what it is, highlighted by the keys, picked by a tap */
+function MentionRow(option, mention) {
 	return html`
 		<li role="presentation">
 			<button
@@ -670,10 +649,12 @@ function MentionRow(label, kind, mention, description) {
 				class="ghost model"
 				onMouseDown=${(event) => event.preventDefault()}
 				onClick=${() => mention.pick()}
-				title=${description}
+				title=${() => option().description}
 			>
-				<span>${label}</span>
-				<small>${kind}</small>
+				<span style=${() => (option().bot ? colorOf(option().bot.name) : '')}
+					>${() => option().label}</span
+				>
+				<small>${mention.note}</small>
 			</button>
 		</li>
 	`
@@ -698,7 +679,7 @@ const persistDraft = (key, text) => {
 }
 /** Each thread's pick, `{agent, bots}`, kept by thread id; a new thread's under `new` */
 const pick = (thread = current()) => compose.picks[thread ?? 'new'] ?? null
-const here = (thread = current()) => threads.find((row) => row.id === thread)?.agents ?? []
+const here = (thread = current()) => threadOf(thread)?.agents ?? []
 const lastTo = (thread = current()) =>
 	(entries[thread] ?? []).findLast((event) => event.data.to?.length)?.data.to
 const fallback = (runner) =>
@@ -725,7 +706,7 @@ const isHere = (bot, thread) =>
 	here(thread).some((agent) => agent.to?.name === bot.name) ||
 	askedBots(thread).some((to) => to.name === bot.name)
 /**
- * What an @ could mention, by the start of a bot's name or of any word in a thread's title: bots first, those in the thread
+ * What an @ could mention, as options that say what they write, by the start of a bot's name or of any word in a thread's title: bots first, those in the thread
  * before the rest, then other threads once something's typed. A bot's home mentions threads only; archived threads never come.
  */
 const mentionsFor = (query, thread) => {
@@ -740,8 +721,16 @@ const mentionsFor = (query, thread) => {
 	return [
 		...matching.filter((bot) => isHere(bot, thread)),
 		...matching.filter((bot) => !isHere(bot, thread)),
-		...titled,
 	]
+		.map((bot) => ({ key: bot.name, label: bot.name, written: `@${bot.name}`, bot }))
+		.concat(
+			titled.map((row) => ({
+				key: `thread-${row.id}`,
+				label: row.title,
+				written: threadMention(row.title),
+				kind: 'thread',
+			})),
+		)
 }
 /** Each runner folder's skills, `runner:dir` → [{name, description}], fetched once per page */
 const [skills, setSkills] = createRoot(() => createStore({}))
@@ -766,7 +755,13 @@ const skillsFor = (query, thread) => {
 	const typed = query.toLowerCase()
 	return (skills[at ? `${at.runner}:${at.dir}` : ''] ?? [])
 		.filter((skill) => skill.name.toLowerCase().startsWith(typed))
-		.map((skill) => ({ skill: skill.name, description: skill.description }))
+		.map((skill) => ({
+			key: `skill-${skill.name}`,
+			label: skill.name,
+			written: `/skill:${skill.name}`,
+			kind: 'skill',
+			description: skill.description,
+		}))
 }
 /** A thread of two or more bots, with the director picking: a message whose sender chose no one goes without `to` */
 const directing = (thread) =>

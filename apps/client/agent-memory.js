@@ -12,7 +12,7 @@ import {
 	Show,
 	untrack,
 } from 'solid-js'
-import { api, connected, current, entries, server, threads } from './server.js'
+import { api, connected, current, entries, server, threads, threadOf } from './server.js'
 import { cutsOf, newestCut, plural } from './run.js'
 
 /**
@@ -34,9 +34,7 @@ export function Compaction() {
 function CompactionOf(props) {
 	const cut = createMemo(() =>
 		newestCut(
-			(threads.find((thread) => thread.id === props.thread)?.agents ?? []).flatMap((agent) =>
-				cutsOf(agent.conversation),
-			),
+			(threadOf(props.thread)?.agents ?? []).flatMap((agent) => cutsOf(agent.conversation)),
 		),
 	)
 	const messages = () => entries[props.thread] ?? []

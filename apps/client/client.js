@@ -3,7 +3,7 @@ import html from '@solidjs/html'
 import { Icon } from './icons.js'
 import { render } from '@solidjs/web'
 import { createEffect, createSignal, Errored, Loading, onSettled } from 'solid-js'
-import { colorOf, current, drawer, homeBot, params, threads, titleOf } from './server.js'
+import { colorOf, current, drawer, homeBot, params, threads, titleOf, threadOf } from './server.js'
 import { Dot } from './dot.js'
 import { System } from './system.js'
 import { ThreadDetails } from './thread-details.js'
@@ -90,7 +90,7 @@ function Client() {
 						style=${() => colorOf(homeBot(current())?.name ?? '')}
 						onClick=${() => drawer('side')}
 					>
-						<${Dot} state=${() => threads.find((thread) => thread.id === current())?.status} />
+						<${Dot} state=${() => threadOf(current())?.status} />
 						<span>${() => (current() ? titleOf(current()) : 'New thread')}</span>
 					</button>
 				</header>

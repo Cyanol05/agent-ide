@@ -16,6 +16,7 @@ import {
 	server,
 	setNewThreadTools,
 	threads,
+	threadOf,
 } from './server.js'
 import { shortLabel } from './agent.js'
 import { BotSettings, botThreads } from './bot.js'
@@ -24,7 +25,7 @@ import { Dot, Switch } from './dot.js'
 import { PiSource } from './pi-sessions.js'
 
 export function ThreadDetails() {
-	const here = () => threads.find((thread) => thread.id === current())
+	const here = () => threadOf(current())
 	// A bot's home is named for it already, so only who else is there; each once, as an ask's line names them
 	const members = () => [
 		...new Map(
@@ -35,7 +36,7 @@ export function ThreadDetails() {
 	]
 	const depth = (id) => here()?.family.find((member) => member.id === id)?.depth ?? 0
 	const parentOf = (id) => {
-		const thread = threads.find((member) => member.id === id)
+		const thread = threadOf(id)
 		return thread?.parent ?? forkedFrom(thread)
 	}
 	/**
@@ -122,12 +123,7 @@ export function ThreadDetails() {
 				<${Show} when=${() => !homeBot(current())}>
 					<${Show} when=${() => lineage().length > 1}>
 						<ul class="thread-family">
-							<${For}
-								each=${() =>
-									lineage()
-										.map((id) => threads.find((thread) => thread.id === id))
-										.filter(Boolean)}
-							>
+							<${For} each=${() => lineage().map(threadOf).filter(Boolean)}>
 								${(thread) =>
 									html`<${ThreadItem} thread=${() => thread} depth=${() => depth(thread.id)} />`}
 							<//>
@@ -168,7 +164,7 @@ export function ThreadDetails() {
 }
 
 function Title(props) {
-	const title = () => threads.find((thread) => thread.id === props.thread)?.title ?? ''
+	const title = () => threadOf(props.thread)?.title ?? ''
 	const [error, setError] = createSignal('')
 	const save = async (field) => {
 		const next = field.value.trim()
@@ -234,8 +230,7 @@ function Title(props) {
 }
 
 function Tools(props) {
-	const tools = () =>
-		props.thread ? threads.find((thread) => thread.id === props.thread)?.tools : newThreadTools()
+	const tools = () => (props.thread ? threadOf(props.thread)?.tools : newThreadTools())
 	let field
 	const [text, setText] = createSignal('')
 	createEffect(
@@ -260,7 +255,7 @@ function Tools(props) {
 		setError('')
 		setNewThreadTools(tools)
 	}
-	const here = () => props.thread && threads.find((thread) => thread.id === props.thread)
+	const here = () => props.thread && threadOf(props.thread)
 	return html`
 		<div class="hands">
 			<${Switch}

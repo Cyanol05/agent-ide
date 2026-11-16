@@ -203,11 +203,7 @@ export const {
 	})
 	/** The open thread's family, as the server sends it: one thread until the list has it, `[null]` for a new one */
 	const family = createMemo(() =>
-		current()
-			? (threads.find((thread) => thread.id === current())?.family.map((member) => member.id) ?? [
-					current(),
-				])
-			: [null],
+		current() ? (threadOf(current())?.family.map((member) => member.id) ?? [current()]) : [null],
 	)
 	/** Family members you opened in this page; closing forgets one */
 	const [open, setOpen] = createSignal(new Set())
@@ -280,7 +276,5 @@ export const colorOf = (name, property = 'color') => {
 	return hue === undefined ? '' : `${property}: ${paint(hue)}`
 }
 export const forkedFrom = (thread) => thread?.conversation?.parent?.conversationId
-export const titleOf = (id) => {
-	const thread = threads.find((thread) => thread.id === id)
-	return thread ? thread.title : `thread ${id}`
-}
+export const threadOf = (id) => threads.find((thread) => thread.id === id)
+export const titleOf = (id) => threadOf(id)?.title ?? `thread ${id}`

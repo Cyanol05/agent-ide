@@ -56,10 +56,10 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   client.html            the walkthrough and the app's page; the promises every change serves
   client.js              root: just the chat, or the live system around it
   server.js              the server as the client sees it: api, watch, lists (threads, runners, bots),
-                         current, openThread, fork, entries store
+                         threadOf, current, openThread, fork, entries store
   thread.js              one thread on screen
     Thread               subscribes to the thread over /ws, keeps its messages, follows the bottom (follow)
-    rows                 projection: messages plus each agent's turns, which run sits in which ask box,
+    rows                 projection: messages plus each agent's turns, a row for each lasting call (an ask, a bot change),
                          live turn, compaction cuts, folded memory lines
     Asked                in a bot's home, a question another thread asked it, a received `Cross` row that opens to the question and its answer (askedHere)
     Message              one message: author, the director's pick, fork link, Body, Images; one that crossed threads is a `Cross` step row
@@ -68,21 +68,21 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     heard, conversations the conversation entries the socket brings
     turnsOf, cutsOf      a conversation cut into turns, and where its newest compaction cut it
     summary              a closed turn's one line ("edited 2 files · 1 command")
-    Exchange             an ask's own line in the asking thread; opened, question and answer as messages
+    Exchange             an ask's own row in the asking thread: a sent `Cross` row, then the answer as a received one
     answersIn, answerOf  a post step's answer from the thread it asked
     LASTING, lastingOf   the tool calls that change something beyond the run, each its own row: posts that ask, `bot` rewrites
     Changed              a bot rewriting itself: ✎, its name, what changed; opened, old against new (the call's details.before)
-    Turn, Step, Call, Told, Ask   a turn's line, opened into steps; Ask is the post step
+    Turn, Step, Call     a turn's line, opened into steps
     handedStep, light, litIn   the handed step as a count (none for the one message above); opened, it lights those messages
   composer.js            the box you type in
     pick, agent, askedBots, recipients   whom the next message asks, per thread
     mention, pickMention, mentionsFor   typing @ lists bots, then threads by any word of their title (a combobox); picking a bot asks it,
                          which is how it joins; picking a thread writes `@"its title"`, no more
-    MentionRow           a thread or a skill as an option in that list
+    MentionRow           an option in that list, bot, thread or skill; each option says what it writes
     skills, loadSkills, skillsFor   `/` opening a message lists the skills where its agent works; picking one writes `/skill:name `
     choose, configure, toFor             model picker and runner controls changing that pick
-    Composer: submit, add, typeRecipients, filled, compactNow   send, images, typed recipients, context meter
-    PickerBot            bots in the picker, and as @mention options
+    Composer: submit, add, pickRecipients, filled, compactNow   send, images, typed recipients, context meter
+    PickerBot            bots in the picker
   agent.js               agents' labels and live work (doing); client's agentTo, formatAgent, lastToolCall, modelsOf
   model-picker.js        model search, thinking and folder controls (composer and settings share them); matches
   runner.js              runner list, a runner's agents, ConnectRunner

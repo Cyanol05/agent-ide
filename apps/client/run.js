@@ -10,7 +10,7 @@ import {
 	onSettled,
 	Show,
 } from 'solid-js'
-import { colorOf, entries, homeBot, threads, titleOf } from './server.js'
+import { colorOf, entries, homeBot, threadOf, titleOf } from './server.js'
 import { Cross } from './thread.js'
 import { authorLabel, doing, messageText, shortLabel, touched } from './agent.js'
 import { Dot } from './dot.js'
@@ -91,7 +91,7 @@ export function Exchange(props) {
 	const who = () =>
 		props.answer?.data.author ??
 		homeBot(asked())?.name ??
-		threads.find((thread) => thread.id === asked())?.agents?.[0]?.name ??
+		threadOf(asked())?.agents?.[0]?.name ??
 		props.step.args.to ??
 		''
 	const took = () => {
@@ -99,8 +99,7 @@ export function Exchange(props) {
 		const end = props.back
 		return start && end && end - start >= 1000 ? seconds(end - start) : ''
 	}
-	const working = () =>
-		!props.answer && threads.find((thread) => thread.id === asked())?.status === 'working'
+	const working = () => !props.answer && threadOf(asked())?.status === 'working'
 
 	return html`
 		<li class=${() => ({ exchange: true, handed: litIn(props.thread, props.answer?.id) })}>
