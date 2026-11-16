@@ -126,7 +126,7 @@ export function RunnerList() {
 			<${For} each=${() => runners}
 				>${(runner) => html`<${Dot} state=${() => (runner.status === 'blocked' ? 'blocked' : runner.online ? 'on' : '')} />`}<//
 			>
-			<span>${() => `${online()} online`}</span>
+			<span>${() => `${online()} runner${online() === 1 ? '' : 's'}`}</span>
 		</button>
 		<div
 			class="popover runner-list"
