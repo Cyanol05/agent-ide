@@ -49,21 +49,38 @@ export function Composer(props) {
 	let input, box, picker, button, chooser, anchor, recall, recallButton, mentionList
 	const [mention, setMention] = createSignal(null)
 	const [highlighted, setHighlighted] = createSignal(0)
-	const mentionable = () => (mention() ? mentionsFor(mention().query, props.thread) : [])
+	const mentionable = () =>
+		!mention()
+			? []
+			: mention().slash
+				? skillsFor(mention().query, props.thread)
+				: mentionsFor(mention().query, props.thread)
 	const optionId = (option) =>
-		`mention-${props.thread ?? 'new'}-${option.name ?? `thread-${option.id}`}`
+		`mention-${props.thread ?? 'new'}-${option.skill ? `skill-${option.skill}` : (option.name ?? `thread-${option.id}`)}`
+	/** `@` anywhere lists bots and threads; `/` opening the message lists the skills of the runner it asks */
 	const findMention = () => {
 		const before = input.value.slice(0, input.selectionStart)
-		const found =
-			input.selectionStart === input.selectionEnd && before.match(/(?:^|[\s(])@([\w.-]*)$/)
-		const next = found ? { start: before.length - found[1].length - 1, query: found[1] } : null
-		if (next?.query !== mention()?.query || next?.start !== mention()?.start) setHighlighted(0)
+		const caret = input.selectionStart === input.selectionEnd
+		const found = caret && before.match(/(?:^|[\s(])@([\w.-]*)$/)
+		const slash = caret && before.match(/^\/(?:skill:)?([\w.-]*)$/)
+		const next = found
+			? { start: before.length - found[1].length - 1, query: found[1] }
+			: slash
+				? { start: 0, query: slash[1], slash: true }
+				: null
+		if (slash) loadSkills(props.thread)
+		if (
+			next?.query !== mention()?.query ||
+			next?.start !== mention()?.start ||
+			next?.slash !== mention()?.slash
+		)
+			setHighlighted(0)
 		setMention(next)
 	}
 	/** A bot goes in as `@name` and asks it; a thread as `@"its title"`, which the message shows as a link to it */
 	const pickMention = (option) => {
 		const { start } = mention()
-		const text = `${input.value.slice(0, start)}${option.name ? `@${option.name}` : threadMention(option.title)} `
+		const text = `${input.value.slice(0, start)}${option.skill ? `/skill:${option.skill}` : option.name ? `@${option.name}` : threadMention(option.title)} `
 		const value = text + input.value.slice(input.selectionStart).replace(/^\s/, '')
 		changeDraft((draft) => {
 			draft.draft = value
@@ -464,7 +481,7 @@ export function Composer(props) {
 					<ul
 						role="listbox"
 						id=${() => `mentions-${props.thread ?? 'new'}`}
-						aria-label="Bots and threads to mention"
+						aria-label=${() => (mention()?.slash ? 'Skills' : 'Bots and threads to mention')}
 					>
 						<${For} each=${() => mentionable()}>
 							${(option, index) => {
@@ -480,7 +497,9 @@ export function Composer(props) {
 											() => props.thread,
 											mention,
 										)
-									: MentionThread(option, mention)
+									: option.skill
+										? MentionRow(option.skill, 'skill', mention, option.description)
+										: MentionRow(option.title, 'thread', mention)
 							}}
 						<//>
 					</ul>
@@ -636,8 +655,8 @@ function PickerBot(bot, close, thread, mention) {
 	`
 }
 
-/** A thread as an @mention option: a row like a bot's, its title where the name goes */
-function MentionThread(thread, mention) {
+/** A thread or a skill as an option in the list: a row like a bot's, its name and what it is */
+function MentionRow(label, kind, mention, description) {
 	return html`
 		<li role="presentation">
 			<button
@@ -649,9 +668,10 @@ function MentionThread(thread, mention) {
 				class="ghost model"
 				onMouseDown=${(event) => event.preventDefault()}
 				onClick=${() => mention.pick()}
+				title=${description}
 			>
-				<span>${() => thread.title}</span>
-				<small>thread</small>
+				<span>${label}</span>
+				<small>${kind}</small>
 			</button>
 		</li>
 	`
@@ -720,6 +740,31 @@ const mentionsFor = (query, thread) => {
 		...matching.filter((bot) => !isHere(bot, thread)),
 		...titled,
 	]
+}
+/** Each runner folder's skills, `runner:dir` → [{name, description}], fetched once per page */
+const [skills, setSkills] = createRoot(() => createStore({}))
+/** Where the message's agent works: the runner and folder its skills come from */
+const workplace = (thread) => {
+	const to = recipients(thread)[0]
+	return to?.runner && { runner: to.runner, dir: to.dir ?? '' }
+}
+const loadSkills = (thread) => {
+	const at = workplace(thread)
+	if (!at || !server().modules?.includes('context')) return
+	const key = `${at.runner}:${at.dir}`
+	if (key in skills) return
+	setSkills((store) => void (store[key] = []))
+	api(`/api/context?runner=${encodeURIComponent(at.runner)}&dir=${encodeURIComponent(at.dir)}`)
+		.then(({ skills: found }) => setSkills((store) => void (store[key] = found ?? [])))
+		.catch(() => setSkills((store) => void delete store[key]))
+}
+/** The skills a `/` could pick, by the start of their name, for the runner and folder the message goes to */
+const skillsFor = (query, thread) => {
+	const at = workplace(thread)
+	const typed = query.toLowerCase()
+	return (skills[at ? `${at.runner}:${at.dir}` : ''] ?? [])
+		.filter((skill) => skill.name.toLowerCase().startsWith(typed))
+		.map((skill) => ({ skill: skill.name, description: skill.description }))
 }
 /** A thread of two or more bots, with the director picking: a message whose sender chose no one goes without `to` */
 const directing = (thread) =>

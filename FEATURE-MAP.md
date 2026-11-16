@@ -39,7 +39,8 @@ modules/
   auto-title.js          first-answer title generation (AutoTitle; the model sees the opening and the newest messages, `recent`), sanitizeThreadTitle, one attempt per thread; serve: a new title on request
   memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut, each thread's switch (remembers, turn), recorded-line import (serve); render, memory
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
-  context.js             AGENTS.md, skills and the folder's path (cwd) from the runner; listed skills stay readable outside it
+  context.js             AGENTS.md, skills and the folder's path (cwd) from the runner; listed skills stay readable outside it;
+                         a folder's skills by name (serve), a person's /skill:name expanded as pi does (expand, skillCommand)
   director.js            the `direct` hook: @mentions ask that bot, with picks a model picks bots or nobody (decide);
                          those asked take turns (`turns`); a bot's answer @mentioning a bot asks it, resting
                          after three bot answers in a row (botTurns); tells bots to @mention, not post (section)
@@ -76,7 +77,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     pick, agent, askedBots, recipients   whom the next message asks, per thread
     mention, pickMention, mentionsFor   typing @ lists bots, then threads by any word of their title (a combobox); picking a bot asks it,
                          which is how it joins; picking a thread writes `@"its title"`, no more
-    MentionThread        a thread as an @mention option
+    MentionRow           a thread or a skill as an option in that list
+    skills, loadSkills, skillsFor   `/` opening a message lists the skills where its agent works; picking one writes `/skill:name `
     choose, configure, toFor             model picker and runner controls changing that pick
     Composer: submit, add, typeRecipients, filled, compactNow   send, images, typed recipients, context meter
     PickerBot            bots in the picker, and as @mention options
