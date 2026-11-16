@@ -3,12 +3,14 @@ import { answered, api, check, done, say, scriptedRunner, server, view } from '.
 
 await server()
 const seen = []
+const words = []
 await scriptedRunner(
 	'x',
 	(context) => {
 		const content = context.messages.findLast((m) => m.role === 'user')?.content
 		const images = Array.isArray(content) ? content.filter((b) => b.type === 'image') : []
 		seen.push(images)
+		words.push(Array.isArray(content) ? content.filter((b) => b.type === 'text') : [content])
 		return say(`${images.length} image${images.length === 1 ? '' : 's'}`)
 	},
 	{ model: { input: ['text', 'image'] } },
@@ -36,6 +38,7 @@ check(
 await api('POST', `/api/threads/${id}/entries`, { images: [dot, dot] })
 v = await answered(id, 2)
 check(seen[1]?.length === 2 && v.entries.at(-2).data.body === '', 'images alone are a message')
+check(words[1]?.length === 0, 'and carry no empty text block, which Claude Code drops', words[1])
 
 const bad = await api('POST', `/api/threads/${id}/entries`, {
 	body: 'x',

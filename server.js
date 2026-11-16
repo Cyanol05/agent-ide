@@ -240,7 +240,7 @@ const Admit = defineTask({
 				: mine.map(say).join('\n\n')
 			const text = [note, joined, told].filter(Boolean).join('\n\n')
 			const images = mine.flatMap((entry) => entry.data.images ?? [])
-			const content = images.length ? [{ type: 'text', text }, ...images] : text
+			const content = images.length ? [...(text ? [{ type: 'text', text }] : []), ...images] : text
 			const handle = await rt.conversation(agent, ctx)
 			const entry = { kind: DELIVERY, data: { held } }
 			await rt.commit(async (tx) => {
