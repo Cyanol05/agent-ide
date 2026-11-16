@@ -1,0 +1,189 @@
+/**
+ * A thread's overview, as a column beside it: the threads it started, grouped by where they stand, waiting on you first,
+ * each with its own page's first line; then the page itself. Where each child stands comes from the thread list; only the
+ * lines and the page are the model's.
+ */
+import html from '@solidjs/html'
+import { createMemo, createSignal, For, onSettled, refresh, Show, untrack } from 'solid-js'
+import { Icon } from './icons.js'
+import { Dot, Switch } from './dot.js'
+import { api, followThread, hrefOf, threads } from './server.js'
+import { markdown } from './markdown.js'
+import { report } from './notice.js'
+import { threadLink } from './thread.js'
+
+/** The threads whose overview column is open */
+const [shown, setShown] = createSignal(new Set())
+export const overviewOpen = (id) => shown().has(id)
+export const toggleOverview = (id) =>
+	setShown((ids) => {
+		const next = new Set(ids)
+		if (next.has(id)) next.delete(id)
+		else next.add(id)
+		return next
+	})
+
+/** A child's state, from its status and its page: waiting on you, working, idle, or resolved */
+const GROUPS = [
+	['waiting', 'Waiting on you'],
+	['working', 'Working'],
+	['idle', 'Idle'],
+	['resolved', 'Resolved'],
+]
+/** A group longer than this starts folded */
+const FOLDED = 8
+const groupOf = (thread, page) =>
+	page?.waiting
+		? 'waiting'
+		: ['working', 'blocked'].includes(thread.status)
+			? 'working'
+			: !page || page.open
+				? 'idle'
+				: 'resolved'
+
+export function Overview(props) {
+	// One thread for this column's whole life
+	const id = untrack(() => props.id)
+	const page = createMemo(() => api(`/api/threads/${id}/overview`))
+	const pages = createMemo(() => api('/api/overview'))
+	onSettled(() => {
+		const timer = setInterval(() => {
+			refresh(page)
+			refresh(pages)
+		}, 5000)
+		return () => clearInterval(timer)
+	})
+	const children = createMemo(() =>
+		threads
+			.filter((thread) => thread.parent === id && !thread.archived)
+			.toSorted((one, other) => other.id - one.id),
+	)
+	const groups = createMemo(() => {
+		const all = pages()
+		return GROUPS.map(([key, label]) => ({
+			key,
+			label,
+			threads: children().filter((thread) => groupOf(thread, all[thread.id]) === key),
+		})).filter((group) => group.threads.length)
+	})
+	const [writing, setWriting] = createSignal(false)
+	const rewrite = async () => {
+		setWriting(true)
+		try {
+			await api(`/api/threads/${id}/overview`, {})
+			refresh(page)
+		} catch (error) {
+			report(error)
+		} finally {
+			setWriting(false)
+		}
+	}
+	return html`
+		<aside class="overview" aria-label="Overview">
+			<header class="page-head">
+				<h2>Overview</h2>
+				<button
+					type="button"
+					class="ghost small"
+					aria-label=${() => (writing() || page().writing ? 'Writing the page' : 'Write it now')}
+					title=${() => (writing() || page().writing ? 'Writing…' : 'Write the page now')}
+					disabled=${() => writing() || !page().on}
+					onClick=${(_event) => rewrite()}
+				>
+					<${Show}
+						when=${() => writing() || page().writing}
+						fallback=${html`<${Icon} name="again" />`}
+					>
+						<${Dot} state="working" />
+					<//>
+				</button>
+				<button
+					type="button"
+					class="ghost small close"
+					aria-label="Close the overview"
+					onClick=${(_event) => toggleOverview(id)}
+				>
+					<${Icon} name="close" />
+				</button>
+			</header>
+			<${For} each=${groups}>
+				${(group) => html`
+					<details
+						open=${group.key === 'waiting' || (group.key !== 'resolved' && group.threads.length <= FOLDED)}
+					>
+						<summary><h3>${() => `${group.label} · ${group.threads.length}`}</h3></summary>
+						<ul class="thread-family">
+							<${For} each=${() => group.threads}>
+								${(thread) => html`
+									<li title=${() => thread.title}>
+										<a
+											class="row"
+											href=${() => hrefOf(thread.id)}
+											onClick=${(event) => followThread(event, thread.id)}
+										>
+											<${Dot} state=${() => thread.status} />
+											<span>
+												${() => thread.title}
+												<small>${() => pages()[thread.id]?.summary ?? ''}</small>
+											</span>
+										</a>
+									</li>
+								`}
+							<//>
+						</ul>
+					</details>
+				`}
+			<//>
+			<${Show}
+				when=${() => page().page}
+				fallback=${html`<p class="mute">
+					${() =>
+						page().on
+							? 'No page yet. It is written after the next answer, or now with ↻.'
+							: 'This thread keeps no page.'}
+				</p>`}
+			>
+				<${Page} text=${() => page().page} thread=${id} />
+			<//>
+			<${Switch}
+				on=${() => page().on}
+				title="Whether this thread keeps a page"
+				onToggle=${(on) =>
+					api(`/api/threads/${id}/overview`, { on })
+						.then(() => refresh(page))
+						.catch(report)}
+				>Keep a page<//
+			>
+			<${Show} when=${() => page().writtenAt}>
+				<p class="mute">
+					<small
+						>${() =>
+							`From messages 0 to ${page().through - 1}, ${new Date(page().writtenAt).toLocaleString()}`}</small
+					>
+				</p>
+			<//>
+		</aside>
+	`
+}
+
+/** The page's markdown; a link to a message scrolls the thread beside it there */
+const Page = (props) => html`
+	<div
+		class="body markdown"
+		innerHTML=${() => markdown(props.text, threadLink)}
+		onClick=${(event) => {
+			const link = event.target.closest('a')
+			if (link?.dataset.thread) return followThread(event, Number(link.dataset.thread))
+			const at = link?.getAttribute('href')?.match(/^#message-(\d+)$/)?.[1]
+			if (!at) return
+			event.preventDefault()
+			const rows = document.querySelectorAll(
+				`.thread[data-thread="${props.thread}"] li[data-message]`,
+			)
+			const row = [...rows].find((row) => row.dataset.message === at)
+			row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+			row?.classList.add('handed')
+			setTimeout(() => row?.classList.remove('handed'), 1500)
+		}}
+	/>
+`

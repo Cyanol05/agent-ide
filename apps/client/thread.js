@@ -35,6 +35,7 @@ import {
 	me,
 	newThreadTools,
 	openThread,
+	server,
 	setEntries,
 	setPeople,
 	threads,
@@ -61,6 +62,7 @@ import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageUrl } from './images.js'
 import { markdown } from './markdown.js'
+import { Overview, overviewOpen, toggleOverview } from './overview.js'
 
 /** A folded summary's text, without the literal <summary> wrapper tags some memories still carry */
 const stripSummaryTag = (text) =>
@@ -84,6 +86,8 @@ const fetching = new Set()
 export function Thread(props) {
 	const thread = createMemo(() => threadOf(props.id))
 	const messages = () => entries[props.id] ?? []
+	/** Each message's position in the thread, from 0, as memory and the overview count them */
+	const positions = createMemo(() => new Map(messages().map((entry, at) => [entry.id, at])))
 	/** In a bot's home, the threads others asked it in: it's their one agent, and they started outside its family. A room has more than one. */
 	const askedHere = createMemo(() => {
 		const bot = homeBot(props.id)
@@ -496,6 +500,17 @@ export function Thread(props) {
 						<${Dot} state=${() => thread()?.status} />
 					</button>
 				</h2>
+				<${Show} when=${() => props.id && server().modules.includes('overview')}>
+					<button
+						type="button"
+						class=${() => ['ghost', 'small', 'overview-toggle', { on: overviewOpen(props.id) }]}
+						title="Where this thread stands"
+						aria-pressed=${() => String(overviewOpen(props.id))}
+						onClick=${(_event) => toggleOverview(props.id)}
+					>
+						Overview
+					</button>
+				<//>
 				<${Show} when=${() => props.id && columns().length > 1}>
 					<button
 						type="button"
@@ -606,6 +621,7 @@ export function Thread(props) {
 													<${Message}
 														thread=${() => props.id}
 														entry=${() => row().entry}
+														at=${() => positions().get(row().entry.id)}
 														sent=${() => row().sent}
 														above=${() => row().above}
 													/>
@@ -646,6 +662,7 @@ function Message(props) {
 		)
 	return html`
 		<li
+			data-message=${() => props.at}
 			class=${() => ({
 				handed: litIn(props.thread, props.entry.id),
 				elsewhere: crossed(),
@@ -758,7 +775,7 @@ const Asked = (props) => html`
 `
 
 /** A thread a message mentions by title, archived ones too; the newest of that title */
-const threadLink = (title) => {
+export const threadLink = (title) => {
 	const thread = [...threads, ...archivedThreads].find((row) => row.title === title)
 	return thread && { href: hrefOf(thread.id), id: thread.id, title }
 }

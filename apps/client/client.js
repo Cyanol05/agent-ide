@@ -2,8 +2,19 @@
 import html from '@solidjs/html'
 import { Icon } from './icons.js'
 import { render } from '@solidjs/web'
-import { createEffect, createSignal, Errored, Loading, onSettled } from 'solid-js'
-import { colorOf, current, drawer, homeBot, params, threads, titleOf, threadOf } from './server.js'
+import { createEffect, createSignal, Errored, Loading, onSettled, Show } from 'solid-js'
+import {
+	colorOf,
+	current,
+	drawer,
+	homeBot,
+	params,
+	server,
+	threads,
+	titleOf,
+	threadOf,
+} from './server.js'
+import { overviewOpen, toggleOverview } from './overview.js'
 import { Dot } from './dot.js'
 import { System } from './system.js'
 import { ThreadDetails } from './thread-details.js'
@@ -93,6 +104,16 @@ function Client() {
 						<${Dot} state=${() => threadOf(current())?.status} />
 						<span>${() => (current() ? titleOf(current()) : 'New thread')}</span>
 					</button>
+					<${Show} when=${() => current() && server().modules.includes('overview')}>
+						<button
+							type="button"
+							class=${() => ['ghost', 'small', 'overview-toggle', { on: overviewOpen(current()) }]}
+							aria-pressed=${() => String(overviewOpen(current()))}
+							onClick=${(_event) => toggleOverview(current())}
+						>
+							Overview
+						</button>
+					<//>
 				</header>
 				<${ThreadDetails} />
 				<${System} />

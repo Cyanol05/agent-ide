@@ -1841,6 +1841,18 @@ body.resizing {
 		display: none;
 	}
 
+	/* A phone shows one column: the overview, when it's open, over its thread, under the bar, whose button closes it. */
+	.threads > .overview {
+		position: absolute;
+		inset: 0;
+		z-index: 3;
+		padding-top: calc(var(--control) + 3 * var(--space-2) + env(safe-area-inset-top));
+
+		> .page-head > .close {
+			display: none;
+		}
+	}
+
 	.thread {
 		border: 0;
 
@@ -1937,4 +1949,71 @@ body.resizing {
 				visibility var(--duration-sheet) var(--ease-sheet);
 		}
 	}
+}
+
+/* A thread's overview: a column beside it, as wide as a narrow thread, scrolling on its own. Its child threads are the family's rows, each with its page's first line under its title. */
+.overview {
+	flex: 0 1 26rem;
+	min-width: 18rem;
+	align-self: stretch;
+	overflow-y: auto;
+	padding: var(--space-2) var(--space-4) var(--space-5);
+	border-right: 1px solid var(--line);
+	background: Canvas;
+	font-size: var(--text);
+	line-height: var(--text-line);
+
+	&:last-child {
+		border-right: 0;
+	}
+
+	> .page-head {
+		margin-inline: 0;
+
+		> h2 {
+			flex: 1;
+			font-size: var(--text-ui);
+		}
+	}
+
+	> details {
+		margin-bottom: var(--space-3);
+
+		> summary > h3 {
+			display: inline;
+			margin: 0;
+			color: var(--mute);
+			font-size: var(--text-small);
+			font-weight: 400;
+		}
+
+		.row {
+			align-items: start;
+
+			> .dot {
+				margin-top: 0.4em;
+			}
+		}
+
+		.row > span {
+			white-space: normal;
+
+			> small {
+				display: block;
+				color: var(--mute);
+			}
+		}
+	}
+
+	> .switch {
+		margin-top: var(--space-4);
+	}
+}
+
+.app-bar > .overview-toggle {
+	justify-self: end;
+}
+
+:is(.thread > header, .app-bar) > button.overview-toggle.on {
+	background: var(--tint);
 }

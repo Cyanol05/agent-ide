@@ -38,13 +38,15 @@ modules/
                          thread it posts to speaks there as itself (member), and so does a bot that
                          starts a thread for two or more bots (opener in server.js's post)
   auto-title.js          first-answer title generation (AutoTitle; the model sees the opening and the newest messages, `recent`), sanitizeThreadTitle, one attempt per thread; serve: a new title on request
-  memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut, each thread's switch (remembers, turn), recorded-line import (serve); render, memory
+  memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut, each thread's switch (remembers, turn), recorded-line import (serve); render; lines, memory and rendered, which overview reads too
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
   context.js             AGENTS.md, skills and the folder's path (cwd) from the runner; listed skills stay readable outside it;
                          a folder's skills by name (serve), a person's /skill:name expanded as pi does (expand, skillCommand)
   director.js            the `direct` hook: @mentions ask that bot, with picks a model picks bots or nobody (decide);
                          those asked take turns (`turns`); a bot's answer @mentioning a bot asks it, resting
                          after three bot answers in a row (botTurns); tells bots to @mention, not post (section)
+  overview.js            a thread's overview page: Overview doc, Write task (one writer, rounds while more is new), since (the new
+                         messages, numbered), counts (summary, waiting, open), serve, the `overview` tool; off by default
   web-search.js          `web_search`
   status.js              Program Status Protocol (OSC 7501) on the runner's terminal
   matrix.js              Matrix rooms as threads (MatrixSend, relay, sync)
@@ -91,6 +93,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
                          a bot's threads as a page of the sheet
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
+  overview.js            a thread's overview column: its child threads grouped (groupOf), the page (Page, whose #message-N links
+                         scroll the thread there), toggleOverview/overviewOpen; system.js puts it beside the thread
   agent-memory.js        memory popover and compaction view for the visible thread
   icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again), one viewBox and weight
   title.js               defaultTitle shared by new-thread client paths, CLI, post and auto-title
@@ -131,6 +135,7 @@ examples/96-one-executable.js installed executable dispatch, including leading C
 examples/101-the-walkthrough-writes-memory.js   tutorial loader opens with recorded, zoomable memory and no runner
 examples/102-import-memory.js     recorded-line import, existing lines preserved, invalid spans rejected
 examples/100-post-without-a-title.js optional post titles with auto-title on/off; both talk tools address threads by id or exact title and reject ambiguity
+examples/105-overview-page.js     the overview page: written after answers from the page before and what's new, read by the tool, switched off
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 
@@ -139,6 +144,7 @@ Where a feature lives:
 - Talk between threads: modules/talk.js (post, threads, reply), server.js append/whom, client thread.js `Cross` (a crossed message as a step row), run.js `Exchange`.
 - Asking a model / switching it: composer.js pick/choose, model-picker.js, server.js whom/reconfigure.
 - Live work you watch: server.js work/doing/watch, client agent.js doing, run.js Turn.
+- Overview pages: modules/overview.js, client overview.js, thread.js (header button, data-message), system.js (the column).
 - Memory and compaction: modules/memory.js, server.js compact/compactingAt, client agent-memory.js, thread.js rows (cuts, folded lines), run.js cutsOf.
 - Bots: modules/bots.js, client bot.js, composer.js PickerBot, client server.js homeBot/botAgent; a bot's colour is server.js `colorOf` (its picked `color` hue, else by the order bots were made), picked in bot.js `BotSettings` `.colors`.
 - Runners and keys: remote.js, runner.js, server.js mintKey/revoke/upgrade, client runner.js.

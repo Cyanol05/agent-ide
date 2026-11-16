@@ -1,12 +1,13 @@
 /** The client, server, threads and runners, with the routes between them. */
 import html from '@solidjs/html'
-import { createMemo, For } from 'solid-js'
+import { createMemo, For, Loading, Show } from 'solid-js'
 import { columns, connected, current, runners, threads, url } from './server.js'
 import { rowOf } from './agent.js'
 import { recipients } from './composer.js'
 import { Dot } from './dot.js'
 import { Runner } from './runner.js'
 import { Thread } from './thread.js'
+import { Overview, overviewOpen } from './overview.js'
 import { ThreadList } from './thread-list.js'
 import { Wires } from './wires.js'
 
@@ -80,7 +81,18 @@ export function System() {
 					<${ThreadList} />
 					<${ListEdge} />
 					<div class="threads">
-						<${For} each=${() => columns()}>${(id) => html`<${Thread} id=${() => id} />`}<//>
+						<${For} each=${() => columns()}
+							>${(id) => html`
+								<${Thread} id=${() => id} />
+								<${Show} when=${() => id && overviewOpen(id)}>
+									<${Loading}
+										fallback=${html`<aside class="overview"><p class="mute">Reading the page…</p></aside>`}
+									>
+										<${Overview} id=${id} />
+									<//>
+								<//>
+							`}<//
+						>
 					</div>
 				</div>
 			</div>
