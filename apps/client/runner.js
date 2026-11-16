@@ -263,7 +263,17 @@ export function ConnectRunner(props) {
 						required
 						value=${() => name()}
 						onInput=${(event) => {
-							setName(event.currentTarget.value)
+							// A name is letters, digits, dot, dash or underscore: a space becomes a dash as you type.
+							const input = event.currentTarget
+							const typed = input.value
+							const caret = input.selectionStart ?? typed.length
+							const tidy = (text) => text.replace(/\s/g, '-').replace(/[^\w.-]/g, '')
+							if (tidy(typed) !== typed) {
+								input.value = tidy(typed)
+								const at = tidy(typed.slice(0, caret)).length
+								input.setSelectionRange(at, at)
+							}
+							setName(input.value)
 							setCutting(false)
 						}}
 					/>
