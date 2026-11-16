@@ -1976,15 +1976,36 @@ body.resizing {
 		}
 	}
 
+	> p.summary {
+		margin: 0 0 var(--space-4);
+	}
+
 	> details {
 		margin-bottom: var(--space-3);
 
 		> summary > h3 {
-			display: inline;
+			display: inline-flex;
+			align-items: center;
+			gap: var(--space-2);
 			margin: 0;
 			color: var(--mute);
 			font-size: var(--text-small);
 			font-weight: 400;
+		}
+
+		/* A topic is a line; its bullets sit where the rows' titles start. */
+		> .markdown {
+			margin: var(--space-2) 0 var(--space-3);
+
+			ul {
+				margin: 0;
+				padding-left: calc(2 * var(--space-2) + var(--dot));
+				list-style: none;
+			}
+
+			li + li {
+				margin-top: var(--space-2);
+			}
 		}
 
 		.row {

@@ -45,8 +45,9 @@ modules/
   director.js            the `direct` hook: @mentions ask that bot, with picks a model picks bots or nobody (decide);
                          those asked take turns (`turns`); a bot's answer @mentioning a bot asks it, resting
                          after three bot answers in a row (botTurns); tells bots to @mention, not post (section)
-  overview.js            a thread's overview page: Overview doc, Write task (one writer, rounds while more is new), since (the new
-                         messages, numbered), counts (summary, waiting, open), serve, the `overview` tool; off by default
+  overview.js            a thread's overview page: WRITER (the prompt and its shape), Overview doc, Write task (one writer, rounds
+                         while more is new), since (the new messages, numbered), misshapen (one retry), tidy (Done's ten, the cap),
+                         counts, looking (who has it open), serve, the `overview` tool; off by default
   web-search.js          `web_search`
   status.js              Program Status Protocol (OSC 7501) on the runner's terminal
   matrix.js              Matrix rooms as threads (MatrixSend, relay, sync)
@@ -93,8 +94,9 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
                          a bot's threads as a page of the sheet
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
-  overview.js            a thread's overview column: its child threads grouped (groupOf), the page (Page, whose #message-N links
-                         scroll the thread there), toggleOverview/overviewOpen; system.js puts it beside the thread
+  overview.js            a thread's overview column: the page's sections (parse) and child threads (groupOf) in one set of GROUPS,
+                         each drawn with a status dot or the check icon; Page, whose #message-N links scroll the thread there;
+                         toggleOverview/overviewOpen; system.js puts it beside the thread
   agent-memory.js        memory popover and compaction view for the visible thread
   icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again), one viewBox and weight
   title.js               defaultTitle shared by new-thread client paths, CLI, post and auto-title
