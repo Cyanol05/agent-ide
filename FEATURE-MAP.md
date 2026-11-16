@@ -78,7 +78,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     Composer: submit, add, typeRecipients, filled, compactNow   send, images, typed recipients, context meter
     PickerBot            bots in the picker, and as @mention options
   agent.js               agents' labels and live work (doing); client's agentTo, formatAgent, lastToolCall, modelsOf
-  model-picker.js        model, thinking and folder controls (composer and settings share them)
+  model-picker.js        model search, thinking and folder controls (composer and settings share them); matches
   runner.js              runner list, a runner's agents, ConnectRunner
   bot.js                 a bot's settings, its threads row, new bot; botThreads shares its own/elsewhere lists
   thread-list.js         the thread list, its family rows
@@ -144,7 +144,7 @@ Build from these; a new panel, row or button takes its sibling's markup and clas
 - Buttons, three variants ("Three buttons"): bordered is plain `button` (Done, Create, Copy, archive, fork, revoke); `button.ghost` has no border and gets a soft fill on hover and when `aria-pressed` or `aria-expanded` (composer bar, foot toggles, closes, backs, thinking levels); `button.primary` is filled with ink (send). `data-danger` turns any of them red on hover. One size modifier, `.small` (12px: the composer bar, row ends, Done, options, thinking levels, backs, pane closes, Copy, Create, foot toggles). Two more classes keep a look of their own: `.send`, the one round button, and `.row`, a link as wide as its list. Fields share one look (`input`, `textarea`, `select`), plus `.bare` for a name that reads as a heading and `.draft` for the composer's box.
 - Popover: a `div.popover[popover]` placed by `placePopover` (popover.js), a bottom sheet on phones ("The model picker and settings"). Panes inside it (panes.js `Panes`, `.panes .pane`, "A detail covers") give it a header with a ghost close, a back and actions. Settings (settings.js), Runners (runner.js `.runner-list`) and Context (composer.js `.recall`) use it; the model picker and @mentions (composer.js `.model-picker`) are the same frame without panes.
 - Popover rows: `ul.rows > li` in a popover's pane body, one per module, runner or option ("One row across"); the picker's `.model-controls .who` and `.model` share the look.
-- Model controls: model-picker.js `ModelPicker`, `.model-controls` with its `.models` and the `.thinking` levels ("A runner, its models"); the composer and settings share it.
+- Model controls: model-picker.js `ModelPicker`, `.model-controls`: a `.search` pinned on top (typing filters, arrows and Enter pick, an address goes to `onType`), the `.model-list` of runners' `.models` that alone scrolls, and a pinned `.foot` with the asked runner's `.thinking` and folder ("A search, then each runner's models"); the composer and settings share it.
 - Left aside: thread-list.js `ThreadList`, `.thread-list`; each row is `li > .row` (a link, or a button, or `form.row` for a new bot), shared with the family list `.thread-family`; its foot is `.list-foot` with `.foot-toggle`s ("The list's foot").
 - Right aside: thread-details.js `ThreadDetails`, `.thread-details` with `.scrim` ("This thread's sheet"); a bot's part is bot.js `BotSettings`, `.bot`; its fields are plain inputs; a page of it has `.page-head`.
 - Thread head: the pill, `h2.title > button.thread-pill` in `.thread > header` and its `.close` ("The head is no bar"); `.thread-pill` is layout only; on a phone `.app-bar` ("A phone").

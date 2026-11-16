@@ -36,7 +36,7 @@ import {
 } from './server.js'
 import { agentTo, formatAgent, thinkingWord } from './agent.js'
 import { placePopover } from './popover.js'
-import { ModelPicker } from './model-picker.js'
+import { matches, ModelPicker } from './model-picker.js'
 import { Dot } from './dot.js'
 import { conversations } from './run.js'
 import { Compaction, Memory } from './agent-memory.js'
@@ -74,7 +74,7 @@ export function Composer(props) {
 		const kept = askedBots(props.thread).filter(
 			(to) => to.name !== bot.name && named.includes(`@${to.name.toLowerCase()}`),
 		)
-		setPick(null, [...snapshot(kept), botAgent(bot)], null, props.thread)
+		setPick(null, [...snapshot(kept), botAgent(bot)], props.thread)
 		setMention(null)
 		input.focus()
 	}
@@ -212,8 +212,8 @@ export function Composer(props) {
 			}, key)
 		}
 	}
-	const typeRecipients = (event) => {
-		const text = event.currentTarget.value
+	/** A line of `model:thinking@runner` and bots' names, comma between them, as the pick */
+	const typeRecipients = (text) => {
 		const next = text
 			.split(',')
 			.map((text) => text.trim())
@@ -228,7 +228,6 @@ export function Composer(props) {
 		setPick(
 			next.find((to) => !to.name) ?? null,
 			next.filter((to) => to.name),
-			text,
 			props.thread,
 		)
 	}
@@ -333,7 +332,6 @@ export function Composer(props) {
 							setPick(
 								snapshot(agent(props.thread)),
 								snapshot(askedBots(props.thread)),
-								null,
 								props.thread,
 							)
 						changeDraft((draft) => {
@@ -541,14 +539,6 @@ export function Composer(props) {
 					else anchor = box
 				}}
 			>
-				<button
-					type="button"
-					class="ghost small close"
-					aria-label="Close"
-					onClick=${() => picker.hidePopover()}
-				>
-					<${Icon} name="close" />
-				</button>
 				<${ModelPicker}
 					getTo=${(runner) => toFor(runner, props.thread)}
 					selectedRunner=${() => agent(props.thread)?.runner}
@@ -557,38 +547,39 @@ export function Composer(props) {
 						picker.hidePopover()
 					}}
 					onConfigure=${(to) => configure(to, props.thread)}
+					onType=${() =>
+						homeBot(props.thread)
+							? undefined
+							: (text) => {
+									typeRecipients(text)
+									picker.hidePopover()
+								}}
 					folders=${true}
-				>
-					<${Show} when=${() => !homeBot(props.thread)}>
-						<${Show} when=${() => bots.length}>
-							<li><h3>Bots</h3></li>
-						<//>
-						<${For} each=${() => bots}>
-							${(bot) =>
-								PickerBot(
-									bot,
-									() => picker.hidePopover(),
-									() => props.thread,
-								)}
-						<//>
-					<//>
-				<//>
-				<${Show} when=${() => !homeBot(props.thread)}>
-					<input
-						class="recipients"
-						aria-label="Recipients"
-						autocomplete="off"
-						autocapitalize="none"
-						autocorrect="off"
-						spellcheck="false"
-						title="model:thinking@runner, and any bots' names, comma between them"
-						value=${() => pick(props.thread)?.typed ?? recipients(props.thread).map(formatAgent).join(', ')}
-						onInput=${typeRecipients}
-						onKeyDown=${(event) => {
-							if (event.key === 'Enter') event.preventDefault()
-						}}
-					/>
-				<//>
+					close=${html`<button
+						type="button"
+						class="ghost small close"
+						aria-label="Close"
+						onClick=${() => picker.hidePopover()}
+					>
+						<${Icon} name="close" />
+					</button>`}
+					more=${(query) =>
+						homeBot(props.thread)
+							? null
+							: html`
+									<${Show} when=${() => bots.some((bot) => matches(query, bot.name))}>
+										<li><h3>Bots</h3></li>
+									<//>
+									<${For} each=${() => bots.filter((bot) => matches(query, bot.name))}>
+										${(bot) =>
+											PickerBot(
+												bot,
+												() => picker.hidePopover(),
+												() => props.thread,
+											)}
+									<//>
+								`}
+				/>
 			</div>
 		</form>
 	`
@@ -615,12 +606,11 @@ function PickerBot(bot, close, thread, mention) {
 				}}
 				onClick=${(event) => {
 					if (mention) return mention.pick()
-					if (!event.shiftKey) return (setPick(null, [botAgent(bot)], null, thread()), close())
+					if (!event.shiftKey) return (setPick(null, [botAgent(bot)], thread()), close())
 					const others = askedBots(thread()).filter((to) => to.name !== bot.name)
 					setPick(
 						snapshot(agent(thread())),
 						selected() ? others : [...others, botAgent(bot)],
-						null,
 						thread(),
 					)
 				}}
@@ -654,7 +644,7 @@ const persistDraft = (key, text) => {
 		else localStorage.removeItem(draftKey(key))
 	} catch {}
 }
-/** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
+/** Each thread's pick, `{agent, bots}`, kept by thread id; a new thread's under `new` */
 const pick = (thread = current()) => compose.picks[thread ?? 'new'] ?? null
 const here = (thread = current()) => threads.find((row) => row.id === thread)?.agents ?? []
 const lastTo = (thread = current()) =>
@@ -718,9 +708,9 @@ const recipientLabel = (to, thread) => recipientWords(to, thread).filter(Boolean
 /** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
 export const toFor = (runner, thread = current()) =>
 	agent(thread)?.runner === runner.name ? agent(thread) : fallback(runner)
-const setPick = (to, bots, typed = null, thread = current()) =>
+const setPick = (to, bots, thread = current()) =>
 	setCompose((store) => {
-		store.picks[thread ?? 'new'] = { agent: to, bots, typed }
+		store.picks[thread ?? 'new'] = { agent: to, bots }
 		if (to && !to.name) store.settings[to.runner] = to
 	})
 /** Choosing a model replaces the agent's pick and keeps the bots; in a bot's home, it is the bot's own model */
@@ -731,7 +721,7 @@ export function choose(to, always = true, thread = current()) {
 			.then(() => reloadBots())
 			.catch(report)
 	if (always || agent(thread)?.runner === to.runner)
-		setPick(to, snapshot(askedBots(thread)), null, thread)
+		setPick(to, snapshot(askedBots(thread)), thread)
 	else setCompose((store) => void (store.settings[to.runner] = to))
 }
 /** A runner's settings change the agent's pick only when the agent is on that runner */

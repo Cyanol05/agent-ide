@@ -1227,7 +1227,7 @@ body.side .thread-details {
 	}
 }
 
-/* A runner, its models as rows with a check on the one asked, and how hard it thinks as a row of steps. */
+/* A search, then each runner's models as rows with a check on the one asked, then how hard it thinks as a row of steps. */
 .model {
 	display: flex;
 	align-items: start;
@@ -1244,6 +1244,40 @@ body.side .thread-details {
 }
 
 .model-controls {
+	/* The search and the thinking stay put; only the list between them scrolls, however long it gets. */
+	display: flex;
+	flex-direction: column;
+	max-height: inherit;
+	min-height: 0;
+
+	.search {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		flex: none;
+		padding-bottom: var(--space-2);
+
+		input {
+			flex: 1;
+		}
+	}
+
+	.model-list {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scrollbar-width: none;
+		/* The last rows fade while there is more below; scrolled to the end, or with nothing to scroll, they don't. */
+		mask-image: linear-gradient(to top, rgb(0 0 0 / var(--more-below)), #000 var(--space-5));
+		animation: model-list-end linear both;
+		animation-timeline: scroll(self);
+	}
+
+	.model-list::-webkit-scrollbar {
+		display: none;
+	}
+
 	/* Rows follow each other like a model's; a line only before the next runner or the bots. */
 	> ul {
 		gap: 0;
@@ -1257,14 +1291,18 @@ body.side .thread-details {
 
 	.models {
 		display: grid;
-		margin-top: var(--space-2);
 	}
 
-	/* A model is a row; the one asked carries a check. */
+	/* A model is a row; the one asked carries a check, the one Enter would pick a soft fill. */
 	.model > svg.icon {
 		align-self: center;
 		margin-left: auto;
 		color: var(--pick);
+	}
+
+	.model[data-highlighted] {
+		background: color-mix(in srgb, CanvasText 10%, transparent);
+		color: var(--ink);
 	}
 
 	/* On the models' words, past their buttons' border. */
@@ -1275,6 +1313,15 @@ body.side .thread-details {
 		color: var(--mute);
 	}
 
+	.foot {
+		flex: none;
+		border-top: 1px solid var(--line);
+
+		select {
+			width: 100%;
+		}
+	}
+
 	.thinking {
 		display: flex;
 		flex-wrap: wrap;
@@ -1283,12 +1330,35 @@ body.side .thread-details {
 	}
 }
 
-/* The same choice as one line you can write, for several at once or a model the list doesn't offer. */
-.model-picker {
-	.recipients {
-		display: block;
-		width: 100%;
-		margin: var(--space-2) 0 0;
+@property --more-below {
+	syntax: '<number>';
+	inherits: false;
+	initial-value: 1;
+}
+
+@keyframes model-list-end {
+	from {
+		--more-below: 0;
+	}
+	95% {
+		--more-below: 0;
+	}
+	to {
+		--more-below: 1;
+	}
+}
+
+/* The picker is its own column: the popover doesn't scroll, its list does. */
+.model-picker:not(.mentions) {
+	overflow: hidden;
+
+	&:popover-open {
+		display: flex;
+		flex-direction: column;
+	}
+
+	> .model-controls {
+		flex: 1 1 auto;
 	}
 }
 
@@ -1385,7 +1455,7 @@ body.side .thread-details {
 	}
 }
 
-:is(.thread-details, .model-picker) > button.close {
+:is(.thread-details, .model-picker .search) > button.close {
 	display: none;
 }
 
@@ -1828,17 +1898,17 @@ body.resizing {
 		width: calc(100% - 3.6rem);
 	}
 
-	/* A sheet closes from its top corner; on a big screen a click outside does it. */
-	:is(.thread-details, .model-picker:not(.mentions)) > button.close {
+	/* A sheet closes from its top corner, the picker beside its search; on a big screen a click outside does it. */
+	.model-picker .search > button.close {
+		display: flex;
+	}
+
+	.thread-details > button.close {
 		display: flex;
 		position: absolute;
 		top: calc(var(--space-2) + env(safe-area-inset-top));
 		right: var(--space-2);
 		z-index: 1;
-	}
-
-	.model-picker:not(.mentions) > button.close {
-		top: var(--space-2);
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
