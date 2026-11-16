@@ -295,6 +295,17 @@ export function ConnectRunner(props) {
 							${() => (copied() ? 'Copied' : 'Copy')}
 						</button>
 					</div>
+					<${Show}
+						when=${() =>
+							/^curl -fsSL https?:\/\/(localhost|127(?:\.\d+){3}|\[::1\])[:/]/i.test(
+								minted().connect,
+							)}
+					>
+						<p class="mute">
+							Other machines can't reach this server. Start it with <code>HOST=0.0.0.0</code>
+							(Tailscale recommended).
+						</p>
+					<//>
 					<p class="mute">
 						${() =>
 							`Run it on ${minted().name}, in the folder agents should work in. ` +
