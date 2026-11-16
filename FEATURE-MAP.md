@@ -61,6 +61,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
                          live turn, compaction cuts, folded memory lines
     Asked                in a bot's home, a question another thread asked it, a received `Cross` row that opens to the question and its answer (askedHere)
     Message              one message: author, the director's pick, fork link, Body, Images; one that crossed threads is a `Cross` step row
+    Body, threadLink     a message's markdown; a thread it mentions by title is a link that opens it
   run.js                 an agent's turns, from its own conversation
     heard, conversations the conversation entries the socket brings
     turnsOf, cutsOf      a conversation cut into turns, and where its newest compaction cut it
@@ -73,7 +74,9 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     handedStep, light, litIn   the handed step as a count (none for the one message above); opened, it lights those messages
   composer.js            the box you type in
     pick, agent, askedBots, recipients   whom the next message asks, per thread
-    mention, pickMention, mentionsFor   typing @ lists bots (a combobox); picking one asks it, which is how it joins
+    mention, pickMention, mentionsFor   typing @ lists bots, then threads by any word of their title (a combobox); picking a bot asks it,
+                         which is how it joins; picking a thread writes `@"its title"`, no more
+    MentionThread        a thread as an @mention option
     choose, configure, toFor             model picker and runner controls changing that pick
     Composer: submit, add, typeRecipients, filled, compactNow   send, images, typed recipients, context meter
     PickerBot            bots in the picker, and as @mention options
@@ -95,7 +98,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   tutorial-shed-memory.js   the real memory module’s recorded lines for the shed
   panes.js, popover.js, sure.js, notice.js, dot.js   list/detail frame, popover placement,
                          two-press button, error line, status dot
-  images.js, markdown.js image shrinking to pi's limits; message markdown
+  images.js, markdown.js image shrinking to pi's limits; message markdown, and threadMention, the `@"title"` a picked thread writes
   base.css               tokens, reset, every control's look (buttons and their variants), popover, rows, panes, status dot
   app.css                the chat's layout: list, threads, messages, composer, sheet, picker, settings, phone
   walkthrough.css        the story page and the live system's boxes and wires, all under body:not(.chat)

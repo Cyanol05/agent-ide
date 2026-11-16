@@ -18,6 +18,7 @@ import {
 } from 'solid-js'
 import {
 	api,
+	archivedThreads,
 	bots,
 	closeColumn,
 	colorOf,
@@ -755,13 +756,26 @@ const Asked = (props) => html`
 	</li>
 `
 
-/** What a message says: markdown, except a `$ cmd` and an error, which stay as written */
+/** A thread a message mentions by title, archived ones too; the newest of that title */
+const threadLink = (title) => {
+	const thread = [...threads, ...archivedThreads].find((row) => row.title === title)
+	return thread && { href: hrefOf(thread.id), id: thread.id, title }
+}
+
+/** What a message says: markdown, except a `$ cmd` and an error, which stay as written. A thread it mentions opens here. */
 const Body = (props) => html`
 	<${Show}
 		when=${() => !props.data.shell && !props.data.error}
 		fallback=${html`<span class="body">${() => props.data.body}</span>`}
 	>
-		<div class="body markdown" innerHTML=${() => markdown(props.data.body)} />
+		<div
+			class="body markdown"
+			innerHTML=${() => markdown(props.data.body, threadLink)}
+			onClick=${(event) => {
+				const link = event.target.closest('a[data-thread]')
+				if (link) followThread(event, Number(link.dataset.thread))
+			}}
+		/>
 	<//>
 `
 

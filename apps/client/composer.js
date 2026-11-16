@@ -5,6 +5,7 @@
  * In a thread of bots with the director picking, a message whose sender chose no one goes without `to`, and a choice holds for one message.
  */
 import { defaultTitle } from './title.js'
+import { threadMention } from './markdown.js'
 import html from '@solidjs/html'
 import { Icon } from './icons.js'
 import {
@@ -49,34 +50,36 @@ export function Composer(props) {
 	const [mention, setMention] = createSignal(null)
 	const [highlighted, setHighlighted] = createSignal(0)
 	const mentionable = () => (mention() ? mentionsFor(mention().query, props.thread) : [])
+	const optionId = (option) =>
+		`mention-${props.thread ?? 'new'}-${option.name ?? `thread-${option.id}`}`
 	const findMention = () => {
 		const before = input.value.slice(0, input.selectionStart)
 		const found =
 			input.selectionStart === input.selectionEnd && before.match(/(?:^|[\s(])@([\w.-]*)$/)
-		const next =
-			found && bots.length && !homeBot(props.thread)
-				? { start: before.length - found[1].length - 1, query: found[1] }
-				: null
+		const next = found ? { start: before.length - found[1].length - 1, query: found[1] } : null
 		if (next?.query !== mention()?.query || next?.start !== mention()?.start) setHighlighted(0)
 		setMention(next)
 	}
-	const pickMention = (bot) => {
+	/** A bot goes in as `@name` and asks it; a thread as `@"its title"`, which the message shows as a link to it */
+	const pickMention = (option) => {
 		const { start } = mention()
-		const text = `${input.value.slice(0, start)}@${bot.name} `
+		const text = `${input.value.slice(0, start)}${option.name ? `@${option.name}` : threadMention(option.title)} `
 		const value = text + input.value.slice(input.selectionStart).replace(/^\s/, '')
 		changeDraft((draft) => {
 			draft.draft = value
 		})
 		input.value = value
 		input.setSelectionRange(text.length, text.length)
+		setMention(null)
+		input.focus()
+		if (!option.name) return
+		const bot = option
 		// It asks the bots the draft mentions, as a mention of bots already here does
 		const named = value.toLowerCase()
 		const kept = askedBots(props.thread).filter(
 			(to) => to.name !== bot.name && named.includes(`@${to.name.toLowerCase()}`),
 		)
 		setPick(null, [...snapshot(kept), botAgent(bot)], props.thread)
-		setMention(null)
-		input.focus()
 	}
 	createEffect(
 		() => mentionable().length > 0,
@@ -281,9 +284,7 @@ export function Composer(props) {
 					aria-controls=${() => `mentions-${props.thread ?? 'new'}`}
 					aria-expanded=${() => String(mentionable().length > 0)}
 					aria-activedescendant=${() =>
-						mentionable().length
-							? `mention-${props.thread ?? 'new'}-${mentionable()[highlighted()]?.name}`
-							: undefined}
+						mentionable().length ? optionId(mentionable()[highlighted()]) : undefined}
 					onBlur=${() => setMention(null)}
 					onClick=${findMention}
 					onKeyUp=${(event) => {
@@ -459,20 +460,24 @@ export function Composer(props) {
 					<ul
 						role="listbox"
 						id=${() => `mentions-${props.thread ?? 'new'}`}
-						aria-label="Bots to mention"
+						aria-label="Bots and threads to mention"
 					>
 						<${For} each=${() => mentionable()}>
-							${(bot, index) =>
-								PickerBot(
-									bot,
-									() => setMention(null),
-									() => props.thread,
-									{
-										id: () => `mention-${props.thread ?? 'new'}-${bot.name}`,
-										highlighted: () => highlighted() === index(),
-										pick: () => pickMention(bot),
-									},
-								)}
+							${(option, index) => {
+								const mention = {
+									id: () => optionId(option),
+									highlighted: () => highlighted() === index(),
+									pick: () => pickMention(option),
+								}
+								return option.name
+									? PickerBot(
+											option,
+											() => setMention(null),
+											() => props.thread,
+											mention,
+										)
+									: MentionThread(option, mention)
+							}}
 						<//>
 					</ul>
 				</div>
@@ -627,6 +632,27 @@ function PickerBot(bot, close, thread, mention) {
 	`
 }
 
+/** A thread as an @mention option: a row like a bot's, its title where the name goes */
+function MentionThread(thread, mention) {
+	return html`
+		<li role="presentation">
+			<button
+				type="button"
+				role="option"
+				id=${mention.id}
+				tabindex="-1"
+				aria-selected=${() => String(mention.highlighted())}
+				class="ghost model"
+				onMouseDown=${(event) => event.preventDefault()}
+				onClick=${() => mention.pick()}
+			>
+				<span>${() => thread.title}</span>
+				<small>thread</small>
+			</button>
+		</li>
+	`
+}
+
 const [compose, setCompose] = createRoot(() => createStore({ drafts: {}, picks: {}, settings: {} }))
 const emptyDraft = { draft: '', images: [], sending: false }
 /** Unsent text, kept in localStorage by thread id so it survives a reload; a new thread shares one key until it gets an id */
@@ -672,13 +698,23 @@ const askedBots = (thread = current()) =>
 const isHere = (bot, thread) =>
 	here(thread).some((agent) => agent.to?.name === bot.name) ||
 	askedBots(thread).some((to) => to.name === bot.name)
-/** The bots an @ could mention, by the start of their name: those in the thread first */
+/**
+ * What an @ could mention, by the start of a bot's name or of any word in a thread's title: bots first, those in the thread
+ * before the rest, then other threads once something's typed. A bot's home mentions threads only; archived threads never come.
+ */
 const mentionsFor = (query, thread) => {
 	const typed = query.toLowerCase()
-	const matching = bots.filter((bot) => bot.name.toLowerCase().startsWith(typed))
+	const starts = (words) => words.toLowerCase().startsWith(typed)
+	const matching = homeBot(thread) ? [] : bots.filter((bot) => starts(bot.name))
+	const titled = typed
+		? threads
+				.filter((row) => row.id !== thread && row.title && row.title.split(/[^\w.-]+/).some(starts))
+				.slice(0, 8)
+		: []
 	return [
 		...matching.filter((bot) => isHere(bot, thread)),
 		...matching.filter((bot) => !isHere(bot, thread)),
+		...titled,
 	]
 }
 /** A thread of two or more bots, with the director picking: a message whose sender chose no one goes without `to` */
