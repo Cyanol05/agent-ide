@@ -109,7 +109,7 @@ export function Settings() {
 								? chosen()
 								: { runner: runner.name, model: runner.model }}
 						selectedRunner=${() => chosen().runner}
-						first=${html`<li class="models">
+						before=${html`<li class="models">
 							<button
 								type="button"
 								class="ghost model"

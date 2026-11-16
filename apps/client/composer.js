@@ -236,8 +236,25 @@ export function Composer(props) {
 			}, key)
 		}
 	}
+	/** The bots the search matches, under the models */
+	const pickerBots = (search) => {
+		const matching = () => bots.filter((bot) => matches(search, bot.name))
+		return html`
+			<${Show} when=${() => matching().length}
+				><li><h3>Bots</h3></li><//
+			>
+			<${For} each=${matching}>
+				${(bot) =>
+					PickerBot(
+						bot,
+						() => picker.hidePopover(),
+						() => props.thread,
+					)}
+			<//>
+		`
+	}
 	/** A line of `model:thinking@runner` and bots' names, comma between them, as the pick */
-	const typeRecipients = (text) => {
+	const pickRecipients = (text) => {
 		const next = text
 			.split(',')
 			.map((text) => text.trim())
@@ -575,11 +592,11 @@ export function Composer(props) {
 						picker.hidePopover()
 					}}
 					onConfigure=${(to) => configure(to, props.thread)}
-					onType=${() =>
+					onRecipients=${() =>
 						homeBot(props.thread)
 							? undefined
 							: (text) => {
-									typeRecipients(text)
+									pickRecipients(text)
 									picker.hidePopover()
 								}}
 					folders=${true}
@@ -591,22 +608,7 @@ export function Composer(props) {
 					>
 						<${Icon} name="close" />
 					</button>`}
-					more=${(query) =>
-						homeBot(props.thread)
-							? null
-							: html`
-									<${Show} when=${() => bots.some((bot) => matches(query, bot.name))}>
-										<li><h3>Bots</h3></li>
-									<//>
-									<${For} each=${() => bots.filter((bot) => matches(query, bot.name))}>
-										${(bot) =>
-											PickerBot(
-												bot,
-												() => picker.hidePopover(),
-												() => props.thread,
-											)}
-									<//>
-								`}
+					after=${(search) => (homeBot(props.thread) ? null : pickerBots(search))}
 				/>
 			</div>
 		</form>

@@ -1,64 +1,65 @@
 /** Model, thinking and folder controls, without owning a popup or changing a thread themselves. */
 import html from '@solidjs/html'
-import { createEffect, createSignal, For, Show } from 'solid-js'
+import { createEffect, createSignal, For, onSettled, Show } from 'solid-js'
 import { runners } from './server.js'
 import { modelsOf, THINKING_LEVELS, thinkingWord } from './agent.js'
 import { Dot } from './dot.js'
 import { Icon } from './icons.js'
 import { ConnectRunner } from './runner.js'
 
-/** Every word typed is somewhere in the text. */
-export const matches = (query, text) =>
-	query
+/** Every word of the search is somewhere in the text. */
+export const matches = (search, text) =>
+	search
 		.toLowerCase()
 		.split(/\s+/)
 		.every((word) => text.toLowerCase().includes(word))
 
 /**
  * A search on top, each runner's models in one list under it, and the thinking and folder of the runner asked pinned at the bottom.
- * Typing filters the list; the arrows walk it and Enter picks, or hands what was typed to `onType` when nothing matches or it reads as an address.
- * getTo(runner) supplies each runner's choice; the caller decides when a choice is applied or closes the view. `more(query)` adds rows after the models.
+ * Typing filters the list; the arrows walk it and Enter picks the highlighted row. A line that reads as recipients (an `@` or a comma), or matches nothing, goes to `onRecipients` instead.
+ * getTo(runner) supplies each runner's choice; the caller decides when a choice is applied or closes the view.
+ * `before` is rows above the models while nothing is typed; `after(search)` rows under them, filtered by the caller.
  */
 export function ModelPicker(props) {
-	let list
-	const [query, setQuery] = createSignal('')
-	const [highlighted, setHighlighted] = createSignal(-1)
+	let input, list
+	const [typed, setTyped] = createSignal('')
+	const search = () => typed().trim()
+	// -1 is none chosen by the keys: then a search highlights its first match, and no search nothing
+	const [keyed, setKeyed] = createSignal(-1)
+	const highlighted = () => (keyed() < 0 && search() ? 0 : keyed())
 	const online = () => runners.filter((runner) => runner.online)
-	const footRunner = () =>
+	const askedRunner = () =>
 		online().find((runner) => runner.name === props.selectedRunner) ?? online()[0]
 	const options = () => [...(list?.querySelectorAll('button.model') ?? [])]
-	// The highlight follows the typing to the first match, and the keys after that
-	createEffect(
-		() => [query(), highlighted()],
-		([typed, index]) => {
-			const all = options()
-			const at = index < 0 && typed.trim() ? 0 : index
-			all.forEach((option, i) => option.toggleAttribute('data-highlighted', i === at))
-			all[at]?.scrollIntoView({ block: 'nearest' })
-		},
-	)
-	const reset = () => {
-		setQuery('')
-		setHighlighted(-1)
+	const clear = () => {
+		input.value = ''
+		setTyped('')
+		setKeyed(-1)
 	}
-	const onKeyDown = (event) => {
-		if (event.isComposing) return
-		const all = options()
-		const step = { ArrowDown: 1, ArrowUp: -1 }[event.key]
-		if (step && all.length) {
-			event.preventDefault()
-			const from = highlighted() < 0 ? (query().trim() ? 0 : step > 0 ? -1 : 0) : highlighted()
-			return setHighlighted((from + step + all.length) % all.length)
-		}
-		if (event.key !== 'Enter') return
-		event.preventDefault()
-		const text = event.currentTarget.value.trim()
-		const option = all[highlighted() < 0 ? 0 : highlighted()]
-		if (props.onType && text && (/[@,]/.test(text) || !option)) props.onType(text)
-		else if (option && (text || highlighted() >= 0)) option.click()
+	createEffect(highlighted, (index) => {
+		options().forEach((option, at) => option.toggleAttribute('data-highlighted', at === index))
+		options()[index]?.scrollIntoView({ block: 'nearest' })
+	})
+	// Closing the popover it sits in starts the next opening on an empty search
+	onSettled(() => {
+		const popover = input.closest('[popover]')
+		const closed = (event) => event.newState === 'closed' && clear()
+		popover?.addEventListener('toggle', closed)
+		return () => popover?.removeEventListener('toggle', closed)
+	})
+	const walk = (step) => {
+		const count = options().length
+		if (!count) return
+		if (highlighted() < 0) return setKeyed(step > 0 ? 0 : count - 1)
+		setKeyed((highlighted() + step + count) % count)
+	}
+	const enter = () => {
+		const option = options()[highlighted()]
+		if (props.onRecipients && search() && (/[@,]/.test(search()) || !option))
+			props.onRecipients(search())
+		else if (option) option.click()
 		else return
-		reset()
-		event.currentTarget.value = ''
+		clear()
 	}
 	return html`
 		<div class="model-controls">
@@ -67,30 +68,30 @@ export function ModelPicker(props) {
 					type="search"
 					aria-label="Search models"
 					placeholder=${() =>
-						props.onType ? 'Search, or type model:thinking@runner' : 'Search models'}
+						props.onRecipients ? 'Search, or type model:thinking@runner' : 'Search models'}
 					autocomplete="off"
 					autocapitalize="none"
 					autocorrect="off"
 					spellcheck="false"
 					autofocus=${!matchMedia('(pointer: coarse)').matches}
-					ref=${(el) =>
-						queueMicrotask(() =>
-							el.closest('[popover]')?.addEventListener('toggle', (event) => {
-								if (event.newState !== 'closed') return
-								reset()
-								el.value = ''
-							}),
-						)}
+					ref=${(el) => (input = el)}
 					onInput=${(event) => {
-						setQuery(event.currentTarget.value)
-						setHighlighted(-1)
+						setTyped(event.currentTarget.value)
+						setKeyed(-1)
 					}}
-					onKeyDown=${onKeyDown}
+					onKeyDown=${(event) => {
+						if (event.isComposing) return
+						const step = { ArrowDown: 1, ArrowUp: -1 }[event.key]
+						if (step) walk(step)
+						else if (event.key === 'Enter') enter()
+						else return
+						event.preventDefault()
+					}}
 				/>
 				${() => props.close}
 			</div>
 			<ul class="model-list" ref=${(el) => (list = el)}>
-				<${Show} when=${() => !query().trim()}>${() => props.first}<//>
+				<${Show} when=${() => !search()}>${() => props.before}<//>
 				<${For}
 					each=${online}
 					fallback=${html`
@@ -100,21 +101,21 @@ export function ModelPicker(props) {
 						</li>
 					`}
 				>
-					${(runner) => PickerRunner(runner, props, query)}
+					${(runner) => PickerRunner(runner, props, search)}
 				<//>
-				${() => props.more?.(query().trim())}
+				${() => props.after?.(search())}
 			</ul>
-			<${Show} when=${footRunner}> ${() => PickerFoot(footRunner(), props)} <//>
+			<${Show} when=${askedRunner}>${() => PickerFoot(askedRunner(), props)}<//>
 		</div>
 	`
 }
 
 /** A runner's name, then its models that match what was typed; nothing when none do. */
-function PickerRunner(runner, props, query) {
+function PickerRunner(runner, props, search) {
 	const to = () => props.getTo(runner)
 	const selected = () => props.selectedRunner === runner.name
 	const models = () =>
-		modelsOf(runner, to()).filter((model) => matches(query().trim(), `${model} ${runner.name}`))
+		modelsOf(runner, to()).filter((model) => matches(search(), `${model} ${runner.name}`))
 	return html`
 		<${Show} when=${() => models().length}>
 			<li class=${() => ({ on: selected() })}>
