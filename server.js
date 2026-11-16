@@ -221,7 +221,11 @@ const Admit = defineTask({
 			const held = turn ? unseen : unseen.filter((id) => id <= upTo)
 			if (!held.length) return rt.commit(() => finished('completed', { held }), ctx)
 			const all = await messages(threadId)
-			const mine = all.filter((entry) => held.includes(entry.id))
+			const mine = await Promise.all(
+				all
+					.filter((entry) => held.includes(entry.id))
+					.map((entry) => skillCommand(row, entry, agent, rt.signal)),
+			)
 			const people = (upTo) => [
 				...new Set(
 					all
@@ -260,6 +264,15 @@ const Admit = defineTask({
 	},
 	abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),
 })
+
+/** A person's `/skill:name` message as the agent reads it, expanded on its runner in its folder as pi does */
+async function skillCommand(row, entry, agent, signal) {
+	if (!expand || !entry.data.body?.startsWith('/skill:') || !person(row, entry)) return entry
+	const { model, cwd } = await harness.snapshot(AgentDoc, agent, context)
+	const runner = model.provider.replace(/^runner:/, '')
+	const body = await expand(entry.data.body, runner, cwd, signal)
+	return { ...entry, data: { ...entry.data, body } }
+}
 
 /** A durable wait observes admission faults too; onReport is only diagnostic. */
 const Deliver = defineTask({
@@ -1399,7 +1412,7 @@ const hook = (name) => {
 }
 const posted = modules.flatMap((module) => module.posted ?? [])
 const archiving = modules.flatMap((module) => module.archiving ?? [])
-const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames] = [
+const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames, expand] = [
 	'direct',
 	'turns',
 	'reply',
@@ -1407,6 +1420,7 @@ const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames] = [
 	'botAgent',
 	'instructionsOf',
 	'botNames',
+	'expand',
 ].map(hook)
 compactAt = hook('compactAt')
 const remembers = hook('remembers')
