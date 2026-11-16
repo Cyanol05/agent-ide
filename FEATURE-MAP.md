@@ -91,6 +91,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   settings.js            server settings: modules on/off and memory's model
   system.js, wires.js    the live system diagram and the wires between boxes
   tutorial.js            walkthrough buttons wired to the real server
+  tutorial-shed.js       loadShed: the example messages and their saved memory, loaded through the API
+  tutorial-shed-memory.js   the real memory module’s recorded lines for the shed
   panes.js, popover.js, sure.js, notice.js, dot.js   list/detail frame, popover placement,
                          two-press button, error line, status dot
   images.js, markdown.js image shrinking to pi's limits; message markdown
@@ -119,6 +121,8 @@ examples/real-model-bench.md       how to run the bench and its recorded baselin
 examples/91-wait-for-the-runner.js runner startup waits for ready or rejects on exit
 examples/95-cli-address-options.js CLI folder/thinking flags preserve model addresses and reject bot-only names
 examples/96-one-executable.js installed executable dispatch, including leading CLI options
+examples/101-the-walkthrough-writes-memory.js   tutorial loader opens with recorded, zoomable memory and no runner
+examples/102-import-memory.js     recorded-line import, existing lines preserved, invalid spans rejected
 examples/100-post-without-a-title.js optional post titles with auto-title on/off; both talk tools address threads by id or exact title and reject ambiguity
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
