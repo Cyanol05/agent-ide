@@ -470,7 +470,9 @@ export function serveRunner({
 	async function stream({ id, model: ref, context, options }, signal) {
 		const messages = [...(context.since ? kept.get(options.sessionId) : []), ...context.messages]
 		if (options.sessionId) keep(kept, options.sessionId, messages)
-		context = { messages: messages.filter((message) => !saidNothing(message)) }
+		context = {
+			messages: messages.filter((message) => !saidNothing(message)).map(withoutEmptyText),
+		}
 		let { model } = await resolve(ref)
 		if (model.provider === 'echo') {
 			echo.appendResponses([
@@ -597,6 +599,17 @@ const saidNothing = (message) =>
 	Array.isArray(message.content) &&
 	message.content.every((part) => part.type === 'text') &&
 	text(message) === '(no content)'
+
+/**
+ * Claude Code drops an empty text block, as beside an image sent alone, so pi-claude-code can't line its request up
+ * with pi's history and refuses every later turn. An empty block says nothing to any model.
+ */
+const withoutEmptyText = (message) =>
+	message.role !== 'assistant' &&
+	Array.isArray(message.content) &&
+	message.content.some((part) => part.type === 'text' && !part.text)
+		? { ...message, content: message.content.filter((part) => part.type !== 'text' || part.text) }
+		: message
 
 export const messageText = (message) => (saidNothing(message) ? '' : text(message))
 
