@@ -9,11 +9,13 @@ import { fauxAssistantMessage } from '@earendil-works/pi-ai/providers/faux'
 import { BACKGROUND_CONTEXT, withCancel } from '@earendil-works/chord/context'
 import { ExecutionError, FileError } from '@earendil-works/pi-durable/env'
 import { NodeExecutionEnv } from '@earendil-works/pi-durable/env/node'
+import { tryEcho } from './echo.js'
 import { listPiSessions, readPiSession, writePiSession } from './modules/pi-sessions.js'
 
 /** What a runner is made of, as the server ships it */
 const RUNNER_FILES = [
 	'runner.js',
+	'echo.js',
 	'remote.js',
 	'modules.js',
 	'modules/status.js',
@@ -477,11 +479,13 @@ export function serveRunner({
 		if (model.provider === 'echo') {
 			echo.appendResponses([
 				(ctx) =>
-					fauxAssistantMessage(
-						`echo@${name} heard: ${messageText(ctx.messages.findLast((message) => message.role === 'user'))}`,
-					),
+					model.id === 'try'
+						? tryEcho(ctx)
+						: fauxAssistantMessage(
+								`echo@${name} heard: ${messageText(ctx.messages.findLast((message) => message.role === 'user'))}`,
+							),
 			])
-			model = echo.getModel()
+			model = echo.getModel(model.id) ?? echo.getModel()
 		}
 		const said = messages.findLast(
 			(message) => message.role === 'assistant' && message.stopReason !== 'error',

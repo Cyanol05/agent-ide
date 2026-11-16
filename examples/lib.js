@@ -89,8 +89,8 @@ export async function server(env = {}, { cwd } = {}) {
 	return child
 }
 
-export async function runner(name, { args = [], env = {}, wait = true } = {}) {
-	const child = start('runner.js', ['--server', base, '--name', name, '--dir', dir, ...args], {
+export async function runner(name, { args = [], env = {}, wait = true, dir: folder = dir } = {}) {
+	const child = start('runner.js', ['--server', base, '--name', name, '--dir', folder, ...args], {
 		HOME: home,
 		AGENT_IDE_KEY: await keyFor(name),
 		...env,

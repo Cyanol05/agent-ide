@@ -24,6 +24,7 @@
 		"modules",
 		"apps/client",
 		"remote.js",
+		"echo.js",
 		"README.md"
 	],
 	"dependencies": {

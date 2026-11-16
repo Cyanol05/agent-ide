@@ -168,3 +168,9 @@ node cli.js wait "${thread#thread }"
 ```
 
 `node cli.js --help` has the rest.
+
+## Scratch server
+
+In a checkout, `node scripts/try.js` starts a disposable server and a real runner in your current folder. It uses `echo/try`, a scripted model that exercises the real tools, skills, AGENTS.md context and runner modules, without a model login. It writes `notes.md` in that folder. The printed `kill` command stops both processes.
+
+Send `slow` to watch a five-second command, `post` to ask another thread, or `slow post` for both. Ada, Bram and Cleo answer with their name, persona and the messages they received. In a bot’s home, `bot <instructions>` changes its instructions. The simpler `echo/echo` model remains a text mirror.

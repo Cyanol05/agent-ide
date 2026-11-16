@@ -24,6 +24,7 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   watch, rewatch, told, doing       /ws: a browser watching one thread and its agents' live work
   mintKey, revoke, upgrade          runner keys and the runner's socket
   saveSettings, restart, connectSelf   settings, restart, the server lending its own machine, under the name it first got
+echo.js                  echo/try scripted model responses: file tools, slow commands, posts, bots and director
 runner.js                a runner: offers its models and folders, connects, runs agents for the server
 runner-updater.js        what `curl <server>/connect-runner | sh` starts; keeps the runner up to date
 remote.js                the runner protocol, both ends: createRunners (server), serveRunner (runner),
@@ -105,7 +106,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   app.css                the chat's layout: list, threads, messages, composer, sheet, picker, settings, phone
   walkthrough.css        the story page and the live system's boxes and wires, all under body:not(.chat)
 scripts/
-  try.js                 scratch server with a scripted bot, for clicking through
+  try.js                 scratch server beside a real runner in the caller’s folder, using echo/try
   page-spy.js            browser init script: fetches, socket frames, stalls
   replay-pi.js           replays pi sessions into a thread, to try memory
 examples/lib.js          what examples share: start (owned child processes), kill (awaits the exit), server, runner, scriptedRunner, api, view, until, quiet/settled/online (wait for state, not the clock), check
@@ -123,6 +124,7 @@ examples/19, 23, 86–90-*-real-model.js   bench: memory recall, deep recall, in
                                  fact, side question, directed mention and web search; REAL=1 only
 examples/real-model-bench.js       real runner setup, delivery settling, evidence, step budgets and the `score` line
 examples/real-model-bench.md       how to run the bench and its recorded baseline
+examples/104-try-uses-the-real-runner.js   echo/try runs real file tools, context, posts, director and bot changes
 examples/91-wait-for-the-runner.js runner startup waits for ready or rejects on exit
 examples/95-cli-address-options.js CLI folder/thinking flags preserve model addresses and reject bot-only names
 examples/96-one-executable.js installed executable dispatch, including leading CLI options

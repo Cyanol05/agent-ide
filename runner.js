@@ -66,7 +66,7 @@ const name = args.name
 const { modelRuntime: models, diagnostics } = await createAgentSessionServices({ cwd: dir })
 for (const diagnostic of diagnostics)
 	if (diagnostic.type === 'error') console.log(`pi: ${diagnostic.message}`)
-const echo = fauxProvider({ provider: 'echo', models: [{ id: 'echo' }] })
+const echo = fauxProvider({ provider: 'echo', models: [{ id: 'echo' }, { id: 'try' }] })
 models.registerNativeProvider(echo.provider)
 
 /** What `pi --model pattern` runs */
