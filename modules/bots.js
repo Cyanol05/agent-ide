@@ -119,8 +119,17 @@ export function server(core) {
 				instructions: args.instructions,
 				to: args.model ?? (name === at.name ? undefined : { ...own, name: undefined }),
 			})
-			const made = await core.once(`bot ${api.taskId}`, 'bot', (tx) => write(tx, asked))
+			// What she was before, read in the same commit as the change, so a thread can show old against new
+			const made = await core.once(`bot ${api.taskId}`, 'bot', async (tx) => {
+				const was = (await tx.doc(Bots))[name]
+				const before = was && {
+					instructions: was.instructions,
+					model: `${was.to.model}${was.to.thinkingLevel ? `:${was.to.thinkingLevel}` : ''}@${was.to.runner}`,
+				}
+				return { ...(await write(tx, asked)), ...(before && { before }) }
+			})
 			return {
+				...(name === at.name && { details: { before: made.before } }),
 				output: [
 					{
 						type: 'text',

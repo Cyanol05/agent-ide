@@ -49,6 +49,15 @@ check(
 
 await post(home, 'be a pirate', 'ada')
 await answered(home, 2)
+const ownAt = (await api('GET', `/api/threads/${home}`)).json.agents[0].conversation
+const rewrote = (await api('GET', `/api/conversations/${ownAt}`)).json.entries.find(
+	(e) => e.kind === 'pi.tool-result' && e.model[0].toolName === 'bot',
+)?.model[0].details
+check(
+	rewrote?.before?.instructions === '' && rewrote.before.model === 'echo/echo@laptop',
+	'rewriting herself, her bot call keeps what she was before, so a thread can show old against new',
+	JSON.stringify(rewrote),
+)
 const shed = await thread('shed')
 await post(shed, 'build it?', 'ada')
 v = await answered(shed)
