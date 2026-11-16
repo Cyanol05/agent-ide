@@ -33,7 +33,7 @@ util.js                  helpers server and modules share: agentTo, writtenTo, m
                          finished (task result), background (thread-owned task)
 modules.js               builtIn (each module's own `on` default), agent-ide.json, MODULES, and loading each module's server/runner half
 modules/
-  talk.js                `post` and `threads` tools; resolveThread accepts numeric ids or exact, unambiguous titles; post defaults missing titles from the body; reply sends answers back to the parent thread that asked; a bot in the
+  talk.js                `post` and `threads` tools; resolveThread accepts ids as numbers or digit strings, or exact, unambiguous titles; post defaults missing titles from the body; reply sends answers back to the parent thread that asked; a bot in the
                          thread it posts to speaks there as itself (member), and so does a bot that
                          starts a thread for two or more bots (opener in server.js's post)
   auto-title.js          first-answer title generation (AutoTitle; the model sees the opening and the newest messages, `recent`), sanitizeThreadTitle, one attempt per thread; serve: a new title on request

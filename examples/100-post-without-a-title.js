@@ -58,6 +58,30 @@ const child = rows.find((row) => row.parent === parent)
 check(child?.title === body, 'API shows the body-derived title, as the client does')
 check((await run('threads', { thread: body })).includes(body), 'threads reads by title')
 check((await run('threads', { thread: child.id })).includes(body), 'threads still reads by id')
+// Some tool transports turn numeric arguments into strings. Neither form is a title.
+const numericTitle = await create(String(child.id))
+for (const thread of [child.id, String(child.id)]) {
+	const marker = `posted by ${typeof thread}`
+	const posted = await run('post', { thread, body: marker, to: 'nobody' })
+	check(
+		posted.includes(`Posted to thread ${child.id} `),
+		`post accepts a ${typeof thread} id`,
+		posted,
+	)
+	check(
+		(await view(child.id)).entries.some((entry) => entry.data.body === marker),
+		'id wins over a matching numeric title',
+	)
+	check(
+		(await view(numericTitle)).entries.length === 0,
+		'numeric title receives no accidental post',
+	)
+	check(
+		(await run('threads', { thread, query: marker })).includes(marker),
+		`threads accepts a ${typeof thread} id`,
+	)
+}
+
 check(
 	(await run('post', { thread: body, body: 'more news', to: 'nobody' })).includes(
 		`thread ${child.id}`,

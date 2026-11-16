@@ -13,9 +13,10 @@ export const on = true
 
 export function server(core) {
 	const { agentOf, home } = core
-	/** Numbers are ids; strings are exact titles. Never choose between duplicate titles. */
+	/** Numbers and digit strings are ids; other strings are exact titles. */
 	async function resolveThread(thread) {
 		if (typeof thread !== 'string') return thread
+		if (/^\d+$/.test(thread)) return Number(thread)
 		const rows = (await Promise.all([core.threadList(), core.threadList(undefined, true)])).flat()
 		const matches = rows.filter((row) => row.title === thread)
 		if (matches.length !== 1)
@@ -45,7 +46,7 @@ export function server(core) {
 			thread: opt(
 				union([num(), str()], {
 					description:
-						'The thread id or exact title to post to. Duplicate titles fail and list matching ids. Leave out to start a new one.',
+						'The thread id (number or digit string) or exact title to post to. Duplicate titles fail and list matching ids. Leave out to start a new one.',
 				}),
 			),
 			title: opt(
@@ -242,7 +243,7 @@ export function server(core) {
 			thread: opt(
 				union([num(), str()], {
 					description:
-						'The thread id or exact title. Duplicate titles fail and list matching ids. With `query` or `agent`, your own thread by default.',
+						'The thread id (number or digit string) or exact title. Duplicate titles fail and list matching ids. With `query` or `agent`, your own thread by default.',
 				}),
 			),
 			agent: opt(
