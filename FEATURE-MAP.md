@@ -33,7 +33,7 @@ util.js                  helpers server and modules share: agentTo, writtenTo, m
                          finished (task result), background (thread-owned task)
 modules.js               builtIn (each module's own `on` default), agent-ide.json, MODULES, and loading each module's server/runner half
 modules/
-  talk.js                `post` and `threads` tools; reply sends answers back to the parent thread that asked; a bot in the
+  talk.js                `post` and `threads` tools; resolveThread accepts numeric ids or exact, unambiguous titles; post defaults missing titles from the body; reply sends answers back to the parent thread that asked; a bot in the
                          thread it posts to speaks there as itself (member), and so does a bot that
                          starts a thread for two or more bots (opener in server.js's post)
   auto-title.js          first-answer title generation (AutoTitle; the model sees the opening and the newest messages, `recent`), sanitizeThreadTitle, one attempt per thread; serve: a new title on request
@@ -85,7 +85,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
   agent-memory.js        memory popover and compaction view for the visible thread
   icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again), one viewBox and weight
-  title.js               defaultTitle shared by new-thread client paths, CLI and auto-title
+  title.js               defaultTitle shared by new-thread client paths, CLI, post and auto-title
   settings.js            server settings: modules on/off and memory's model
   system.js, wires.js    the live system diagram and the wires between boxes
   tutorial.js            walkthrough buttons wired to the real server
@@ -117,6 +117,7 @@ examples/real-model-bench.md       how to run the bench and its recorded baselin
 examples/91-wait-for-the-runner.js runner startup waits for ready or rejects on exit
 examples/95-cli-address-options.js CLI folder/thinking flags preserve model addresses and reject bot-only names
 examples/96-one-executable.js installed executable dispatch, including leading CLI options
+examples/100-post-without-a-title.js optional post titles with auto-title on/off; both talk tools address threads by id or exact title and reject ambiguity
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 

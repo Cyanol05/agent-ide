@@ -83,7 +83,7 @@ Everything is a module that you can turn on and off.
 On by default: talk, status, context, bots, director, memory and auto-title.  
 Off: web-search, matrix and pi-sessions.
 
-- **talk** gives agents `post` and `threads`, to ask other threads and read them. A thread answers the thread that started it on its own; anywhere else, an agent answers with `post`.
+- **talk** gives agents `post` and `threads`, to ask other threads and read them. A thread answers the thread that started it on its own; anywhere else, an agent answers with `post`. A new `post` never needs a title: an omitted or blank title uses the first 60 characters of its trimmed body (or "An image" for an empty body), just like the client and CLI. This title stays with auto-title off, or is polished after the first answer with it on. Both tools accept a numeric thread id or an exact title in `thread`; a title that matches several threads fails and lists their ids.
 - **memory** summarizes messages so agents can keep working in long threads. It's used by default in threads with bots; you can switch it on or off for any thread.
 - **director** asks the bots a message @mentions, one after another. It can also pick who answers when nobody's named.
 - **bots** lets you create named bots and give them instructions and a colour. A bot without a picked colour (`color`, a hue) gets one from the order bots were made.

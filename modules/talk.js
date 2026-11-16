@@ -3,15 +3,29 @@
  * On by default; MODULES=-talk turns it off.
  * A `post` call does everything in one commit, with a receipt keyed by its task id, so a replay finds it.
  */
-import { num, obj, opt, str } from '@earendil-works/pi-schema'
+import { num, obj, opt, str, union } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
-import { AGENT, writtenTo, field, keyOf, said, mentioned } from '../util.js'
+import { AGENT, writtenTo, keyOf, said, mentioned } from '../util.js'
+import { defaultTitle } from '../apps/client/title.js'
 
 export const on = true
 
 export function server(core) {
 	const { agentOf, home } = core
+	/** Numbers are ids; strings are exact titles. Never choose between duplicate titles. */
+	async function resolveThread(thread) {
+		if (typeof thread !== 'string') return thread
+		const rows = (await Promise.all([core.threadList(), core.threadList(undefined, true)])).flat()
+		const matches = rows.filter((row) => row.title === thread)
+		if (matches.length !== 1)
+			throw new Error(
+				matches.length
+					? `Several threads have title ${JSON.stringify(thread)}: ${matches.map((row) => row.id).join(', ')}`
+					: `No thread has title ${JSON.stringify(thread)}`,
+			)
+		return matches[0].id
+	}
 	const answered = async (thread, by) =>
 		new Set(
 			(await core.messages(thread))
@@ -28,8 +42,18 @@ export function server(core) {
 			"A bot posting to a thread it's in speaks there as itself instead, and replies stay there. " +
 			'People see posts folded, as agent-to-agent talk; anything a person must know or do, say plainly in your own reply to them.',
 		parameters: obj({
-			thread: opt(num({ description: 'The thread to post to. Leave out to start a new one.' })),
-			title: opt(str({ description: "The new thread's title" })),
+			thread: opt(
+				union([num(), str()], {
+					description:
+						'The thread id or exact title to post to. Duplicate titles fail and list matching ids. Leave out to start a new one.',
+				}),
+			),
+			title: opt(
+				str({
+					description:
+						"The new thread's title; optional, defaults to the first 60 characters of the body",
+				}),
+			),
 			body: str(),
 			to: opt(
 				str({
@@ -45,11 +69,13 @@ export function server(core) {
 			const saved = await core.receipt(`post ${api.taskId}`, 'post')
 			if (saved) return saved.result
 			const { thread: from, name } = await home(api.conversationId)
-			const thread = args.thread ?? (Number(args.to?.match(/^(\d+)(?:\/|$)/)?.[1]) || undefined)
+			const thread =
+				(await resolveThread(args.thread)) ??
+				(Number(args.to?.match(/^(\d+)(?:\/|$)/)?.[1]) || undefined)
 			if (thread === from) throw new Error('That is your own thread; just answer')
 			if (/^\$\s/.test(args.body))
 				throw new Error('Run commands with your own bash tool, not as a post')
-			const title = thread === undefined ? field(args.title, 'title') : ''
+			const title = thread === undefined ? args.title?.trim() || defaultTitle(args.body) : ''
 			if (thread !== undefined) await core.conversation(thread)
 			/** A bot that's in the thread speaks there as itself, like a person in the room: no question from home, no answer back */
 			const member =
@@ -213,7 +239,12 @@ export function server(core) {
 			"With `agent`, read that agent's own work in the thread instead: what it was handed, the tool calls it made and what they printed, word for word. " +
 			'Answers from threads you started come to you; no need to read for them.',
 		parameters: obj({
-			thread: opt(num({ description: 'With `query` or `agent`, your own thread by default' })),
+			thread: opt(
+				union([num(), str()], {
+					description:
+						'The thread id or exact title. Duplicate titles fail and list matching ids. With `query` or `agent`, your own thread by default.',
+				}),
+			),
 			agent: opt(
 				str({
 					description:
@@ -226,10 +257,11 @@ export function server(core) {
 		replay: 'safe',
 		execute: async (args, api) => {
 			const { thread: mine, name } = await home(api.conversationId)
+			const thread = await resolveThread(args.thread)
 			const lines = []
 			if (args.agent !== undefined) {
 				const [, at, agent = args.agent] = args.agent.match(/^(\d+)\/(.+)$/) ?? []
-				const text = await work(Number(at) || args.thread || mine, { ...args, agent })
+				const text = await work(Number(at) || thread || mine, { ...args, agent })
 				return { output: [{ type: 'text', text }] }
 			}
 			if (args.thread === undefined && args.query === undefined) {
@@ -245,7 +277,7 @@ export function server(core) {
 				}
 			} else {
 				const query = args.query?.toLowerCase()
-				const found = (await core.messages(args.thread ?? mine)).filter(
+				const found = (await core.messages(thread ?? mine)).filter(
 					(entry) => !query || said(entry).toLowerCase().includes(query),
 				)
 				for (const { id, data: message } of found.slice(-(args.last ?? 20))) {
