@@ -86,7 +86,11 @@ export function Composer(props) {
 		(open) => {
 			if (!mentionList) return
 			mentionList.togglePopover(open)
-			if (open) onSettled(() => placePopover(mentionList, box, false))
+			if (open)
+				onSettled(() => {
+					mentionList.style.setProperty('--composer-width', `${box.offsetWidth}px`)
+					placePopover(mentionList, box, false)
+				})
 		},
 	)
 	const asking = () =>

@@ -1569,14 +1569,33 @@ button.foot-toggle {
 	}
 }
 
-/* The bots an @ can mention: a small popover over the message box, on phones too, never a sheet. */
+/* The bots and threads an @ can mention: a small popover over the message box, on phones too, never a sheet, never wider than the box.
+   A row's name takes one line and ends in … when it's too long; what it is sits on the right edge. */
 .model-picker.mentions {
 	inset: auto;
-	width: min(20rem, calc(100vw - 1rem));
+	width: min(22.5rem, var(--composer-width, 100vw), calc(100vw - 1rem));
 	max-height: min(40dvh, 20rem);
 	border: 1px solid var(--line);
 	border-radius: var(--radius-large);
 	padding: var(--space-2);
+
+	.model {
+		align-items: baseline;
+
+		> span {
+			flex: 1 1 auto;
+			min-width: 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		> small {
+			flex: none;
+			max-width: 50%;
+			margin-left: auto;
+		}
+	}
 }
 
 /* The thread list's right edge drags; a line shows where while you hover or drag. */
