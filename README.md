@@ -81,7 +81,7 @@ Threads and conversations live in `agent-ide.sqlite` in the folder you start in,
 Everything is a module that you can turn on and off.
 
 On by default: talk, status, context, bots, director, memory and auto-title.  
-Off: web-search, matrix and pi-sessions.
+Off: web-search, matrix, pi-sessions and overview.
 
 - **talk** gives agents `post` and `threads`, to ask other threads and read them. A thread answers the thread that started it on its own; anywhere else, an agent answers with `post`. A new `post` never needs a title: an omitted or blank title uses the first 60 characters of its trimmed body (or "An image" for an empty body), just like the client and CLI. This title stays with auto-title off, or is polished after the first answer with it on. Both tools accept a thread id (number or digit string) or an exact title in `thread`; digit strings always select an id, even if a thread has that title. A title that matches several threads fails and lists their ids.
 - **memory** summarizes messages so agents can keep working in long threads. It's used by default in threads with bots; you can switch it on or off for any thread. Recorded lines can be loaded with `POST /api/threads/:id/memory {lines: [{id, n, text}]}`: each span covers `n` messages from `id` (aligned powers of two, within the thread); existing lines stay, and memory turns on without calling a model.
@@ -92,6 +92,7 @@ Off: web-search, matrix and pi-sessions.
 - **auto-title** turns a thread's first message into a short title once it's answered. `POST /api/threads/:id/auto-title` writes a new one whenever you ask and answers with it, or with why it couldn't; a rename in the meantime wins.
 - **web-search** gives agents a `web_search` tool.
 - **matrix** makes Matrix rooms into threads.
+- **overview** keeps one page per thread that says where it stands: what waits on you, then a section per topic, done, being worked on or waiting on you, each linked to the messages behind it. A cheap model rewrites it after each answer from the page before and the messages since; its model is `overview.model`, else memory's, else the thread's agent with thinking off. `GET /api/threads/:id/overview` answers `{on, page, summary, waiting, open, through, writtenAt, writing}`; a link `#message-12` in the page is message 12, counting from 0. `POST` with `{on}` switches a thread's page, and `{}` writes it now and answers once it's written. `GET /api/overview` gives each thread's `{summary, waiting, open}` by id. Agents read a page with the `overview` tool; in the client, Overview beside a thread's title opens it as a column, its child threads first, grouped waiting on you, working, idle and resolved.
 - **pi-sessions** moves threads to and from pi. Each agent's conversation is written as a pi session file you can `pi --resume`, and `node cli.js import <runner>` starts a new thread from a pi session. Nothing syncs after that.
 
 For each module's settings, see the top of its file in [modules/](modules). A module there with `export const on = true` is on by default; a new file there is a new module.

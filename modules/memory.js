@@ -53,7 +53,7 @@ const cut = (text) => {
 const NOT_YET = '(not summarized yet: zoom it)'
 const unwritten = (l, i) => ({ l, i, text: NOT_YET })
 const span = (line) => ({ id: line.i * 2 ** line.l, n: 2 ** line.l, text: line.text })
-const rendered = (line) => {
+export const rendered = (line) => {
 	const { id, n, text } = span(line)
 	return `${id}+${n}|${text}`
 }
@@ -116,28 +116,6 @@ export function server(core) {
 		const to = recipient && (await core.agentOf(recipient.conversation, slot))
 		if (to) await core.runners.online(to.runner, signal)
 		return to
-	}
-
-	async function lines(tx, threadId) {
-		const map = new Map()
-		const own = await collect((cursor) =>
-			tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
-		)
-		for (const { kind, data } of own)
-			if (kind === KIND && !map.has(key(data.l, data.i))) map.set(key(data.l, data.i), data)
-		const { parent } = await tx.conversation(threadId)
-		if (!parent) return map
-		const upTo = await collect((cursor) =>
-			tx.scanEntries(
-				{ conversationId: parent.conversationId, maxEntryId: parent.at, order: 'ascending' },
-				500,
-				cursor,
-			),
-		)
-		const shown = upTo.filter((entry) => entry.kind === 'agent-ide.message').length
-		for (const [coordinates, line] of await lines(tx, parent.conversationId))
-			if ((line.i + 1) * 2 ** line.l <= shown && !map.has(coordinates)) map.set(coordinates, line)
-		return map
 	}
 
 	/** The line, or undefined while the thread has no one to write it */
@@ -424,8 +402,31 @@ export function server(core) {
 	}
 }
 
+/** Every line a thread has, its own and those it inherits up to where it was forked, by `l:i` */
+export async function lines(tx, threadId) {
+	const map = new Map()
+	const own = await collect((cursor) =>
+		tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
+	)
+	for (const { kind, data } of own)
+		if (kind === KIND && !map.has(key(data.l, data.i))) map.set(key(data.l, data.i), data)
+	const { parent } = await tx.conversation(threadId)
+	if (!parent) return map
+	const upTo = await collect((cursor) =>
+		tx.scanEntries(
+			{ conversationId: parent.conversationId, maxEntryId: parent.at, order: 'ascending' },
+			500,
+			cursor,
+		),
+	)
+	const shown = upTo.filter((entry) => entry.kind === 'agent-ide.message').length
+	for (const [coordinates, line] of await lines(tx, parent.conversationId))
+		if ((line.i + 1) * 2 ** line.l <= shown && !map.has(coordinates)) map.set(coordinates, line)
+	return map
+}
+
 /** Lines over messages from..T-1, merging the most due pair, (T - last) / 2^l, until they fit the budget */
-function memory(lines, T, budget, from = 0) {
+export function memory(lines, T, budget, from = 0) {
 	const list = Array.from(
 		{ length: T - from },
 		(_, offset) => lines.get(key(0, from + offset)) ?? unwritten(0, from + offset),
