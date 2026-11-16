@@ -336,6 +336,33 @@ export function server(core) {
 
 	async function serve(thread, query, body) {
 		if (thread === undefined) throw new Error('Memory is per thread: /api/threads/:id/memory')
+		if (body?.lines) {
+			const total = (await core.messages(thread)).length
+			for (const { id, n } of body.lines)
+				if (
+					!Number.isInteger(id) ||
+					id < 0 ||
+					!Number.isInteger(n) ||
+					!Number.isInteger(Math.log2(n)) ||
+					id % n ||
+					id + n > total
+				)
+					throw new Error(`No line ${id}+${n} in this thread`)
+			return core.commit(async (tx) => {
+				const have = await lines(tx, thread)
+				const row = await core.threadIn(tx, thread)
+				for (const { id, n, text } of body.lines) {
+					const l = Math.log2(n),
+						i = id / n
+					if (have.has(key(l, i))) continue
+					const line = { l, i, text, size: bytes(text) }
+					await tx.appendEntry(thread, { kind: KIND, data: line })
+					have.set(key(l, i), line)
+				}
+				row.memory = true
+				return { memory: true }
+			})
+		}
 		if (body !== undefined) return turn(thread, body)
 		if (query.has('zoom')) {
 			const opened = await open(thread, ...query.get('zoom').split(',').map(Number))
