@@ -615,8 +615,9 @@ agent-memory {
 				}
 
 				/* A message that crossed threads is a step too: → sent or ← received, the other side in its bot's colour, the
-				   first line quieter than the name; opened, its words at the step's size, in ink, and any answer under them. */
-				> li:is(.sent, .received) {
+				   first line quieter than the name; opened, its words at the step's size, in ink, and any answer under them.
+				   A bot rewriting itself reads the same way: ✎, its name, what changed; opened, each old against new. */
+				> li:is(.sent, .received, .changed) {
 					> details > summary {
 						/* A long name gives way at three quarters of the row, so the first line always shows. */
 						.tool {
@@ -668,6 +669,24 @@ agent-memory {
 
 				> li.received > details > summary::before {
 					content: '←';
+				}
+
+				> li.changed > details > summary::before {
+					content: '✎';
+				}
+
+				> li.changed .change {
+					margin-top: var(--space-1);
+
+					> span {
+						display: block;
+						margin-top: var(--space-1);
+						color: var(--mute);
+					}
+
+					> .was + pre {
+						color: var(--mute);
+					}
 				}
 
 				.whole {

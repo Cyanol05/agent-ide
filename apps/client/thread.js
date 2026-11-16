@@ -43,11 +43,12 @@ import {
 import { authorLabel, doing, setDoing, shortLabel } from './agent.js'
 import {
 	answersIn,
-	asksOf,
+	Changed,
 	conversations,
 	cutsOf,
 	Exchange,
 	heard,
+	lastingOf,
 	litIn,
 	newestCut,
 	Turn,
@@ -185,27 +186,34 @@ export function Thread(props) {
 				turns.flatMap((row) => (row.turn ? row.turn.steps.map((step) => answerOf(step)?.id) : [])),
 			)
 			const shown = all.filter((entry) => !answers.has(entry.id))
+			// What a turn changed beyond itself, each on its own row after it: an ask, with its answer, or a bot rewriting itself
 			const asks = turns
 				.filter((row) => row.turn)
 				.flatMap((row) =>
-					asksOf(row.turn.steps)
-						.filter((step) => step.result)
-						.map((step, index) => {
-							const answer = answerOf(step) || undefined
-							const back =
-								answer &&
-								perConversation(row.agent.conversation)
-									.turns()
-									.find((turn) => turn.held.includes(answer.id))?.start
+					lastingOf(row.turn.steps).map((step, index) => {
+						const at = row.at + (index + 1) / 1000
+						if (step.name !== 'post')
 							return {
-								key: `${row.key}:ask:${step.key}`,
-								ask: step,
+								key: `${row.key}:${step.name}:${step.key}`,
+								changed: step,
 								agent: row.agent,
-								answer,
-								back,
-								at: row.at + (index + 1) / 1000,
+								at,
 							}
-						}),
+						const answer = answerOf(step) || undefined
+						const back =
+							answer &&
+							perConversation(row.agent.conversation)
+								.turns()
+								.find((turn) => turn.held.includes(answer.id))?.start
+						return {
+							key: `${row.key}:ask:${step.key}`,
+							ask: step,
+							agent: row.agent,
+							answer,
+							back,
+							at,
+						}
+					}),
 				)
 			// A question from another thread, where it came in, on one line that opens to it and its answer
 			const asked = askedHere().flatMap((other) => {
@@ -563,45 +571,52 @@ export function Thread(props) {
 								`}
 							>
 								<${Show}
-									when=${() => !row().asked}
+									when=${() => !row().changed}
 									fallback=${() => html`
-										<${Asked}
-											thread=${() => row().asked}
-											question=${() => row().question}
-											answer=${() => row().answer}
-										/>
+										<${Changed} step=${() => row().changed} agent=${() => row().agent} />
 									`}
 								>
 									<${Show}
-										when=${() => !row().ask}
+										when=${() => !row().asked}
 										fallback=${() => html`
-											<${Exchange}
-												thread=${() => props.id}
-												step=${() => row().ask}
-												agent=${() => row().agent}
+											<${Asked}
+												thread=${() => row().asked}
+												question=${() => row().question}
 												answer=${() => row().answer}
-												back=${() => row().back}
 											/>
 										`}
 									>
 										<${Show}
-											when=${() => row().turn || row().live}
+											when=${() => !row().ask}
 											fallback=${() => html`
-												<${Message}
+												<${Exchange}
 													thread=${() => props.id}
-													entry=${() => row().entry}
-													sent=${() => row().sent}
-													above=${() => row().above}
+													step=${() => row().ask}
+													agent=${() => row().agent}
+													answer=${() => row().answer}
+													back=${() => row().back}
 												/>
 											`}
 										>
-											<${Turn}
-												thread=${() => props.id}
-												agent=${() => row().agent}
-												turn=${() => row().turn}
-												live=${() => row().live}
-												above=${() => row().above}
-											/>
+											<${Show}
+												when=${() => row().turn || row().live}
+												fallback=${() => html`
+													<${Message}
+														thread=${() => props.id}
+														entry=${() => row().entry}
+														sent=${() => row().sent}
+														above=${() => row().above}
+													/>
+												`}
+											>
+												<${Turn}
+													thread=${() => props.id}
+													agent=${() => row().agent}
+													turn=${() => row().turn}
+													live=${() => row().live}
+													above=${() => row().above}
+												/>
+											<//>
 										<//>
 									<//>
 								<//>

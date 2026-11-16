@@ -10,9 +10,9 @@ import {
 	onSettled,
 	Show,
 } from 'solid-js'
-import { entries, homeBot, threads, titleOf } from './server.js'
+import { colorOf, entries, homeBot, threads, titleOf } from './server.js'
 import { Cross } from './thread.js'
-import { authorLabel, doing, messageText, touched } from './agent.js'
+import { authorLabel, doing, messageText, shortLabel, touched } from './agent.js'
 import { Dot } from './dot.js'
 
 /**
@@ -405,11 +405,62 @@ export function turnsOf(conversation) {
 export const newestCut = (cuts) =>
 	cuts.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null)
 
-/** The posts a turn made that ask another thread, rather than answer one */
-export const asksOf = (steps) =>
-	steps.filter(
-		(step) => step.name === 'post' && !step.result?.error && !answered(step) && askedThread(step),
-	)
+/**
+ * The tool calls that change something lasting beyond the run, by name, each with whether a finished call did: these get
+ * their own row in the thread instead of folding into their turn. A post that asks another thread; a bot rewriting itself.
+ */
+const LASTING = {
+	post: (step) => !answered(step) && askedThread(step),
+	bot: (step) => step.result.details?.before && changedOf(step).length,
+}
+/** A turn's finished calls that changed something lasting */
+export const lastingOf = (steps) =>
+	steps.filter((step) => step.result && !step.result.error && LASTING[step.name]?.(step))
+
+/** What a bot call changed of its bot, as the words its row names */
+const changedOf = (step) => ['instructions', 'model'].filter((key) => step.args[key] !== undefined)
+
+/**
+ * A bot rewriting itself, on its own row: ✎, its name in its colour, what changed; opened, each one old against new.
+ */
+export function Changed(props) {
+	const changes = () =>
+		changedOf(props.step).map((key) => ({
+			key,
+			before: props.step.result.details.before[key] ?? '',
+			after: props.step.args[key],
+		}))
+	return html`
+		<li class="elsewhere">
+			<ol class="steps">
+				<li class="call changed">
+					<details>
+						<summary
+							title=${() => `${props.agent.name} changed its ${changedOf(props.step).join(' and ')}`}
+						>
+							<span class="tool" style=${() => colorOf(props.agent.name)}
+								>${() => shortLabel(props.agent.name)}</span
+							>
+							<span class="in">${() => changedOf(props.step).join(' · ')}</span>
+						</summary>
+						<div class="whole">
+							<${For} each=${changes} keyed=${(change) => change.key}
+								>${(change) => html`
+									<div class="change">
+										<span class="was">${() => `${change().key} was`}</span>
+										<pre>${() => change().before || '(empty)'}</pre>
+										<span class="now">now</span>
+										<pre>${() => change().after || '(empty)'}</pre>
+									</div>
+								`}<//
+							>
+						</div>
+					</details>
+				</li>
+			</ol>
+		</li>
+	`
+}
 
 /** Each post's answer, looked up by the thread it asked instead of scanning every message per post */
 export function answersIn(messages) {

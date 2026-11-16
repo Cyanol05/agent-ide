@@ -67,6 +67,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     summary              a closed turn's one line ("edited 2 files · 1 command")
     Exchange             an ask's own line in the asking thread; opened, question and answer as messages
     answersIn, answerOf  a post step's answer from the thread it asked
+    LASTING, lastingOf   the tool calls that change something beyond the run, each its own row: posts that ask, `bot` rewrites
+    Changed              a bot rewriting itself: ✎, its name, what changed; opened, old against new (the call's details.before)
     Turn, Step, Call, Told, Ask   a turn's line, opened into steps; Ask is the post step
     handedStep, light, litIn   the handed step as a count (none for the one message above); opened, it lights those messages
   composer.js            the box you type in
