@@ -92,11 +92,12 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   bot.js                 a bot's settings, its threads row, new bot; botThreads shares its own/elsewhere lists
   thread-list.js         the thread list, its family rows
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
-                         a bot's threads as a page of the sheet
+                         a bot's threads as a page of the sheet; ThreadDetails is the sheet, DetailsPage the same pushed onto the overview column
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
   overview.js            a thread's overview column: the page's sections (parse) and child threads (groupOf) in one set of GROUPS,
                          each drawn with a status dot or the check icon; Page, whose #message-N links scroll the thread there;
-                         toggleOverview/overviewOpen; system.js puts it beside the thread
+                         toggleOverview/overviewOpen; pushDetails/popDetails make the column a navigation stack (the pill pushes the
+                         thread's details over the page, back pops them); system.js puts it beside the thread
   agent-memory.js        memory popover and compaction view for the visible thread
   icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again), one viewBox and weight
   title.js               defaultTitle shared by new-thread client paths, CLI, post and auto-title

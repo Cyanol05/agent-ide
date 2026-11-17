@@ -1027,7 +1027,7 @@ body.side .scrim {
 	pointer-events: auto;
 }
 
-body .thread-details {
+body .thread-details.sheet {
 	display: block;
 	font-size: var(--text-ui);
 	position: fixed;
@@ -1046,7 +1046,7 @@ body .thread-details {
 	transform: translateX(100%);
 }
 
-body.side .thread-details {
+body.side .thread-details.sheet {
 	transform: none;
 	visibility: visible;
 }
@@ -1166,13 +1166,13 @@ body.side .thread-details {
 
 @media (prefers-reduced-motion: no-preference) {
 	/* Visible the moment it opens, so what's inside can take focus; hidden only once it has slid away. */
-	.thread-details {
+	.thread-details.sheet {
 		transition:
 			transform var(--duration-sheet) var(--ease-sheet),
 			visibility 0s var(--duration-sheet);
 	}
 
-	body.side .thread-details {
+	body.side .thread-details.sheet {
 		transition:
 			transform var(--duration-sheet) var(--ease-sheet),
 			visibility 0s;

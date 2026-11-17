@@ -62,7 +62,7 @@ import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageUrl } from './images.js'
 import { markdown } from './markdown.js'
-import { Overview, overviewOpen, toggleOverview } from './overview.js'
+import { Overview, overviewOpen, pushDetails, toggleOverview } from './overview.js'
 
 /** A folded summary's text, without the literal <summary> wrapper tags some memories still carry */
 const stripSummaryTag = (text) =>
@@ -288,7 +288,12 @@ export function Thread(props) {
 	const ready = () =>
 		!!entries[props.id] &&
 		(thread()?.agents ?? []).every((agent) => conversations[agent.conversation])
-	const titleClick = () => (current() !== props.id ? openThread(props.id) : drawer('side'))
+	const titleClick = () =>
+		current() !== props.id
+			? openThread(props.id)
+			: overviewOpen(props.id)
+				? pushDetails(props.id)
+				: drawer('side')
 	let list,
 		followed,
 		sizes,

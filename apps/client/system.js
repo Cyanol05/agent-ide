@@ -7,7 +7,8 @@ import { recipients } from './composer.js'
 import { Dot } from './dot.js'
 import { Runner } from './runner.js'
 import { Thread } from './thread.js'
-import { Overview, overviewOpen } from './overview.js'
+import { detailsPushed, Overview, overviewOpen, popDetails, toggleOverview } from './overview.js'
+import { DetailsPage } from './thread-details.js'
 import { ThreadList } from './thread-list.js'
 import { Wires } from './wires.js'
 
@@ -85,10 +86,18 @@ export function System() {
 							>${(id) => html`
 								<${Thread} id=${() => id} />
 								<${Show} when=${() => id && overviewOpen(id)}>
-									<${Loading}
-										fallback=${html`<aside class="overview"><p class="mute">Reading the page…</p></aside>`}
+									<${Show}
+										when=${() => detailsPushed(id) && current() === id}
+										fallback=${html`<${Loading}
+											fallback=${html`<aside class="overview"><p class="mute">Reading the page…</p></aside>`}
+										>
+											<${Overview} id=${id} />
+										<//>`}
 									>
-										<${Overview} id=${id} />
+										<${DetailsPage}
+											back=${(_event) => popDetails(id)}
+											close=${(_event) => toggleOverview(id)}
+										/>
 									<//>
 								<//>
 							`}<//

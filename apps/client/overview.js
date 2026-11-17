@@ -15,13 +15,21 @@ import { threadLink } from './thread.js'
 /** The threads whose overview column is open */
 const [shown, setShown] = createSignal(new Set())
 export const overviewOpen = (id) => shown().has(id)
-export const toggleOverview = (id) =>
-	setShown((ids) => {
-		const next = new Set(ids)
-		if (next.has(id)) next.delete(id)
-		else next.add(id)
-		return next
-	})
+export const toggleOverview = (id) => {
+	setPushed((ids) => without(ids, id))
+	setShown((ids) => (ids.has(id) ? without(ids, id) : new Set([...ids, id])))
+}
+const without = (ids, id) => new Set([...ids].filter((other) => other !== id))
+
+/**
+ * The column is one page at a time, like a phone's: the thread's details push onto the overview in its place, and back
+ * pops them. The threads whose column shows their details.
+ */
+const [pushed, setPushed] = createSignal(new Set())
+export const detailsPushed = (id) => pushed().has(id)
+export const pushDetails = (id) =>
+	setPushed((ids) => (ids.has(id) ? without(ids, id) : new Set([...ids, id])))
+export const popDetails = (id) => setPushed((ids) => without(ids, id))
 
 /**
  * The column's groups, in order: the page's sections and the child threads in the same state share one, each drawn with

@@ -24,7 +24,49 @@ import { ThreadItem } from './thread-list.js'
 import { Dot, Switch } from './dot.js'
 import { PiSource } from './pi-sessions.js'
 
+/** The thread's details as a sheet from the right: what its pill opens when no overview is beside it */
 export function ThreadDetails() {
+	let sheet
+	return html`
+		<div class="scrim" onClick=${() => drawer(null)}></div>
+		<section
+			class="thread-details sheet"
+			aria-label="Thread details"
+			ref=${(element) => (sheet = element)}
+		>
+			<button
+				type="button"
+				class="ghost small close"
+				aria-label="Close"
+				onClick=${() => drawer(null)}
+			>
+				<${Icon} name="close" />
+			</button>
+			<${Details} scroller=${() => sheet} />
+		</section>
+	`
+}
+
+/** The same details pushed onto the overview's column in place of its page, with the way back to it */
+export function DetailsPage(props) {
+	let page
+	return html`
+		<aside
+			class="overview thread-details"
+			aria-label="Thread details"
+			ref=${(element) => (page = element)}
+		>
+			<${Details}
+				scroller=${() => page}
+				back=${(event) => props.back(event)}
+				close=${(event) => props.close(event)}
+			/>
+		</aside>
+	`
+}
+
+/** What the thread's details hold, and a bot's threads as a page under them; `back` leads out of the first page */
+function Details(props) {
 	const here = () => threadOf(current())
 	// A bot's home is named for it already, so only who else is there; each once, as an ask's line names them
 	const members = () => [
@@ -67,9 +109,8 @@ export function ThreadDetails() {
 	createEffect(current, () => {
 		setPage(false)
 	})
-	let sheet
 	createEffect(page, (open) => {
-		if (open) sheet.scrollTop = 0
+		if (open) props.scroller.scrollTop = 0
 	})
 	const botFamily = () => {
 		const bot = homeBot(current())
@@ -80,86 +121,92 @@ export function ThreadDetails() {
 		html`<h2>Tools</h2>
 			<${For} each=${() => [current()]}>${(id) => html`<${Tools} thread=${id} />`}<//>`
 	return html`
-		<div class="scrim" onClick=${() => drawer(null)}></div>
-		<section
-			class="thread-details"
-			aria-label="Thread details"
-			ref=${(element) => (sheet = element)}
-		>
-			<button
-				type="button"
-				class="ghost small close"
-				aria-label="Close"
-				onClick=${() => drawer(null)}
-			>
-				<${Icon} name="close" />
-			</button>
-			<${Show} when=${() => !page()}>
-				<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
-				<${Show} when=${() => members().length > 1}>
-					<h2>In this thread</h2>
-					<p id="members">
-						<${For} each=${() => members()}>
-							${(name, index) => [
-								() => (index() ? ', ' : ''),
-								html`<span title=${() => name} style=${() => colorOf(name)}
-									>${() => shortLabel(name)}</span
-								>`,
-							]}
-						<//>
-					</p>
-				<//>
-				<${Show} when=${() => server().modules.includes('pi-sessions') && current()} keyed
-					>${(id) => html`<${PiSource} thread=${id} />`}<//
-				>
-				<${Show} when=${() => homeBot(current())} keyed
-					>${(bot) =>
-						html`<${BotSettings}
-							bot=${() => bot}
-							onThreads=${(_event) => setPage(true)}
-							tools=${tools()}
-						/>`}<//
-				>
-				<${Show} when=${() => !homeBot(current())}>
-					<${Show} when=${() => lineage().length > 1}>
-						<ul class="thread-family">
-							<${For} each=${() => lineage().map(threadOf).filter(Boolean)}>
-								${(thread) =>
-									html`<${ThreadItem} thread=${() => thread} depth=${() => depth(thread.id)} />`}
-							<//>
-						</ul>
-					<//>
-					${tools()}
-				<//>
-			<//>
-			<${Show} when=${page}>
+		<${Show} when=${() => !page()}>
+			<${Show} when=${() => !!props.back}>
 				<header class="page-head">
 					<button
 						type="button"
 						class="ghost small"
-						aria-label="Back to the bot"
-						onClick=${() => setPage(false)}
+						aria-label="Back to the overview"
+						onClick=${(event) => props.back(event)}
 					>
 						<${Icon} name="back" />
 					</button>
-					<h2>Threads</h2>
-				</header>
-				<ul class="thread-family">
-					<${For} each=${() => botFamily().own}
-						>${(thread) =>
-							html`<${ThreadItem} thread=${() => thread} depth=${() => depth(thread.id) - 1} />`}<//
+					<h2>Overview</h2>
+					<button
+						type="button"
+						class="ghost small close"
+						aria-label="Close the overview"
+						onClick=${(event) => props.close(event)}
 					>
-				</ul>
-				<${Show} when=${() => botFamily().elsewhere.length}>
-					<h2>Also in</h2>
+						<${Icon} name="close" />
+					</button>
+				</header>
+			<//>
+			<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
+			<${Show} when=${() => members().length > 1}>
+				<h2>In this thread</h2>
+				<p id="members">
+					<${For} each=${() => members()}>
+						${(name, index) => [
+							() => (index() ? ', ' : ''),
+							html`<span title=${() => name} style=${() => colorOf(name)}
+								>${() => shortLabel(name)}</span
+							>`,
+						]}
+					<//>
+				</p>
+			<//>
+			<${Show} when=${() => server().modules.includes('pi-sessions') && current()} keyed
+				>${(id) => html`<${PiSource} thread=${id} />`}<//
+			>
+			<${Show} when=${() => homeBot(current())} keyed
+				>${(bot) =>
+					html`<${BotSettings}
+						bot=${() => bot}
+						onThreads=${(_event) => setPage(true)}
+						tools=${tools()}
+					/>`}<//
+			>
+			<${Show} when=${() => !homeBot(current())}>
+				<${Show} when=${() => lineage().length > 1}>
 					<ul class="thread-family">
-						<${For} each=${() => botFamily().elsewhere}
-							>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//
-						>
+						<${For} each=${() => lineage().map(threadOf).filter(Boolean)}>
+							${(thread) =>
+								html`<${ThreadItem} thread=${() => thread} depth=${() => depth(thread.id)} />`}
+						<//>
 					</ul>
 				<//>
+				${tools()}
 			<//>
-		</section>
+		<//>
+		<${Show} when=${page}>
+			<header class="page-head">
+				<button
+					type="button"
+					class="ghost small"
+					aria-label="Back to the bot"
+					onClick=${() => setPage(false)}
+				>
+					<${Icon} name="back" />
+				</button>
+				<h2>Threads</h2>
+			</header>
+			<ul class="thread-family">
+				<${For} each=${() => botFamily().own}
+					>${(thread) =>
+						html`<${ThreadItem} thread=${() => thread} depth=${() => depth(thread.id) - 1} />`}<//
+				>
+			</ul>
+			<${Show} when=${() => botFamily().elsewhere.length}>
+				<h2>Also in</h2>
+				<ul class="thread-family">
+					<${For} each=${() => botFamily().elsewhere}
+						>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//
+					>
+				</ul>
+			<//>
+		<//>
 	`
 }
 

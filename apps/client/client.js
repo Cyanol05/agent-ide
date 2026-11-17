@@ -14,7 +14,7 @@ import {
 	titleOf,
 	threadOf,
 } from './server.js'
-import { overviewOpen, toggleOverview } from './overview.js'
+import { overviewOpen, pushDetails, toggleOverview } from './overview.js'
 import { Dot } from './dot.js'
 import { System } from './system.js'
 import { ThreadDetails } from './thread-details.js'
@@ -99,7 +99,7 @@ function Client() {
 						class="thread-pill"
 						type="button"
 						style=${() => colorOf(homeBot(current())?.name ?? '')}
-						onClick=${() => drawer('side')}
+						onClick=${() => (overviewOpen(current()) ? pushDetails(current()) : drawer('side'))}
 					>
 						<${Dot} state=${() => threadOf(current())?.status} />
 						<span>${() => (current() ? titleOf(current()) : 'New thread')}</span>
