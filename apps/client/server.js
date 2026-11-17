@@ -142,8 +142,10 @@ export function hrefOf(id) {
 }
 
 export function drawer(which) {
-	for (const name of ['list', 'side'])
-		document.body.classList.toggle(name, name === which && !document.body.classList.contains(name))
+	document.body.classList.toggle(
+		'list',
+		which === 'list' && !document.body.classList.contains('list'),
+	)
 }
 
 export const {

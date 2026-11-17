@@ -92,7 +92,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   bot.js                 a bot's settings, its threads row, new bot; botThreads shares its own/elsewhere lists
   thread-list.js         the thread list, its family rows
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
-                         a bot's threads as a page of the sheet; ThreadDetails is the sheet, DetailsPage the same pushed onto the overview column
+                         a bot's threads as a page under them; DetailsPage is the side column's page, pushed onto the overview or on its own
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
   overview.js            a thread's overview column: the page's sections (parse) and child threads (groupOf) in one set of GROUPS,
                          each drawn with a status dot or the check icon; Page, whose #message-N links scroll the thread there;
@@ -167,7 +167,7 @@ Build from these; a new panel, row or button takes its sibling's markup and clas
 - Popover rows: `ul.rows > li` in a popover's pane body, one per module, runner or option ("One row across"); the picker's `.model-controls .who` and `.model` share the look.
 - Model controls: model-picker.js `ModelPicker`, `.model-controls`: a `.search` pinned on top (typing filters, arrows and Enter pick, recipients go to `onRecipients`), the `.model-list` of runners' `.models` that alone scrolls, and a pinned `.foot` with the asked runner's `.thinking` and folder ("A search, then each runner's models"); the composer and settings share it.
 - Left aside: thread-list.js `ThreadList`, `.thread-list`; each row is `li > .row` (a link, or a button, or `form.row` for a new bot), shared with the family list `.thread-family`; its foot is `.list-foot` with `.foot-toggle`s ("The list's foot").
-- Right aside: thread-details.js `ThreadDetails`, `.thread-details` with `.scrim` ("This thread's sheet"); a bot's part is bot.js `BotSettings`, `.bot`; its fields are plain inputs; a page of it has `.page-head`.
+- Side column: the overview and thread-details.js `DetailsPage` (`.overview.thread-details`, `.pushed` over the overview) take turns in it, one page at a time; overview.js `pushDetails`/`popDetails`; a bot's part is bot.js `BotSettings`, `.bot`; its fields are plain inputs; a page of it has `.page-head`.
 - Thread head: the pill, `h2.title > button.thread-pill` in `.thread > header` and its `.close` ("The head is no bar"); `.thread-pill` is layout only; on a phone `.app-bar` ("A phone").
 - Message list: thread.js `Message` in `.thread > ul > li` ("The chat: agents write"), its body `.markdown`, its images `div.images`, compaction's `li.cut` and `li.line`.
 - Tool calls: run.js `Turn`, `Exchange`, `Step`, `Call`; `li.turn` is a `<details>` whose open list is `.steps`, its tools `.tool` and its words `.said`; `.exchange` and a crossed message are a `.steps` list of thread.js `Cross` rows (`li.sent`, `li.received`). There's no thinking block: a live turn's summary says "thinking".

@@ -6,7 +6,6 @@ import {
 	api,
 	colorOf,
 	current,
-	drawer,
 	family,
 	forkedFrom,
 	homeBot,
@@ -17,6 +16,7 @@ import {
 	setNewThreadTools,
 	threads,
 	threadOf,
+	titleOf,
 } from './server.js'
 import { shortLabel } from './agent.js'
 import { BotSettings, botThreads } from './bot.js'
@@ -24,40 +24,21 @@ import { ThreadItem } from './thread-list.js'
 import { Dot, Switch } from './dot.js'
 import { PiSource } from './pi-sessions.js'
 
-/** The thread's details as a sheet from the right: what its pill opens when no overview is beside it */
-export function ThreadDetails() {
-	let sheet
-	return html`
-		<div class="scrim" onClick=${() => drawer(null)}></div>
-		<section
-			class="thread-details sheet"
-			aria-label="Thread details"
-			ref=${(element) => (sheet = element)}
-		>
-			<button
-				type="button"
-				class="ghost small close"
-				aria-label="Close"
-				onClick=${() => drawer(null)}
-			>
-				<${Icon} name="close" />
-			</button>
-			<${Details} scroller=${() => sheet} />
-		</section>
-	`
-}
-
-/** The same details pushed onto the overview's column in place of its page, with the way back to it */
+/**
+ * The thread's details as a page of the side column, the one the overview shows in: pushed onto the overview, with
+ * `back` to it, or on its own when no overview is open. Its header names the page you're on.
+ */
 export function DetailsPage(props) {
 	let page
 	return html`
 		<aside
-			class="overview thread-details"
+			class=${() => ['overview', 'thread-details', { pushed: props.hasBack }]}
 			aria-label="Thread details"
 			ref=${(element) => (page = element)}
 		>
 			<${Details}
 				scroller=${() => page}
+				hasBack=${() => props.hasBack}
 				back=${(event) => props.back(event)}
 				close=${(event) => props.close(event)}
 			/>
@@ -65,7 +46,7 @@ export function DetailsPage(props) {
 	`
 }
 
-/** What the thread's details hold, and a bot's threads as a page under them; `back` leads out of the first page */
+/** What the thread's details hold, and a bot's threads as a page under them; `back`, when `hasBack`, leads out of the first page */
 function Details(props) {
 	const here = () => threadOf(current())
 	// A bot's home is named for it already, so only who else is there; each once, as an ask's line names them
@@ -82,7 +63,7 @@ function Details(props) {
 		return thread?.parent ?? forkedFrom(thread)
 	}
 	/**
-	 * The sheet's own line of descent: ancestors up to the root, itself, and its own descendants.
+	 * The thread's own line of descent: ancestors up to the root, itself, and its own descendants.
 	 * No siblings or cousins. A root thread's line is still every one of its children.
 	 */
 	const lineage = () => {
@@ -104,7 +85,7 @@ function Details(props) {
 		}
 		return ids.filter((member) => member === id || ancestors.has(member) || descendants.has(member))
 	}
-	// A bot's threads are a page of their own: a bot with hundreds of them must not push its own settings off the sheet
+	// A bot's threads are a page of their own: a bot with hundreds of them must not push its own settings off the page
 	const [page, setPage] = createSignal(false)
 	createEffect(current, () => {
 		setPage(false)
@@ -120,30 +101,33 @@ function Details(props) {
 	const tools = () =>
 		html`<h2>Tools</h2>
 			<${For} each=${() => [current()]}>${(id) => html`<${Tools} thread=${id} />`}<//>`
+	const close = () =>
+		html`<button
+			type="button"
+			class="ghost small close"
+			aria-label="Close"
+			onClick=${(event) => props.close(event)}
+		>
+			<${Icon} name="close" />
+		</button>`
 	return html`
 		<${Show} when=${() => !page()}>
-			<${Show} when=${() => !!props.back}>
-				<header class="page-head">
+			<header class="page-head">
+				<${Show} when=${() => props.hasBack}>
 					<button
 						type="button"
-						class="ghost small"
+						class="ghost small back"
 						aria-label="Back to the overview"
 						onClick=${(event) => props.back(event)}
 					>
-						<${Icon} name="back" />
+						<${Icon} name="back" />Overview
 					</button>
-					<h2>Overview</h2>
-					<button
-						type="button"
-						class="ghost small close"
-						aria-label="Close the overview"
-						onClick=${(event) => props.close(event)}
-					>
-						<${Icon} name="close" />
-					</button>
-				</header>
-			<//>
-			<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
+				<//>
+				<${Show} when=${current} keyed fallback=${html`<h2>New thread</h2>`}
+					>${(id) => html`<${Title} thread=${id} />`}<//
+				>
+				${close}
+			</header>
 			<${Show} when=${() => members().length > 1}>
 				<h2>In this thread</h2>
 				<p id="members">
@@ -184,13 +168,14 @@ function Details(props) {
 			<header class="page-head">
 				<button
 					type="button"
-					class="ghost small"
+					class="ghost small back"
 					aria-label="Back to the bot"
 					onClick=${() => setPage(false)}
 				>
-					<${Icon} name="back" />
+					<${Icon} name="back" />${() => (current() ? titleOf(current()) : '')}
 				</button>
 				<h2>Threads</h2>
+				${close}
 			</header>
 			<ul class="thread-family">
 				<${For} each=${() => botFamily().own}

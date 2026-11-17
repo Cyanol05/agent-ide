@@ -24,7 +24,6 @@ import {
 	colorOf,
 	columns,
 	current,
-	drawer,
 	entries,
 	merged,
 	fork,
@@ -288,12 +287,7 @@ export function Thread(props) {
 	const ready = () =>
 		!!entries[props.id] &&
 		(thread()?.agents ?? []).every((agent) => conversations[agent.conversation])
-	const titleClick = () =>
-		current() !== props.id
-			? openThread(props.id)
-			: overviewOpen(props.id)
-				? pushDetails(props.id)
-				: drawer('side')
+	const titleClick = () => (current() !== props.id ? openThread(props.id) : pushDetails(props.id))
 	let list,
 		followed,
 		sizes,

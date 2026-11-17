@@ -23,7 +23,7 @@ const without = (ids, id) => new Set([...ids].filter((other) => other !== id))
 
 /**
  * The column is one page at a time, like a phone's: the thread's details push onto the overview in its place, and back
- * pops them. The threads whose column shows their details.
+ * pops them; with no overview open they are the column's only page. The threads whose column shows their details.
  */
 const [pushed, setPushed] = createSignal(new Set())
 export const detailsPushed = (id) => pushed().has(id)

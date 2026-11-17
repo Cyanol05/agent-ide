@@ -85,7 +85,9 @@ export function System() {
 						<${For} each=${() => columns()}
 							>${(id) => html`
 								<${Thread} id=${() => id} />
-								<${Show} when=${() => id && overviewOpen(id)}>
+								<${Show}
+									when=${() => (id && overviewOpen(id)) || (detailsPushed(id) && current() === id)}
+								>
 									<${Show}
 										when=${() => detailsPushed(id) && current() === id}
 										fallback=${html`<${Loading}
@@ -95,8 +97,9 @@ export function System() {
 										<//>`}
 									>
 										<${DetailsPage}
+											hasBack=${() => overviewOpen(id)}
 											back=${(_event) => popDetails(id)}
-											close=${(_event) => toggleOverview(id)}
+											close=${(_event) => (overviewOpen(id) ? toggleOverview(id) : popDetails(id))}
 										/>
 									<//>
 								<//>

@@ -202,18 +202,28 @@ agent-memory {
 }
 
 /* Why the model wrote no new title, under the title, in its words' muted size. */
-.thread-details > .title-failed {
+.thread-details .title-failed {
 	display: block;
+	flex-basis: 100%;
 	margin: 0 var(--space-2);
 	color: var(--wait);
 	font-size: var(--text-small);
 }
 
-.thread-details > h2.thread-title {
+/* The page's name in its header, the thread's title or a bot's Threads, as one heading. */
+.thread-details > .page-head > h2:not(.thread-title) {
+	flex: 1;
+	font-size: var(--text);
+	font-weight: 600;
+	color: var(--ink);
+}
+
+.thread-details h2.thread-title {
 	display: flex;
 	gap: var(--space-1);
+	flex: 1;
 	align-items: center;
-	margin: var(--space-2) var(--space-1) 0;
+	margin: 0;
 	font-size: var(--text);
 	font-weight: 600;
 
@@ -1009,48 +1019,6 @@ agent-memory {
 	text-decoration: none;
 }
 
-/* This thread's sheet, from the right at every size, in chat and beside the story: its family, and whether its hands are off. */
-body .scrim {
-	display: block;
-	position: fixed;
-	inset: 0;
-	z-index: 9;
-	background: rgb(0 0 0 / 0.4);
-	opacity: 0;
-	pointer-events: none;
-	transition: opacity var(--duration-sheet) var(--ease-sheet);
-}
-
-body.list .scrim,
-body.side .scrim {
-	opacity: 1;
-	pointer-events: auto;
-}
-
-body .thread-details.sheet {
-	display: block;
-	font-size: var(--text-ui);
-	position: fixed;
-	top: 0;
-	bottom: 0;
-	right: 0;
-	z-index: 10;
-	width: min(85vw, 22rem);
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	background: Canvas;
-	padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-2)
-		calc(var(--space-4) + env(safe-area-inset-bottom));
-	visibility: hidden;
-	border-left: 1px solid var(--line);
-	transform: translateX(100%);
-}
-
-body.side .thread-details.sheet {
-	transform: none;
-	visibility: visible;
-}
-
 /* A sheet's own headings, and a bot's parts within it, read as one kind of small label. */
 :is(.thread-details, .thread-list) {
 	:is(h2, h3) {
@@ -1117,15 +1085,25 @@ body.side .thread-details.sheet {
 	}
 }
 
-/* A page of threads: its header is the way back. */
+/* A page of the side column: back, named for the page under it, then the page's own name, then close. */
 .page-head {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--space-2);
 	margin: 0 var(--space-2) var(--space-2);
 
 	h2 {
 		margin: 0;
+	}
+
+	> button.back {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+		max-width: 40%;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 }
 
@@ -1165,19 +1143,6 @@ body.side .thread-details.sheet {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-	/* Visible the moment it opens, so what's inside can take focus; hidden only once it has slid away. */
-	.thread-details.sheet {
-		transition:
-			transform var(--duration-sheet) var(--ease-sheet),
-			visibility 0s var(--duration-sheet);
-	}
-
-	body.side .thread-details.sheet {
-		transition:
-			transform var(--duration-sheet) var(--ease-sheet),
-			visibility 0s;
-	}
-
 	:is(.thread-list > ul, .thread-family) > li {
 		transition: background-color var(--duration-press) var(--ease-out);
 	}
@@ -1462,7 +1427,7 @@ body.side .thread-details.sheet {
 	}
 }
 
-:is(.thread-details, .model-picker .search) > button.close {
+.model-picker .search > button.close {
 	display: none;
 }
 
@@ -1848,14 +1813,14 @@ body.resizing {
 		display: none;
 	}
 
-	/* A phone shows one column: the overview, when it's open, over its thread, under the bar, whose button closes it. */
+	/* A phone shows one column: its page, when it's open, over its thread, under the bar. With the overview under it, the bar's button closes it; the details on their own close themselves. */
 	.threads > .overview {
 		position: absolute;
 		inset: 0;
 		z-index: 3;
 		padding-top: calc(var(--control) + 3 * var(--space-2) + env(safe-area-inset-top));
 
-		> .page-head > .close {
+		&:not(.thread-details:not(.pushed)) > .page-head > .close {
 			display: none;
 		}
 	}
@@ -1918,11 +1883,6 @@ body.resizing {
 		visibility: hidden;
 	}
 
-	body.list .scrim {
-		opacity: 0;
-		pointer-events: none;
-	}
-
 	.list-foot {
 		margin: auto calc(-1 * var(--space-2)) 0;
 		padding-left: var(--space-2);
@@ -1932,21 +1892,9 @@ body.resizing {
 		display: none;
 	}
 
-	.thread-details > .thread-title {
-		width: calc(100% - 3.6rem);
-	}
-
 	/* A sheet closes from its top corner, the picker beside its search; on a big screen a click outside does it. */
 	.model-picker .search > button.close {
 		display: flex;
-	}
-
-	.thread-details > button.close {
-		display: flex;
-		position: absolute;
-		top: calc(var(--space-2) + env(safe-area-inset-top));
-		right: var(--space-2);
-		z-index: 1;
 	}
 
 	@media (prefers-reduced-motion: no-preference) {

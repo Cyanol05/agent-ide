@@ -8,4 +8,4 @@ One file per thing, named with client.html's words: `server.js` keeps the lists 
 
 [model-picker.js](model-picker.js) shares the model and thinking controls between the composer and settings; each caller owns its choice. Settings use [panes.js](panes.js) to open a detail inside the same popup. The list stays mounted, keeping its draft and scroll; Back restores focus, and Escape goes back before closing.
 
-`system.js` names the connections; `wires.js` follows their endpoints through layout and scrolling. `thread-details.js` opens people, family and tools in either layout. `agent-memory.js` scopes reads to the visible thread, so clearing it discards outstanding results. `tutorial.js` connects the static walkthrough to the same server and model picker.
+`system.js` names the connections; `wires.js` follows their endpoints through layout and scrolling. `thread-details.js` shows people, family and tools as a page of the side column. `agent-memory.js` scopes reads to the visible thread, so clearing it discards outstanding results. `tutorial.js` connects the static walkthrough to the same server and model picker.
