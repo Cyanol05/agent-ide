@@ -81,8 +81,8 @@ export function Turn(props) {
 }
 
 /**
- * A post, from the thread that sent it: the message as a sent step, with the asked thread's dot hanging beside it while
- * it works, then the answer as a received one when it comes.
+ * A post, from the thread that sent it: the message as a sent step, pulsing while the asked thread works, then the
+ * answer as a received one when it comes.
  */
 export function Exchange(props) {
 	const asked = () => askedThread(props.step)
