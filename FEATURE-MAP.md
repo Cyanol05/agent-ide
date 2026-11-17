@@ -32,7 +32,7 @@ remote.js                the runner protocol, both ends: createRunners (server),
 cli.js                   the API from a terminal
 util.js                  helpers server and modules share: agentTo, writtenTo, mentioned, keyOf, speaker, said, written, byAgent,
                          finished (task result), background (thread-owned task)
-modules.js               builtIn (each module's own `on` default), agent-ide.json, MODULES, and loading each module's server/runner half
+modules.js               builtIn (each module's own `on` default), dataDir (~/.config/ade, or DB_PATH's folder), ade.json, MODULES, and loading each module's server/runner half
 modules/
   talk.js                `post` and `threads` tools; resolveThread accepts ids as numbers or digit strings, or exact, unambiguous titles; post defaults missing titles from the body; reply sends answers back to the parent thread that asked; a bot in the
                          thread it posts to speaks there as itself (member), and so does a bot that
@@ -125,7 +125,7 @@ examples/76-import-a-pi-session.js   a pi session with a branch and a compaction
 examples/99-pi-session-files.js   the session file pi loads: tool call, model change, compaction, restart, fork
 examples/93-auto-title.js          one-shot default titles, explicit titles, edits in flight, failures, a new title on request
 examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
-examples/64-settings-restart-the-server.js   settings write agent-ide.json and restart in place; only the server's machine may
+examples/64-settings-restart-the-server.js   settings write ade.json and restart in place; only the server's machine may
 examples/19, 23, 86–90-*-real-model.js   bench: memory recall, deep recall, introductions, another thread's
                                  fact, side question, directed mention and web search; REAL=1 only
 examples/real-model-bench.js       real runner setup, delivery settling, evidence, step budgets and the `score` line
@@ -138,6 +138,7 @@ examples/101-the-walkthrough-writes-memory.js   tutorial loader opens with recor
 examples/102-import-memory.js     recorded-line import, existing lines preserved, invalid spans rejected
 examples/100-post-without-a-title.js optional post titles with auto-title on/off; both talk tools address threads by id or exact title and reject ambiguity
 examples/105-overview-page.js     the overview page: written after answers from the page before and what's new, read by the tool, switched off
+examples/106-one-store-per-person.js ade.sqlite, ade.log and ade.json live in ~/.config/ade, whatever folder the server starts in
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 

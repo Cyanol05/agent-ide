@@ -58,7 +58,7 @@ process.on('exit', () => {
 process.on('SIGINT', () => process.exit(130))
 process.on('SIGTERM', () => process.exit(143))
 
-/** Servers start in the example's own folder, so the checkout's agent-ide.json stays out too */
+/** Servers start in the example's own folder with their own DB_PATH, so ade.json and the store come from there, never ~/.config/ade */
 export function start(file, args = [], env = {}, cwd = tmp) {
 	const child = spawn(process.execPath, [path.join(repo, file), ...args], {
 		cwd,

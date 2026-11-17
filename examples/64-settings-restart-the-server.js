@@ -1,10 +1,10 @@
-/** The page's settings write agent-ide.json and restart the server in place, losing nothing; only its own machine may */
+/** The page's settings write ade.json and restart the server in place, losing nothing; only its own machine may */
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { api, base, check, dir, done, server, until, view } from './lib.js'
+import { api, base, check, db, done, server, until, view } from './lib.js'
 
-const file = path.join(dir, 'agent-ide.json')
-const srv = await server({}, { cwd: dir })
+const file = path.join(path.dirname(db), 'ade.json')
+const srv = await server()
 const modules = async () => (await api('GET', '/api/server')).json.modules ?? []
 const {
 	json: { id },
@@ -37,7 +37,7 @@ check(
 )
 check(
 	JSON.stringify(JSON.parse(readFileSync(file, 'utf8')).modules) === '["-status","+web-search"]',
-	'agent-ide.json says what changed from the defaults',
+	'ade.json says what changed from the defaults',
 	readFileSync(file, 'utf8'),
 )
 const back = await until(async () => {

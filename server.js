@@ -29,7 +29,7 @@ import {
 } from '@earendil-works/pi-durable/tools'
 import { createCodemodeExtension } from '@earendil-works/pi-durable/codemode'
 import { CodemodeSandbox } from '@earendil-works/pi-codemode'
-import { about, builtIn, load, readConfig } from './modules.js'
+import { about, builtIn, dataDir, load, readConfig } from './modules.js'
 import { WebSocketServer } from 'ws'
 import {
 	AGENT,
@@ -78,7 +78,7 @@ import {
 // ── Start-up: store lock and port ─────────────────────────────────────────
 
 /** One store, whatever the port */
-const file = process.env.DB_PATH || 'agent-ide.sqlite'
+const file = process.env.DB_PATH || path.join(dataDir(), 'ade.sqlite')
 const lock = `${file}.lock`
 const alive = (pid) => {
 	try {
@@ -96,7 +96,7 @@ if (holder && holder !== process.pid && alive(holder)) {
 }
 writeFileSync(lock, String(process.pid))
 
-/** Everything the server prints, with the time, plus how it ended, next to its store: agent-ide.sqlite logs to agent-ide.log */
+/** Everything the server prints, with the time, plus how it ended, next to its store: ade.sqlite logs to ade.log */
 const logFile = `${file.replace(/\.sqlite$/, '')}.log`
 const logged = (text) => {
 	const time = new Date().toISOString()
@@ -1394,7 +1394,7 @@ const core = {
 }
 /** Each module in modules/ → on by default, as its own file says */
 const defaults = await builtIn()
-/** agent-ide.json, as it started; the page changes it, and a restart takes it up */
+/** ade.json, as it started; the page changes it, and a restart takes it up */
 const settings = await readConfig()
 core.config = settings.config
 const modules = await load('server', core, settings)
@@ -1499,7 +1499,7 @@ const routes = [
 						.filter((module) => module.settings)
 						.map((module) => [module.name, module.settings]),
 				),
-				/** Set in the environment, these win over agent-ide.json */
+				/** Set in the environment, these win over ade.json */
 				overrides: ['MODULES', 'MEMORY_MODEL'].filter((name) => process.env[name]),
 				restarts: typeof process.execve === 'function',
 			},
@@ -2001,7 +2001,7 @@ async function upgrade(req, raw, head) {
 // ── Settings and lifecycle ─────────────────────────────────────────────
 
 /**
- * Writes agent-ide.json and restarts to take it up: in place where the runtime can (same terminal, same process),
+ * Writes ade.json and restarts to take it up: in place where the runtime can (same terminal, same process),
  * else it stops and says so. `modules` maps a name to on or off; memory's `model` empty means each thread's agent.
  */
 async function saveSettings({ modules: wanted = {}, memory }) {

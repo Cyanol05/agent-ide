@@ -1,10 +1,20 @@
+import { mkdirSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-/** agent-ide.json in the folder it starts in: its settings, which env vars override */
+/** Where ade.sqlite, ade.log and ade.json live: $XDG_CONFIG_HOME/ade, or DB_PATH's folder when that's set */
+export function dataDir() {
+	if (process.env.DB_PATH) return path.dirname(path.resolve(process.env.DB_PATH))
+	const dir = path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'ade')
+	mkdirSync(dir, { recursive: true })
+	return dir
+}
+
+/** ade.json: its settings, which env vars override */
 export async function readConfig() {
-	const file = path.resolve('agent-ide.json')
+	const file = path.join(dataDir(), 'ade.json')
 	const text = await readFile(file, 'utf8').catch((error) => {
 		if (error.code === 'ENOENT') return '{}'
 		throw error

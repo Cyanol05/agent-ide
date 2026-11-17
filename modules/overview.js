@@ -14,7 +14,7 @@
  * `{fresh: true}`. `GET /api/overview`
  * gives each thread with a page `{summary, waiting, open}`, by id. Agents read a page with the `overview` tool.
  *
- * Its model is `overview.model` in agent-ide.json, else memory's (`memory.model` or MEMORY_MODEL), else the thread's
+ * Its model is `overview.model` in ade.json, else memory's (`memory.model` or MEMORY_MODEL), else the thread's
  * own agent's with thinking off.
  */
 import { retryAssistantCall } from '@earendil-works/pi-ai'

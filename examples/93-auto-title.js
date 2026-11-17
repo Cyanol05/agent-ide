@@ -4,7 +4,7 @@ import path from 'node:path'
 import { api, answered, check, db, done, say, scriptedRunner, server, until, view } from './lib.js'
 
 writeFileSync(
-	path.join(path.dirname(db), 'agent-ide.json'),
+	path.join(path.dirname(db), 'ade.json'),
 	JSON.stringify({
 		modules: ['auto-title'],
 	}),

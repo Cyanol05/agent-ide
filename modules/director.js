@@ -7,7 +7,7 @@
  * agent's post, in a thread with two or more bots, asks the ones a model picks, or nobody. On by default;
  * MODULES=-director turns it off.
  *
- * In agent-ide.json `{"director": {"picks": true, "model": "gpt-6-luna:low@oskar"}}`, the model optional;
+ * In ade.json `{"director": {"picks": true, "model": "gpt-6-luna:low@oskar"}}`, the model optional;
  * DIRECTOR_MODEL=model@runner turns picks on with that model.
  */
 import { defineExtension } from '@earendil-works/pi-durable'

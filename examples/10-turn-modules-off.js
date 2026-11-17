@@ -158,10 +158,8 @@ await kill(srv)
 
 fresh()
 const own = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-own-'))
-writeFileSync(
-	path.join(own, 'agent-ide.json'),
-	JSON.stringify({ modules: ['talk', 'web-search', './mine.js'] }),
-)
+const settings = path.join(path.dirname(db), 'ade.json')
+writeFileSync(settings, JSON.stringify({ modules: ['talk', 'web-search', './mine.js'] }))
 writeFileSync(
 	path.join(own, 'mine.js'),
 	'export const server = ({ thread }) => ({ serve: async (id) => ({ title: (await thread(id)).title }) })',
@@ -170,7 +168,7 @@ const configured = await server({ MODULES: '+status' }, { cwd: own })
 const listed = (await api('GET', '/api/server')).json.modules
 check(
 	listed.join() === 'talk,web-search,mine,status',
-	'agent-ide.json picks talk, web-search and mine; MODULES=+status adds status',
+	'ade.json picks talk, web-search and mine; MODULES=+status adds status',
 	JSON.stringify(listed),
 )
 const made = (await api('POST', '/api/threads', { title: 'mine' })).json.id
@@ -182,4 +180,5 @@ check(
 )
 configured.kill()
 rmSync(own, { recursive: true, force: true })
+rmSync(settings, { force: true })
 done()

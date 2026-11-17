@@ -2,7 +2,7 @@
  * With memory, an agent's context is compacted into the lines once it passes memory's `compactAt`, long before its
  * window is full, between model calls and never between a tool call and its result
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
 	answered,
@@ -10,7 +10,7 @@ import {
 	call,
 	check,
 	conversationOf,
-	dir,
+	db,
 	done,
 	say,
 	scriptedRunner,
@@ -18,9 +18,11 @@ import {
 	text,
 } from './lib.js'
 
-mkdirSync(dir, { recursive: true })
-writeFileSync(path.join(dir, 'agent-ide.json'), JSON.stringify({ memory: { compactAt: 30000 } }))
-await server({}, { cwd: dir })
+writeFileSync(
+	path.join(path.dirname(db), 'ade.json'),
+	JSON.stringify({ memory: { compactAt: 30000 } }),
+)
+await server()
 // A window of a million tokens, so only memory's threshold can start a compaction
 await scriptedRunner(
 	'bot',

@@ -3,7 +3,7 @@
  * instead of every word and zooms back down with `zoom` (experimental). On by default; MODULES=-memory turns it
  * off. The thread's own agent writes its lines, as it runs now, so the runner that works for a thread pays for its
  * memory; with no agent there yet, a bot there writes them, and with neither, the lines wait for the first one
- * asked. A model in the settings, `memory.model` in agent-ide.json or MEMORY_MODEL=model@runner, has that one agent
+ * asked. A model in the settings, `memory.model` in ade.json or MEMORY_MODEL=model@runner, has that one agent
  * write every thread's lines instead. Past `memory.compactAt` tokens, 100k unless set, an agent's context is
  * compacted into the lines.
  *

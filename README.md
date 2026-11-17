@@ -54,7 +54,7 @@ Open `https://<your-machine>.<your-tailnet>.ts.net` on the other machine or your
 
 ## Settings
 
-Settings live in `agent-ide.json` in the folder you start in. For example, to turn web search on and talk off:
+Settings live in `~/.config/ade/ade.json` (or under `$XDG_CONFIG_HOME`), wherever you start. For example, to turn web search on and talk off:
 
 ```json
 {
@@ -81,7 +81,7 @@ MEMORY_MODEL=sonnet@laptop pnpm dlx github:oskarrough/ade
 
 From a clone, use `node server.js` in place of `pnpm dlx github:oskarrough/ade`.
 
-Threads and conversations live in `agent-ide.sqlite` in the folder you start in, with the server's output in `agent-ide.log` beside it. `DB_PATH` moves both: `other.sqlite` logs to `other.log`.
+Threads and conversations live in `~/.config/ade/ade.sqlite`, with the server's output in `ade.log` beside it, so every folder you start in sees the same threads. `DB_PATH` moves all three: `other.sqlite` logs to `other.log` and reads `ade.json` from its own folder.
 
 ## Modules
 

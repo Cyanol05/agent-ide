@@ -10,6 +10,7 @@ ade --no-runner       start the server without lending this machine as a runner
 ade runner …          connect this machine to a server (runner --help)
 ade post …            and threads, read, wait, runners, key, revoke, stop (post --help)
 
+Threads, settings and the log live in ~/.config/ade (ade.sqlite, ade.json, ade.log).
 PORT, HOST, DB_PATH and MODULES set the server; the README has the rest.`)
 } else if (args[0] === 'runner') {
 	process.argv.splice(2, 1)
