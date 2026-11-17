@@ -1706,11 +1706,11 @@ async function handleRequest(req, res) {
 
 /** Finds bun or Node, then hands over to the updater, which keeps the runner up to date with this server */
 const runnerScript = (server) => `#!/bin/sh
-# Connects this machine to the agent-ide server at ${server}, with a key from \`node cli.js key laptop\` there:
+# Connects this machine to the ade server at ${server}, with a key from \`node cli.js key laptop\` there:
 #   curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --dir ~/code [--name laptop] [--read-only] [--no-update]
 set -e
 if command -v bun >/dev/null 2>&1; then run=bun; elif command -v node >/dev/null 2>&1; then run=node; else
-  echo "agent-ide's runner needs Node.js 24 or newer"; exit 1
+  echo "ade's runner needs Node.js 24 or newer"; exit 1
 fi
 mkdir -p "$HOME/.agent-ide"
 if [ -n "$AGENT_IDE_KEY" ]; then
@@ -2118,7 +2118,7 @@ for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1'])
 		// Keep listening on IPv6 localhost without printing a second local URL.
 		if (process.env.HOST || host !== '::1') {
 			const urls = addresses.map((address) => `http://${address}:${server.address().port}`)
-			console.log(`agent-ide  ${urls.join('\n           ')}`)
+			console.log(`${'ade'.padEnd(11)}${urls.join('\n           ')}`)
 			say('data', tilde(file))
 			say(
 				'modules',

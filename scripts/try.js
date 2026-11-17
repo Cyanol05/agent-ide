@@ -29,7 +29,7 @@ await api('POST', `/api/threads/${thread.id}/entries`, {
 	to: { runner: 'bot', model: 'echo/try' },
 })
 
-console.log(`agent-ide at ${base}/?thread=${thread.id}
+console.log(`ade at ${base}/?thread=${thread.id}
 the bot works in ${process.cwd()}; send to echo/try@bot, "post" or "slow" in a message for more
 bots: ${Object.keys(personas).join(', ')}; from a terminal: export AGENT_IDE_SERVER=${base}; node cli.js post --to ada hi
 stop: kill ${process.pid}`)
