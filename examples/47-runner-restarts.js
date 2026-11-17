@@ -57,7 +57,7 @@ const reinstall = start(
 check(await until(() => online('first'), 30000), 'reinstalling first connects with its new key')
 await stop(reinstall)
 await until(async () => !(await online('first')))
-const keys = path.join(home, '.config', 'agent-ide')
+const keys = path.join(home, '.config', 'ade')
 check(
 	readdirSync(keys).sort().join(',') === 'key.first,key.second' &&
 		readFileSync(path.join(keys, 'key.first'), 'utf8') === renewed,

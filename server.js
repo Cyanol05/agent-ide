@@ -1714,7 +1714,7 @@ if command -v bun >/dev/null 2>&1; then run=bun; elif command -v node >/dev/null
 fi
 mkdir -p "$HOME/.agent-ide"
 if [ -n "$AGENT_IDE_KEY" ]; then
-  config="\${XDG_CONFIG_HOME:-$HOME/.config}/agent-ide"
+  config="\${XDG_CONFIG_HOME:-$HOME/.config}/ade"
   name=$("$run" -e "process.stdout.write(require('node:os').hostname())")
   next_name=
   for arg do

@@ -41,7 +41,7 @@ Click "Add runner" on the page, or run this on the server's machine:
 pnpm dlx github:oskarrough/ade key laptop
 ```
 
-Either gives you a command to run on the other machine, in the folder agents should work in. Keep it private: it holds the runner's key.
+Either gives you a command to run on the other machine, in the folder agents should work in. Keep it private: it holds the runner's key. The runner saves that key in `~/.config/ade/` (or under `$XDG_CONFIG_HOME`) for later starts.
 
 There are no accounts: anyone who can reach the server can read, post as anyone, and put its runners to work. Keep it on a trusted network. To use [Tailscale](https://tailscale.com) instead:
 

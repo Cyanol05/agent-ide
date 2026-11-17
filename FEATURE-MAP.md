@@ -26,7 +26,7 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   saveSettings, restart, connectSelf   settings, restart, the server lending its own machine, under the name it first got
 echo.js                  echo/try scripted model responses: file tools, slow commands, posts, bots and director
 runner.js                a runner: offers its models and folders, connects, runs agents for the server
-runner-updater.js        what `curl <server>/connect-runner | sh` starts; keeps the runner up to date
+runner-updater.js        what `curl <server>/connect-runner | sh` starts (it saves the key in ~/.config/ade/key.<name>); keeps the runner up to date
 remote.js                the runner protocol, both ends: createRunners (server), serveRunner (runner),
                          runnerProvider (a model over the wire), remoteEnv (tools in the runner's folder)
 cli.js                   the API from a terminal

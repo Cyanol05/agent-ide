@@ -43,7 +43,7 @@ if (args.help) {
   --allow name      also take work from this person or @runner; repeat for more
   --read-only       refuse writes and commands
   --key key         runner key (AGENT_IDE_KEY or the saved key)
-  --key-file file   read the saved key here instead of ~/.config/agent-ide/key
+  --key-file file   read the saved key here instead of ~/.config/ade/key
   -h, --help        print these options`)
 	process.exit(0)
 }
@@ -51,7 +51,7 @@ if (args.help) {
 function saved(file) {
 	const config = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')
 	try {
-		return readFileSync(file || path.join(config, 'agent-ide', 'key'), 'utf8').trim()
+		return readFileSync(file || path.join(config, 'ade', 'key'), 'utf8').trim()
 	} catch {
 		return ''
 	}
