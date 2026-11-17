@@ -520,6 +520,13 @@ agent-memory {
 				}
 			}
 
+			/* A turn that gave no answer: the reason in the failed step's red, ruled off so it never reads as the agent speaking. */
+			&.failed {
+				padding-left: var(--space-3);
+				box-shadow: inset 2px 0 var(--danger);
+				color: var(--danger);
+			}
+
 			/* What an opened handed step was given, lit where it already is, as the memory panel lights the cut an agent reads. */
 			&.handed {
 				box-shadow: inset 2px 0 var(--pick);

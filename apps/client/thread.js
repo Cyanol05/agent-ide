@@ -666,6 +666,7 @@ function Message(props) {
 			class=${() => ({
 				handed: litIn(props.thread, props.entry.id),
 				elsewhere: crossed(),
+				failed: !!data().error,
 				mine: !elsewhere() && data().author === me,
 				same: !crossed() && data().author !== me && props.above === data().author,
 			})}
