@@ -9,7 +9,7 @@ const read = () => (existsSync(log) ? readFileSync(log, 'utf8') : '')
 const crash = `data:text/javascript,${encodeURIComponent("process.on('SIGUSR2', () => { throw new Error('boom') })")}`
 let srv = await server({ NODE_OPTIONS: `--import=${crash}` })
 check(/started, process \d+/.test(read()), 'the log says the server started', read())
-check(read().includes('agent-ide  http://'), 'the log has what the server printed', read())
+check(/ade +http:\/\//.test(read()), 'the log has what the server printed', read())
 
 const exited = new Promise((resolve) => srv.on('exit', resolve))
 srv.kill('SIGUSR2')
