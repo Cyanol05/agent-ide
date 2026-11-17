@@ -1558,10 +1558,12 @@ button.foot-toggle {
 			white-space: nowrap;
 		}
 
+		/* What it is stays muted, on the highlighted row too. */
 		> small {
 			flex: none;
 			max-width: 50%;
 			margin-left: auto;
+			color: var(--mute);
 		}
 	}
 }
