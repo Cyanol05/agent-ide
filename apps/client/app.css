@@ -564,11 +564,12 @@ agent-memory {
 				summary > small {
 					display: inline;
 					margin: 0;
+				}
 
-					/* A live turn's dot, a word's space before what it's doing. */
-					> .dot {
-						margin-right: var(--space-1);
-					}
+				/* A live turn says so by breathing: the dots' pulse, slower and shallower, since a thread's dot already marks it. */
+				&.live summary > small {
+					--blink-low: 0.55;
+					animation: blink 2.4s ease-in-out infinite;
 				}
 			}
 
@@ -892,8 +893,8 @@ agent-memory {
 			min-width: 0;
 			margin-left: auto;
 
-			/* One line each, cut with a dot once space runs out: the bar never grows a second row. */
-			span:not(.dot) {
+			/* One line each, cut with an ellipsis once space runs out: the bar never grows a second row. */
+			span {
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;

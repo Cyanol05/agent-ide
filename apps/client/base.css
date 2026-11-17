@@ -396,9 +396,10 @@ input[type='checkbox'] {
 	}
 }
 
+/* A pulse; what calls it may set --blink-low for a shallower one. */
 @keyframes blink {
 	50% {
-		opacity: 0.3;
+		opacity: var(--blink-low, 0.3);
 	}
 }
 

@@ -63,7 +63,6 @@ export function Turn(props) {
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<small>
-						<${Show} when=${() => props.live}><${Dot} state=${() => props.agent.status} /><//>
 						<${Show} when=${() => props.above !== props.agent.name}
 							><span>${() => authorLabel(props.agent.name)}</span>${' · '}<//
 						><span class="now">${line}</span>

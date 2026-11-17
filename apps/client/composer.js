@@ -39,7 +39,6 @@ import {
 import { agentTo, formatAgent, thinkingWord } from './agent.js'
 import { placePopover } from './popover.js'
 import { matches, ModelPicker } from './model-picker.js'
-import { Dot } from './dot.js'
 import { conversations } from './run.js'
 import { Compaction, Memory } from './agent-memory.js'
 import { Panes } from './panes.js'
@@ -156,7 +155,6 @@ export function Composer(props) {
 	)
 	const touch = () => matchMedia('(pointer: coarse)').matches
 	const active = () => current() === props.thread
-	const busy = () => threadOf(props.thread)?.status === 'working'
 	createEffect(
 		() => [draft().draft, active()],
 		() => {
@@ -466,14 +464,6 @@ export function Composer(props) {
 						picker.togglePopover()
 					}}
 				>
-					<${Dot}
-						state=${() =>
-							directed(props.thread) || recipients(props.thread).length
-								? busy()
-									? 'working'
-									: 'on'
-								: ''}
-					/>
 					<span
 						><${Show}
 							when=${() => !directed(props.thread) && recipients(props.thread).length}
