@@ -1,7 +1,7 @@
 /** A thread can be renamed; an empty title is refused and the old one stays */
 import { api, check, done, server } from './lib.js'
 
-await server({ RUNNER: '0' })
+await server()
 const { id } = (await api('POST', '/api/threads', { title: 'first try' })).json
 check(
 	(await api('POST', `/api/threads/${id}/title`, { title: 'Favorite color' })).status < 300,

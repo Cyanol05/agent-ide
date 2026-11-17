@@ -12,7 +12,7 @@ const HOME = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-home-'))
 const rows = async () => (await api('GET', '/api/runners')).json
 const online = async (name) => (await rows()).find((row) => row.name === name)?.online
 
-let srv = await server({ RUNNER: dir, HOME, ...named('mac') })
+let srv = await server({ HOME, ...named('mac') }, { args: ['--dir', dir] })
 check(Boolean(await until(() => online('mac'))), 'the server lends this machine as mac')
 const { id } = (await api('POST', '/api/threads', { title: 'renamed' })).json
 const post = (body) =>
@@ -21,7 +21,7 @@ await post('hello')
 check(Boolean(await answered(id)), 'an agent on it answers')
 
 await kill(srv)
-srv = await server({ RUNNER: dir, HOME, ...named('mac.local') })
+srv = await server({ HOME, ...named('mac.local') }, { args: ['--dir', dir] })
 check(
 	Boolean(await until(() => online('mac'))),
 	'after the machine is renamed it comes back as mac',

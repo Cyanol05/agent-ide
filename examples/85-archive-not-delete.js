@@ -1,7 +1,7 @@
 /** Archiving a thread only hides it; it's found and brought back, never erased. DELETE is gone, not an alias. */
 import { api, check, done, server } from './lib.js'
 
-await server({ RUNNER: '0' })
+await server()
 const { id } = (await api('POST', '/api/threads', { title: 'a thread' })).json
 
 check(

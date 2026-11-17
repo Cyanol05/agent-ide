@@ -76,8 +76,8 @@ export function start(file, args = [], env = {}, cwd = tmp) {
 	return child
 }
 
-export async function server(env = {}, { cwd } = {}) {
-	const child = start('server.js', [], { RUNNER: '0', ...env }, cwd)
+export async function server(env = {}, { cwd, args = ['--no-runner'] } = {}) {
+	const child = start('server.js', args, env, cwd)
 	if (!port) {
 		child.stdout.on('data', (chunk) => {
 			port ||= Number(/http:\/\/127\.0\.0\.1:(\d+)/.exec(chunk)?.[1])

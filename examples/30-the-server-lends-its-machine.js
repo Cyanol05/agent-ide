@@ -1,5 +1,5 @@
-/** RUNNER=dir starts a runner on the server's own machine, named after it, as a process of its own that stops with the server */
-import { mkdtempSync } from 'node:fs'
+/** `--dir` starts a runner on the server's own machine in those folders, named after it, as a process of its own that stops with the server */
+import { mkdtempSync, realpathSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { answered, api, check, dir, done, kill, server, until, view } from './lib.js'
@@ -10,8 +10,15 @@ const online = async () =>
 /** No pi logins of yours: echo needs none */
 const HOME = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-home-'))
 
-let srv = await server({ RUNNER: dir, HOME })
+const other = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'agent-ide-other-')))
+let srv = await server({ HOME }, { args: ['--dir', dir, '--dir', other] })
 check(await until(online), `the server's machine is a runner, ${name}`)
+const folders = (await api('GET', '/api/runners')).json.find((r) => r.name === name)?.folders
+check(
+	folders?.length === 2 && folders[1] === other,
+	'its folders are the --dir ones, threads starting in the first',
+	JSON.stringify(folders),
+)
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'lent' })

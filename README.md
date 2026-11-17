@@ -18,6 +18,15 @@ npx github:oskarrough/agent-ide
 
 Open the server's URL for a walkthrough and the chat app. That's it.
 
+Agents work in the folder you start in. To give them others, name each with `--dir`; threads start in the first:
+
+```sh
+npx github:oskarrough/agent-ide --dir ~/sites --dir ~/notes
+npx github:oskarrough/agent-ide --no-runner   # don't connect this machine as a runner
+```
+
+Installed, the command is `ade`: `ade --dir ~/sites`, `ade runner …`, `ade post …`.
+
 ## Another machine
 
 The other machine needs to reach the server. To let it connect over your network, start the server with:
@@ -55,13 +64,11 @@ Settings live in `agent-ide.json` in the folder you start in. For example, to tu
 
 Use `+` and `-` to change the defaults; a list of bare names replaces them.
 
-The server's address, working folder and data path are set in the environment, not the file:
+The server's address and data path are set in the environment, not the file:
 
 ```sh
 HOST=0.0.0.0 npx github:oskarrough/agent-ide  # open the printed address on your phone or another machine
 PORT=3001 npx github:oskarrough/agent-ide     # a fixed port; otherwise the first free one from 3000
-RUNNER=~/code npx github:oskarrough/agent-ide # agents work here instead of the folder you start in
-RUNNER=0 npx github:oskarrough/agent-ide      # don't connect this machine as a runner
 DB_PATH=other.sqlite npx github:oskarrough/agent-ide
 ```
 

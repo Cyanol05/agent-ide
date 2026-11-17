@@ -3,7 +3,7 @@
 Where things live, so you open the right file first. The README says what each thing is; this says where it is.
 
 ```
-bin.js                   installed executable: dispatches to server, CLI commands, or runner
+bin.js                   installed executable `ade`: dispatches to server, CLI commands, or runner
 server.js                the server: Pi Durable store, tasks, HTTP API, /ws, runners, settings
   Thread, Runners, Keys, Receipts   the docs it keeps (defineDoc)
   Anchor, Admit, Deliver, Shell     the tasks: own an agent, take a message in, hand it over, run `$ cmd`

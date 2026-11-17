@@ -6,6 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
+import { parseArgs } from 'node:util'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
 import { createModels } from '@earendil-works/pi-ai/models'
 import {
@@ -114,6 +115,13 @@ process.on('uncaughtExceptionMonitor', (error, origin) =>
 )
 process.on('exit', (code) => logged(`exited with code ${code}`))
 process.on('exit', () => Number(readFileSync(lock, 'utf8')) === process.pid && rmSync(lock))
+/** `--dir` folders for the server's own runner, the first where threads start; `--no-runner` lends no runner */
+const { values: flags } = parseArgs({
+	options: {
+		dir: { type: 'string', multiple: true, default: [process.cwd()] },
+		'no-runner': { type: 'boolean', default: false },
+	},
+})
 /** PORT, or 3000 and up to the first free one */
 let port = Number(process.env.PORT || 3000)
 const free = (candidate) =>
@@ -2044,11 +2052,10 @@ async function restart(again) {
 	process.execve(process.execPath, process.argv, { ...process.env, PORT: String(port) })
 }
 
-/** The server connects this machine too, the folder it starts in or RUNNER=~/code */
+/** The server connects this machine too, in its `--dir` folders */
 let lent
 async function connectSelf(url) {
-	const dir = process.env.RUNNER ?? process.cwd()
-	if (dir === '0' || lent) return
+	if (flags['no-runner'] || lent) return
 	lent = true
 	// Its first name stays: macOS renames the machine when the network changes, and agents wait for the name they know
 	const name = await commit(async (tx) => {
@@ -2065,8 +2072,7 @@ async function connectSelf(url) {
 			url,
 			'--name',
 			name,
-			'--dir',
-			dir,
+			...flags.dir.flatMap((dir) => ['--dir', dir]),
 		],
 		// Its online line would repeat the server's runner row
 		{

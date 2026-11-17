@@ -12,7 +12,7 @@ for (const [modules, host, expected] of [
 	['+bots,web-search,director', '', null],
 ]) {
 	let output = ''
-	const child = start('server.js', [], { PORT: '0', HOST: host, RUNNER: '0', MODULES: modules })
+	const child = start('server.js', ['--no-runner'], { PORT: '0', HOST: host, MODULES: modules })
 	child.stdout.on('data', (data) => {
 		output += data
 	})

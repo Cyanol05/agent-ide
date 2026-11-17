@@ -206,7 +206,7 @@ function RunnerItem(props) {
 					why=${() =>
 						"It goes offline and can't dial back; threads that asked it wait for the name." +
 						(props.runner.own
-							? " It's the server's own runner, so it's back when the server restarts, unless RUNNER=0."
+							? " It's the server's own runner, so it's back when the server restarts, unless it starts with --no-runner."
 							: '')}
 					onConfirm=${revoke}
 					>revoke<//

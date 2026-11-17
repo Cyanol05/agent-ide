@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"type": "module",
 	"bin": {
-		"agent-ide": "bin.js"
+		"ade": "bin.js"
 	},
 	"scripts": {
 		"start": "node server.js",

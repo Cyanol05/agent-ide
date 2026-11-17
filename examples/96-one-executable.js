@@ -2,17 +2,17 @@
 import { readFileSync } from 'node:fs'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { check, done, repo, start, until } from './lib.js'
+import { check, dir, done, repo, start, until } from './lib.js'
 
-const bin = JSON.parse(readFileSync(`${repo}/package.json`)).bin['agent-ide']
-const server = start(bin, [], { RUNNER: '0' })
+const bin = JSON.parse(readFileSync(`${repo}/package.json`)).bin.ade
+const server = start(bin, ['--dir', dir, '--no-runner'])
 let output = ''
 server.stdout.on('data', (chunk) => {
 	output += chunk
 })
 check(
 	await until(async () => /http:\/\/127\.0\.0\.1:\d+/.test(output)),
-	'no arguments starts the server',
+	'no command starts the server, --dir and all',
 	output,
 )
 const base = /http:\/\/127\.0\.0\.1:\d+/.exec(output)[0]
