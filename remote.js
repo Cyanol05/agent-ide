@@ -1,6 +1,7 @@
 /** The runner protocol, both ends */
 import { createHash, randomUUID } from 'node:crypto'
-import { readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
@@ -428,6 +429,8 @@ export function serveRunner({
 	let nextHandle = 0
 	let stopped = false
 	const reply = (value) => !stopped && send(encode(value))
+	/** Where a script's saved images and other temp files go: the runner's own corner of the temp folder */
+	const temps = path.join(os.tmpdir(), `ade-${name}`)
 	const ops = {
 		...more,
 		resolve: ({ model }) => resolved(model),
@@ -446,7 +449,7 @@ export function serveRunner({
 	/** `reading` also reaches the folders `readable()` lists, like the skills an agent was shown */
 	function inside(target, cwd = dir, reading = false) {
 		const full = path.resolve(cwd, target ?? '.')
-		if (!within(roots, full) && !(reading && within(readable(), full)))
+		if (!within([...roots, temps], full) && !(reading && within(readable(), full)))
 			throw new FileError(
 				'permission_denied',
 				`${target} is outside ${name}'s folders ${roots.join(', ')}`,
@@ -530,8 +533,7 @@ export function serveRunner({
 				context,
 			)
 		}
-		if (method === 'createTempDir' || method === 'createTempFile')
-			throw new FileError('permission_denied', `Temporary files are outside ${name}'s folder`)
+		if (method === 'createTempDir' || method === 'createTempFile') return temp(method, args[0])
 		if (method !== 'joinPath') args[0] = inside(args[0], root, !CHANGES.includes(method))
 		if (method === 'renameFile') args[1] = inside(args[1], root)
 		const result = await local[method](...args, context)
@@ -546,6 +548,20 @@ export function serveRunner({
 			return { ok: true, value: { handle } }
 		}
 		return result
+	}
+
+	/** pi's own temp files, made in `temps` instead of anywhere in the temp folder */
+	async function temp(method, options) {
+		await mkdir(temps, { recursive: true })
+		const prefix = method === 'createTempDir' ? (options ?? 'tmp-') : 'tmp-'
+		const folder = await mkdtemp(path.join(temps, prefix))
+		if (method === 'createTempDir') return { ok: true, value: folder }
+		const file = path.join(
+			folder,
+			`${options?.prefix ?? ''}${randomUUID()}${options?.suffix ?? ''}`,
+		)
+		await writeFile(file, '')
+		return { ok: true, value: file }
 	}
 
 	async function handle({ handle: key, method, args }, context) {
