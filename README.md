@@ -1,4 +1,4 @@
-# agent-ide
+# ade
 
 agent-ide is yet another chat app for working with agents.
 
