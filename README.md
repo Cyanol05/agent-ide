@@ -10,10 +10,10 @@ Bots aka agents with a name, instructions and a hands-off home thread. Agents an
 
 ## Try it
 
-You need Node.js 24+ and [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) logged in: run `pi` and `/login` once with any provider. Then, in the folder you want agents to work in:
+You need Node.js 24+, pnpm and [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) logged in: run `pi` and `/login` once with any provider. Then, in the folder you want agents to work in:
 
 ```sh
-npx github:oskarrough/ade
+pnpm dlx github:oskarrough/ade
 ```
 
 Open the server's URL for a walkthrough and the chat app. That's it.
@@ -21,8 +21,8 @@ Open the server's URL for a walkthrough and the chat app. That's it.
 Agents work in the folder you start in. To give them others, name each with `--dir`; threads start in the first:
 
 ```sh
-npx github:oskarrough/ade --dir ~/sites --dir ~/notes
-npx github:oskarrough/ade --no-runner   # don't connect this machine as a runner
+pnpm dlx github:oskarrough/ade --dir ~/sites --dir ~/notes
+pnpm dlx github:oskarrough/ade --no-runner   # don't connect this machine as a runner
 ```
 
 Installed, the command is `ade`: `ade --dir ~/sites`, `ade runner …`, `ade post …`.
@@ -32,13 +32,13 @@ Installed, the command is `ade`: `ade --dir ~/sites`, `ade runner …`, `ade pos
 The other machine needs to reach the server. To let it connect over your network, start the server with:
 
 ```sh
-HOST=0.0.0.0 npx github:oskarrough/ade
+HOST=0.0.0.0 pnpm dlx github:oskarrough/ade
 ```
 
 Click "Add runner" on the page, or run this on the server's machine:
 
 ```sh
-npx github:oskarrough/ade key laptop
+pnpm dlx github:oskarrough/ade key laptop
 ```
 
 Either gives you a command to run on the other machine, in the folder agents should work in. Keep it private: it holds the runner's key.
@@ -46,7 +46,7 @@ Either gives you a command to run on the other machine, in the folder agents sho
 There are no accounts: anyone who can reach the server can read, post as anyone, and put its runners to work. Keep it on a trusted network. To use [Tailscale](https://tailscale.com) instead:
 
 ```sh
-npx github:oskarrough/ade
+pnpm dlx github:oskarrough/ade
 tailscale serve 3000
 ```
 
@@ -67,19 +67,19 @@ Use `+` and `-` to change the defaults; a list of bare names replaces them.
 The server's address and data path are set in the environment, not the file:
 
 ```sh
-HOST=0.0.0.0 npx github:oskarrough/ade  # open the printed address on your phone or another machine
-PORT=3001 npx github:oskarrough/ade     # a fixed port; otherwise the first free one from 3000
-DB_PATH=other.sqlite npx github:oskarrough/ade
+HOST=0.0.0.0 pnpm dlx github:oskarrough/ade  # open the printed address on your phone or another machine
+PORT=3001 pnpm dlx github:oskarrough/ade     # a fixed port; otherwise the first free one from 3000
+DB_PATH=other.sqlite pnpm dlx github:oskarrough/ade
 ```
 
 These win over the file; leave them unset to choose from the page.
 
 ```sh
-MODULES=+web-search,-talk npx github:oskarrough/ade
-MEMORY_MODEL=sonnet@laptop npx github:oskarrough/ade
+MODULES=+web-search,-talk pnpm dlx github:oskarrough/ade
+MEMORY_MODEL=sonnet@laptop pnpm dlx github:oskarrough/ade
 ```
 
-From a clone, use `node server.js` in place of `npx github:oskarrough/ade`.
+From a clone, use `node server.js` in place of `pnpm dlx github:oskarrough/ade`.
 
 Threads and conversations live in `agent-ide.sqlite` in the folder you start in, with the server's output in `agent-ide.log` beside it. `DB_PATH` moves both: `other.sqlite` logs to `other.log`.
 
