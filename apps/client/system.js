@@ -90,11 +90,12 @@ export function System() {
 								>
 									<${Show}
 										when=${() => detailsPushed(id) && current() === id}
-										fallback=${html`<${Loading}
-											fallback=${html`<aside class="overview"><p class="mute">Reading the page…</p></aside>`}
-										>
-											<${Overview} id=${id} />
-										<//>`}
+										fallback=${() =>
+											html`<${Loading}
+												fallback=${html`<aside class="overview"><p class="mute">Reading the page…</p></aside>`}
+											>
+												<${Overview} id=${id} />
+											<//>`}
 									>
 										<${DetailsPage}
 											hasBack=${() => overviewOpen(id)}
