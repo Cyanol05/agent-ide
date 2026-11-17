@@ -1936,14 +1936,27 @@ body.resizing {
 	> details {
 		margin-bottom: var(--space-3);
 
-		> summary > h3 {
-			display: inline-flex;
+		/* A group's head sits like its rows: its mark in their dots' column, its name where their titles start, its disclosure after it in the same muted small type as a step's. */
+		> summary {
+			display: flex;
 			align-items: center;
-			gap: var(--space-2);
-			margin: 0;
+			padding-inline: var(--space-2);
 			color: var(--mute);
 			font-size: var(--text-small);
-			font-weight: 400;
+			line-height: var(--text-small-line);
+
+			> h3 {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				margin: 0;
+				font: inherit;
+
+				/* Done's check, centred on the dots' column however much wider than a dot it is. */
+				> svg.icon {
+					margin-inline: calc((var(--dot) - 14px) / 2);
+				}
+			}
 		}
 
 		/* A topic is a line; its bullets sit where the rows' titles start. */
@@ -1977,10 +1990,6 @@ body.resizing {
 				color: var(--mute);
 			}
 		}
-	}
-
-	> .switch {
-		margin-top: var(--space-4);
 	}
 }
 

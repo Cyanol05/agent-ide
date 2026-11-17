@@ -1,12 +1,13 @@
 /**
  * A thread's overview, as a column beside it: its page's first line, then its topics and the threads it started together,
  * grouped by where they stand, waiting on you first, each thread with its own page's first line. Where each child stands
- * comes from the thread list; only the lines and the page are the model's.
+ * comes from the thread list; only the lines and the page are the model's, and a Working line whose threads have stopped
+ * since it was written doesn't stay under Working. The column being open is what keeps the page written.
  */
 import html from '@solidjs/html'
 import { createMemo, createSignal, For, onSettled, refresh, Show, untrack } from 'solid-js'
 import { Icon } from './icons.js'
-import { Dot, Switch } from './dot.js'
+import { Dot } from './dot.js'
 import { api, followThread, hrefOf, threads } from './server.js'
 import { markdown } from './markdown.js'
 import { report } from './notice.js'
@@ -51,7 +52,8 @@ const groupOf = (thread, page) =>
 			: !page || page.open
 				? 'idle'
 				: 'done'
-/** A page as its first line and each section's bullets, by group */
+const running = (thread) => ['working', 'blocked'].includes(thread?.status)
+/** A page as its first line and each section's bullets, by group, each bullet with the lines under it */
 function parse(page) {
 	const [summary = '', ...rest] = (page ?? '').split('\n')
 	const sections = {}
@@ -60,10 +62,17 @@ function parse(page) {
 		const heading = line.match(/^##\s+(.*?)\s*$/)?.[1]
 		if (heading !== undefined)
 			at = GROUPS.find((group) => group.label.toLowerCase() === heading.toLowerCase())?.key
-		else if (at) sections[at] = `${sections[at] ?? ''}${line}\n`
+		else if (!at || (!line.trim() && !sections[at]?.length)) continue
+		else if (/^\s*[-*] /.test(line) || !sections[at]?.length) (sections[at] ??= []).push(line)
+		else sections[at][sections[at].length - 1] += `\n${line}`
 	}
 	return { summary: summary.trim(), sections }
 }
+/** The threads a bullet names as @"title" */
+const named = (bullet) =>
+	[...bullet.matchAll(/@"([^"]+)"/g)]
+		.map((match) => threads.find((thread) => thread.title === match[1]))
+		.filter(Boolean)
 
 export function Overview(props) {
 	// One thread for this column's whole life
@@ -84,14 +93,44 @@ export function Overview(props) {
 			.toSorted((one, other) => other.id - one.id),
 	)
 	const parsed = createMemo(() => parse(page().page))
+	/**
+	 * Working as it stands now, not as it was written: a line whose threads have all stopped leaves it, dropped when
+	 * they are rows here that say where they stand, else under Idle until the page catches up.
+	 */
+	const sections = createMemo(() => {
+		const { working = [], idle = [], ...rest } = parsed().sections
+		const ours = new Set(children().map((thread) => thread.id))
+		const stopped = (bullet) => named(bullet).length && !named(bullet).some(running)
+		return {
+			...rest,
+			working: working.filter((bullet) => !stopped(bullet)),
+			idle: [
+				...idle,
+				...working.filter(
+					(bullet) => stopped(bullet) && !named(bullet).every((thread) => ours.has(thread.id)),
+				),
+			],
+		}
+	})
 	const groups = createMemo(() => {
 		const all = pages()
-		const { sections } = parsed()
+		const self = threads.find((thread) => thread.id === id)
 		return GROUPS.map((group) => {
-			const threads = children().filter((thread) => groupOf(thread, all[thread.id]) === group.key)
-			const text = sections[group.key]?.trim() ?? ''
-			const count = threads.length + (text.match(/^\s*[-*] /gm)?.length ?? 0)
-			return { ...group, threads, text, count }
+			const rows = children().filter((thread) => groupOf(thread, all[thread.id]) === group.key)
+			const bullets = sections()[group.key] ?? []
+			// Working's dot says what its threads, and this thread itself, are doing now: working, else blocked, else still
+			const now = [self, ...rows].map((thread) => thread?.status)
+			const state =
+				group.key !== 'working'
+					? group.state
+					: (['working', 'blocked'].find((status) => now.includes(status)) ?? '')
+			return {
+				...group,
+				state,
+				threads: rows,
+				text: bullets.join('\n').trim(),
+				count: rows.length + bullets.length,
+			}
 		}).filter((group) => group.count)
 	})
 	const [writing, setWriting] = createSignal(false)
@@ -115,7 +154,7 @@ export function Overview(props) {
 					class="ghost small"
 					aria-label=${() => (writing() || page().writing ? 'Writing the page' : 'Write it now')}
 					title=${() => (writing() || page().writing ? 'Writing…' : 'Write the page now')}
-					disabled=${() => writing() || !page().on}
+					disabled=${() => writing()}
 					onClick=${(_event) => rewrite()}
 				>
 					<${Show}
@@ -138,11 +177,9 @@ export function Overview(props) {
 				when=${() => parsed().summary}
 				fallback=${html`<p class="mute">
 					${() =>
-						page().on
-							? page().writing
-								? 'Writing the page…'
-								: 'No page yet. It is written after the next answer, or now with ↻.'
-							: 'This thread keeps no page.'}
+						page().writing
+							? 'Writing the page…'
+							: 'No page yet. It is written after the next answer, or now with ↻.'}
 				</p>`}
 			>
 				<p class="summary">${() => parsed().summary}</p>
@@ -191,15 +228,6 @@ export function Overview(props) {
 					</details>
 				`}
 			<//>
-			<${Switch}
-				on=${() => page().on}
-				title="Whether this thread keeps a page"
-				onToggle=${(on) =>
-					api(`/api/threads/${id}/overview`, { on })
-						.then(() => refresh(page))
-						.catch(report)}
-				>Keep a page<//
-			>
 			<${Show} when=${() => page().writtenAt}>
 				<p class="mute">
 					<small
