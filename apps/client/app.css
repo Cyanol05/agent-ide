@@ -736,15 +736,10 @@ agent-memory {
 				animation: appear 0s 0.4s both;
 			}
 
-			/* The dot while the asked thread works hangs in the margin, so the words never move; a row's gap from them, centred on their line as a row centres it. */
-			&.exchange .lead {
-				position: absolute;
-				top: 0;
-				right: 100%;
-				display: flex;
-				align-items: center;
-				padding-right: var(--space-2);
-				height: var(--text-small-line);
+			/* While the asked thread works, its line breathes like a live turn's. */
+			&.exchange.live > .steps {
+				--blink-low: 0.55;
+				animation: blink 2.4s ease-in-out infinite;
 			}
 
 			summary span[style] > .thread-link {

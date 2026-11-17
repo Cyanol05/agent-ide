@@ -13,7 +13,6 @@ import {
 import { colorOf, entries, homeBot, threadOf, titleOf } from './server.js'
 import { Cross } from './thread.js'
 import { authorLabel, doing, messageText, shortLabel, touched } from './agent.js'
-import { Dot } from './dot.js'
 
 /**
  * A turn's line. While its agent works, the step it's in now, and below it the last few steps and the words coming in;
@@ -101,10 +100,9 @@ export function Exchange(props) {
 	const working = () => !props.answer && threadOf(asked())?.status === 'working'
 
 	return html`
-		<li class=${() => ({ exchange: true, handed: litIn(props.thread, props.answer?.id) })}>
-			<span class="lead"
-				><${Show} when=${working}><${Dot} state="working" title="Working on it" /><//
-			></span>
+		<li
+			class=${() => ({ exchange: true, live: working(), handed: litIn(props.thread, props.answer?.id) })}
+		>
 			<ol class="steps">
 				<${Cross}
 					sent=${true}
