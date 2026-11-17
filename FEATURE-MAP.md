@@ -14,6 +14,7 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   reconfigure, newAgent, setUp      an agent switching model/thinking/runner/folder in place, or starting
   outcome, tell, restore, faulted   what a finished delivery posts back (a bot's answer asks whom direct says), or a failure says
   reachable                         a message waits for its agent's runner, following the agent if it moves
+  gone                              an agent's folder that no longer exists: it doesn't run, the thread says so
   work, status, busiest, agentsIn   working / blocked / idle for agents, threads, runners
   threadList, threadRow, threadView, people   what GET /api/threads returns
   forkThread, seenBy                forks
@@ -140,6 +141,7 @@ examples/102-import-memory.js     recorded-line import, existing lines preserved
 examples/100-post-without-a-title.js optional post titles with auto-title on/off; both talk tools address threads by id or exact title and reject ambiguity
 examples/105-overview-page.js     the overview page: written after answers from the page before and what's new, read by the tool, switched off
 examples/106-one-store-per-person.js ade.sqlite, ade.log and ade.json live in ~/.config/ade, whatever folder the server starts in
+examples/107-a-missing-folder-says-so.js   a renamed folder stops the run with one line; another folder takes what waited
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 

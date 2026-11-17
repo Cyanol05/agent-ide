@@ -34,6 +34,9 @@ socket.onmessage = ({ data }) => {
 	received.push(message)
 	if (resolveModels && message.op === 'resolve')
 		socket.send(JSON.stringify({ id: message.id, result: { model } }))
+	// A run starts by asking whether the agent's folder still exists
+	if (message.op === 'env' && message.method === 'exists')
+		socket.send(JSON.stringify({ id: message.id, result: { ok: true, value: true } }))
 	// Everything else, including cancel, goes unanswered. The socket stays open.
 }
 check(

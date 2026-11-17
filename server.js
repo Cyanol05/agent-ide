@@ -228,6 +228,9 @@ const Admit = defineTask({
 			/** Its turn comes after the answer before it, so it takes that answer, and whatever was said meanwhile */
 			const held = turn ? unseen : unseen.filter((id) => id <= upTo)
 			if (!held.length) return rt.commit(() => finished('completed', { held }), ctx)
+			/** A folder renamed or deleted under the agent: it doesn't run there, and what it was asked waits for another folder */
+			const missing = await gone(agent, rt.signal)
+			if (missing) return rt.commit(() => finished('completed', { held, missing }), ctx)
 			const all = await messages(threadId)
 			const mine = await Promise.all(
 				all
@@ -273,6 +276,14 @@ const Admit = defineTask({
 	abort: (task, rt, ctx) => rt.commit(() => finished('aborted'), ctx),
 })
 
+/** The agent's folder, when its runner says it no longer exists */
+async function gone(agent, signal) {
+	const { model, cwd } = await harness.snapshot(AgentDoc, agent, context)
+	const runner = model.provider.replace(/^runner:/, '')
+	const found = await remoteEnv(runners, runner, cwd).exists(cwd, { abortSignal: signal })
+	return found.ok && !found.value ? cwd : undefined
+}
+
 /** A person's `/skill:name` message as the agent reads it, expanded on its runner in its folder as pi does */
 async function skillCommand(row, entry, agent, signal) {
 	if (!expand || !entry.data.body?.startsWith('/skill:') || !person(row, entry)) return entry
@@ -292,14 +303,17 @@ const Deliver = defineTask({
 		async tell({ conversationId: threadId, input: { admit, agent, upTo } }, rt, ctx) {
 			const [result] = await rt.outcomes([admit], ctx)
 			const submitted = result.status === 'completed' ? result.result : null
-			if (submitted && !submitted.submission) return rt.commit(() => finished(), ctx)
-			const settled = submitted
-				? await (await harness.submission(submitted.submission, ctx)).wait(ctx)
-				: {
-						id: admit,
-						status: 'unanswered',
-						reason: result.error?.detail?.reason ?? result.status,
-					}
+			if (submitted && !submitted.submission && !submitted.missing)
+				return rt.commit(() => finished(), ctx)
+			const settled = submitted?.missing
+				? { id: admit, status: 'unanswered', said: `folder ${submitted.missing} no longer exists` }
+				: submitted
+					? await (await harness.submission(submitted.submission, ctx)).wait(ctx)
+					: {
+							id: admit,
+							status: 'unanswered',
+							reason: result.error?.detail?.reason ?? result.status,
+						}
 			const told = await outcome(threadId, agent, settled, submitted?.held ?? [upTo])
 			await rt.commit(
 				async (tx) => (await tell(tx, threadId, agent, settled, submitted, told), finished()),
@@ -927,7 +941,8 @@ async function outcome(threadId, agent, settled, mine) {
 		.map((entry) => entry.id)
 	const body = done
 		? messageText((await commit((tx) => tx.entry(settled.answer)))?.model?.[0])
-		: `gave no answer: ${settled.reason}${settled.detail ? ` (${JSON.stringify(settled.detail)})` : ''}`
+		: (settled.said ??
+			`gave no answer: ${settled.reason}${settled.detail ? ` (${JSON.stringify(settled.detail)})` : ''}`)
 	if (done && !body.trim()) return []
 	const result = done ? { answer: { conversation: agent, entry: settled.answer } } : { error: true }
 	/** A bot's answer that @mentions another bot here asks it, as the director allows, if its runner takes work from this one */
