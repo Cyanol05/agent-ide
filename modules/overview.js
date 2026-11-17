@@ -6,12 +6,12 @@
  * The page is markdown. Its first line says where the thread stands in one sentence; a parent shows it beside each of its
  * child threads. Claims link to the message behind them as `[#12](#message-12)`, message 12 counting from 0, the
  * position memory's lines and `zoom` use. Then up to three sections, each one line per topic: Waiting on you, Working
- * and Done, the newest ten. `GET /api/threads/:id/overview` answers `{on, page, summary, waiting, open, through,
+ * and Done, the newest ten. `GET /api/threads/:id/overview` answers `{page, summary, waiting, open, through,
  * writtenAt, writing}`: its first line, how many things wait on a person, how many are being worked on, and how many
  * messages the page has read. `GET …?open` says someone is looking: a page that's behind is rewritten, and answers
- * rewrite it for as long as someone keeps asking, every few seconds; a page nobody looks at is never written. `POST {on}`
- * switches a thread's page on or off, and `POST {}` writes it now and answers once it's written, from scratch with
- * `{fresh: true}`. `GET /api/overview`
+ * rewrite it for as long as someone keeps asking, every few seconds; a page nobody looks at is never written. Behind means
+ * new messages, or Working naming a thread that has stopped. `POST {}` writes it now and answers once it's written, from
+ * scratch with `{fresh: true}`. `GET /api/overview`
  * gives each thread with a page `{summary, waiting, open}`, by id. Agents read a page with the `overview` tool.
  *
  * Its model is `overview.model` in ade.json, else memory's (`memory.model` or MEMORY_MODEL), else the thread's
@@ -80,7 +80,7 @@ export function server(core) {
 	if (name && !name.includes('@')) throw new Error("overview's model is model@runner")
 	const chosen = name && agentTo(name)
 
-	/** A thread's page: `on` null takes the module's default, which is on */
+	/** A thread's page; one written before the column became the switch may still carry `on`, which nothing reads */
 	const Overview = defineDoc({
 		kind: 'agent-ide.overview',
 		version: 1,
@@ -89,7 +89,6 @@ export function server(core) {
 		fork: 'initial',
 		checkpointWhen: () => true,
 		initial: () => ({
-			on: null,
 			page: '',
 			through: 0,
 			writtenAt: '',
@@ -98,8 +97,7 @@ export function server(core) {
 		}),
 	})
 	const read = (threadId) => core.commit(async (tx) => view(await tx.doc(Overview, threadId)))
-	const view = ({ on, page, through, writtenAt, writing }) => ({
-		on: on ?? true,
+	const view = ({ page, through, writtenAt, writing }) => ({
 		page,
 		...counts(page),
 		through,
@@ -158,11 +156,12 @@ export function server(core) {
 
 	async function write(threadId, previous, through, signal) {
 		const all = await core.messages(threadId)
-		if (all.length <= through) return undefined
+		const rows = await core.threadList()
+		const halted = stopped(previous, rows)
+		if (all.length <= through && !halted.length) return undefined
 		const to = await writerOf(threadId, signal)
 		if (!to) return undefined
 		const row = await core.thread(threadId)
-		const rows = await core.threadList()
 		const titles = new Map(rows.map((other) => [other.id, other.title]))
 		const children = rows
 			.filter((other) => other.parent === threadId)
@@ -185,7 +184,12 @@ export function server(core) {
 			older.length
 				? `<older>\nMessages 0 to ${from - 1}, as memory lines \`id+n|text\`, each standing for n messages from message id; link one as its id:\n${older.map(rendered).join('\n')}\n</older>`
 				: '',
-			`<messages>\n${from > through && !older.length ? `Messages 0 to ${from - 1} are older than you can read; the page covers what follows. ` : ''}Messages ${from} to ${end - 1}, new since the page${end < all.length ? `; ${all.length - end} more come after these, so write the page as it stood at message ${end - 1}` : ''}:\n\n${text}\n</messages>`,
+			halted.length
+				? `Since the page was written, these threads it has under Working stopped running: ${halted.map((title) => `@"${title}"`).join(', ')}. Working is only for work still running.`
+				: '',
+			end === from
+				? '<messages>\nNo new messages since the page.\n</messages>'
+				: `<messages>\n${from > through && !older.length ? `Messages 0 to ${from - 1} are older than you can read; the page covers what follows. ` : ''}Messages ${from} to ${end - 1}, new since the page${end < all.length ? `; ${all.length - end} more come after these, so write the page as it stood at message ${end - 1}` : ''}:\n\n${text}\n</messages>`,
 			'Write the whole page again.',
 		]
 			.filter(Boolean)
@@ -259,7 +263,7 @@ export function server(core) {
 						doc.through = done.through
 						doc.writtenAt = new Date().toISOString()
 					}
-					if (doc.on !== false && (doc.again || done?.more)) {
+					if (doc.again || done?.more) {
 						doc.again = false
 						return { status: 'running', checkpoint: { phase: 'write', round: round + 1 } }
 					}
@@ -284,7 +288,6 @@ export function server(core) {
 	/** A rewrite, or one more round of the one running; the task when this started one */
 	async function ask(tx, threadId) {
 		const doc = await tx.doc(Overview, threadId)
-		if (doc.on === false) return undefined
 		if (doc.writing) {
 			doc.again = true
 			return undefined
@@ -308,27 +311,19 @@ export function server(core) {
 		await core.conversation(threadId)
 		if (body === undefined) {
 			if (!query.has('open')) return read(threadId)
-			// Opened, a page that's behind catches up
+			// Opened, a page that's behind catches up: new messages, or a thread it says is working has stopped
 			const before = looked(threadId)
 			looking.set(threadId, Date.now())
 			const page = await read(threadId)
-			if (!before && page.on && !page.writing) {
+			if (!before && !page.writing) {
 				const total = (await core.messages(threadId)).length
-				if (page.through < total) await core.commit((tx) => ask(tx, threadId))
+				if (page.through < total || stopped(page.page, await core.threadList()).length)
+					await core.commit((tx) => ask(tx, threadId))
 			}
-			return read(threadId)
-		}
-		if (body.on !== undefined) {
-			if (typeof body.on !== 'boolean') throw new Error('on is true or false')
-			await core.commit(async (tx) => {
-				;(await tx.doc(Overview, threadId)).on = body.on
-				if (body.on) await ask(tx, threadId)
-			})
 			return read(threadId)
 		}
 		const task = await core.commit(async (tx) => {
 			const doc = await tx.doc(Overview, threadId)
-			if (doc.on === false) throw new Error("This thread's overview is off")
 			// From scratch: the page forgets what it read, so the next one is written from the messages alone
 			if (body.fresh === true && !doc.writing) {
 				doc.page = ''
@@ -373,6 +368,16 @@ export function server(core) {
 			if (byAgent(entry.data) && !entry.data.error && looked(threadId)) await ask(tx, threadId)
 		},
 	}
+}
+
+/** The threads a page's Working names, as @"title", that run no more */
+function stopped(page, rows) {
+	const working = (sectionsOf(page ?? '').get('Working') ?? []).join('\n')
+	const named = [...working.matchAll(/@"([^"]+)"/g)].map((match) => match[1])
+	return [...new Set(named)].filter((title) => {
+		const row = rows.find((other) => other.title === title)
+		return row && !['working', 'blocked'].includes(row.status)
+	})
 }
 
 /** What's wrong with a page's shape, or nothing */

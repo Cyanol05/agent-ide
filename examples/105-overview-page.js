@@ -1,4 +1,4 @@
-/** A thread's overview page is rewritten after each answer from the page before and the messages since, and agents can read it. */
+/** A thread's overview page is rewritten after each answer from the page before and the messages since, and when a thread it says is working stops; agents can read it. */
 import {
 	answered,
 	api,
@@ -15,13 +15,14 @@ import {
 await server({ MODULES: '+overview,-auto-title,-director' })
 const handed = []
 let pages = 0
+let side = false
 await scriptedRunner('box', (request) => {
 	const system = text(request.messages[0] ?? { content: '' })
 	if (system.startsWith('# Overview')) {
 		handed.push(text(request.messages.at(-1)))
 		pages++
 		return say(
-			`Page ${pages}: where it stands.\n\n## Working\n- Going on [#0](#message-0)\n\n## Done\n${Array.from({ length: 12 }, (_, at) => `- Thing ${at}`).join('\n')}`,
+			`Page ${pages}: where it stands.\n\n## Working\n- Going on [#0](#message-0)${side ? '\n- On the side in @"Side job" [#1](#message-1)' : ''}\n\n## Done\n${Array.from({ length: 12 }, (_, at) => `- Thing ${at}`).join('\n')}`,
 		)
 	}
 	const latest = request.messages.at(-1)
@@ -35,10 +36,7 @@ const {
 } = await api('POST', '/api/threads', { title: 'Overview' })
 const path = `/api/threads/${id}/overview`
 const before = (await api('GET', path)).json
-check(
-	before.on === true && before.page === '' && before.through === 0,
-	'a new thread has an empty page, on',
-)
+check(before.page === '' && before.through === 0, 'a new thread has an empty page')
 
 await api('POST', `/api/threads/${id}/entries`, { body: 'Nobody looks', to: ['echo/echo@box'] })
 await answered(id)
@@ -110,13 +108,18 @@ check(
 	'fresh writes the page again from the messages alone',
 )
 
-await api('POST', path, { on: false })
-await api('POST', `/api/threads/${id}/entries`, { body: 'Quiet now', to: ['echo/echo@box'] })
-await answered(id, 4)
-await until(async () => !(await api('GET', path)).json.writing)
+await api('POST', '/api/threads', { title: 'Side job' })
+side = true
+await api('POST', path, { fresh: true })
+side = false
+const halted = pages
+const after = (await api('POST', path, {})).json
 check(
-	(await api('GET', path)).json.on === false && pages === asked + 1,
-	'switched off, answers write no page',
+	pages === halted + 1 &&
+		handed.at(-1).includes('stopped running: @"Side job"') &&
+		handed.at(-1).includes('No new messages since the page') &&
+		!after.page.includes('Side job'),
+	'a thread Working names that has stopped is behind too: asking rewrites it with nothing new',
+	handed.at(-1),
 )
-check((await api('POST', path, {})).status >= 400, 'and none on request')
 done()
