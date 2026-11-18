@@ -34,6 +34,11 @@ export function server(core) {
 				.flatMap((entry) => entry.data.re ?? []),
 		)
 
+	/**
+	 * A thread answers the thread that started it on its own; anywhere else, an agent answers with `post`.
+	 * A new thread's omitted or blank title is the first 60 characters of the trimmed body, or "An image" for an empty one, as in the client and CLI;
+	 * it stays with auto-title off, and is polished after the first answer with it on.
+	 */
 	const post = defineTool({
 		name: 'post',
 		description:

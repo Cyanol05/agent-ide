@@ -312,6 +312,10 @@ export function server(core) {
 		},
 	})
 
+	/**
+	 * `POST {lines: [{id, n, text}]}` loads recorded lines: each spans `n` messages from `id`, aligned powers of two within the thread.
+	 * Existing lines stay, and memory turns on without calling a model.
+	 */
 	async function serve(thread, query, body) {
 		if (thread === undefined) throw new Error('Memory is per thread: /api/threads/:id/memory')
 		if (body?.lines) {

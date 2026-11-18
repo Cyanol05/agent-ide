@@ -35,7 +35,7 @@ export function server({ runners, known, reach }) {
 			return found ? `${found}\n\n${folder}` : folder
 		},
 	}
-	/** The skills a runner's folder has, for whoever may work there */
+	/** The skills a runner's folder has, `{skills: [{name, description}]}`, for whoever may work there */
 	async function serve(threadId, query, body, by) {
 		if (threadId !== undefined || body !== undefined)
 			throw new Error('GET /api/context?runner=&dir= lists the skills in a folder')
@@ -47,7 +47,7 @@ export function server({ runners, known, reach }) {
 		const dir = path.resolve(runner.dir, query.get('dir') || '.')
 		return { skills: await runners.call(name, { op: 'context', dir, skills: true }, {}) }
 	}
-	/** A message starting `/skill:name` as pi expands it, on the agent's runner and in its folder; otherwise as it was */
+	/** A message starting `/skill:name` as pi expands it, on the agent's runner and in its folder; otherwise as it was; the thread keeps the message as typed, and an unknown skill name goes as typed */
 	async function expand(text, runner, dir, signal) {
 		if (!text.startsWith('/skill:')) return text
 		return (await runners.call(runner, { op: 'context', dir, expand: text }, { signal })) ?? text

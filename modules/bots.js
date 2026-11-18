@@ -11,7 +11,7 @@ import { AGENT, agentTo } from '../util.js'
 
 export const on = true
 
-/** A bot's name → { home, to, instructions, color? }: color is a hue someone picked */
+/** A bot's name → { home, to, instructions, color? }: color is a hue someone picked; without one, a bot gets its hue from the order bots were made */
 const Bots = defineDoc({
 	kind: 'agent-ide.bots',
 	version: 1,
@@ -119,7 +119,7 @@ export function server(core) {
 				instructions: args.instructions,
 				to: args.model ?? (name === at.name ? undefined : { ...own, name: undefined }),
 			})
-			// What she was before, read in the same commit as the change, so a thread can show old against new
+			/** What she was before, read in the same commit as the change: the call's result keeps it as `details.before`, `{instructions, model}`, so a thread can show old against new */
 			const made = await core.once(`bot ${api.taskId}`, 'bot', async (tx) => {
 				const was = (await tx.doc(Bots))[name]
 				const before = was && {
