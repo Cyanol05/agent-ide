@@ -98,8 +98,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   runner.js              runner list, a runner's agents, ConnectRunner
   bot.js                 a bot's settings, its threads row, new bot; botThreads shares its own/elsewhere lists
   thread-list.js         the thread list, its family rows
-  thread-details.js      title, people, family, tools and the memory switch for the open thread;
-                         a bot's threads as a page under them; DetailsPage is the side column's page, pushed onto the overview or on its own
+  thread-details.js      DetailsPage, the side column's Details tab: title, people, family, tools and the memory switch for a thread;
+                         a bot's threads open over them, with back
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
   canvas.js              a thread's canvas as a page of the side column: tldraw and React loaded once from esm.sh (load), mounted as
                          a React island synced over /api/threads/:id/canvas (board), which also makes the tab a host: it answers the
@@ -108,11 +108,11 @@ apps/client/             the web client, Solid 2, no build (README.md there)
                          a batch of actions in one undo step, answering what landed
   canvas/agent/          tldraw's agent starter kit, the parts used, ported to JS (README there; scripts/vendor-canvas-agent.js refreshes it)
   canvas/tldraw.js, canvas/zod.js   tldraw and zod from esm.sh, the one place their versions are named for the browser
-  overview.js            a thread's overview column: the page's sections (parse) and child threads (groupOf) in one set of GROUPS,
-                         each drawn with a status dot or the check icon; Page, whose #message-N links scroll the thread there;
-                         toggleOverview/overviewOpen; the column's pages and their tabs (pagesOn, pageOf, PageTabs: overview, canvas);
-                         pushDetails/popDetails make the column a navigation stack (the pill pushes the
-                         thread's details over the page, back pops them); system.js puts it beside the thread
+  overview.js            the side column's Overview tab: the page's sections (parse) and child threads (groupOf) in one set of GROUPS,
+                         each drawn with a status dot or the check icon; Page, whose #message-N links scroll the thread there
+  side.js                the side column: its pages (pagesOf: details, overview, canvas when on), which one each thread shows
+                         (sideOf, openSide, toggleSide), its tabs (PageTabs) and the thread head's buttons (SideButtons);
+                         system.js puts the page beside the thread
   agent-memory.js        memory popover and compaction view for the visible thread
   icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again), one viewBox and weight
   title.js               defaultTitle shared by new-thread client paths, CLI, post and auto-title
@@ -121,7 +121,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   tutorial.js            walkthrough buttons wired to the real server
   tutorial-shed.js       loadShed: the example messages and their saved memory, loaded through the API
   tutorial-shed-memory.js   the real memory module’s recorded lines for the shed
-  panes.js, popover.js, sure.js, notice.js, dot.js   list/detail frame, popover placement,
+  panes.js, popover.js, sure.js, notice.js, dot.js   Panes (a thing you open: its page, one opened over it with back,
+                         a close; popovers and the side column), popover placement,
                          two-press button, error line, status dot
   images.js, markdown.js image shrinking to pi's limits; message markdown, and threadMention, the `@"title"` a picked thread writes
   base.css               tokens, reset, every control's look (buttons and their variants), popover, rows, panes, status dot
@@ -168,8 +169,8 @@ Where a feature lives:
 - Talk between threads: modules/talk.js (post, threads, reply), server.js append/whom, client thread.js `Cross` (a crossed message as a step row), run.js `Exchange`.
 - Asking a model / switching it: composer.js pick/choose, model-picker.js, server.js whom/reconfigure.
 - Live work you watch: server.js work/doing/watch, client agent.js doing, run.js Turn.
-- Overview pages: modules/overview.js, client overview.js, thread.js (header button, data-message), system.js (the column).
-- Canvas: modules/canvas.js (rooms, tools, relay, the socket), client canvas.js and canvas/ (host, vendored starter kit), server.js upgrade (a module's `connect` takes /api/threads/:id/<module> sockets), client canvas.js, overview.js PageTabs, system.js (which page the column shows).
+- Overview pages: modules/overview.js, client overview.js, side.js (its tab and header button), thread.js (data-message), system.js (the column).
+- Canvas: modules/canvas.js (rooms, tools, relay, the socket), client canvas.js and canvas/ (host, vendored starter kit), server.js upgrade (a module's `connect` takes /api/threads/:id/<module> sockets), client canvas.js, side.js PageTabs, system.js (which page the column shows).
 - Memory and compaction: modules/memory.js, server.js compact/compactingAt, client agent-memory.js, thread.js rows (cuts, folded lines), run.js cutsOf.
 - Bots: modules/bots.js, client bot.js, composer.js PickerBot, client server.js homeBot/botAgent; a bot's colour is server.js `colorOf` (its picked `color` hue, else by the order bots were made), picked in bot.js `BotSettings` `.colors`.
 - Runners and keys: remote.js, runner.js, server.js mintKey/revoke/upgrade, client runner.js.
@@ -184,12 +185,13 @@ Where a feature lives:
 Build from these; a new panel, row or button takes its sibling's markup and class, and adds no CSS of its own. A control (button, input, select, textarea, checkbox) gets its look only in base.css, from its element or a variant class; a rule for a place sets its layout only. Quoted names are the CSS files' section comments.
 
 - Buttons, three variants ("Three buttons"): bordered is plain `button` (Done, Create, Copy, archive, fork, revoke); `button.ghost` has no border and gets a soft fill on hover and when `aria-pressed` or `aria-expanded` (composer bar, foot toggles, closes, backs, thinking levels); `button.primary` is filled with ink (send). `data-danger` turns any of them red on hover. One size modifier, `.small` (12px: the composer bar, row ends, Done, options, thinking levels, backs, pane closes, Copy, Create, foot toggles). Two more classes keep a look of their own: `.send`, the one round button, and `.row`, a link as wide as its list. Fields share one look (`input`, `textarea`, `select`), plus `.bare` for a name that reads as a heading and `.draft` for the composer's box.
-- Popover: a `div.popover[popover]` placed by `placePopover` (popover.js), a bottom sheet on phones ("The model picker and settings"). Panes inside it (panes.js `Panes`, `.panes .pane`, "A detail covers") give it a header with a ghost close, a back and actions. Settings (settings.js), Runners (runner.js `.runner-list`) and Context (composer.js `.recall`) use it; the model picker and @mentions (composer.js `.model-picker`) are the same frame without panes.
+- Popover: a `div.popover[popover]` placed by `placePopover` (popover.js), a bottom sheet on phones ("The model picker and settings"). Panes inside it (panes.js `Panes`, `.panes .pane`, "A detail covers") give it a header with a ghost close (shown only on a phone's sheet), a back and actions. Settings (settings.js), Runners (runner.js `.runner-list`) and Context (composer.js `.recall`) use it; the model picker and @mentions (composer.js `.model-picker`) are the same frame without panes.
 - Popover rows: `ul.rows > li` in a popover's pane body, one per module, runner or option ("One row across"); the picker's `.model-controls .who` and `.model` share the look.
 - Model controls: model-picker.js `ModelPicker`, `.model-controls`: a `.search` pinned on top (typing filters, arrows and Enter pick, recipients go to `onRecipients`), the `.model-list` of runners' `.models` that alone scrolls, and a pinned `.foot` with the asked runner's `.thinking` and folder ("A search, then each runner's models"); the composer and settings share it.
 - Left aside: thread-list.js `ThreadList`, `.thread-list`; each row is `li > .row` (a link, or a button, or `form.row` for a new bot), shared with the family list `.thread-family`; its foot is `.list-foot` with `.foot-toggle`s ("The list's foot").
-- Side column: the overview and thread-details.js `DetailsPage` (`.overview.thread-details`, `.pushed` over the overview) take turns in it, one page at a time; overview.js `pushDetails`/`popDetails`; a bot's part is bot.js `BotSettings`, `.bot`; its fields are plain inputs; a page of it has `.page-head`.
-- Thread head: the pill, `h2.title > button.thread-pill` in `.thread > header` and its `.close` ("The head is no bar"); `.thread-pill` is layout only; on a phone `.app-bar` ("A phone").
+- Side column: `aside.side` ("The side column"), one page at a time in the same `Panes` as a popover, side.js `PageTabs` in its header: thread-details.js `DetailsPage` (`.thread-details`), overview.js `Overview` (`.overview`), canvas.js `Canvas` (`.canvas`); a bot's part is bot.js `BotSettings`, `.bot`; its fields are plain inputs.
+- Thread head: the thread's name, `h2.title > button.ghost.thread-name` (opens Details), side.js `SideButtons` (Overview, Canvas), its `.close` ("The head is no bar"); `.thread-name` is layout only; on a phone `.app-bar` ("A phone") has only the name, and the column's tabs do the rest.
+- A thread-list page (Archived) has `.page-head`.
 - Message list: thread.js `Message` in `.thread > ul > li` ("The chat: agents write"), its body `.markdown`, its images `div.images`, compaction's `li.cut` and `li.line`.
 - Tool calls: run.js `Turn`, `Exchange`, `Step`, `Call`; `li.turn` is a `<details>` whose open list is `.steps`, its tools `.tool` and its words `.said`; `.exchange` and a crossed message are a `.steps` list of thread.js `Cross` rows (`li.sent`, `li.received`). There's no thinking block: a live turn's summary says "thinking".
 - Composer: composer.js `Composer`, `.thread form`: the box, `.bar` with `.icon` buttons, `.pick` (whom it asks) and `.stop`, and `ul.images` waiting to go.

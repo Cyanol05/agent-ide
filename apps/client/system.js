@@ -8,14 +8,8 @@ import { Dot } from './dot.js'
 import { Runner } from './runner.js'
 import { Thread } from './thread.js'
 import { Canvas } from './canvas.js'
-import {
-	detailsPushed,
-	Overview,
-	overviewOpen,
-	pageOf,
-	popDetails,
-	toggleOverview,
-} from './overview.js'
+import { Overview } from './overview.js'
+import { sideOf } from './side.js'
 import { DetailsPage } from './thread-details.js'
 import { ThreadList } from './thread-list.js'
 import { Wires } from './wires.js'
@@ -93,30 +87,19 @@ export function System() {
 						<${For} each=${() => columns()}
 							>${(id) => html`
 								<${Thread} id=${() => id} />
-								<${Show}
-									when=${() => (id && overviewOpen(id)) || (detailsPushed(id) && current() === id)}
-								>
+								<${Show} when=${() => sideOf(id)}>
 									<${SideEdge} />
-									<${Show}
-										when=${() => detailsPushed(id) && current() === id}
-										fallback=${() =>
-											html`<${Show}
-												when=${() => pageOf(id)?.key === 'canvas'}
-												fallback=${() =>
-													html`<${Loading}
-														fallback=${html`<aside class="overview"><p class="mute">Reading the page…</p></aside>`}
-													>
-														<${Overview} id=${id} />
-													<//>`}
-											>
-												<${Canvas} id=${id} />
-											<//>`}
-									>
-										<${DetailsPage}
-											hasBack=${() => overviewOpen(id)}
-											back=${(_event) => popDetails(id)}
-											close=${(_event) => (overviewOpen(id) ? toggleOverview(id) : popDetails(id))}
-										/>
+									<${Show} when=${() => sideOf(id)?.key} keyed>
+										${(key) =>
+											key === 'canvas'
+												? html`<${Canvas} id=${id} />`
+												: key === 'overview'
+													? html`<${Loading}
+															fallback=${html`<aside class="side"><p class="mute">Reading the page…</p></aside>`}
+														>
+															<${Overview} id=${id} />
+														<//>`
+													: html`<${DetailsPage} id=${id} />`}
 									<//>
 								<//>
 							`}<//

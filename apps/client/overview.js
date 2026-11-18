@@ -6,66 +6,14 @@
  */
 import html from '@solidjs/html'
 import { createMemo, createSignal, For, onSettled, refresh, Show, untrack } from 'solid-js'
+import { openSide, PageTabs } from './side.js'
+import { Panes } from './panes.js'
 import { Icon } from './icons.js'
 import { Dot } from './dot.js'
-import { api, followThread, hrefOf, server, threads } from './server.js'
+import { api, followThread, hrefOf, threads } from './server.js'
 import { markdown } from './markdown.js'
 import { report } from './notice.js'
 import { threadLink } from './thread.js'
-
-/** The threads whose overview column is open */
-const [shown, setShown] = createSignal(new Set())
-export const overviewOpen = (id) => shown().has(id)
-export const toggleOverview = (id) => {
-	setPushed((ids) => without(ids, id))
-	setShown((ids) => (ids.has(id) ? without(ids, id) : new Set([...ids, id])))
-}
-const without = (ids, id) => new Set([...ids].filter((other) => other !== id))
-
-/** The column's pages, those whose modules are on; with more than one, its head is their tabs */
-const PAGES = [
-	{ key: 'overview', label: 'Overview' },
-	{ key: 'canvas', label: 'Canvas' },
-]
-export const pagesOn = () => PAGES.filter((page) => server().modules.includes(page.key))
-/** The page each thread's column shows, the first by default */
-const [chosen, setChosen] = createSignal(new Map())
-export const pageOf = (id) =>
-	pagesOn().find((page) => page.key === chosen().get(id)) ?? pagesOn()[0]
-const choose = (id, key) => setChosen((pages) => new Map(pages).set(id, key))
-
-/** A page's name, or the tabs between the pages */
-export const PageTabs = (props) => html`
-	<${Show}
-		when=${() => pagesOn().length > 1}
-		fallback=${html`<h2>${() => pageOf(props.id)?.label}</h2>`}
-	>
-		<nav class="tabs">
-			<${For} each=${pagesOn}>
-				${(page) => html`
-					<button
-						type="button"
-						class="ghost small"
-						aria-pressed=${() => String(pageOf(props.id)?.key === page.key)}
-						onClick=${(_event) => choose(props.id, page.key)}
-					>
-						${page.label}
-					</button>
-				`}
-			<//>
-		</nav>
-	<//>
-`
-
-/**
- * The column is one page at a time, like a phone's: the thread's details push onto the overview in its place, and back
- * pops them; with no overview open they are the column's only page. The threads whose column shows their details.
- */
-const [pushed, setPushed] = createSignal(new Set())
-export const detailsPushed = (id) => pushed().has(id)
-export const pushDetails = (id) =>
-	setPushed((ids) => (ids.has(id) ? without(ids, id) : new Set([...ids, id])))
-export const popDetails = (id) => setPushed((ids) => without(ids, id))
 
 /**
  * The column's groups, in order: the page's sections and the child threads in the same state share one, each drawn with
@@ -181,10 +129,11 @@ export function Overview(props) {
 		}
 	}
 	return html`
-		<aside class="overview" aria-label="Overview">
-			<header class="page-head">
-				<${PageTabs} id=${id} />
-				<button
+		<aside class="side overview" aria-label="Overview">
+			<${Panes}
+				title="Overview"
+				head=${html`<${PageTabs} id=${id} />`}
+				actions=${html`<button
 					type="button"
 					class="ghost small"
 					aria-label=${() => (writing() || page().writing ? 'Writing the page' : 'Write it now')}
@@ -198,78 +147,72 @@ export function Overview(props) {
 					>
 						<${Dot} state="working" />
 					<//>
-				</button>
-				<button
-					type="button"
-					class="ghost small close"
-					aria-label="Close the overview"
-					onClick=${(_event) => toggleOverview(id)}
-				>
-					<${Icon} name="close" />
-				</button>
-			</header>
-			<${Show}
-				when=${() => parsed().summary}
-				fallback=${html`<p class="mute">
-					${() =>
-						page().writing
-							? 'Writing the page…'
-							: 'No page yet. It is written after the next answer, or now with ↻.'}
-				</p>`}
+				</button>`}
+				onClose=${(_event) => openSide(id, null)}
 			>
-				<p class="summary">${() => parsed().summary}</p>
-			<//>
-			<${For} each=${groups}>
-				${(group) => html`
-					<details
-						class=${() => group.key}
-						open=${group.key === 'waiting' || (group.key !== 'done' && group.count <= FOLDED)}
-					>
-						<summary>
-							<h3>
-								<${Show}
-									when=${() => group.check}
-									fallback=${html`<${Dot} state=${() => group.state} />`}
-								>
-									<${Icon} name="check" />
-								<//>
-								${() => `${group.label} · ${group.count}`}
-							</h3>
-						</summary>
-						<${Show} when=${() => group.text}>
-							<${Page} text=${() => group.text} thread=${id} />
-						<//>
-						<${Show} when=${() => group.threads.length}>
-							<ul class="thread-family">
-								<${For} each=${() => group.threads}>
-									${(thread) => html`
-										<li title=${() => thread.title}>
-											<a
-												class="row"
-												href=${() => hrefOf(thread.id)}
-												onClick=${(event) => followThread(event, thread.id)}
-											>
-												<${Dot} state=${() => thread.status} />
-												<span>
-													${() => thread.title}
-													<small>${() => pages()[thread.id]?.summary ?? ''}</small>
-												</span>
-											</a>
-										</li>
-									`}
-								<//>
-							</ul>
-						<//>
-					</details>
-				`}
-			<//>
-			<${Show} when=${() => page().writtenAt}>
-				<p class="mute">
-					<small
-						>${() =>
-							`From messages 0 to ${page().through - 1}, ${new Date(page().writtenAt).toLocaleString()}`}</small
-					>
-				</p>
+				<${Show}
+					when=${() => parsed().summary}
+					fallback=${html`<p class="mute">
+						${() =>
+							page().writing
+								? 'Writing the page…'
+								: 'No page yet. It is written after the next answer, or now with ↻.'}
+					</p>`}
+				>
+					<p class="summary">${() => parsed().summary}</p>
+				<//>
+				<${For} each=${groups}>
+					${(group) => html`
+						<details
+							class=${() => group.key}
+							open=${group.key === 'waiting' || (group.key !== 'done' && group.count <= FOLDED)}
+						>
+							<summary>
+								<h3>
+									<${Show}
+										when=${() => group.check}
+										fallback=${html`<${Dot} state=${() => group.state} />`}
+									>
+										<${Icon} name="check" />
+									<//>
+									${() => `${group.label} · ${group.count}`}
+								</h3>
+							</summary>
+							<${Show} when=${() => group.text}>
+								<${Page} text=${() => group.text} thread=${id} />
+							<//>
+							<${Show} when=${() => group.threads.length}>
+								<ul class="thread-family">
+									<${For} each=${() => group.threads}>
+										${(thread) => html`
+											<li title=${() => thread.title}>
+												<a
+													class="row"
+													href=${() => hrefOf(thread.id)}
+													onClick=${(event) => followThread(event, thread.id)}
+												>
+													<${Dot} state=${() => thread.status} />
+													<span>
+														${() => thread.title}
+														<small>${() => pages()[thread.id]?.summary ?? ''}</small>
+													</span>
+												</a>
+											</li>
+										`}
+									<//>
+								</ul>
+							<//>
+						</details>
+					`}
+				<//>
+				<${Show} when=${() => page().writtenAt}>
+					<p class="mute">
+						<small
+							>${() =>
+								`From messages 0 to ${page().through - 1}, ${new Date(page().writtenAt).toLocaleString()}`}</small
+						>
+					</p>
+				<//>
 			<//>
 		</aside>
 	`

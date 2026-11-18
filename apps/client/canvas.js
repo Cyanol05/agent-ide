@@ -8,8 +8,8 @@
  */
 import html from '@solidjs/html'
 import { createSignal, onSettled, Show, untrack } from 'solid-js'
-import { Icon } from './icons.js'
-import { PageTabs, toggleOverview } from './overview.js'
+import { Panes } from './panes.js'
+import { openSide, PageTabs } from './side.js'
 import { api, me, url } from './server.js'
 
 /** The versions canvas/tldraw.js loads; the server's @tldraw/sync-core must be the same */
@@ -134,22 +134,17 @@ export function Canvas(props) {
 		}
 	})
 	return html`
-		<aside class="overview canvas" aria-label="Canvas">
-			<header class="page-head">
-				<${PageTabs} id=${id} />
-				<button
-					type="button"
-					class="ghost small close"
-					aria-label="Close the canvas"
-					onClick=${(_event) => toggleOverview(id)}
-				>
-					<${Icon} name="close" />
-				</button>
-			</header>
-			<${Show} when=${() => !ready()}>
-				<p class="mute">${() => failed() || 'Loading the canvas…'}</p>
+		<aside class="side canvas" aria-label="Canvas">
+			<${Panes}
+				title="Canvas"
+				head=${html`<${PageTabs} id=${id} />`}
+				onClose=${(_event) => openSide(id, null)}
+			>
+				<${Show} when=${() => !ready()}>
+					<p class="mute">${() => failed() || 'Loading the canvas…'}</p>
+				<//>
+				<div class="board" ref=${(el) => (element = el)}></div>
 			<//>
-			<div class="board" ref=${(el) => (element = el)}></div>
 		</aside>
 	`
 }

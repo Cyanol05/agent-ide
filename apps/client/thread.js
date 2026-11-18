@@ -61,7 +61,7 @@ import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageUrl } from './images.js'
 import { markdown } from './markdown.js'
-import { Overview, overviewOpen, pageOf, pagesOn, pushDetails, toggleOverview } from './overview.js'
+import { sideOf, SideButtons, toggleSide } from './side.js'
 
 /** A folded summary's text, without the literal <summary> wrapper tags some memories still carry */
 const stripSummaryTag = (text) =>
@@ -287,7 +287,8 @@ export function Thread(props) {
 	const ready = () =>
 		!!entries[props.id] &&
 		(thread()?.agents ?? []).every((agent) => conversations[agent.conversation])
-	const titleClick = () => (current() !== props.id ? openThread(props.id) : pushDetails(props.id))
+	const titleClick = () =>
+		current() !== props.id ? openThread(props.id) : toggleSide(props.id, 'details')
 	let list,
 		followed,
 		sizes,
@@ -490,8 +491,9 @@ export function Thread(props) {
 				<h2 class="title">
 					<button
 						type="button"
-						class="thread-pill"
+						class="ghost thread-name"
 						title="Thread details and tools"
+						aria-pressed=${() => String(sideOf(props.id)?.key === 'details')}
 						style=${() => colorOf(homeBot(props.id)?.name ?? '')}
 						onClick=${titleClick}
 					>
@@ -499,20 +501,7 @@ export function Thread(props) {
 						<${Dot} state=${() => thread()?.status} />
 					</button>
 				</h2>
-				<${Show} when=${() => props.id && pagesOn().length}>
-					<button
-						type="button"
-						class=${() => ['ghost', 'small', 'overview-toggle', { on: overviewOpen(props.id) }]}
-						title=${() =>
-							pageOf(props.id)?.key === 'canvas'
-								? "This thread's canvas"
-								: 'Where this thread stands'}
-						aria-pressed=${() => String(overviewOpen(props.id))}
-						onClick=${(_event) => toggleOverview(props.id)}
-					>
-						${() => pageOf(props.id)?.label}
-					</button>
-				<//>
+				<${SideButtons} id=${() => props.id} />
 				<${Show} when=${() => props.id && columns().length > 1}>
 					<button
 						type="button"

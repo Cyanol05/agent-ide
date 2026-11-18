@@ -519,9 +519,8 @@ export function Composer(props) {
 				<${Show} when=${() => active()}>
 					<${Panes}
 						title="Context"
-						close=${html`<button type="button" class="ghost small close" aria-label="Close" onClick=${() => recall.hidePopover()}><${Icon} name="close" /></button>`}
+						onClose=${(_event) => recall.hidePopover()}
 						detailTitle="Memory’s lines"
-						actions=${html`<button type="button" class="small" onClick=${() => recall.hidePopover()}>Done</button>`}
 						open=${() => lines()}
 						onBack=${() => setLines(false)}
 						detail=${html`<${Show} when=${() => lines()}><${Memory} /><//>`}

@@ -210,14 +210,6 @@ agent-memory {
 	font-size: var(--text-small);
 }
 
-/* The page's name in its header, the thread's title or a bot's Threads, as one heading. */
-.thread-details > .page-head > h2:not(.thread-title) {
-	flex: 1;
-	font-size: var(--text);
-	font-weight: 600;
-	color: var(--ink);
-}
-
 .thread-details h2.thread-title {
 	display: flex;
 	gap: var(--space-1);
@@ -415,7 +407,6 @@ agent-memory {
 		margin: var(--space-2) var(--space-4);
 		pointer-events: none;
 		font-size: var(--text-ui);
-		font-weight: 600;
 
 		button {
 			pointer-events: auto;
@@ -1081,7 +1072,7 @@ agent-memory {
 	}
 }
 
-/* A page of the side column: back, named for the page under it, then the page's own name, then close. */
+/* A page of the thread list: back, then the page's name. */
 .page-head {
 	display: flex;
 	flex-wrap: wrap;
@@ -1091,15 +1082,6 @@ agent-memory {
 
 	h2 {
 		margin: 0;
-	}
-
-	> button.back {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		max-width: 40%;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 }
 
@@ -1174,8 +1156,8 @@ agent-memory {
 	}
 }
 
-/* The thread's name as a pill: in each thread's head on a big screen, in the bar on a phone; its light first. */
-.thread-pill {
+/* The thread's name, the button for its details: in each thread's head on a big screen, in the bar on a phone; its light first. */
+.thread-name {
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
@@ -1813,7 +1795,7 @@ body.resizing {
 			height: var(--control);
 		}
 
-		.thread-pill {
+		.thread-name {
 			max-width: calc(100vw - 8rem);
 		}
 	}
@@ -1830,16 +1812,12 @@ body.resizing {
 		display: none;
 	}
 
-	/* A phone shows one column: its page, when it's open, over its thread, under the bar. With the overview under it, the bar's button closes it; the details on their own close themselves. */
-	.threads > .overview {
+	/* A phone shows one column: the side column, when it's open, over its thread, under the bar. */
+	.threads > .side {
 		position: absolute;
 		inset: 0;
 		z-index: 3;
 		padding-top: calc(var(--control) + 3 * var(--space-2) + env(safe-area-inset-top));
-
-		&:not(.thread-details:not(.pushed)) > .page-head > .close {
-			display: none;
-		}
 	}
 
 	.thread {
@@ -1923,13 +1901,14 @@ body.resizing {
 	}
 }
 
-/* A thread's overview: a column beside it, as wide as a narrow thread, scrolling on its own. Its child threads are the family's rows, each with its page's first line under its title. */
-.overview {
+/* The side column: beside the thread, as wide as a narrow thread, its pages in one frame whose body scrolls on its own. */
+.side {
+	display: flex;
 	flex: 0 1 var(--side-width, 26rem);
+	flex-direction: column;
 	min-width: 18rem;
 	align-self: stretch;
-	overflow-y: auto;
-	padding: var(--space-2) var(--space-4) var(--space-5);
+	overflow: hidden;
 	border-right: 1px solid var(--line);
 	background: Canvas;
 	font-size: var(--text);
@@ -1939,15 +1918,27 @@ body.resizing {
 		border-right: 0;
 	}
 
-	> .page-head {
-		margin-inline: 0;
-
-		> h2 {
-			flex: 1;
-			font-size: var(--text-ui);
-		}
+	.panes,
+	.pane {
+		height: 100%;
+		max-height: none;
 	}
 
+	.pane-body {
+		flex: 1;
+		padding: var(--space-2) var(--space-4) var(--space-5);
+	}
+}
+
+/* The column's tabs stand where a page's name would. */
+.panes nav.tabs {
+	display: flex;
+	flex: 1;
+	gap: var(--space-1);
+}
+
+/* A thread's overview. Its child threads are the family's rows, each with its page's first line under its title. */
+.overview .pane-body {
 	> p.summary {
 		margin: 0 0 var(--space-4);
 	}
@@ -2012,33 +2003,20 @@ body.resizing {
 	}
 }
 
-/* The column's tabs, when more than one page is on, stand where a page's name would. */
-.page-head > nav.tabs {
-	display: flex;
-	flex: 1;
-	gap: var(--space-1);
-}
-
 /* A canvas takes the column's whole height and more of its width; tldraw draws everything inside its board. */
-.overview.canvas {
+.side.canvas {
 	flex-basis: var(--side-width, 44rem);
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	padding-bottom: 0;
 
-	> .board {
+	.pane-body {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		padding: 0;
+	}
+
+	.board {
 		position: relative;
 		flex: 1;
 		min-height: 0;
-		margin-inline: calc(-1 * var(--space-4));
 	}
-}
-
-.app-bar > .overview-toggle {
-	justify-self: end;
-}
-
-:is(.thread > header, .app-bar) > button.overview-toggle.on {
-	background: var(--tint);
 }

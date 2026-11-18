@@ -556,7 +556,8 @@ button[data-danger]:focus-visible:not(:disabled) {
 	}
 }
 
-.panes .pane > header > button.close {
+/* A popover closes by a tap outside it; only a phone's sheet shows its close. */
+.popover .panes .pane > header > button.close {
 	display: none;
 }
 
@@ -574,7 +575,7 @@ button[data-danger]:focus-visible:not(:disabled) {
 		padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
 	}
 
-	.panes .pane > header > button.close {
+	.popover .panes .pane > header > button.close {
 		display: block;
 	}
 }

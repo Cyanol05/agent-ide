@@ -2,7 +2,7 @@
 import html from '@solidjs/html'
 import { Icon } from './icons.js'
 import { render } from '@solidjs/web'
-import { createEffect, createSignal, Errored, Loading, onSettled, Show } from 'solid-js'
+import { createEffect, createSignal, Errored, Loading, onSettled } from 'solid-js'
 import {
 	colorOf,
 	current,
@@ -14,7 +14,7 @@ import {
 	titleOf,
 	threadOf,
 } from './server.js'
-import { overviewOpen, pageOf, pagesOn, pushDetails, toggleOverview } from './overview.js'
+import { sideOf, toggleSide } from './side.js'
 import { Dot } from './dot.js'
 import { System } from './system.js'
 import { Tutorial } from './tutorial.js'
@@ -95,24 +95,15 @@ function Client() {
 						<${Icon} name="back" />
 					</button>
 					<button
-						class="thread-pill"
+						class="ghost thread-name"
 						type="button"
+						aria-pressed=${() => String(sideOf(current())?.key === 'details')}
 						style=${() => colorOf(homeBot(current())?.name ?? '')}
-						onClick=${() => pushDetails(current())}
+						onClick=${() => toggleSide(current(), 'details')}
 					>
 						<${Dot} state=${() => threadOf(current())?.status} />
 						<span>${() => (current() ? titleOf(current()) : 'New thread')}</span>
 					</button>
-					<${Show} when=${() => current() && pagesOn().length}>
-						<button
-							type="button"
-							class=${() => ['ghost', 'small', 'overview-toggle', { on: overviewOpen(current()) }]}
-							aria-pressed=${() => String(overviewOpen(current()))}
-							onClick=${(_event) => toggleOverview(current())}
-						>
-							${() => pageOf(current())?.label}
-						</button>
-					<//>
 				</header>
 				<${System} />
 				<${Tutorial} story=${() => !chat()} />
