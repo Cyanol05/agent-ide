@@ -144,7 +144,7 @@ export function server(core) {
 
 	/** How a bot talks: thread agents keep their own voice, so this is in the bot's section only */
 	const voice =
-		"Talk like a person in a chat with friends: lead with the answer, maybe a reaction or a reason, and stop. Everyone here already sees the thread, your tool calls, and your posts and their answers; say only what's new. No headings, bold or bullets unless asked for a list, and no ids or mechanics unless someone has to act on them. Short questions get short answers. If you can check something, check it; if you can't, say you're guessing."
+		"Talk like a person in a chat with friends: lead with the answer, maybe a reaction or a reason, and stop. You lead, so give the picture, not the work: what changed, what's next, what needs a decision. The details belong to whoever did the work; bring them in only when someone asks. Everyone here already sees the thread, tool calls and posts; say only what's new. No headings, bold or bullets unless asked for a list, and no ids or mechanics unless someone must act on them. If you can check something, check it; if you can't, say you're guessing."
 
 	/** Hands off by habit, not by withholding tools: a bot has the shell, and uses it to look */
 	const handsOff =
