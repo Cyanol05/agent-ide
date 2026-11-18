@@ -27,13 +27,10 @@ export const FILES = [
 	'shared/format/FocusedColor.ts',
 	'shared/format/FocusedFill.ts',
 	'shared/format/FocusedFontSize.ts',
-	'shared/format/FocusedGeoShapeType.ts',
-	'shared/format/FocusedShape.ts',
 	'shared/format/convertFocusedShapeToTldrawShape.ts',
 	'shared/format/convertTldrawShapeToFocusedShape.ts',
 	'shared/format/convertTldrawShapeToBlurryShape.ts',
 	'shared/format/convertTldrawShapesToPeripheralShapes.ts',
-	'shared/schema/AgentActionSchemas.ts',
 	'client/AgentHelpers.ts',
 	'client/agent/managers/BaseAgentManager.ts',
 	'client/agent/managers/AgentLintManager.ts',
@@ -54,6 +51,12 @@ export const FILES = [
 		'SendToBack',
 		'Pen',
 	].map((name) => `client/actions/${name}ActionUtil.ts`),
+]
+// Only schema generation reads these; they don't ship to the browser.
+const SCHEMA_FILES = [
+	'shared/format/FocusedGeoShapeType.ts',
+	'shared/format/FocusedShape.ts',
+	'shared/schema/AgentActionSchemas.ts',
 ]
 /** The actions agents get, by their `_type`, and the schema each has upstream */
 export const ACTIONS = {
@@ -99,10 +102,12 @@ const scratch = path.join(tools, 'ported')
 rmSync(scratch, { recursive: true, force: true })
 mkdirSync(scratch, { recursive: true })
 writeFileSync(path.join(scratch, 'package.json'), '{"type":"module"}')
-for (const file of FILES) {
+for (const file of [...FILES, ...SCHEMA_FILES]) {
 	const js = file.replace(/\.ts$/, '.js')
-	mkdirSync(path.dirname(path.join(out, js)), { recursive: true })
-	writeFileSync(path.join(out, js), port(file, true))
+	if (FILES.includes(file)) {
+		mkdirSync(path.dirname(path.join(out, js)), { recursive: true })
+		writeFileSync(path.join(out, js), port(file, true))
+	}
 	mkdirSync(path.dirname(path.join(scratch, js)), { recursive: true })
 	writeFileSync(path.join(scratch, js), port(file, false))
 }

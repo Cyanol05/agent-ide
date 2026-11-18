@@ -392,7 +392,6 @@ export function server(core) {
 		const found = await core.home(api.conversationId)
 		return { threadId: found?.thread, by: found?.name ?? 'an agent' }
 	}
-	const text = (value) => ({ output: [{ type: 'text', text: value }] })
 
 	const canvasLook = defineTool({
 		name: 'canvas_look',
@@ -422,7 +421,9 @@ export function server(core) {
 		execute: async ({ actions }, api) => {
 			const { threadId, by } = await caller(api)
 			const done = await act(threadId, actions, by)
-			return text(`${summary(done.applied)}\n${JSON.stringify(done)}`)
+			return {
+				output: [{ type: 'text', text: `${summary(done.applied)}\n${JSON.stringify(done)}` }],
+			}
 		},
 	})
 
@@ -874,9 +875,8 @@ function record({ type, x, y, w, h, text = '', color, fill, id }, parentId, inde
 
 /** An arrow from one shape's middle to another's, and the two bindings that keep its ends on them */
 function arrow({ from, to, text = '', color, id }, parentId, index, records, by) {
-	const [start, end] = [from, to].map((end, at) => {
+	const [start, end] = [from, to].map((end) => {
 		const shape = records[`shape:${end}`]
-		if (end === undefined) throw new Error(`An arrow needs ${at ? 'to' : 'from'}: a shape's id`)
 		if (shape?.typeName !== 'shape') throw new Error(`No shape ${end} to point an arrow at`)
 		return shape
 	})
