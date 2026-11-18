@@ -137,25 +137,6 @@ async function picture(editor, shapes, area) {
 }
 
 /**
- * An arrow's joined end meets the middle of its shape unless the agent put that end inside it: the starter kit pins a
- * joined end to the point nearest x1,y1 or x2,y2, so an agent that leaves them out, or guesses, gets an arrow off a corner
- */
-function centred(editor, action) {
-	const shape = action._type === 'create' && action.shape
-	if (shape?._type !== 'arrow') return action
-	for (const [id, x, y] of [
-		[shape.fromId, 'x1', 'y1'],
-		[shape.toId, 'x2', 'y2'],
-	]) {
-		const bounds = id && editor.getShapePageBounds(`shape:${id}`)
-		if (!bounds || bounds.containsPoint({ x: shape[x], y: shape[y] })) continue
-		shape[x] = bounds.center.x
-		shape[y] = bounds.center.y
-	}
-	return action
-}
-
-/**
  * A batch of starter-kit actions, in one undo step: each sanitized as the starter kit does, then applied. Answers what
  * each did, the shapes they touched as they landed (as a look shows them, with their real bounds), what was deleted, ids changed to
  * stay unique, and the lints that touch them.
@@ -184,7 +165,7 @@ export async function act(editor, { actions }) {
 						applied.push({ _type: action._type, skipped: 'a shape it names is not there' })
 						continue
 					}
-					util.applyAction(centred(editor, sanitized), helpers)
+					util.applyAction(sanitized, helpers)
 					applied.push({ _type: action._type, ok: true })
 				} catch (error) {
 					applied.push({ _type: action._type, skipped: error.message })

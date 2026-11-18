@@ -49,8 +49,7 @@ const ACTED = 5000
 
 /**
  * The actions agents get, as the starter kit's schemas (scripts/vendor-canvas-agent.js writes them), asking for less:
- * no `note`, the kit's memo to its own agent, which ade's agents don't read back; an arrow's ends only where it isn't
- * joined to a shape; and of an update, only what changes
+ * no `note`, the kit's memo to its own agent, which ade's agents don't read back; and of an update, only what changes
  */
 const ACTIONS = JSON.parse(
 	readFileSync(new URL('../apps/client/canvas/agent/actions.schema.json', import.meta.url), 'utf8'),
@@ -60,10 +59,7 @@ const ACTIONS = JSON.parse(
 			for (const shape of value.properties.update.anyOf)
 				shape.required = shape.required.filter((name) => ['_type', 'shapeId'].includes(name))
 		if (!value?.required) return value
-		const optional = ['note']
-		if (value.properties?._type?.const === 'arrow')
-			optional.push('fromId', 'toId', 'x1', 'y1', 'x2', 'y2')
-		return { ...value, required: value.required.filter((name) => !optional.includes(name)) }
+		return { ...value, required: value.required.filter((name) => name !== 'note') }
 	},
 )
 /** What the server does with no tab to ask: what needs no layout */
@@ -420,7 +416,7 @@ export function server(core) {
 	const canvasAct = defineTool({
 		name: 'canvas_act',
 		description:
-			"Change your thread's canvas with tldraw's agent actions, in order, in one step a person can undo: create, update, delete, move, label, resize, rotate, align, distribute, stack, place, bringToFront, sendToBack, pen. Refer to shapes by the shapeId canvas_look gives; an arrow created with fromId and toId stays joined to them when they move, and needs x1, y1, x2, y2 only for an end that's loose or should sit at a point inside its shape. Answers what each action did, the shapes it touched as they landed, with their real bounds, and the lints they now have: fix those in place, never by drawing again somewhere else.",
+			"Change your thread's canvas with tldraw's agent actions, in order, in one step a person can undo: create, update, delete, move, label, resize, rotate, align, distribute, stack, place, bringToFront, sendToBack, pen. Refer to shapes by the shapeId canvas_look gives; an arrow created with fromId and toId stays joined to them when they move. Answers what each action did, the shapes it touched as they landed, with their real bounds, and the lints they now have: fix those in place, never by drawing again somewhere else.",
 		parameters: obj({ actions: arr(ACTIONS) }),
 		replay: 'unsafe',
 		execute: async ({ actions }, api) => {
