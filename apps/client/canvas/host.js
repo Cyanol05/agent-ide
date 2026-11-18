@@ -59,6 +59,15 @@ const agentOf = (editor) => ({ editor, chatOrigin: { getOrigin: () => ({ x: 0, y
 const short = (id) => id.replace(/^shape:/, '')
 const byOf = (shape) => (shape.meta?.by ? { by: shape.meta.by } : {})
 
+/**
+ * The starter kit's lints, but a box that grew to fit its label: its real size is in the answer, and a label that now
+ * overlaps another is a lint of its own
+ */
+const lintsOf = (agent, shapes) =>
+	new AgentLintManager(agent)
+		.detectCanvasLints(shapes)
+		.filter((lint) => lint.type !== 'growY-on-shape')
+
 /** Shapes whose bounds lie in `bounds`, and the rest */
 function split(editor, bounds) {
 	const area = Box.From(bounds)
@@ -105,7 +114,7 @@ export async function look(editor, { bounds } = {}) {
 			bounds: round(cluster.bounds),
 			numberOfShapes: cluster.numberOfShapes,
 		})),
-		lints: new AgentLintManager(agent).detectCanvasLints(inside),
+		lints: lintsOf(agent, inside),
 		...(inside.length && { picture: await picture(editor, inside, area) }),
 	}
 }
@@ -193,9 +202,9 @@ export async function act(editor, { actions }) {
 		.map((id) => editor.getShape(id))
 		.filter(Boolean)
 	const ids = new Set(touched.map((shape) => short(shape.id)))
-	const lints = new AgentLintManager(agent)
-		.detectCanvasLints(editor.getCurrentPageShapesSorted())
-		.filter((lint) => lint.shapeIds.some((id) => ids.has(id)))
+	const lints = lintsOf(agent, editor.getCurrentPageShapesSorted()).filter((lint) =>
+		lint.shapeIds.some((id) => ids.has(id)),
+	)
 	return {
 		applied,
 		shapes: touched

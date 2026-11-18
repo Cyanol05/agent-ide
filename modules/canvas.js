@@ -49,12 +49,16 @@ const ACTED = 5000
 
 /**
  * The actions agents get, as the starter kit's schemas (scripts/vendor-canvas-agent.js writes them), asking for less:
- * no `note`, the kit's memo to its own agent, which ade's agents don't read back; and an arrow's ends only where it isn't
- * joined to a shape
+ * no `note`, the kit's memo to its own agent, which ade's agents don't read back; an arrow's ends only where it isn't
+ * joined to a shape; and of an update, only what changes
  */
 const ACTIONS = JSON.parse(
 	readFileSync(new URL('../apps/client/canvas/agent/actions.schema.json', import.meta.url), 'utf8'),
 	(key, value) => {
+		// An update names what changes; the rest stays as it is
+		if (value?.properties?._type?.const === 'update')
+			for (const shape of value.properties.update.anyOf)
+				shape.required = shape.required.filter((name) => ['_type', 'shapeId'].includes(name))
 		if (!value?.required) return value
 		const optional = ['note']
 		if (value.properties?._type?.const === 'arrow')
@@ -397,7 +401,7 @@ export function server(core) {
 	const canvasLook = defineTool({
 		name: 'canvas_look',
 		description:
-			"Look at your thread's canvas, where people in the thread draw with you. Without `bounds` you see the whole drawing, or, when it's big, the part the person has in view. Answers a picture of that area; its shapes as {shapeId, type, x, y, w, h, text, by}, `by` naming who drew or changed it last; what the person has selected (\"this box\" means one of those) and their view; the shapes elsewhere as clusters, {bounds, numberOfShapes}, to look at next; and lints: text overflowing its shape, labels overlapping, arrows joined to nothing. Look before you change what's there, and again after.",
+			"Look at your thread's canvas, where people in the thread draw with you. Without `bounds` you see the whole drawing, or, when it's big, the part the person has in view. Answers a picture of that area; its shapes as {shapeId, type, x, y, w, h, text, by}, `by` naming who drew or changed it last; what the person has selected (\"this box\" means one of those) and their view; the shapes elsewhere as clusters, {bounds, numberOfShapes}, to look at next; and lints: labels overlapping, arrows joined to nothing. Look before you change what's there, and again after.",
 		parameters: obj({
 			bounds: opt(obj({ x: num(), y: num(), w: num(), h: num() })),
 		}),
