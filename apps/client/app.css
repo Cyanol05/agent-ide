@@ -1189,6 +1189,12 @@ agent-memory {
 	}
 }
 
+/* A model billed per use, on an API key rather than a subscription: a quiet $ after its provider. */
+.metered {
+	color: var(--mute);
+	font-size: var(--text-small);
+}
+
 /* A search, then each runner's models as rows with a check on the one asked, then how hard it thinks as a row of steps. */
 .model {
 	display: flex;

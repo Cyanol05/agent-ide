@@ -101,7 +101,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     Composer: submit, add, pickRecipients, filled, compactNow   send, images, typed recipients, context meter
     PickerBot            bots in the picker
   agent.js               agents' labels and live work (doing); client's agentTo, formatAgent, lastToolCall, modelsOf
-  model-picker.js        model search, thinking and folder controls (composer and settings share them); matches
+  model-picker.js        model search, thinking and folder controls (composer and settings share them); matches;
+                         metered and Metered, the $ on a model billed per token (the runner's `metered` providers)
   runner.js              runner list, a runner's agents, ConnectRunner
   bot.js                 a bot's settings, its threads row, new bot; botThreads shares its own/elsewhere lists
   thread-list.js         the thread list, its family rows, the Blocked filter (including children and bot homes)

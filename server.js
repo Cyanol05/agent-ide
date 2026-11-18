@@ -2126,6 +2126,7 @@ async function upgrade(req, raw, head) {
 		...(query('thinkingLevel') && { thinkingLevel: query('thinkingLevel') }),
 		modelError: query('modelError'),
 		offers: url.searchParams.getAll('offer'),
+		metered: url.searchParams.getAll('metered'),
 		models: resolved,
 	}
 	await commit(async (tx) => {

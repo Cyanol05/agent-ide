@@ -39,7 +39,7 @@ import {
 } from './server.js'
 import { agentTo, formatAgent, thinkingWord } from './agent.js'
 import { placePopover } from './popover.js'
-import { matches, ModelPicker } from './model-picker.js'
+import { matches, metered, Metered, ModelPicker } from './model-picker.js'
 import { conversations } from './run.js'
 import { Compaction, Memory } from './agent-memory.js'
 import { Panes } from './panes.js'
@@ -473,6 +473,9 @@ export function Composer(props) {
 								>${(to, index) => [
 									() => (index() ? ' + ' : ''),
 									() => recipientWords(to, props.thread)[0],
+									html`<${Show} when=${() => !to.name && metered(to.runner, to.model)}
+										>${' '}<${Metered}
+									/><//>`,
 									html`<${Show} when=${() => recipientWords(to, props.thread)[1]}
 										><span class="thinking-word">
 											· ${() => recipientWords(to, props.thread)[1]}</span
@@ -761,7 +764,7 @@ const directing = (thread) => Boolean(thread && here(thread).filter((agent) => a
 const directed = (thread) => directing(thread) && !pick(thread)
 export const recipients = (thread = current()) =>
 	[agent(thread), ...askedBots(thread)].filter(Boolean)
-/** A bot by its name, an agent by its model and the picker's word for its thinking; the runner is the picker's to show. Without thinking asked, it keeps the running level, or the runner's known pi default. */
+/** A bot by its name, an agent by its model and provider, then the picker's word for its thinking; the runner is the picker's to show. Without thinking asked, it keeps the running level, or the runner's known pi default. */
 const recipientWords = (to, thread) => {
 	const running = here(thread).find(
 		(agent) =>
@@ -771,7 +774,11 @@ const recipientWords = (to, thread) => {
 	const thinkingLevel =
 		to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel)
 	if (to.name) return [to.name]
-	return [to.model?.split('/').pop(), thinkingLevel && thinkingWord(thinkingLevel)]
+	const provider = to.model?.includes('/') && to.model.split('/')[0]
+	return [
+		[to.model?.split('/').pop(), provider].filter(Boolean).join(' · '),
+		thinkingLevel && thinkingWord(thinkingLevel),
+	]
 }
 /** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
 export const toFor = (runner, thread = current()) =>

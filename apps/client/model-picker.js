@@ -14,6 +14,15 @@ export const matches = (search, text) =>
 		.split(/\s+/)
 		.every((word) => text.toLowerCase().includes(word))
 
+/** Whether a `provider/id` model runs on an API key billed per token there, rather than a subscription, as the runner says */
+export const metered = (runner, model) =>
+	Boolean(model?.includes('/')) &&
+	(runners.find((each) => each.name === runner)?.metered ?? []).includes(model.split('/')[0])
+
+/** The mark for a model billed per use; subscription models carry none */
+export const Metered = () =>
+	html`<small class="metered" title="Pay per use: billed per token on an API key">$</small>`
+
 /**
  * A search on top, each runner's models in one list under it, and the thinking and folder of the runner asked pinned at the bottom.
  * Typing filters the list; the arrows walk it and Enter picks the highlighted row. A line that reads as recipients (an `@` or a comma), or matches nothing, goes to `onRecipients` instead.
@@ -146,6 +155,7 @@ function PickerRunner(runner, props, search) {
 		>
 			<span>${() => model.split('/').pop()}</span
 			><small>${() => (model.includes('/') ? model.split('/')[0] : '')}</small
+			><${Show} when=${() => metered(runner.name, model)}><${Metered} /><//
 			><${Show} when=${() => selected() && to().model === model}><${Icon} name="check" /><//>
 		</button>
 	`

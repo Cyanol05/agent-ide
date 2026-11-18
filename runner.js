@@ -130,6 +130,21 @@ function folders() {
 
 let warnedOffers = false
 
+/** The providers pi is logged in to with an API key, billed per token, rather than a subscription's OAuth; echo is free */
+async function metered() {
+	const providers = new Set(
+		(await models.getAvailable().catch(() => [])).map(({ provider }) => provider),
+	)
+	providers.delete('echo')
+	const auths = await Promise.all(
+		[...providers].map(async (provider) => [
+			provider,
+			await models.checkAuth(provider).catch(() => {}),
+		]),
+	)
+	return auths.filter(([, auth]) => auth?.type === 'api_key').map(([provider]) => provider)
+}
+
 async function connect() {
 	const { model, thinkingLevel, error } = defaultModel()
 	const query = new URLSearchParams({
@@ -165,6 +180,7 @@ async function connect() {
 		warnedOffers = true
 	}
 	for (const ref of offered) query.append('offer', ref)
+	for (const provider of await metered()) query.append('metered', provider)
 	for (const who of args.allow) query.append('allow', who)
 	for (const folder of folders()) query.append('folder', folder)
 	const socket = new WebSocket(`${server.replace(/^http/, 'ws')}/ws?${query}`, {
