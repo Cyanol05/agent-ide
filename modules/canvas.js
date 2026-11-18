@@ -9,7 +9,7 @@
  * Agents see and change the canvas as tldraw's agent starter kit's own agent does, with its formats, actions,
  * sanitizers and lints (vendored in apps/client/canvas/agent). Those need a live editor, so the server hands each look
  * and batch of actions to a browser tab with the canvas open, the one someone used last, and answers what it found or
- * did. With no tab, or one that closes or doesn't answer within HOST_WAIT, the server does what needs no layout itself:
+ * did: a look brings a picture of the area, at most 1000 px across, and what the person has selected and in view. With no tab, or one that closes or doesn't answer within HOST_WAIT, the server does what needs no layout itself:
  * create, update, delete, move and label, with sizes guessed, and says so; other actions need a tab.
  *
  * `by` on a shape is who drew or changed it last: the person, or the bot's name, or the agent's model@runner, kept in its
@@ -311,7 +311,7 @@ export function server(core) {
 		return {
 			bounds: bounds ?? null,
 			shapes: (await read(threadId, bounds)).map(blurry),
-			estimated: `Sizes are guessed and there are no lints: ${answer.why ?? answer.error}.`,
+			estimated: `No picture or lints, and sizes are guessed: ${answer.why ?? answer.error}.`,
 		}
 	}
 
@@ -334,13 +334,20 @@ export function server(core) {
 	const canvasLook = defineTool({
 		name: 'canvas_look',
 		description:
-			"Look at your thread's canvas, where people in the thread draw with you. Answers the shapes in `bounds` (by default the area the person has in view) as {shapeId, type, x, y, w, h, text, by}, `by` naming who drew or changed it last; the rest as clusters, {bounds, numberOfShapes}, to look at next; and lints: text overflowing its shape, labels overlapping, arrows joined to nothing. Look before you change what's there, and again after.",
+			'Look at your thread\'s canvas, where people in the thread draw with you. Answers a picture of the area and its shapes as {shapeId, type, x, y, w, h, text, by}, `by` naming who drew or changed it last; what the person has selected ("this box" means one of those) and the area they have in view, which is the area you see unless you give `bounds`; the shapes elsewhere as clusters, {bounds, numberOfShapes}, to look at next; and lints: text overflowing its shape, labels overlapping, arrows joined to nothing. Look before you change what\'s there, and again after.',
 		parameters: obj({
 			bounds: opt(obj({ x: num(), y: num(), w: num(), h: num() })),
 		}),
 		replay: 'safe',
-		execute: async ({ bounds }, api) =>
-			text(JSON.stringify(await look((await caller(api)).threadId, bounds))),
+		execute: async ({ bounds }, api) => {
+			const { picture, ...seen } = await look((await caller(api)).threadId, bounds)
+			return {
+				output: [
+					{ type: 'text', text: JSON.stringify(seen) },
+					...(picture ? [{ type: 'image', data: picture.data, mimeType: picture.mimeType }] : []),
+				],
+			}
+		},
 	})
 
 	const canvasAct = defineTool({

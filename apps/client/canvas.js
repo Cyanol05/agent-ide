@@ -70,7 +70,7 @@ function board({ react, dom, tldraw, sync, host }, element, id) {
 		let answer
 		try {
 			if (!editor) throw new Error('the canvas is still loading')
-			answer = { call, result: look ? host.look(editor, look) : host.act(editor, act) }
+			answer = { call, result: look ? await host.look(editor, look) : host.act(editor, act) }
 		} catch (error) {
 			answer = { call, error: error.message }
 		}

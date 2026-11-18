@@ -3,7 +3,7 @@
  * with tldraw's agent starter kit's own formats, actions, sanitizers and lints (vendored in ./agent). Only what an agent
  * asks for runs here; ade's agent loop, models and chat stay where they are.
  */
-import { Box } from './tldraw.js'
+import { Box, FileHelpers } from './tldraw.js'
 import { AgentHelpers } from './agent/client/AgentHelpers.js'
 import { AgentLintManager } from './agent/client/agent/managers/AgentLintManager.js'
 import { getAgentActionUtilsRecordForMode } from './agent/client/actions/AgentActionUtil.js'
@@ -27,6 +27,8 @@ import './agent/client/actions/PenActionUtil.js'
 
 /** Clusters of shapes out of view are this far apart, as the starter kit has it */
 const PERIPHERAL_PADDING = 75
+/** A look's picture is at most this many pixels on its longest side */
+const PICTURE = 1000
 
 /** What the starter kit's code asks of its agent: the editor, and where its coordinates start (the page's origin here) */
 const agentOf = (editor) => ({ editor, chatOrigin: { getOrigin: () => ({ x: 0, y: 0 }) } })
@@ -54,19 +56,24 @@ const round = (box) => ({
 	h: Math.round(box.h),
 })
 
-/** What's in an area, as the starter kit shows a model: shapes in view blurry, the rest as clusters, and the lints */
-export function look(editor, { bounds } = {}) {
-	const area = bounds ?? round(editor.getViewportPageBounds())
+/**
+ * What's in an area, as the starter kit shows a model: shapes in view blurry, the rest as clusters, the lints, and a
+ * picture of it; with what the person has selected and the area they have in view, so "this box" means theirs.
+ */
+export async function look(editor, { bounds } = {}) {
+	const viewport = round(editor.getViewportPageBounds())
+	const area = bounds ?? viewport
 	const { inside, outside } = split(editor, area)
 	const agent = agentOf(editor)
+	const blurry = (shape) => {
+		const found = convertTldrawShapeToBlurryShape(editor, shape)
+		return found && { ...found, ...byOf(shape) }
+	}
 	return {
 		bounds: area,
-		shapes: inside
-			.map((shape) => {
-				const blurry = convertTldrawShapeToBlurryShape(editor, shape)
-				return blurry && { ...blurry, ...byOf(shape) }
-			})
-			.filter(Boolean),
+		viewport,
+		selected: editor.getSelectedShapes().map(blurry).filter(Boolean),
+		shapes: inside.map(blurry).filter(Boolean),
 		peripheral: convertTldrawShapesToPeripheralShapes(editor, outside, {
 			padding: PERIPHERAL_PADDING,
 		}).map((cluster) => ({
@@ -74,7 +81,24 @@ export function look(editor, { bounds } = {}) {
 			numberOfShapes: cluster.numberOfShapes,
 		})),
 		lints: new AgentLintManager(agent).detectCanvasLints(inside),
+		...(inside.length && { picture: await picture(editor, inside, area) }),
 	}
+}
+
+/** The area as a JPEG, the starter kit's screenshot made small enough to read cheaply */
+async function picture(editor, shapes, area) {
+	const scale = Math.min(1, PICTURE / Math.max(area.w, area.h))
+	const { blob } = await editor.toImage(shapes, {
+		format: 'jpeg',
+		quality: 0.8,
+		background: true,
+		bounds: Box.From(area),
+		padding: 0,
+		pixelRatio: 1,
+		scale,
+	})
+	const url = await FileHelpers.blobToDataUrl(blob)
+	return { mimeType: 'image/jpeg', data: url.slice(url.indexOf(',') + 1) }
 }
 
 /**

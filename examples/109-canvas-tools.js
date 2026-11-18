@@ -20,7 +20,10 @@ await server({ MODULES: '+canvas,-auto-title,-director' })
 // The bot answers "<tool> <json>" by calling the tool, then says what it answered
 await scriptedRunner('box', (request) => {
 	const latest = request.messages.at(-1)
-	if (latest.role === 'toolResult') return say(text(latest))
+	if (latest.role === 'toolResult')
+		return say(
+			`${text(latest)}${latest.content.some((part) => part.type === 'image') ? ' [and a picture]' : ''}`,
+		)
 	const [, tool, args] = text(latest).match(/(canvas_\w+) (\{.*\})/s) ?? []
 	return tool ? call(tool, JSON.parse(args)) : say('Nothing to do')
 })
@@ -140,6 +143,9 @@ function tab(name, user, answer) {
 	return { socket, heard, opened, use: () => api('POST', path, { active: name }) }
 }
 const handed = []
+/** One white pixel, as a tab's picture of the canvas */
+const DOT =
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
 const reply = (from) => (data) => {
 	handed.push({ from, ...data })
 	api('POST', path, {
@@ -147,6 +153,8 @@ const reply = (from) => (data) => {
 			call: data.call,
 			result: data.look
 				? {
+						selected: [{ shapeId: 'a', type: 'rectangle', x: 0, y: 0, w: 200, h: 140 }],
+						picture: { mimeType: 'image/png', data: DOT },
 						shapes: [{ shapeId: 'a', type: 'rectangle', x: 0, y: 0, w: 200, h: 140 }],
 						lints: [{ type: 'growY-on-shape', shapeIds: ['a'] }],
 					}
@@ -167,8 +175,13 @@ await one.use()
 
 const seen = await ask('canvas_look', {})
 check(
-	handed.at(-1)?.from === 'one' && seen.includes('"h":140') && seen.includes('growY-on-shape'),
-	'a look goes to the tab used last, and answers what its editor found',
+	handed.at(-1)?.from === 'one' &&
+		seen.includes('"h":140') &&
+		seen.includes('growY-on-shape') &&
+		seen.includes('"selected":[{"shapeId":"a"') &&
+		seen.endsWith('[and a picture]') &&
+		!seen.includes(DOT),
+	'a look goes to the tab used last, and answers what its editor found, what the person selected, and a picture the model sees as one',
 	seen,
 )
 await two.use()
