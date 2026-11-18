@@ -87,7 +87,7 @@ check(
 )
 check(all.a.by === 'echo@box', 'a shape says which agent drew it', JSON.stringify(all.a))
 check(
-	drew.startsWith('create 3; 1 skipped') && drew.includes('needs the canvas open in a browser'),
+	drew.startsWith('drew 3; 1 skipped') && drew.includes('needs the canvas open in a browser'),
 	'what needs a laid-out editor says it needs a browser, and the rest is done',
 	drew,
 )
@@ -193,7 +193,7 @@ const done_ = await ask('canvas_act', {
 check(
 	handed.at(-1)?.from === 'two' &&
 		handed.at(-1).act.actions[0]._type === 'stack' &&
-		done_.startsWith('stack 1'),
+		done_.startsWith('stacked 1'),
 	'so do actions, even those only an editor can do',
 	done_,
 )

@@ -410,13 +410,32 @@ export function server(core) {
 	}
 }
 
-/** What a batch did, in a few words: "moved 3, deleted 1; 1 skipped" */
+/** Each action's past tense, for the line that says what a batch did */
+const DID = {
+	create: 'drew',
+	pen: 'drew',
+	update: 'changed',
+	delete: 'deleted',
+	move: 'moved',
+	label: 'labelled',
+	resize: 'resized',
+	rotate: 'rotated',
+	align: 'aligned',
+	distribute: 'distributed',
+	stack: 'stacked',
+	place: 'placed',
+	bringToFront: 'brought forward',
+	sendToBack: 'sent back',
+}
+
+/** What a batch did, in a few words: "moved 3, deleted 1; 1 skipped"; the chat shows it as the call's row */
 function summary(applied) {
 	const counts = new Map()
-	for (const { _type, ok } of applied) if (ok) counts.set(_type, (counts.get(_type) ?? 0) + 1)
+	for (const { _type, ok } of applied)
+		if (ok) counts.set(DID[_type] ?? _type, (counts.get(DID[_type] ?? _type) ?? 0) + 1)
 	const skipped = applied.filter((one) => !one.ok).length
-	const done = [...counts].map(([type, n]) => `${type} ${n}`).join(', ')
-	return `${done || 'nothing done'}${skipped ? `; ${skipped} skipped` : ''}`
+	const done = [...counts].map(([verb, n]) => `${verb} ${n}`).join(', ')
+	return `${done || 'did nothing'}${skipped ? `; ${skipped} skipped` : ''}`
 }
 
 /** A stored shape as the starter kit's blurry shape: its id, type, bounds and text */

@@ -401,11 +401,13 @@ export const newestCut = (cuts) =>
 
 /**
  * The tool calls that change something lasting beyond the run, by name, each with whether a finished call did: these get
- * their own row in the thread instead of folding into their turn. A post that asks another thread; a bot rewriting itself.
+ * their own row in the thread instead of folding into their turn. A post that asks another thread; a bot rewriting itself;
+ * a batch of canvas actions.
  */
 const LASTING = {
 	post: (step) => !answered(step) && askedThread(step),
 	bot: (step) => step.result.details?.before && changedOf(step).length,
+	canvas_act: () => true,
 }
 /** A turn's finished calls that changed something lasting */
 export const lastingOf = (steps) =>

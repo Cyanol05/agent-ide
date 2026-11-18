@@ -80,7 +80,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     summary              a closed turn's one line ("edited 2 files · 1 command")
     Exchange             an ask's own row in the asking thread: a sent `Cross` row, then the answer as a received one
     answersIn, answerOf  a post step's answer from the thread it asked
-    LASTING, lastingOf   the tool calls that change something beyond the run, each its own row: posts that ask, `bot` rewrites
+    LASTING, lastingOf   the tool calls that change something beyond the run, each its own row: posts that ask, `bot` rewrites,
+                         canvas_act (canvas.js CanvasRow)
     Changed              a bot rewriting itself: ✎, its name, what changed; opened, old against new (the call's details.before)
     Turn, Step, Call     a turn's line, opened into steps
     handedStep, light, litIn   the handed step as a count (none for the one message above); opened, it lights those messages
@@ -103,7 +104,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
   canvas.js              a thread's canvas as a page of the side column: tldraw and React loaded once from esm.sh (load), mounted as
                          a React island synced over /api/threads/:id/canvas (board), which also makes the tab a host: it answers the
-                         server's looks and actions, and says when it's used
+                         server's looks and actions, and says when it's used; CanvasRow, a canvas_act call's row in the chat
+                         ("moved 3, deleted 1"), which opens the canvas on what changed (showOnCanvas)
   canvas/host.js         look and act against the live editor, with the starter kit's code: blurry shapes, peripheral clusters, lints;
                          a batch of actions in one undo step, answering what landed
   canvas/agent/          tldraw's agent starter kit, the parts used, ported to JS (README there; scripts/vendor-canvas-agent.js refreshes it)

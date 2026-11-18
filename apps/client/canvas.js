@@ -8,9 +8,10 @@
  */
 import html from '@solidjs/html'
 import { createSignal, onSettled, Show, untrack } from 'solid-js'
+import { shortLabel } from './agent.js'
 import { Panes } from './panes.js'
 import { openSide, PageTabs } from './side.js'
-import { api, me, url } from './server.js'
+import { api, colorOf, me, url } from './server.js'
 
 /** The versions canvas/tldraw.js loads; the server's @tldraw/sync-core must be the same */
 const TLDRAW = '5.6.1'
@@ -50,6 +51,21 @@ const assets = {
 	resolve: (asset) => asset.props.src,
 }
 
+/** Each thread's editor while its canvas is open here, and the area to show once it opens */
+const editors = new Map()
+const waiting = new Map()
+
+/** Opens a thread's canvas on an area of it, or just opens it */
+export function showOnCanvas(id, box) {
+	openSide(id, 'canvas')
+	if (!box) return
+	const editor = editors.get(id)
+	if (editor) frame(editor, box)
+	else waiting.set(id, box)
+}
+const frame = (editor, box) =>
+	editor.zoomToBounds(box, { inset: 48, targetZoom: 1, animation: { duration: 300 } })
+
 /** How often a tab says it's being used, at most */
 const ACTIVE = 2000
 
@@ -85,6 +101,9 @@ function board({ react, dom, tldraw, sync, host }, element, id) {
 	}
 	const onMount = (mounted) => {
 		editor = mounted
+		editors.set(id, mounted)
+		if (waiting.has(id)) frame(mounted, waiting.get(id))
+		waiting.delete(id)
 		active()
 	}
 	const Board = () => {
@@ -96,6 +115,7 @@ function board({ react, dom, tldraw, sync, host }, element, id) {
 	const root = dom.createRoot(element)
 	root.render(react.createElement(Board))
 	return () => {
+		if (editors.get(id) === editor) editors.delete(id)
 		editor = undefined
 		root.unmount()
 	}
@@ -146,5 +166,71 @@ export function Canvas(props) {
 				<div class="board" ref=${(el) => (element = el)}></div>
 			<//>
 		</aside>
+	`
+}
+
+/** A canvas_act call's answer: its first line says what it did, the rest is what it touched */
+function answerOf(step) {
+	const [line, ...rest] = (step.result?.text ?? '').split('\n')
+	try {
+		return { line, ...JSON.parse(rest.join('\n')) }
+	} catch {
+		return { line, applied: [], shapes: [] }
+	}
+}
+
+/** The area the shapes a batch touched cover, as they landed */
+function areaOf(shapes = []) {
+	const boxes = shapes.map((shape) => shape.bounds ?? shape).filter((box) => box.w !== undefined)
+	if (!boxes.length) return undefined
+	const x = Math.min(...boxes.map((box) => box.x)),
+		y = Math.min(...boxes.map((box) => box.y))
+	return {
+		x,
+		y,
+		w: Math.max(...boxes.map((box) => box.x + box.w)) - x,
+		h: Math.max(...boxes.map((box) => box.y + box.h)) - y,
+	}
+}
+
+/**
+ * An agent's batch of canvas actions, on its own row in the chat: ✎, its name, what it did ("moved 3, deleted 1").
+ * Clicked, the canvas opens on what changed; opened, each action and its intent, and why any was skipped.
+ */
+export function CanvasRow(props) {
+	const answer = () => answerOf(props.step)
+	const actions = () =>
+		(props.step.args.actions ?? []).map((action, at) => ({
+			action,
+			done: answer().applied?.[at],
+		}))
+	return html`
+		<li class="elsewhere">
+			<ol class="steps">
+				<li class="call changed">
+					<details>
+						<summary
+							title="Show it on the canvas"
+							onClick=${() => showOnCanvas(props.thread, areaOf(answer().shapes))}
+						>
+							<span class="tool" style=${() => colorOf(props.agent.name)}
+								>${() => shortLabel(props.agent.name)}</span
+							>
+							<span class="in">${() => `${answer().line} on the canvas`}</span>
+						</summary>
+						<div class="whole">
+							<pre>
+${() =>
+									actions()
+										.map(
+											({ action, done }) =>
+												`${action._type}${action.intent ? `: ${action.intent}` : ''}${done?.skipped ? ` (skipped: ${done.skipped})` : ''}`,
+										)
+										.join('\n')}</pre>
+						</div>
+					</details>
+				</li>
+			</ol>
+		</li>
 	`
 }

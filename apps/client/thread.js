@@ -62,6 +62,7 @@ import { report } from './notice.js'
 import { imageUrl } from './images.js'
 import { markdown } from './markdown.js'
 import { sideOf, SideButtons, toggleSide } from './side.js'
+import { CanvasRow } from './canvas.js'
 
 /** A folded summary's text, without the literal <summary> wrapper tags some memories still carry */
 const stripSummaryTag = (text) =>
@@ -197,6 +198,13 @@ export function Thread(props) {
 				.flatMap((row) =>
 					lastingOf(row.turn.steps).map((step, index) => {
 						const at = row.at + (index + 1) / 1000
+						if (step.name === 'canvas_act')
+							return {
+								key: `${row.key}:${step.name}:${step.key}`,
+								drew: step,
+								agent: row.agent,
+								at,
+							}
 						if (step.name !== 'post')
 							return {
 								key: `${row.key}:${step.name}:${step.key}`,
@@ -579,52 +587,63 @@ export function Thread(props) {
 								`}
 							>
 								<${Show}
-									when=${() => !row().changed}
+									when=${() => !row().drew}
 									fallback=${() => html`
-										<${Changed} step=${() => row().changed} agent=${() => row().agent} />
+										<${CanvasRow}
+											step=${() => row().drew}
+											agent=${() => row().agent}
+											thread=${() => props.id}
+										/>
 									`}
 								>
 									<${Show}
-										when=${() => !row().asked}
+										when=${() => !row().changed}
 										fallback=${() => html`
-											<${Asked}
-												thread=${() => row().asked}
-												question=${() => row().question}
-												answer=${() => row().answer}
-											/>
+											<${Changed} step=${() => row().changed} agent=${() => row().agent} />
 										`}
 									>
 										<${Show}
-											when=${() => !row().ask}
+											when=${() => !row().asked}
 											fallback=${() => html`
-												<${Exchange}
-													thread=${() => props.id}
-													step=${() => row().ask}
-													agent=${() => row().agent}
+												<${Asked}
+													thread=${() => row().asked}
+													question=${() => row().question}
 													answer=${() => row().answer}
-													back=${() => row().back}
 												/>
 											`}
 										>
 											<${Show}
-												when=${() => row().turn || row().live}
+												when=${() => !row().ask}
 												fallback=${() => html`
-													<${Message}
+													<${Exchange}
 														thread=${() => props.id}
-														entry=${() => row().entry}
-														at=${() => positions().get(row().entry.id)}
-														sent=${() => row().sent}
-														above=${() => row().above}
+														step=${() => row().ask}
+														agent=${() => row().agent}
+														answer=${() => row().answer}
+														back=${() => row().back}
 													/>
 												`}
 											>
-												<${Turn}
-													thread=${() => props.id}
-													agent=${() => row().agent}
-													turn=${() => row().turn}
-													live=${() => row().live}
-													above=${() => row().above}
-												/>
+												<${Show}
+													when=${() => row().turn || row().live}
+													fallback=${() => html`
+														<${Message}
+															thread=${() => props.id}
+															entry=${() => row().entry}
+															at=${() => positions().get(row().entry.id)}
+															sent=${() => row().sent}
+															above=${() => row().above}
+														/>
+													`}
+												>
+													<${Turn}
+														thread=${() => props.id}
+														agent=${() => row().agent}
+														turn=${() => row().turn}
+														live=${() => row().live}
+														above=${() => row().above}
+													/>
+												<//>
 											<//>
 										<//>
 									<//>
