@@ -106,6 +106,7 @@ export function System() {
 														<//>`
 													: html`<${DetailsPage} id=${id} />`}
 									<//>
+									<${SideEdge} after />
 								<//>
 							`}<//
 						>
@@ -137,23 +138,24 @@ function ListEdge() {
 	})
 }
 
-/** The side column's left edge drags the same way: the overview, details and canvas share its width. */
-function SideEdge() {
+/** The side column's edges drag the same way, either side of it: the overview, details and canvas share its width. */
+function SideEdge({ after }) {
 	const fit = (px) => Math.round(Math.min(Math.max(px, 288), innerWidth * 0.7))
-	const page = (el) => el.nextElementSibling
+	const page = (el) => (after ? el.previousElementSibling : el.nextElementSibling)
 	return Edge({
 		label: 'Side column width',
 		width: (edge) => page(edge).offsetWidth,
 		drag: (edge) => {
-			const right = page(edge).getBoundingClientRect().right
-			// The thread keeps its own least width, so the page stops where it would squeeze it.
+			const rect = page(edge).getBoundingClientRect()
+			const wanted = (pointer) => (after ? pointer.clientX - rect.left : rect.right - pointer.clientX)
+			// The threads beside it keep their own least width, so the page stops where it would squeeze one.
 			return (pointer) => {
-				sideWidth.set(fit(right - pointer.clientX))
-				sideWidth.set(Math.min(fit(right - pointer.clientX), page(edge).offsetWidth))
+				sideWidth.set(fit(wanted(pointer)))
+				sideWidth.set(Math.min(fit(wanted(pointer)), page(edge).offsetWidth))
 			}
 		},
 		set: (px) => sideWidth.set(px && fit(px)),
-		grow: -1,
+		grow: after ? 1 : -1,
 		edge: 'side-edge',
 	})
 }

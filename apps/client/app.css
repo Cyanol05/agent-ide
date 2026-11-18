@@ -1585,7 +1585,7 @@ button.foot-toggle {
 	}
 }
 
-/* The side column's left edge drags the same way; it takes no room between the thread and the page. */
+/* The side column's edges drag the same way; they take no room between it and the threads beside it, and at the window's edge there is none. */
 .side-edge {
 	flex: none;
 	align-self: stretch;
@@ -1601,6 +1601,10 @@ button.foot-toggle {
 	body.resizing & {
 		outline: none;
 		background: linear-gradient(to right, transparent 3px, var(--edge) 3px 5px, transparent 5px);
+	}
+
+	&:last-child {
+		display: none;
 	}
 }
 

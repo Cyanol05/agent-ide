@@ -11,7 +11,7 @@ import { Icon } from './icons.js'
 import { api, followThread } from './server.js'
 import { markdown } from './markdown.js'
 import { report } from './notice.js'
-import { threadLink } from './thread.js'
+import { links } from './thread.js'
 
 export function Overview(props) {
 	// One thread for this column's whole life
@@ -80,7 +80,7 @@ export function Overview(props) {
 const Page = (props) => html`
 	<div
 		class="body markdown"
-		innerHTML=${() => markdown(props.text, threadLink)}
+		innerHTML=${() => markdown(props.text, links)}
 		onClick=${(event) => {
 			const link = event.target.closest('a')
 			if (link?.dataset.thread) return followThread(event, Number(link.dataset.thread))

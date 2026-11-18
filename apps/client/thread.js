@@ -567,7 +567,7 @@ export function Thread(props) {
 													<summary><small>${() => firstLine(row().text)}</small></summary>
 													<div
 														class="body markdown"
-														innerHTML=${() => markdown(stripSummaryTag(row().text))}
+														innerHTML=${() => markdown(stripSummaryTag(row().text), links)}
 													/>
 												</details>
 											</li>
@@ -819,10 +819,19 @@ const Asked = (props) => html`
 `
 
 /** A thread a message mentions by title, archived ones too; the newest of that title */
-export const threadLink = (title) => {
+const threadLink = (title) => {
 	const thread = [...threads, ...archivedThreads].find((row) => row.title === title)
 	return thread && { href: hrefOf(thread.id), id: thread.id, title }
 }
+
+/** A bot a message @mentions, in its colour; mentions match names ignoring case, as `mentioned` does */
+const botColor = (name) => {
+	const bot = bots.find((bot) => bot.name.toLowerCase() === name.toLowerCase())
+	return bot ? colorOf(bot.name) : ''
+}
+
+/** What message markdown links: threads by title, bots by name */
+export const links = { threadLink, botColor }
 
 /** What a message says: markdown, except a `$ cmd` and an error, which stay as written. A thread it mentions opens here. */
 const Body = (props) => html`
@@ -832,7 +841,7 @@ const Body = (props) => html`
 	>
 		<div
 			class="body markdown"
-			innerHTML=${() => markdown(props.data.body, threadLink)}
+			innerHTML=${() => markdown(props.data.body, links)}
 			onClick=${(event) => {
 				const link = event.target.closest('a[data-thread]')
 				if (link) followThread(event, Number(link.dataset.thread))

@@ -1,6 +1,7 @@
 /**
  * A message's markdown as HTML. Raw HTML in it shows as written, and links go only to the web or mail.
- * A thread mentioned as `@"its title"` becomes a link to it when `threadLink(title)` knows it; the longest known title wins.
+ * A thread mentioned as `@"its title"` becomes a link to it when `links.threadLink(title)` knows it; the longest known title wins.
+ * A bot mentioned as `@name` shows in its colour when `links.botColor(name)` gives one, the style its name has everywhere else.
  */
 import { marked } from 'marked'
 
@@ -36,6 +37,19 @@ marked.use({
 			renderer: ({ href, id, title }) =>
 				`<a class="thread-link" href="${escape(href)}" data-thread="${id}">${escape(title)}</a>`,
 		},
+		{
+			name: 'botMention',
+			level: 'inline',
+			// Only an @ that starts a word, so an email address stays one
+			start: (src) => src.match(/(?<![\w.@])@[\w]/)?.index,
+			tokenizer(src) {
+				const name = src.match(/^@([\w.-]+)/)?.[1].replace(/\.+$/, '')
+				const style = name && this.lexer.options.botColor?.(name)
+				if (style) return { type: 'botMention', raw: `@${name}`, name, style }
+			},
+			renderer: ({ name, style }) =>
+				`<span class="mention" style="${escape(style)}">@${escape(name)}</span>`,
+		},
 	],
 	breaks: true,
 	renderer: {
@@ -52,4 +66,4 @@ marked.use({
 	},
 })
 
-export const markdown = (text, threadLink) => marked.parse(text ?? '', { async: false, threadLink })
+export const markdown = (text, links = {}) => marked.parse(text ?? '', { async: false, ...links })
