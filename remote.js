@@ -157,7 +157,7 @@ export function createRunners({ onChange }) {
 	}
 
 	/** `message` can be a function of what the connection holds, made as it is sent */
-	async function call(name, message, { signal, onMessage = undefined }) {
+	async function call(name, message, { signal = undefined, onMessage = undefined }) {
 		signal?.throwIfAborted()
 		await online(name, signal)
 		signal?.throwIfAborted()
