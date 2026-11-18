@@ -12,6 +12,7 @@ import {
 	homeBot,
 	newThreadTools,
 	people,
+	renameThread,
 	reloadThreads,
 	server,
 	setNewThreadTools,
@@ -152,8 +153,7 @@ function Title(props) {
 		if (next === title()) return
 		setError('')
 		try {
-			await api(`/api/threads/${props.thread}/title`, { title: next })
-			reloadThreads()
+			await renameThread(props.thread, next)
 		} catch (failure) {
 			setError(failure.message)
 			field.value = title()

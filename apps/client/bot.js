@@ -7,6 +7,7 @@ import {
 	colorOf,
 	current,
 	defaultHueOf,
+	forgetBot,
 	followThread,
 	hrefOf,
 	hueOf,
@@ -176,8 +177,7 @@ export function BotSettings(props) {
 				why="Its instructions go; every thread stays."
 				onConfirm=${async (_e) => {
 					try {
-						await api(`/api/bots/${encodeURIComponent(props.bot.name)}`, undefined, 'DELETE')
-						reloadBots()
+						await forgetBot(props.bot.name)
 					} catch (failure) {
 						report(failure)
 					}

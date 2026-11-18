@@ -70,6 +70,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   client.js              root: just the chat, or the live system around it
   server.js              the server as the client sees it: api, watch, lists (threads, runners, bots),
                          threadOf, current, openThread, fork, entries store, earlier and loadEarlier (the page before, or all)
+                         changeThread/removeRow: archive, unarchive, rename, forget a bot and revoke a runner show at once, put the row back if the server refuses
   thread.js              one thread on screen
     Thread               subscribes to the thread over /ws, keeps its messages, follows the bottom (follow), asks for the
                          page before near the top (nearTop) and holds the view still as it lands (hold)

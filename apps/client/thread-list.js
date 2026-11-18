@@ -31,7 +31,7 @@ export function ThreadList() {
 		<nav class="thread-list" aria-label="Threads">
 			<${Show}
 				when=${() => !archivedPage()}
-				fallback=${html`<${ArchivedPage} onBack=${() => setArchivedPage(false)} />`}
+				fallback=${html`<${ArchivedPage} onBack=${(_e) => setArchivedPage(false)} />`}
 			>
 				<${Show} when=${() => server().modules.includes('bots')}>
 					<h2>Bots</h2>
