@@ -66,7 +66,7 @@ export function server(core) {
 					description:
 						"Who should answer. A bot by its name. From anywhere, 12 is thread 12's agent and 12/ada a bot there, which also picks the thread. " +
 						"Or model@runner, where model is anything `pi --model` takes, or a runner alone for its default model: it starts the thread's agent as that, or switches the one there, which keeps its conversation. " +
-						'Or "nobody". Leave out for whom the thread last asked, or whom its director picks; in a new thread, yourself.',
+						'Or "nobody". Leave out for whom the thread last asked, or whom its director picks; a new thread needs it.',
 				}),
 			),
 		}),
@@ -79,6 +79,10 @@ export function server(core) {
 				(await resolveThread(args.thread)) ??
 				(Number(args.to?.match(/^(\d+)(?:\/|$)/)?.[1]) || undefined)
 			if (thread === from) throw new Error('That is your own thread; just answer')
+			if (thread === undefined && args.to === undefined)
+				throw new Error(
+					'Say who should answer: a bot by name, or model@runner (e.g. anthropic/claude-opus-5-5:medium@oskar).',
+				)
 			if (/^\$\s/.test(args.body))
 				throw new Error('Run commands with your own bash tool, not as a post')
 			const title = thread === undefined ? args.title?.trim() || defaultTitle(args.body) : ''
@@ -190,12 +194,7 @@ export function server(core) {
 									args.to === 'nobody'
 										? []
 										: [await core.whom(thread, args.to, false, context.abortSignal)],
-					fallback: async () =>
-						thread === undefined
-							? [await agentOf(api.conversationId)]
-							: asker
-								? [asker]
-								: await core.lastAsked(thread),
+					fallback: async () => (asker ? [asker] : await core.lastAsked(thread)),
 				},
 			)
 			/** Only a thread you started answers you on its own */
