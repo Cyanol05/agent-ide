@@ -9,7 +9,7 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   Anchor, Admit, Deliver, Shell     the tasks: own an agent, take a message in, hand it over, run `$ cmd`
   person                            whether a person wrote a message; Admit hands one person's as typed, and tags them once a second writes
   address, whom, modelOn, reach     whom a `to` asks, on which runner and model
-  recipients                       director → explicit recipient → last-asked choice
+  recipients                       director → explicit recipient → thread agent in groups / last-asked in solo chats and commands
   post, append, postEntry           write a message and hand it to each agent it asks
   reconfigure, newAgent, setUp      an agent switching model/thinking/runner/folder in place, or starting
   outcome, tell, restore, faulted   what a finished delivery posts back (a bot's answer asks whom direct says), or a failure says
@@ -43,7 +43,7 @@ modules/
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
   context.js             AGENTS.md, skills and the folder's path (cwd) from the runner; listed skills stay readable outside it;
                          a folder's skills by name (serve), a person's /skill:name expanded as pi does (expand, skillCommand)
-  director.js            the `direct` hook: @mentions ask that bot, with picks a model picks bots or nobody (decide);
+  director.js            the `direct` hook: @mentions ask that bot, by default a model picks the thread's agent, bots or nobody (decide), with a short, visible fallback to the thread agent on failure;
                          those asked take turns (`turns`); a bot's answer @mentioning a bot asks it, resting
                          after three bot answers in a row (botTurns); tells bots to @mention, not post (section)
   overview.js            a thread's overview page: WRITER (the prompt and its shape), Overview doc, Write task (one writer, rounds
@@ -149,6 +149,7 @@ examples/100-post-without-a-title.js optional post titles with auto-title on/off
 examples/105-overview-page.js     the overview page: written after answers from the page before and what's new, read by the tool, switched off
 examples/106-one-store-per-person.js ade.sqlite, ade.log and ade.json live in ~/.config/ade, whatever folder the server starts in
 examples/107-a-missing-folder-says-so.js   a renamed folder stops the run with one line; another folder takes what waited
+examples/110-a-group-message-asks-the-thread.js   @Jeroen then an unaddressed question reaches the thread agent; failed picks never stick to a bot
 examples/108-canvas.js            an agent draws with no browser open, a watching socket sees it, a hard restart keeps it, a fork copies it
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```

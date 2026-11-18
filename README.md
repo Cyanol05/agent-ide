@@ -49,7 +49,7 @@ So, what's different about this one? Not much, but it adds patterns I've found u
 
 - bots are agents with a name, instructions and a hands-off home thread (`bots`)
 - agents and bots message each other (`talk`)
-- threads are multiplayer, and group chats once you invite bots, who answer when it's their turn (`director`)
+- group messages go to the thread, not the last bot you asked; the director picks who answers, including the thread's agent (`director`)
 - bots remember long threads as short summary lines they can zoom back into, so they can stick around for good (`memory`)
 - agents get their folder's AGENTS.md and skills, like in pi (`context`)
 - see what agents are doing on a runner's terminal (`status`)
@@ -59,6 +59,10 @@ So, what's different about this one? Not much, but it adds patterns I've found u
 - a short page per thread says where it stands and what waits on you (`overview`, off by default)
 - a canvas per thread that people and agents draw on together, with tldraw (`canvas`, off by default)
 - move threads to and from pi (`pi-sessions`, off by default)
+
+In a group (the thread's agent plus bots, at least two), leave `to` out to let the director choose who answers, or nobody. `@name` asks that bot for one message; the next unaddressed message goes to the director again. People don't count toward the group. Solo chats and `$` commands keep the last recipient.
+
+The chooser uses the thread agent's model and runner with thinking off (the first bot's setup in a bot-only group). Set `director.model` in ade.json to use a cheaper model on that runner, or include `@runner`; `DIRECTOR_MODEL` overrides it. After three seconds, an error, or an invalid pick, the thread's agent answers instead. The message's `picked` line says the pick failed; bot-only groups report the failure without asking anyone. `director.timeoutMs` changes that limit, and `director.picks: false` disables model picks without restoring sticky group recipients.
 
 For each module's settings, see the top of its file in [modules/](modules). A module there with `export const on = true` is on by default; a new file there is a new module.
 

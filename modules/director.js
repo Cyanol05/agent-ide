@@ -1,14 +1,12 @@
 /**
- * Asks the bots a message @mentions, by name in any case, instead of whom the thread asked last (experimental). An agent written out,
- * model@runner, is never a mention, a mention reaches only bots already in the thread, and no one summons themselves.
- * Those a message asks answer one after another, in the order named, each handed the answers before it. A bot's answer
- * that @mentions another bot here asks that bot too, until bots have answered three times in a row with no one else
- * writing; then the next person's message wakes them. With `picks` on, a message that names no one, a person's or an
- * agent's post, in a thread with two or more bots, asks the ones a model picks, or nobody. On by default;
- * MODULES=-director turns it off.
+ * @mentions ask bots once, in mention order. In a group (the thread's agent plus bots, at least two), an unaddressed
+ * message asks whom a model picks, or nobody. People don't count. On by default; MODULES=-director turns it off.
+ * A bot's answer can @mention another bot, resting after three answers in a row until someone else writes.
  *
- * In ade.json `{"director": {"picks": true, "model": "gpt-6-luna:low@oskar"}}`, the model optional;
- * DIRECTOR_MODEL=model@runner turns picks on with that model.
+ * The chooser uses the thread agent's model and runner with thinking off, or the first bot's setup in a bot-only group.
+ * `director.model` in ade.json selects model:thinking, optionally @runner; DIRECTOR_MODEL overrides it.
+ * `director.picks: false` disables model picks. `director.timeoutMs` defaults to 3000. A failed pick asks the thread's
+ * agent and records why on the message; with no thread agent it asks nobody and records the failure.
  */
 import { defineExtension } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
@@ -16,13 +14,12 @@ import { AGENT, agentTo, writtenTo, mentioned } from '../util.js'
 
 export const on = true
 
-const MODEL = 'gpt-6-luna:low@oskar'
 /** The messages it reads before the new one, how much of each, and of a bot's instructions */
 const WINDOW = 20
 const SAID = 600
 const PERSONA = 300
-/** A pick that takes longer falls through to whom the thread asked last */
-const LIMIT = 15000
+/** A slow pick gives way to the thread agent, never to the last bot asked */
+const LIMIT = 3000
 /** How many bot answers in a row, with no one else writing, before a bot's @mention summons no one */
 const REST = 3
 
@@ -43,15 +40,14 @@ nobody: they're talking to each other`
 
 export function server(core) {
 	const own = core.config?.director ?? {}
-	const name = process.env.DIRECTOR_MODEL || (own.picks ? own.model || MODEL : '')
-	if (name && !name.includes('@')) throw new Error("the director's model is model@runner")
-	const chooser = name && agentTo(name)
+	const name = process.env.DIRECTOR_MODEL || own.model
+	const picks = own.picks !== false || Boolean(process.env.DIRECTOR_MODEL)
 
 	/**
 	 * The one judgment: given the recent messages, the new one and who could answer, `{names, reason}` with the
-	 * candidates it picks in the order they answer, none for nobody; undefined when it can't tell. Another decider, Jev say, replaces only this.
+	 * candidates it picks in the order they answer, none for nobody; throws when it cannot choose.
 	 */
-	async function decide({ said, message, candidates }, signal) {
+	async function decide({ said, message, candidates }, chooser, signal) {
 		await core.runners.online(chooser.runner, signal)
 		const to = await core.address(chooser, false, signal)
 		const model = core.models.getModel(`runner:${to.runner}`, to.model)
@@ -84,24 +80,17 @@ export function server(core) {
 			[...candidates.map((candidate) => candidate.name), 'nobody'].find(
 				(known) => known.toLowerCase() === name.replace(/^@/, '').toLowerCase(),
 			)
-		const names = [
-			...new Set(
-				picked
-					.split(/\s*(?:,|&|\band\b)\s*/)
-					.map(known)
-					.filter(Boolean),
-			),
-		]
-		if (!names.length) return undefined
+		const names = [...new Set(picked.split(/\s*(?:,|&|\band\b)\s*/).map(known))]
+		if (!names.length || names.some((name) => !name) || !reason)
+			throw new Error('the chooser returned no valid pick')
 		return {
 			names: names.includes('nobody') ? [] : names,
 			reason: reason.split('\n')[0].trim(),
 		}
 	}
 
-	/** Whom a message that names no one asks: `{to, picked}` with the reason, or undefined to ask whom the thread asked last */
-	async function pick(threadId, message, here) {
-		if (here.filter((agent) => agent.name).length < 2) return undefined
+	/** Whom a group message that names no one asks; a failed pick goes to the thread agent, never the last bot. */
+	async function pick(threadId, message, here, setup) {
 		const candidates = await Promise.all(
 			here.map(async (agent) => {
 				if (!agent.name)
@@ -124,11 +113,26 @@ export function server(core) {
 			.filter((entry) => !entry.data.shell)
 			.slice(-WINDOW)
 			.map(({ data }) => ({ author: data.author, body: (data.body ?? '').slice(0, SAID) }))
-		const decided = await decide(
-			{ said, message: { ...message, body: message.body.slice(0, SAID) }, candidates },
-			AbortSignal.timeout(LIMIT),
-		).catch((error) => console.error(`director: ${error.message}`))
-		if (!decided) return undefined
+		const chooser = name
+			? agentTo(name.includes('@') ? name : `${name}@${setup.runner}`)
+			: { runner: setup.runner, model: setup.model, thinkingLevel: 'off' }
+		chooser.thinkingLevel ??= 'off'
+		const signal = AbortSignal.timeout(own.timeoutMs ?? LIMIT)
+		let decided
+		try {
+			decided = await decide(
+				{ said, message: { ...message, body: message.body.slice(0, SAID) }, candidates },
+				chooser,
+				signal,
+			)
+		} catch (error) {
+			console.error(`director: thread ${threadId}: ${error.message}`)
+			const agent = here.find((agent) => !agent.name)
+			return {
+				to: agent ? [agent] : [],
+				picked: `Pick failed: ${signal.aborted ? 'the chooser timed out' : 'the chooser could not choose'}. ${agent ? "The thread's agent answers." : 'No thread agent to answer; @mention a bot.'}`,
+			}
+		}
 		const to = decided.names.map((name) =>
 			here.find((agent) => (name === AGENT ? !agent.name : agent.name === name)),
 		)
@@ -149,11 +153,12 @@ export function server(core) {
 	 */
 	async function direct(threadId, message, free) {
 		const { agents } = await core.thread(threadId)
-		const here = (
+		const participants = (
 			await Promise.all(
 				Object.entries(agents).map(([key, agent]) => core.agentOf(agent.conversation, key)),
 			)
-		).filter((agent) => agent && agent.name !== message.author)
+		).filter(Boolean)
+		const here = participants.filter((agent) => agent.name !== message.author)
 		const named = mentioned(
 			message.body,
 			here.filter((agent) => agent.name).map((agent) => agent.name),
@@ -161,7 +166,20 @@ export function server(core) {
 		if (message.answer)
 			return named.length && (await botTurns(threadId)) + 1 < REST ? { to: named } : undefined
 		if (named.length) return { to: named }
-		return free && chooser ? pick(threadId, message, here) : undefined
+		if (!free || participants.length < 2) return undefined
+		if (!picks) {
+			const agent = here.find((agent) => !agent.name)
+			return {
+				to: agent ? [agent] : [],
+				picked: "Model picks are off; ask the thread's agent or @mention a bot.",
+			}
+		}
+		return pick(
+			threadId,
+			message,
+			here,
+			participants.find((agent) => !agent.name) ?? participants[0],
+		)
 	}
 
 	/** A bot learns the in-thread way to hand over, so it doesn't post the question to a side thread */
@@ -178,7 +196,7 @@ export function server(core) {
 	return {
 		direct,
 		turns: true,
-		settings: { picks: name || null },
+		settings: { picks: picks ? name || true : false },
 		extension: defineExtension({ name: 'ade.director', sections: [section] }),
 	}
 }

@@ -82,11 +82,10 @@ check(
 await post(garden, 'who knows?')
 const unknown = await last(garden)
 check(
-	JSON.stringify(unknown.data.to) === '["Kira"]' && !unknown.data.picked,
-	"a name that isn't here falls back to whom the thread asked last",
+	!unknown.data.to && unknown.data.picked?.startsWith('Pick failed:'),
+	"a name that isn't here reports the failed pick, without asking the last bot",
 	JSON.stringify(unknown.data),
 )
-await answered(garden, 4)
 
 const count = asked.length
 await post(garden, '@ada, and the roses?')
@@ -94,7 +93,7 @@ check(
 	JSON.stringify((await last(garden)).data.to) === '["Ada"]' && asked.length === count,
 	'an @mention comes first: no pick',
 )
-await answered(garden, 5)
+await answered(garden, 4)
 await post(garden, '@bob, the roses?', 'Ada')
 const thread = (await api('GET', `/api/threads/${garden}`)).json
 check(
@@ -102,13 +101,13 @@ check(
 		JSON.stringify((await last(garden)).data.to) === '["Ada"]',
 	"an @mention of someone who isn't here brings no one in",
 )
-await answered(garden, 6)
+await answered(garden, 5)
 await post(garden, 'roses again', 'Ada')
 check(
 	JSON.stringify((await last(garden)).data.to) === '["Ada"]' && asked.length === count,
 	'a message with its own `to` asks that, no pick',
 )
-await answered(garden, 7)
+await answered(garden, 6)
 
 await api('DELETE', '/api/bots/Kira')
 await api('DELETE', '/api/bots/Ada')

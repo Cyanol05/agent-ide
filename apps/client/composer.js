@@ -2,7 +2,7 @@
  * Each thread keeps its draft, images and pick when you move away; a new thread keeps its own.
  * The draft's text, not its images, also lives in localStorage by thread id, so it survives a reload or closing the tab.
  * Asking a thread's agent as another model switches it. A pick is one model plus any bots; in a bot's home, it is the bot's model.
- * In a thread of bots with the director picking, a message whose sender chose no one goes without `to`, and a choice holds for one message.
+ * In a group thread, a message whose sender chose no one goes without `to`, and a choice holds for one message.
  */
 import { defaultTitle } from './title.js'
 import { threadMention } from './markdown.js'
@@ -111,7 +111,7 @@ export function Composer(props) {
 	)
 	const asking = () =>
 		directed(props.thread)
-			? "director's pick"
+			? 'the thread'
 			: recipients(props.thread)
 					.map((to) => recipientLabel(to, props.thread))
 					.join(' + ')
@@ -200,8 +200,8 @@ export function Composer(props) {
 		const body = draft().draft,
 			images = snapshot(draft().images),
 			to = snapshot(recipients(props.thread))
-		// In a thread of bots, a choice holds for one message; the next is the director's again
-		if (directing(props.thread)) setCompose((store) => void delete store.picks[props.thread])
+		// A choice holds for one message, including the invitation that turns a solo thread into a group
+		if (props.thread) setCompose((store) => void delete store.picks[props.thread])
 		let id = props.thread
 		const key = id ?? 'new'
 		changeDraft((draft) => {
@@ -456,7 +456,7 @@ export function Composer(props) {
 						homeBot(props.thread)
 							? `The model ${homeBot(props.thread).name} runs as`
 							: directed(props.thread)
-								? 'The director picks a bot, or nobody; pick one here to choose'
+								? 'The director picks the agent, bots, or nobody; pick one here to choose'
 								: recipients(props.thread).map(formatAgent).join(', ')}
 					onClick=${() => {
 						openThread(props.thread)
@@ -753,14 +753,8 @@ const skillsFor = (query, thread) => {
 			description: skill.description,
 		}))
 }
-/** A thread of two or more bots, with the director picking: a message whose sender chose no one goes without `to` */
-const directing = (thread) =>
-	Boolean(
-		thread &&
-		server().settings?.director?.picks &&
-		!homeBot(thread) &&
-		here(thread).filter((agent) => agent.to?.name).length > 1,
-	)
+/** A thread with at least two agents/bots: a message whose sender chose no one goes without `to` */
+const directing = (thread) => Boolean(thread && here(thread).filter((agent) => agent.to).length > 1)
 const directed = (thread) => directing(thread) && !pick(thread)
 export const recipients = (thread = current()) =>
 	[agent(thread), ...askedBots(thread)].filter(Boolean)

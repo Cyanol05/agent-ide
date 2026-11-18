@@ -13,7 +13,7 @@ api threads/3/fork '{"at": 5}' # a new thread from message 5
 api threads/3/stop '{}'
 ```
 
-A message's `to` says whom it asks: an agent like `sonnet@laptop`, a bot's name, or `null` for nobody. Leave it out and it asks whoever the thread asked last. A body starting with `$ ` runs that command on the runner instead.
+A message's `to` says whom it asks: an agent like `sonnet@laptop`, a bot's name, or `null` for nobody. Leave it out in a group (the thread's agent plus bots, at least two) and the director picks who answers, or nobody; people don't count. An `@name` mention asks that bot for this message only. Failed picks ask the thread's agent and record the failure in `picked`; without a thread agent, nobody is asked. Solo chats and commands ask whoever the thread asked last. A body starting with `$ ` runs that command on the runner instead.
 
 To watch a thread live, open `/ws` and send `{"watch": 3}`. You get new messages and each agent's work as it happens; a bare `{}` means "fetch the list again".
 

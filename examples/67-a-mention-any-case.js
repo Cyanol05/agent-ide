@@ -29,8 +29,11 @@ check(
 await post(thread, '@nobody: still here?')
 v = await answered(thread, 5)
 check(
-	author(v) === 'Kira' && !v?.entries.at(-1)?.data.error,
-	'a mention of no one leaves the thread asking whom it asked last',
+	author(v) === 'echo@laptop' &&
+		v?.entries
+			.findLast((entry) => entry.data.body === '@nobody: still here?')
+			?.data.picked?.startsWith('Pick failed:'),
+	'an unknown mention goes to the chooser; its invalid pick falls back to the thread agent',
 	JSON.stringify(v?.entries.at(-1)?.data),
 )
 

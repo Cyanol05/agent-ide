@@ -1126,17 +1126,34 @@ const once = (requestId, command, work) =>
 		return result
 	})
 
-/** The director first, then an explicit recipient, otherwise whom the caller last asked. */
+/** The director first, then an explicit recipient. Only solo chats and commands reuse the last recipient. */
 async function recipients(
 	id,
 	message,
 	{ explicit, fallback = () => lastAsked(id), director = true } = {},
 ) {
 	const directed = director && (await direct?.(id, message, explicit === undefined))
-	return directed || { to: await (explicit ?? fallback)() }
+	if (directed) return directed
+	if (explicit) return { to: await explicit() }
+	if (director) {
+		const { agents } = await thread(id)
+		const here = (
+			await Promise.all(
+				Object.entries(agents).map(([key, agent]) => agentOf(agent.conversation, key)),
+			)
+		).filter(Boolean)
+		if (here.length > 1) {
+			const agent = here.find((agent) => !agent.name)
+			return {
+				to: agent ? [agent] : [],
+				picked: `Pick failed: the director is unavailable. ${agent ? "The thread's agent answers." : 'No thread agent to answer; @mention a bot.'}`,
+			}
+		}
+	}
+	return { to: await fallback() }
 }
 
-/** No `to` asks whom the thread last asked, unless the director says otherwise */
+/** No `to` asks the director in a group, or the last recipient in a solo chat or command. */
 async function postEntry(id, author, input) {
 	const saved = await receipt(input.requestId, `post ${id}`)
 	if (saved) return saved.result

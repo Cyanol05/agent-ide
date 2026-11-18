@@ -8,7 +8,7 @@ await scriptedRunner('laptop', (request) => {
 	const last = request.messages.at(-1)
 	if (system.startsWith('You choose who answers')) {
 		const message = text(last).match(/New message: \[[^\]]+\] (.*)/)?.[1] ?? ''
-		if (message.includes('all think')) return say('Kira, @Ada, Nobody-here: both have a view')
+		if (message.includes('all think')) return say('Kira, @Ada: both have a view')
 		return say('Kira: she knows roses')
 	}
 	const name = /You are the bot (\w+)/.exec(JSON.stringify(request.messages))?.[1]
@@ -30,7 +30,7 @@ const after = await answered(garden, 4)
 const asked = after.entries.at(-3)
 check(
 	JSON.stringify(asked.data.to) === '["Kira","Ada"]' && asked.data.picked === 'both have a view',
-	'a message for the group asks each bot the director picks, in its order; a name not here is dropped',
+	'a message for the group asks each bot the director picks, in its order',
 	JSON.stringify(asked.data),
 )
 check(
