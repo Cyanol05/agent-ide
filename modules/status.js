@@ -41,6 +41,7 @@ export function server({ runners, known, threadList }) {
 	return { changed }
 }
 
+// oxlint-disable-next-line no-control-regex -- strip terminal control characters
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]+/g
 /** Free text as the spec has it: one line of UTF-8, at most `max` bytes, in base64 */
 function text(value, max) {
@@ -52,10 +53,10 @@ function text(value, max) {
 }
 /** One report; it replaces its record whole, so every key it should keep is in it */
 const report = (pairs) =>
-	`\x1b]7501;${Object.entries(pairs)
+	`\u001b]7501;${Object.entries(pairs)
 		.filter(([, value]) => value !== undefined)
 		.map(([key, value]) => `${key}=${value}`)
-		.join(':')}\x1b\\`
+		.join(':')}\u001b\\`
 
 export function runner({ name, server }) {
 	if (!process.stdout.isTTY && process.env.STATUS !== '1') return {}

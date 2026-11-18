@@ -159,6 +159,7 @@ export function server(core) {
 			.filter(Boolean)
 			.join('\n\n')
 		const model = core.models.getModel(`runner:${to.runner}`, to.model)
+		/** @type {import('@earendil-works/pi-ai').Message[]} */
 		const messages = [
 			{ role: 'system', content: WRITER, timestamp: Date.now() },
 			{ role: 'user', content: task, timestamp: Date.now() },
@@ -208,6 +209,7 @@ export function server(core) {
 		phases: {
 			async write({ conversationId: threadId, state }, rt, ctx) {
 				const { round } = state.checkpoint
+				/** @type {any} */
 				let done = await rt.memo(`round ${round}`, ctx)
 				if (done === undefined) {
 					const { page, through } = await read(threadId)

@@ -240,7 +240,7 @@ export function server(core) {
 			// Memory's early start isn't this thread's: Pi compacts it only once the window is nearly full
 			const { compactions = [] } = (await api.snapshot(LiveDoc, api.conversationId, context)) ?? {}
 			const early = compactions.find((status) => status.taskId === api.taskId)?.blocking === false
-			return reason === 'threshold' && early ? { decline: true } : undefined
+			return reason === 'threshold' && early ? { decline: /** @type {const} */ (true) } : undefined
 		}
 		const T = (await cutPosition(api.conversationId, firstKept, home.thread)) + 1
 		return T > 0

@@ -1,7 +1,6 @@
 /** `curl -fsSL <server>/connect-runner | sh` installs a runner from the server and starts it */
 import { spawn } from 'node:child_process'
 import { cpSync, mkdirSync, readFileSync, readdirSync, appendFileSync, symlinkSync } from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import {
 	answered,
@@ -46,6 +45,7 @@ const ask = async (id, n) => {
 	return (await answered(id, n, 20000))?.entries.at(-1).data.body ?? ''
 }
 
+/** @type {import('node:child_process').ChildProcess} */
 let srv = await server()
 const port = new URL(base).port
 const key = await keyFor('fresh')

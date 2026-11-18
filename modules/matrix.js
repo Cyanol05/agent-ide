@@ -33,8 +33,10 @@ const refused = (error) => error.status >= 400 && error.status < 500 && error.st
 /** Anyone in a room can write */
 const clean = (text) =>
 	text
-		.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
-		.replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/g, '')
+		// oxlint-disable-next-line no-control-regex -- strip ANSI terminal escapes
+		.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
+		// oxlint-disable-next-line no-control-regex -- strip invisible control characters
+		.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '')
 
 export function server(core) {
 	const {
@@ -70,7 +72,8 @@ export function server(core) {
 	const MatrixSend = defineTask({
 		name: 'ade.matrix.send',
 		version: 1,
-		initial: ({ after }) => ({ phase: after ? 'wait' : 'send' }),
+		initial: /** @returns {{ phase: 'wait', wait?: number } | { phase: 'send', wait?: number }} */
+			({ after }) => ({ phase: after ? 'wait' : 'send' }),
 		phases: {
 			wait: ({ input: { after } }, rt, ctx) =>
 				rt.commit(
@@ -290,8 +293,8 @@ export function server(core) {
 	async function sync() {
 		me = (await retry('whoami', () => request('GET', '/v3/account/whoami'))).user_id
 		// `@bot` mentions it, but `@bottle` doesn't
-		const local = me.split(':')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-		mentioned = new RegExp(`${local}(?![\\w-])`)
+		const local = me.split(':')[0].replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+		mentioned = new RegExp(String.raw`${local}(?![\w-])`)
 		rooms = {}
 		for (const name of names)
 			rooms[

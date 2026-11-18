@@ -66,8 +66,8 @@ function encode(value) {
 				$error: item.constructor.name,
 				code: item.code,
 				message: item.message,
-				path: item.path,
-				spillPath: item.spillPath,
+				path: item instanceof FileError ? item.path : undefined,
+				spillPath: item instanceof ExecutionError ? item.spillPath : undefined,
 			}
 		return item
 	})
@@ -157,7 +157,7 @@ export function createRunners({ onChange }) {
 	}
 
 	/** `message` can be a function of what the connection holds, made as it is sent */
-	async function call(name, message, { signal, onMessage }) {
+	async function call(name, message, { signal, onMessage = undefined }) {
 		signal?.throwIfAborted()
 		await online(name, signal)
 		signal?.throwIfAborted()
@@ -196,7 +196,7 @@ export function createRunners({ onChange }) {
 		if (connections.get(connection.name) !== connection) return false
 		connections.delete(connection.name)
 		if (was === 'online')
-			for (const pending of [...calls.values()])
+			for (const pending of calls.values())
 				if (pending.runner === connection.name)
 					pending.reject(new Error(`runner ${connection.name}: connection lost`))
 		return true
@@ -212,12 +212,15 @@ export function createRunners({ onChange }) {
 				.filter((call) => call.runner === name)
 				.map(({ op, what }) => ({ op, what })),
 		/** A connection that has yet to show its key; `end` closes its socket, with a code or at once */
-		connection: (name, end = () => {}) => ({ name, phase: 'authenticating', end }),
+		connection: (name, end = (code = undefined, reason = undefined) => {}) => ({ name, phase: 'authenticating', end }),
 		/** Its key held: it takes the name, and the name's older connection ends */
 		register(connection) {
 			if (connection.phase !== 'authenticating') return false
 			const old = connections.get(connection.name)
-			if (old) (disconnect(old), old.end())
+			if (old) {
+				disconnect(old)
+				old.end()
+			}
 			connection.phase = 'registering'
 			connections.set(connection.name, connection)
 			return true
@@ -291,17 +294,18 @@ export function runnerProvider(runners, name, resolved = {}) {
 		id: ref,
 		name: `${model.name} on ${name}`,
 	}))
+	/** @param {import('@earendil-works/pi-ai').StreamOptions} [options] */
 	const stream = (model, context, options = {}) => {
 		const events = createAssistantMessageEventStream()
 		const {
 			signal,
-			apiKey,
-			env,
-			fetch,
-			onPayload,
-			onResponse,
-			onProviderStreamEvent,
-			telemetry,
+			apiKey: _apiKey,
+			env: _env,
+			fetch: _fetch,
+			onPayload: _onPayload,
+			onResponse: _onResponse,
+			onProviderStreamEvent: _onProviderStreamEvent,
+			telemetry: _telemetry,
 			...rest
 		} = options
 		let partial
@@ -353,8 +357,9 @@ export function runnerProvider(runners, name, resolved = {}) {
 	}
 }
 
+/** @returns {import('@earendil-works/pi-durable/env').ExecutionEnv} */
 export function remoteEnv(runners, name, cwd) {
-	const env = { id: `runner:${name}`, cwd }
+	const env = /** @type {import('@earendil-works/pi-durable/env').ExecutionEnv} */ ({ id: `runner:${name}`, cwd })
 	const request = (message, context) =>
 		runners
 			.call(name, message, { signal: context?.abortSignal })
@@ -462,7 +467,7 @@ export function serveRunner({
 	/** A model goes to the server without its headers, which can hold credentials */
 	async function resolved(pattern) {
 		const {
-			model: { headers, ...model },
+			model: { headers: _headers, ...model },
 			thinkingLevel,
 			defaultThinkingLevel,
 		} = await resolve(pattern)

@@ -1,3 +1,4 @@
+import WebSocket from 'ws'
 /** A runner dials in with its own key, so nobody can take its name, and a revoked one goes offline and stays out */
 import { api, base, check, done, runner, server } from './lib.js'
 

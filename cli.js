@@ -28,6 +28,8 @@ const usage = `node cli.js [--server url] [--as name] <command>
                    with pi-sessions on: list the pi sessions in the runner's folder (--dir for another),
                    or start a new thread from one, by id or path, and print "thread N"; --title names it`
 
+/** @template {import("node:util").ParseArgsOptionsConfig} T
+ * @param {T} options */
 const parse = (options) => {
 	try {
 		return parseArgs({ allowPositionals: true, options })

@@ -64,6 +64,9 @@ importers:
       '@nkzw/oxlint-config':
         specifier: ^2.0.1
         version: 2.0.1(eslint@10.15.0(jiti@2.7.0))(oxlint@1.94.0)(typescript@6.0.3)
+      '@types/ws':
+        specifier: ^8.18.2
+        version: 8.18.2
       oxlint:
         specifier: ^1.94.0
         version: 1.94.0
@@ -606,6 +609,9 @@ packages:
 
   '@types/retry@0.12.0':
     resolution: {integrity: sha512-wWKOClTTiizcZhXnPY4wikVAwmdYHp8q6DmC+EJUzAMsycb7HB32Kh9RN4+0gExjmPmZSAQjgURXIGATPegAvA==}
+
+  '@types/ws@8.18.2':
+    resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
 
   '@typescript-eslint/project-service@8.73.0':
     resolution: {integrity: sha512-/pEf8Rc4Mjk+qJnY0uO1+Gadeal8uv50xpuic+srG2vIVatA0XxvWMUeMtFvs6OCHqftiQ7/+qH4aehG5stzIA==}
@@ -1877,6 +1883,10 @@ snapshots:
       undici-types: 8.9.0
 
   '@types/retry@0.12.0': {}
+
+  '@types/ws@8.18.2':
+    dependencies:
+      '@types/node': 26.6.6
 
   '@typescript-eslint/project-service@8.73.0(typescript@6.0.3)':
     dependencies:

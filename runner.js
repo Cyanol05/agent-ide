@@ -1,3 +1,4 @@
+import WebSocket from 'ws'
 import { readdirSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -15,7 +16,7 @@ import { runnerBundle, serveRunner } from './remote.js'
 
 // Prefer the installed pi's default; an internal path change must not stop the runner.
 const { DEFAULT_THINKING_LEVEL } = await import(
-	new URL('./core/defaults.js', import.meta.resolve('@earendil-works/pi-coding-agent'))
+	new URL('./core/defaults.js', import.meta.resolve('@earendil-works/pi-coding-agent')).href
 ).catch(() => ({ DEFAULT_THINKING_LEVEL: 'medium' }))
 
 const { values: args } = parseArgs({
@@ -201,7 +202,7 @@ async function connect() {
 			`${name} online at ${server}, offering pi's logins and ${roots.join(', ')}${args['read-only'] ? ' to read only' : ''}${from}`,
 		)
 	socket.onmessage = ({ data }) =>
-		JSON.parse(data).op === 'ready' ? online() : runner.receive(data)
+		JSON.parse(String(data)).op === 'ready' ? online() : runner.receive(data)
 	socket.onclose = ({ code, reason }) => {
 		runner.stopAll()
 		for (const module of modules) module.disconnected?.()

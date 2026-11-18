@@ -213,7 +213,7 @@ check(
 await cli('stop', String(stopped))
 const result = await pending
 check(
-	!result.error,
+	!('error' in result),
 	'stopping a delivery ends the CLI wait without an answer',
 	JSON.stringify(result),
 )

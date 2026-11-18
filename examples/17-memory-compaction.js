@@ -14,10 +14,10 @@ import {
 } from './lib.js'
 
 await server({ MODULES: '+memory' })
-for (const [runner, contextWindow, count, half, lineSize] of [
+for (const [runner, contextWindow, count, half, lineSize] of /** @type {[string, number, number, number, number][]} */ ([
 	['automatic', 40000, 310, 140, 300],
 	['manual', 1000000, 330, 160, 492],
-]) {
+])) {
 	const requests = []
 	await scriptedRunner(
 		runner,

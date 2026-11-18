@@ -269,7 +269,8 @@ export function server(core) {
 			query: opt(str({ description: 'Only entries containing this text, ignoring case' })),
 		}),
 		replay: 'safe',
-		execute: async (args, api) => {
+		execute: async (input, api) => {
+			const args = /** @type {any} */ (input)
 			const { thread: mine, name } = await home(api.conversationId)
 			const thread = await resolveThread(args.thread)
 			const lines = []

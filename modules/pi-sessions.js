@@ -164,7 +164,7 @@ export async function server(core) {
 					.join('')
 
 	/** The runner's folder a request names, if the runner takes work from whoever asks */
-	async function folderOf({ runner: name, dir }, by) {
+	async function folderOf({ runner: name = undefined, dir = undefined }, by) {
 		const known = await core.known()
 		const runner = name && known[name]
 		if (!runner) throw new Error(`No runner named ${name}`)
@@ -302,7 +302,7 @@ export async function server(core) {
  * Pi's own ids are hex, so what someone adds in pi never looks like ours. */
 const ours = (letter, entry) => `${letter}${entry.toString(16).padStart(7, '0')}`
 const isOurs = (id) => /^[imts][0-9a-f]{7}/.test(id)
-const entryOf = (id) => (/^i[0-9a-f]{7}/.test(id) ? parseInt(id.slice(1, 8), 16) : undefined)
+const entryOf = (id) => (/^i[0-9a-f]{7}/.test(id) ? Number.parseInt(id.slice(1, 8), 16) : undefined)
 
 const SUMMARY_PREFIX =
 	'The conversation history before this point was compacted into the following summary:\n\n<summary>\n'
@@ -338,7 +338,10 @@ async function open(dir, id) {
 		if (entry.type === 'model_change') state.model = `${entry.provider}/${entry.modelId}`
 		if (entry.type === 'thinking_level_change') state.thinking = entry.thinkingLevel
 		const from = entryOf(entry.id)
-		if (from !== undefined) (state.kept.push(from), (state.last = Math.max(state.last, from)))
+		if (from !== undefined) {
+			state.kept.push(from)
+			state.last = Math.max(state.last, from)
+		}
 	}
 	return state
 }

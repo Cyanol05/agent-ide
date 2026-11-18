@@ -123,6 +123,7 @@ export function server(core) {
 				;(await tx.doc(Canvas, threadId)).snapshot = snapshot
 			})
 		}
+		/** @type {InMemorySyncStorage<import('@tldraw/tlschema').TLRecord>} */
 		const storage = new InMemorySyncStorage({
 			...(stored && { snapshot: stored }),
 			onChange: () => {
@@ -163,7 +164,7 @@ export function server(core) {
 					storage.transaction((txn) => {
 						for (const [id, by] of stamps) {
 							const shape = txn.get(id)
-							if (shape && shape.meta?.by !== by) txn.set(id, stamped(shape, by))
+							if (shape?.typeName === 'shape' && shape.meta?.by !== by) txn.set(id, stamped(shape, by))
 						}
 					}),
 				)
@@ -201,7 +202,8 @@ export function server(core) {
 			.filter((shape) => !bounds || overlaps(shape, bounds))
 			.sort(
 				(one, other) =>
-					(one.y ?? one.y1) - (other.y ?? other.y1) || (one.x ?? one.x1) - (other.x ?? other.x1),
+					('y' in one ? one.y : one.y1) - ('y' in other ? other.y : other.y1) ||
+					('x' in one ? one.x : one.x1) - ('x' in other ? other.x : other.x1),
 			)
 	}
 
@@ -326,7 +328,7 @@ export function server(core) {
 			return {
 				output: [
 					{ type: 'text', text: JSON.stringify(seen) },
-					...(picture ? [{ type: 'image', data: picture.data, mimeType: picture.mimeType }] : []),
+					...(picture ? [{ type: /** @type {const} */ ('image'), data: picture.data, mimeType: picture.mimeType }] : []),
 				],
 			}
 		},

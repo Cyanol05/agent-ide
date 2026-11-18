@@ -15,6 +15,8 @@ export default defineConfig({
     'eslint/curly': 'off',
     // CLI output, local closures and existing spelling are intentional style.
     'eslint/no-console': 'off',
+    // These promises observe work without blocking server startup or the caller.
+    'unicorn/prefer-top-level-await': 'off',
     'unicorn/numeric-separators-style': 'off',
     'unicorn/consistent-function-scoping': 'off',
     'unicorn/prefer-string-replace-all': 'off',

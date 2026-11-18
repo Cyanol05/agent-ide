@@ -48,6 +48,7 @@
 	},
 	"devDependencies": {
 		"@nkzw/oxlint-config": "^2.0.1",
+		"@types/ws": "^8.18.2",
 		"oxlint": "^1.94.0",
 		"tsrs": "0.25.0-ts7.1.0-beta"
 	}

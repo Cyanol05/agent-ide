@@ -11,7 +11,6 @@ import {
 	server,
 	text,
 	until,
-	view,
 } from './lib.js'
 
 const env = { MODULES: '+memory', MEMORY_MODEL: 'echo/echo@bot' }

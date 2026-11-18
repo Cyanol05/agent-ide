@@ -159,7 +159,7 @@ srv = await server({ MODULES: '+director' })
 laptop = await runner('laptop', { wait: false })
 const after = await answered(a, 3, 15000)
 check(
-	Boolean(after?.entries.find((e) => e.data.author === 'cy')),
+	Boolean(after?.entries.some((e) => e.data.author === 'cy')),
 	'after restart the source answers its queued message',
 	brief(after),
 )

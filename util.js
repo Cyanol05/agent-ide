@@ -1,14 +1,15 @@
 /** Helpers the server and its modules share */
 
-/** A durable task's terminal result */
+/** A durable task's terminal result
+ * @param {'completed' | 'aborted'} [status] */
 export const finished = (status = 'completed', result = null) => ({
-	status: 'terminal',
+	status: /** @type {const} */ ('terminal'),
 	outcome: { status, result },
 })
 
 /** A background task owned by its thread */
 export const background = (threadId) => ({
-	ownership: { kind: 'conversation' },
+	ownership: { kind: /** @type {const} */ ('conversation') },
 	conversationId: threadId,
 	background: true,
 })

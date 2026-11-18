@@ -24,7 +24,7 @@ export function server(core) {
 	const bots = () => core.commit(async (tx) => JSON.parse(JSON.stringify(await tx.doc(Bots))))
 	const list = async () => Object.entries(await bots()).map(([name, bot]) => ({ name, ...bot }))
 
-	async function change({ name, to, instructions, color }) {
+	async function change({ name, to, instructions, color = undefined }) {
 		if (typeof name !== 'string' || !/^[\w.-]{1,40}$/.test(name))
 			throw new Error('A name is 1 to 40 letters, digits, _ . or -')
 		if ((await core.known())[name]) throw new Error(`${name} is a runner; pick another name`)
@@ -105,7 +105,8 @@ export function server(core) {
 			model: opt(str({ description: 'model@runner, as `pi --model` takes the model' })),
 		}),
 		replay: 'safe',
-		execute: async (args, api) => {
+		execute: async (input, api) => {
+			const args = /** @type {any} */ (input)
 			const at = await core.home(api.conversationId)
 			const mine = at && (await bots())[at.name]
 			if (!mine || mine.home !== at.thread) throw new Error('Only a bot can, in its home thread')

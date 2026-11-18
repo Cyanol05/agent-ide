@@ -1,4 +1,5 @@
 /** What every example shares */
+import WebSocket from 'ws'
 import { spawn } from 'node:child_process'
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import os from 'node:os'
@@ -103,7 +104,7 @@ export async function runner(name, { args = [], env = {}, wait = true, dir: fold
 				if (!output.includes(`${name} online at`)) return
 				child.stdout.off('data', ready)
 				child.off('exit', exited)
-				resolve()
+				resolve(undefined)
 			}
 			const exited = (code) => {
 				child.stdout.off('data', ready)
@@ -158,8 +159,8 @@ export async function until(fn, ms = 8000, every = 100) {
 
 export const kill = (child, signal = 'SIGTERM') =>
 	new Promise((resolve) => {
-		if (child.exitCode !== null || child.signalCode !== null) return resolve()
-		child.once('exit', () => resolve())
+		if (child.exitCode !== null || child.signalCode !== null) return resolve(undefined)
+		child.once('exit', () => resolve(undefined))
 		child.kill(signal)
 	})
 
@@ -199,6 +200,7 @@ export const answered = (id, count = 1, ms) =>
 	}, ms)
 
 let failed = 0
+/** @param {unknown} [extra] */
 export function check(ok, what, extra = '') {
 	console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}${ok ? '' : ` ${extra}`}`)
 	if (!ok) failed++
@@ -211,7 +213,7 @@ export function done() {
 /** A runner in this process, reconnecting like runner.js, serving `models` as `serveRunner` does */
 export async function localRunner(
 	name,
-	{ models, resolve, echo, onTell, model = '', query = [], readOnly = false, ops, readable },
+	{ models, resolve, echo, onTell = undefined, model = '', query = [], readOnly = false, ops = undefined, readable = undefined },
 ) {
 	let socket,
 		closing = false
