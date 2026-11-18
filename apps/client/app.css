@@ -752,6 +752,19 @@ agent-memory {
 				border-radius: var(--radius);
 			}
 
+			/* A person's long message, folded to twelve lines that fade out over its Show more */
+			.clamp:not(.open) {
+				max-height: calc(12 * var(--text-line));
+				overflow: hidden;
+			}
+			.clamp.long:not(.open) {
+				mask-image: linear-gradient(
+					to bottom,
+					black calc(100% - 2 * var(--text-line)),
+					transparent
+				);
+			}
+
 			.fork {
 				position: absolute;
 				right: 0;

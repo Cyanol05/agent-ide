@@ -663,6 +663,9 @@ function Message(props) {
 	const data = () => props.entry.data
 	const elsewhere = () => data().from && data().from !== props.thread
 	const crossed = () => !!(elsewhere() || props.sent)
+	// A person's own words, a paste most of all; an agent's or bot's answer is what you came to read, so it stays whole
+	const person = () =>
+		!data().author?.includes('@') && !bots.some((bot) => bot.name === data().author)
 	const forks = () =>
 		threads.filter(
 			(thread) =>
@@ -689,7 +692,9 @@ function Message(props) {
 							>${() => authorLabel(data().author)}</span
 						></small
 					>
-					<${Body} data=${() => data()} />
+					<${Show} when=${person} fallback=${html`<${Body} data=${() => data()} />`}>
+						<${Clamp}><${Body} data=${() => data()} /><//>
+					<//>
 					<${Images} images=${() => data().images} />
 				`}
 			>
@@ -727,6 +732,35 @@ function Message(props) {
 				</button>
 			<//>
 		</li>
+	`
+}
+
+/**
+ * A long message folded to its first lines, fading out over a Show more; only when it really runs past them, measured as it
+ * lays out. Each starts folded, and stays as you leave it while it's on screen.
+ */
+function Clamp(props) {
+	const [open, setOpen] = createSignal(false)
+	const [long, setLong] = createSignal(false)
+	let box, sizes, fold
+	onSettled(() => {
+		sizes = new ResizeObserver(() => {
+			// Folded, the box is cut at its max height; open, it's measured against the height it had folded
+			if (!open()) fold = box.clientHeight
+			setLong(box.scrollHeight > fold + 1)
+		})
+		sizes.observe(box)
+		return () => sizes.disconnect()
+	})
+	return html`
+		<div class=${() => ({ clamp: true, open: open(), long: long() })} ref=${(el) => (box = el)}>
+			${() => props.children}
+		</div>
+		<${Show} when=${long}>
+			<button class="ghost small more" onClick=${() => setOpen((was) => !was)}>
+				${() => (open() ? 'Show less' : 'Show more')}
+			</button>
+		<//>
 	`
 }
 
