@@ -130,12 +130,25 @@ function PickerRunner(runner, props, search) {
 			})
 		},
 	)
-	const models = () =>
-		[...new Set([...modelsOf(runner, to()), ...(search() || all() ? available() : [])])].filter(
-			(model) => matches(search(), `${model} ${runner.name}`),
-		)
+	const found = (model) => matches(search(), `${model} ${runner.name}`)
+	const scoped = () => modelsOf(runner, to())
+	const scopedFound = () => scoped().filter(found)
+	const rest = () =>
+		search() || all() ? available().filter((model) => !scoped().includes(model) && found(model)) : []
+	const choice = (model) => html`
+		<button
+			type="button"
+			class="ghost model"
+			aria-pressed=${() => String(selected() && to().model === model)}
+			onClick=${() => props.onChoose({ ...to(), model })}
+		>
+			<span>${() => model.split('/').pop()}</span
+			><small>${() => (model.includes('/') ? model.split('/')[0] : '')}</small
+			><${Show} when=${() => selected() && to().model === model}><${Icon} name="check" /><//>
+		</button>
+	`
 	return html`
-		<${Show} when=${() => models().length}>
+		<${Show} when=${() => scopedFound().length || rest().length}>
 			<li class=${() => ({ on: selected() })}>
 				<div class="who">
 					<${Dot} state=${() => (runner.status === 'idle' ? 'on' : runner.status)} /><b
@@ -143,26 +156,15 @@ function PickerRunner(runner, props, search) {
 					>
 				</div>
 				<div class="models">
-					<${For} each=${() => models()}
-						>${(model) => html`
-							<button
-								type="button"
-								class="ghost model"
-								aria-pressed=${() => String(selected() && to().model === model)}
-								onClick=${() => props.onChoose({ ...to(), model })}
-							>
-								<span>${() => model.split('/').pop()}</span
-								><small>${() => (model.includes('/') ? model.split('/')[0] : '')}</small
-								><${Show} when=${() => selected() && to().model === model}
-									><${Icon} name="check"
-								/><//>
-							</button>
-						`}<//
-					>
+					<${For} each=${scopedFound}>${choice}<//>
 					<${Show} when=${() => !search() && !all()}>
 						<button type="button" class="ghost model" onClick=${() => setAll(true)}>
 							<span>All models</span>
 						</button>
+					<//>
+					<${Show} when=${() => rest().length}>
+						<h3>All models</h3>
+						<${For} each=${rest}>${choice}<//>
 					<//>
 				</div>
 			</li>
