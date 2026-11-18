@@ -123,14 +123,14 @@ const { values: flags } = parseArgs({
 		'no-runner': { type: 'boolean', default: false },
 	},
 })
-/** PORT, or 3000 and up to the first free one */
+/** PORT, or 3000, and up to the first free one; PORT=0 lets the system pick */
 let port = Number(process.env.PORT || 3000)
 const free = (candidate) =>
 	new Promise((resolve) => {
 		const probe = http.createServer().once('error', () => resolve(false))
 		probe.listen(candidate, '127.0.0.1', () => probe.close(() => resolve(true)))
 	})
-if (!process.env.PORT) while (!(await free(port))) port++
+if (port) while (!(await free(port))) port++
 // ── Docs and tasks ────────────────────────────────────────────────────────
 
 const KIND = 'ade.message'

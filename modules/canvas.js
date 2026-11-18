@@ -401,7 +401,7 @@ export function server(core) {
 	const canvasLook = defineTool({
 		name: 'canvas_look',
 		description:
-			"Look at your thread's canvas, where people in the thread draw with you. Without `bounds` you see the whole drawing, or, when it's big, the part the person has in view. Answers a picture of that area; its shapes as {shapeId, type, x, y, w, h, text, by}, `by` naming who drew or changed it last; what the person has selected (\"this box\" means one of those) and their view; the shapes elsewhere as clusters, {bounds, numberOfShapes}, to look at next; and lints: labels overlapping, arrows joined to nothing. Look before you change what's there, and again after.",
+			"Look at your thread's canvas, where people in the thread draw with you. Without `bounds` you see the whole drawing, or, when it's big, the part the person has in view. Answers a picture of that area; its shapes as {shapeId, type, x, y, w, h, text, by}, `by` naming who drew or changed it last; what the person has selected (\"this box\" means one of those) and their view; the shapes elsewhere as clusters, {bounds, numberOfShapes}, to look at next; and lints: a box grown onto another shape to fit its label, labels overlapping, arrows joined to nothing. Look before you change what's there, and again after.",
 		parameters: obj({
 			bounds: opt(obj({ x: num(), y: num(), w: num(), h: num() })),
 		}),

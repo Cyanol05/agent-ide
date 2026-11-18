@@ -142,26 +142,16 @@ export class AgentLintManager extends BaseAgentManager {
 		return lints
 	}
 	/**
-	 * Get shapes where text exceeds the shape bounds (growY > 0) and overlaps with geo shapes.
+	 * Get shapes that grew to fit their text (growY > 0) and now overlap another shape; arrows don't count, since they
+	 * touch what they join.
 	 */
 	getShapesWithGrowY(shapes) {
-		const shapesWithGrowY = shapes.filter((shape) => {
-			if ('growY' in shape.props) {
-				return shape.props.growY > 5 // use 5 because 0 flags shapes that don't need to be changed
-			}
-			return false
-		})
-		// Get all geo shapes to check for overlaps
-		const geoShapes = shapes.filter((shape) => shape.type === 'geo')
-		// Only return shapes that overlap with any geo shape
-		const result = []
-		for (const shape of shapesWithGrowY) {
-			const overlapsWithGeo = geoShapes.some((geoShape) => this.shapesOverlap(shape, geoShape))
-			if (overlapsWithGeo) {
-				result.push(shape)
-			}
-		}
-		return result
+		const others = shapes.filter((shape) => shape.type !== 'arrow')
+		return shapes.filter(
+			(shape) =>
+				shape.props.growY > 5 && // use 5 because 0 flags shapes that don't need to be changed
+				others.some((other) => other.id !== shape.id && this.shapesOverlap(shape, other)),
+		)
 	}
 	/**
 	 * Get groups of shapes with overlapping text.

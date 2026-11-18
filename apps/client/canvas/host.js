@@ -59,14 +59,8 @@ const agentOf = (editor) => ({ editor, chatOrigin: { getOrigin: () => ({ x: 0, y
 const short = (id) => id.replace(/^shape:/, '')
 const byOf = (shape) => (shape.meta?.by ? { by: shape.meta.by } : {})
 
-/**
- * The starter kit's lints, but a box that grew to fit its label: its real size is in the answer, and a label that now
- * overlaps another is a lint of its own
- */
-const lintsOf = (agent, shapes) =>
-	new AgentLintManager(agent)
-		.detectCanvasLints(shapes)
-		.filter((lint) => lint.type !== 'growY-on-shape')
+/** The starter kit's lints; a box that grew to fit its label is one only when it now overlaps another shape */
+const lintsOf = (agent, shapes) => new AgentLintManager(agent).detectCanvasLints(shapes)
 
 /** Shapes whose bounds lie in `bounds`, and the rest */
 function split(editor, bounds) {
