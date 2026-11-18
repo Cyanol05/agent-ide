@@ -71,7 +71,8 @@ export function field(value, name) {
 }
 
 /** Whether an agent wrote it, in this thread or from another */
-export const byAgent = (message) => Boolean(message.answer || message.error || message.from)
+export const byAgent = (message) =>
+	Boolean(message.answer || message.error || message.from || message.waitingOnPerson)
 
 /** A message's text, with what its shell command gave */
 export const written = (message) =>

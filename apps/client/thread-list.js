@@ -24,6 +24,7 @@ import { PiSessions } from './pi-sessions.js'
 export function ThreadList() {
 	const [creating, setCreating] = createSignal(false)
 	const [archivedPage, setArchivedPage] = createSignal(false)
+	const [blockedOnly, setBlockedOnly] = createSignal(false)
 	return html`
 		<nav class="thread-list" aria-label="Threads">
 			<${Show}
@@ -54,8 +55,9 @@ export function ThreadList() {
 							threads.filter(
 								(thread) =>
 									!thread.archived &&
-									!homeBot(thread.id) &&
-									!threads.some((other) => other.id === thread.parent),
+									(blockedOnly()
+										? thread.status === 'blocked'
+										: !homeBot(thread.id) && !threads.some((other) => other.id === thread.parent)),
 							)}
 					>
 						${(thread) => html`<${ThreadItem} thread=${() => thread} />`}
@@ -72,6 +74,19 @@ export function ThreadList() {
 				</ul>
 			<//>
 			<footer class="list-foot">
+				<${Show} when=${() => server().modules.includes('blocked')}>
+					<button
+						type="button"
+						class="ghost small foot-toggle"
+						aria-pressed=${() => blockedOnly()}
+						onClick=${() => {
+							setArchivedPage(false)
+							setBlockedOnly((value) => !value)
+						}}
+					>
+						<${Dot} state="blocked" /> Blocked
+					</button>
+				<//>
 				<${RunnerList} />
 				<${Settings} />
 			</footer>

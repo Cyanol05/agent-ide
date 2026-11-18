@@ -78,8 +78,8 @@ const { modules: byDefault, off: offByDefault } = (await api('GET', '/api/server
 await kill(plain)
 check(
 	byDefault.join() === 'auto-title,bots,context,director,memory,status,talk' &&
-		offByDefault.join() === 'canvas,matrix,overview,pi-sessions,web-search',
-	'each module says in its own file whether it starts on: all but canvas, matrix, overview, pi-sessions and web-search do',
+		offByDefault.join() === 'blocked,canvas,matrix,overview,pi-sessions,web-search',
+	'each module says in its own file whether it starts on: all but blocked, canvas, matrix, overview, pi-sessions and web-search do',
 	JSON.stringify({ byDefault, offByDefault }),
 )
 

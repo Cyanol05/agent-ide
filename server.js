@@ -63,6 +63,7 @@ import {
  * @property {number} [from]  The thread it came from.
  * @property {number[]} [re]  What it answers: messages here, or with `from`, posts there.
  * @property {{ conversation: number, entry: number }} [answer]  The agent's entry it copies.
+ * @property {true} [waitingOnPerson]  An agent's explicit question, open until a person next writes.
  * @property {true} [error]  The agent gave no answer.
  * @property {{ runner: string, code: number | null, stdout: string, stderr: string, error?: string }} [shell]  What `$ cmd` printed.
  * @typedef {{ id: number, kind: 'ade.message', data: Message }} Entry
@@ -772,7 +773,7 @@ async function lastAsked(id) {
 const ownAnswer = ({ data: message }, key) =>
 	keyOf(message.author) === key &&
 	!message.from &&
-	Boolean(message.answer || message.error || message.re)
+	Boolean(message.answer || message.error || message.re || message.waitingOnPerson)
 
 /**
  * Writes a message, inside the caller's commit, and gives each agent it asks a Deliver task with all it hasn't seen.
@@ -1006,7 +1007,9 @@ async function faulted({ task, reason }) {
 // ── Read views: threads, lists, people ────────────────────────────────────
 
 /** A thread's own status, or when idle, `done` or `error` for an answer its reader hasn't read; with no reader, anyone's read counts */
-async function status(id, reads, busy, reader) {
+async function status(id, row, busy, reader) {
+	if (await waitingOnPerson?.(id, row)) return 'blocked'
+	const { reads } = row
 	const now = busiest(busy.map((job) => job.status))
 	if (now !== 'idle') return now
 	const seen = new Set(reader ? [reads[reader]] : Object.values(reads))
@@ -1027,9 +1030,7 @@ async function status(id, reads, busy, reader) {
 
 /** Who's in a thread needs no state of its own: the people who wrote there, or read. Only an open thread needs it. */
 async function people(id) {
-	const wrote = (await messages(id)).filter(
-		(entry) => !entry.data.answer && !entry.data.error && !entry.data.from,
-	)
+	const wrote = (await messages(id)).filter((entry) => !byAgent(entry.data))
 	const { reads } = await thread(id)
 	return [...new Set([...wrote.map((entry) => entry.data.author), ...Object.keys(reads)])]
 }
@@ -1048,7 +1049,7 @@ async function threadRow(id, reader, all) {
 		readers: Object.keys(reads),
 		agents,
 		shells: [...shells.values()].filter((run) => run.threadId === id),
-		status: await status(id, reads, busy, reader),
+		status: await status(id, { ...row, reads }, busy, reader),
 		conversation: await storage.conversation(id, context),
 	}
 }
@@ -1395,6 +1396,7 @@ const core = {
 	threadIn: (tx, id) => tx.doc(Thread, id),
 	work,
 	busiest,
+	person,
 	models,
 	runners,
 	known,
@@ -1452,16 +1454,18 @@ const hook = (name) => {
 }
 const posted = modules.flatMap((module) => module.posted ?? [])
 const archiving = modules.flatMap((module) => module.archiving ?? [])
-const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames, expand] = [
-	'direct',
-	'turns',
-	'reply',
-	'catchUp',
-	'botAgent',
-	'instructionsOf',
-	'botNames',
-	'expand',
-].map(hook)
+const [direct, turns, reply, catchUp, botAgent, instructionsOf, botNames, expand, waitingOnPerson] =
+	[
+		'direct',
+		'turns',
+		'reply',
+		'catchUp',
+		'botAgent',
+		'instructionsOf',
+		'botNames',
+		'expand',
+		'waitingOnPerson',
+	].map(hook)
 compactAt = hook('compactAt')
 const remembers = hook('remembers')
 for (const [name, runner] of Object.entries(await known()))

@@ -59,10 +59,13 @@ So, what's different about this one? Not much, but it adds patterns I've found u
 - a short recap per thread says where it stands (`overview`, off by default)
 - a canvas per thread that people and agents draw on together, with tldraw (`canvas`, off by default)
 - move threads to and from pi (`pi-sessions`, off by default)
+- agents explicitly ask for your answer; the thread stays blocked until you write (`blocked`, off by default)
 
 In a group (the thread's agent plus bots, at least two), leave `to` out to let the director choose who answers, or nobody. `@name` asks that bot for one message; the next unaddressed message goes to the director again. People don't count toward the group. Solo chats and `$` commands keep the last recipient.
 
 The chooser uses the thread agent's model and runner with thinking off (the first bot's setup in a bot-only group). Set `director.model` in ade.json to use a cheaper model on that runner, or include `@runner`; `DIRECTOR_MODEL` overrides it. After three seconds, an error, or an invalid pick, the thread's agent answers instead. The message's `picked` line says the pick failed; bot-only groups report the failure without asking anyone. `director.timeoutMs` changes that limit, and `director.picks: false` disables model picks without restoring sticky group recipients.
+
+With `blocked` on, `ask_person` posts the agent's question in the thread. Its message carries `waitingOnPerson: true`; the latest marked question stays open until any person posts a message after it. Agent messages and reads do not clear it, and restarts keep it. The sidebar's Blocked filter lists blocked threads, including child threads and bot homes; the same dot also marks threads waiting for an offline runner.
 
 For each module's settings, see the top of its file in [modules/](modules). A module there with `export const on = true` is on by default; a new file there is a new module.
 

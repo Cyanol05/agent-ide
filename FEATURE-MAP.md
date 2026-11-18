@@ -55,6 +55,7 @@ modules/
                          create/update/delete/move/label on the stored shapes when no tab answers (apply, record, arrow, updated);
                          who drew it (`meta.by`, whose: the acting agent, else the session's user, stamped by authorizeRecord and
                          onCommittedChanges); serve (GET shapes, POST actions/look/active/answer), connect; off by default
+  blocked.js             `ask_person` posts an explicitly marked question; waitingOnPerson derives whether a person has replied, used by server.js status; off by default
   web-search.js          `web_search`
   status.js              Program Status Protocol (OSC 7501) on the runner's terminal
   matrix.js              Matrix rooms as threads (MatrixSend, relay, sync)
@@ -98,7 +99,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   model-picker.js        model search, thinking and folder controls (composer and settings share them); matches
   runner.js              runner list, a runner's agents, ConnectRunner
   bot.js                 a bot's settings, its threads row, new bot; botThreads shares its own/elsewhere lists
-  thread-list.js         the thread list, its family rows
+  thread-list.js         the thread list, its family rows, the Blocked filter (including children and bot homes)
   thread-details.js      DetailsPage, the side column's Details tab: title, people, family, tools and the memory switch for a thread;
                          a bot's threads open over them, with back
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
@@ -179,7 +180,7 @@ Where a feature lives:
 - Runners and keys: remote.js, runner.js, server.js mintKey/revoke/upgrade, client runner.js.
 - Forks: server.js forkThread/seenBy, client server.js fork, thread.js Message (fork link).
 - `$ cmd`: server.js Shell, printed, shells.
-- Status dots: server.js status/busiest, client dot.js.
+- Status dots: server.js status/busiest, client dot.js. Explicit questions waiting on a person: modules/blocked.js, util.js byAgent; examples/112-waiting-on-a-person.js covers agent turns, replies and a hard restart.
 - Pi session files, both ways: modules/pi-sessions.js; the runner's messages are `pi-session`, `pi-session-list` and `pi-session-read` in remote.js serveRunner, shipped with the runner through RUNNER_FILES; cli.js `import`.
 - Settings and modules: modules.js, server.js saveSettings/restart, client settings.js.
 
