@@ -149,7 +149,16 @@ async function connect() {
 		version,
 		...(args['read-only'] ? { readOnly: '1' } : {}),
 	})
-	if (error) console.log(`pi's default model doesn't resolve: ${error}`)
+	if (error) {
+		const loggedIn = (await models.getAvailable().catch(() => [])).some(
+			({ provider }) => provider !== 'echo',
+		)
+		console.log(
+			loggedIn
+				? `pi's default model doesn't resolve: ${error}`
+				: "pi isn't logged in, so only echo answers: install pi (`npm i -g @earendil-works/pi-coding-agent`), run `pi`, then `/login`.",
+		)
+	}
 	const offered = await offers().catch((error) => {
 		if (!warnedOffers) console.error(`${name}: couldn't list models: ${error.message}`)
 		warnedOffers = true

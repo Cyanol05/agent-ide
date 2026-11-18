@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 /** One executable; each program still owns its arguments. */
-import { parseArgs } from 'node:util'
+// Old Node can't parse the rest, so this stays first and in old syntax; the imports below are dynamic.
+if (Number(process.versions.node.split('.')[0]) < 24) {
+	console.error('ade needs Node 24 or newer, and you have v' + process.versions.node + '.')
+	process.exit(1)
+}
+const { parseArgs } = await import('node:util')
 
 const args = process.argv.slice(2)
 if (args[0] === '--help' || args[0] === '-h') {
