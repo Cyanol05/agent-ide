@@ -1,7 +1,7 @@
 /** Model, thinking and folder controls, without owning a popup or changing a thread themselves. */
 import html from '@solidjs/html'
 import { createEffect, createSignal, For, onSettled, Show } from 'solid-js'
-import { runners } from './server.js'
+import { api, runners } from './server.js'
 import { modelsOf, THINKING_LEVELS, thinkingWord } from './agent.js'
 import { Dot } from './dot.js'
 import { Icon } from './icons.js'
@@ -110,12 +110,30 @@ export function ModelPicker(props) {
 	`
 }
 
-/** A runner's name, then its models that match what was typed; nothing when none do. */
+/**
+ * A runner's name, then its models that match what was typed; nothing when none do.
+ * Its scoped models come first; "All models", or a search, reaches every other model pi is logged in for there.
+ */
 function PickerRunner(runner, props, search) {
 	const to = () => props.getTo(runner)
 	const selected = () => props.selectedRunner === runner.name
+	const [all, setAll] = createSignal(false)
+	const [available, setAvailable] = createSignal([])
+	let asked = false
+	createEffect(
+		() => Boolean(search()) || all(),
+		(wanted) => {
+			if (!wanted || asked) return
+			asked = true
+			api(`/api/runners/${encodeURIComponent(runner.name)}/available`).then(setAvailable, () => {
+				asked = false
+			})
+		},
+	)
 	const models = () =>
-		modelsOf(runner, to()).filter((model) => matches(search(), `${model} ${runner.name}`))
+		[...new Set([...modelsOf(runner, to()), ...(search() || all() ? available() : [])])].filter(
+			(model) => matches(search(), `${model} ${runner.name}`),
+		)
 	return html`
 		<${Show} when=${() => models().length}>
 			<li class=${() => ({ on: selected() })}>
@@ -141,6 +159,11 @@ function PickerRunner(runner, props, search) {
 							</button>
 						`}<//
 					>
+					<${Show} when=${() => !search() && !all()}>
+						<button type="button" class="ghost model" onClick=${() => setAll(true)}>
+							<span>All models</span>
+						</button>
+					<//>
 				</div>
 			</li>
 		<//>

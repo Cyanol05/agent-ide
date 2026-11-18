@@ -1572,6 +1572,13 @@ const routes = [
 	],
 	['POST /api/runners', async (req) => mintKey(String((await input(req)).name ?? ''), origin(req))],
 	['DELETE /api/runners/:name', (req, name) => revoke(name)],
+	[
+		'GET /api/runners/:name/available',
+		async (req, name) => {
+			if (!runners.isOnline(name)) throw new Error(`${name} is offline`)
+			return runners.call(name, { op: 'available' }, {})
+		},
+	],
 	['GET /runner/bundle', () => bundle],
 	['GET /api/threads', (req) => threadList(user(req))],
 	['GET /api/threads/archived', (req) => threadList(user(req), true)],

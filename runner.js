@@ -177,9 +177,15 @@ async function connect() {
 		models,
 		resolve,
 		echo,
-		ops: Object.fromEntries(
-			modules.filter((module) => module.call).map((module) => [module.name, module.call]),
-		),
+		ops: {
+			...Object.fromEntries(
+				modules.filter((module) => module.call).map((module) => [module.name, module.call]),
+			),
+			/** Every model pi is logged in for, beyond the scoped ones it offers first */
+			available: async () => [
+				...new Set((await models.getAvailable()).map((model) => `${model.provider}/${model.id}`)),
+			],
+		},
 		readOnly: args['read-only'],
 		send: (text) => socket.readyState === WebSocket.OPEN && socket.send(text),
 		onTell: (message) =>

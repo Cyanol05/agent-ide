@@ -24,6 +24,7 @@ GET    /api/server                     modules, settings, whether you may add ru
 GET    /api/runners
 POST   /api/runners {name}             a key, and the command that connects it
 DELETE /api/runners/:name
+GET    /api/runners/:name/available    every model pi is logged in for there; `offers` are its scoped ones
 GET    /api/threads
 POST   /api/threads {title, parent?, tools?}
 GET    /api/threads/:id
