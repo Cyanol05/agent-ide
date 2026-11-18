@@ -1,6 +1,7 @@
 /** The runner protocol, both ends */
 import { createHash, randomUUID } from 'node:crypto'
-import { readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
@@ -9,14 +10,18 @@ import { fauxAssistantMessage } from '@earendil-works/pi-ai/providers/faux'
 import { BACKGROUND_CONTEXT, withCancel } from '@earendil-works/chord/context'
 import { ExecutionError, FileError } from '@earendil-works/pi-durable/env'
 import { NodeExecutionEnv } from '@earendil-works/pi-durable/env/node'
+import { tryEcho } from './echo.js'
+import { listPiSessions, readPiSession, writePiSession } from './modules/pi-sessions.js'
 
 /** What a runner is made of, as the server ships it */
 const RUNNER_FILES = [
 	'runner.js',
+	'echo.js',
 	'remote.js',
 	'modules.js',
 	'modules/status.js',
 	'modules/context.js',
+	'modules/pi-sessions.js',
 ]
 const RUNNER_PACKAGES = [
 	'@earendil-works/chord',
@@ -25,9 +30,10 @@ const RUNNER_PACKAGES = [
 	'@earendil-works/pi-durable',
 ]
 export async function runnerBundle(dir) {
-	const read = (file) => readFile(path.join(dir, file), 'utf8')
 	const files = Object.fromEntries(
-		await Promise.all(RUNNER_FILES.map(async (file) => [file, await read(file)])),
+		await Promise.all(
+			RUNNER_FILES.map(async (file) => [file, await readFile(path.join(dir, file), 'utf8')]),
+		),
 	)
 	const require = createRequire(path.join(dir, 'package.json'))
 	const dependencies = Object.fromEntries(
@@ -60,8 +66,8 @@ function encode(value) {
 				$error: item.constructor.name,
 				code: item.code,
 				message: item.message,
-				path: item.path,
-				spillPath: item.spillPath,
+				path: item instanceof FileError ? item.path : undefined,
+				spillPath: item instanceof ExecutionError ? item.spillPath : undefined,
 			}
 		return item
 	})
@@ -151,7 +157,7 @@ export function createRunners({ onChange }) {
 	}
 
 	/** `message` can be a function of what the connection holds, made as it is sent */
-	async function call(name, message, { signal, onMessage }) {
+	async function call(name, message, { signal = undefined, onMessage = undefined }) {
 		signal?.throwIfAborted()
 		await online(name, signal)
 		signal?.throwIfAborted()
@@ -190,7 +196,7 @@ export function createRunners({ onChange }) {
 		if (connections.get(connection.name) !== connection) return false
 		connections.delete(connection.name)
 		if (was === 'online')
-			for (const pending of [...calls.values()])
+			for (const pending of calls.values())
 				if (pending.runner === connection.name)
 					pending.reject(new Error(`runner ${connection.name}: connection lost`))
 		return true
@@ -206,12 +212,19 @@ export function createRunners({ onChange }) {
 				.filter((call) => call.runner === name)
 				.map(({ op, what }) => ({ op, what })),
 		/** A connection that has yet to show its key; `end` closes its socket, with a code or at once */
-		connection: (name, end = () => {}) => ({ name, phase: 'authenticating', end }),
+		connection: (name, end = (code = undefined, reason = undefined) => {}) => ({
+			name,
+			phase: 'authenticating',
+			end,
+		}),
 		/** Its key held: it takes the name, and the name's older connection ends */
 		register(connection) {
 			if (connection.phase !== 'authenticating') return false
 			const old = connections.get(connection.name)
-			if (old) (disconnect(old), old.end())
+			if (old) {
+				disconnect(old)
+				old.end()
+			}
 			connection.phase = 'registering'
 			connections.set(connection.name, connection)
 			return true
@@ -285,17 +298,18 @@ export function runnerProvider(runners, name, resolved = {}) {
 		id: ref,
 		name: `${model.name} on ${name}`,
 	}))
+	/** @param {import('@earendil-works/pi-ai').StreamOptions} [options] */
 	const stream = (model, context, options = {}) => {
 		const events = createAssistantMessageEventStream()
 		const {
 			signal,
-			apiKey,
-			env,
-			fetch,
-			onPayload,
-			onResponse,
-			onProviderStreamEvent,
-			telemetry,
+			apiKey: _apiKey,
+			env: _env,
+			fetch: _fetch,
+			onPayload: _onPayload,
+			onResponse: _onResponse,
+			onProviderStreamEvent: _onProviderStreamEvent,
+			telemetry: _telemetry,
 			...rest
 		} = options
 		let partial
@@ -347,8 +361,12 @@ export function runnerProvider(runners, name, resolved = {}) {
 	}
 }
 
+/** @returns {import('@earendil-works/pi-durable/env').ExecutionEnv} */
 export function remoteEnv(runners, name, cwd) {
-	const env = { id: `runner:${name}`, cwd }
+	const env = /** @type {import('@earendil-works/pi-durable/env').ExecutionEnv} */ ({
+		id: `runner:${name}`,
+		cwd,
+	})
 	const request = (message, context) =>
 		runners
 			.call(name, message, { signal: context?.abortSignal })
@@ -424,9 +442,18 @@ export function serveRunner({
 	let nextHandle = 0
 	let stopped = false
 	const reply = (value) => !stopped && send(encode(value))
+	/** Where a script's saved images and other temp files go: the runner's own corner of the temp folder */
+	const temps = path.join(os.tmpdir(), `ade-${name}`)
 	const ops = {
 		...more,
 		resolve: ({ model }) => resolved(model),
+		/** The pi session files of a folder, one of them read, and a conversation's new entries appended to its own; the folder must be one the runner offers */
+		'pi-session-list': async ({ cwd }) => listPiSessions({ cwd: inside(cwd) }),
+		'pi-session-read': async ({ cwd, file }) => readPiSession({ cwd: inside(cwd), file }),
+		'pi-session': async ({ session, cwd, entries, title }) => {
+			if (readOnly) throw new Error(`${name} is read-only`)
+			return writePiSession({ session, cwd: inside(cwd), entries, title })
+		},
 		stream: (message, context) => stream(message, context.abortSignal),
 		env,
 		handle,
@@ -435,7 +462,7 @@ export function serveRunner({
 	/** `reading` also reaches the folders `readable()` lists, like the skills an agent was shown */
 	function inside(target, cwd = dir, reading = false) {
 		const full = path.resolve(cwd, target ?? '.')
-		if (!within(roots, full) && !(reading && within(readable(), full)))
+		if (!within([...roots, temps], full) && !(reading && within(readable(), full)))
 			throw new FileError(
 				'permission_denied',
 				`${target} is outside ${name}'s folders ${roots.join(', ')}`,
@@ -447,7 +474,7 @@ export function serveRunner({
 	/** A model goes to the server without its headers, which can hold credentials */
 	async function resolved(pattern) {
 		const {
-			model: { headers, ...model },
+			model: { headers: _headers, ...model },
 			thinkingLevel,
 			defaultThinkingLevel,
 		} = await resolve(pattern)
@@ -461,16 +488,20 @@ export function serveRunner({
 	async function stream({ id, model: ref, context, options }, signal) {
 		const messages = [...(context.since ? kept.get(options.sessionId) : []), ...context.messages]
 		if (options.sessionId) keep(kept, options.sessionId, messages)
-		context = { messages: messages.filter((message) => !saidNothing(message)) }
+		context = {
+			messages: messages.filter((message) => !saidNothing(message)).map(withoutEmptyText),
+		}
 		let { model } = await resolve(ref)
 		if (model.provider === 'echo') {
 			echo.appendResponses([
 				(ctx) =>
-					fauxAssistantMessage(
-						`echo@${name} heard: ${messageText(ctx.messages.findLast((message) => message.role === 'user'))}`,
-					),
+					model.id === 'try'
+						? tryEcho(ctx)
+						: fauxAssistantMessage(
+								`echo@${name} heard: ${messageText(ctx.messages.findLast((message) => message.role === 'user'))}`,
+							),
 			])
-			model = echo.getModel()
+			model = echo.getModel(model.id) ?? echo.getModel()
 		}
 		const said = messages.findLast(
 			(message) => message.role === 'assistant' && message.stopReason !== 'error',
@@ -515,8 +546,7 @@ export function serveRunner({
 				context,
 			)
 		}
-		if (method === 'createTempDir' || method === 'createTempFile')
-			throw new FileError('permission_denied', `Temporary files are outside ${name}'s folder`)
+		if (method === 'createTempDir' || method === 'createTempFile') return temp(method, args[0])
 		if (method !== 'joinPath') args[0] = inside(args[0], root, !CHANGES.includes(method))
 		if (method === 'renameFile') args[1] = inside(args[1], root)
 		const result = await local[method](...args, context)
@@ -531,6 +561,20 @@ export function serveRunner({
 			return { ok: true, value: { handle } }
 		}
 		return result
+	}
+
+	/** pi's own temp files, made in `temps` instead of anywhere in the temp folder */
+	async function temp(method, options) {
+		await mkdir(temps, { recursive: true })
+		const prefix = method === 'createTempDir' ? (options ?? 'tmp-') : 'tmp-'
+		const folder = await mkdtemp(path.join(temps, prefix))
+		if (method === 'createTempDir') return { ok: true, value: folder }
+		const file = path.join(
+			folder,
+			`${options?.prefix ?? ''}${randomUUID()}${options?.suffix ?? ''}`,
+		)
+		await writeFile(file, '')
+		return { ok: true, value: file }
 	}
 
 	async function handle({ handle: key, method, args }, context) {
@@ -588,6 +632,17 @@ const saidNothing = (message) =>
 	Array.isArray(message.content) &&
 	message.content.every((part) => part.type === 'text') &&
 	text(message) === '(no content)'
+
+/**
+ * Claude Code drops an empty text block, as beside an image sent alone, so pi-claude-code can't line its request up
+ * with pi's history and refuses every later turn. An empty block says nothing to any model.
+ */
+const withoutEmptyText = (message) =>
+	message.role !== 'assistant' &&
+	Array.isArray(message.content) &&
+	message.content.some((part) => part.type === 'text' && !part.text)
+		? { ...message, content: message.content.filter((part) => part.type !== 'text' || part.text) }
+		: message
 
 export const messageText = (message) => (saidNothing(message) ? '' : text(message))
 

@@ -3,7 +3,7 @@
  * instead of every word and zooms back down with `zoom` (experimental). On by default; MODULES=-memory turns it
  * off. The thread's own agent writes its lines, as it runs now, so the runner that works for a thread pays for its
  * memory; with no agent there yet, a bot there writes them, and with neither, the lines wait for the first one
- * asked. A model in the settings, `memory.model` in agent-ide.json or MEMORY_MODEL=model@runner, has that one agent
+ * asked. A model in the settings, `memory.model` in ade.json or MEMORY_MODEL=model@runner, has that one agent
  * write every thread's lines instead. Past `memory.compactAt` tokens, 100k unless set, an agent's context is
  * compacted into the lines.
  *
@@ -22,9 +22,11 @@ import {
 	hook,
 } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
-import { AGENT, agentTo, collect, said, finished, background } from '../util.js'
+import { AGENT, agentTo, byAgent, collect, written, finished, background } from '../util.js'
 
-const KIND = 'agent-ide.line'
+export const on = true
+
+const KIND = 'ade.line'
 const RETRY = { enabled: true, maxRetries: 10, baseDelayMs: 2000 }
 const LINE = 512,
 	PANEL = 64 * 1024,
@@ -36,6 +38,13 @@ const PAGE = 16 * 1024,
 const bytes = (text) => Buffer.byteLength(text)
 const key = (l, i) => `${l}:${i}`
 const RULER = '-'.repeat(LINE)
+/** A message as memory keeps it: who wrote it, then its text, later lines indented so none can pass for a speaker */
+const kept = ({ data: message }) =>
+	`${
+		byAgent(message)
+			? `${message.author} (agent${message.from ? `, ${message.re ? 'answering' : 'writing'} from thread ${message.from}` : ''})`
+			: message.author
+	}: ${written(message).replace(/\n/g, '\n  ')}`
 const cut = (text) => {
 	let head = Buffer.from(text).subarray(0, LINE).toString()
 	while (bytes(head) > LINE) head = head.slice(0, -1)
@@ -44,7 +53,7 @@ const cut = (text) => {
 const NOT_YET = '(not summarized yet: zoom it)'
 const unwritten = (l, i) => ({ l, i, text: NOT_YET })
 const span = (line) => ({ id: line.i * 2 ** line.l, n: 2 ** line.l, text: line.text })
-const rendered = (line) => {
+export const rendered = (line) => {
 	const { id, n, text } = span(line)
 	return `${id}+${n}|${text}`
 }
@@ -75,13 +84,13 @@ Use the space up to the limit, and give it by value:
 
 Avoid omissions. Name a minor item in a word or two rather than drop it: an absent item can never be found. Copy names, numbers, ids, paths and errors exactly. Tag each item with its author ("oskar: ...; echo/echo@laptop: ..."), and credit quoted text to its real author. Never make anything look further along than it was. If told the line is too long, shorten it. Non-ASCII characters cost 2-4 bytes.`
 
-const SECTION = `Your memory of this thread may come as <chat> lines \`id+n|text\`, each standing for n messages from position id. The lines form a binary tree: each message is compressed into a line (a short message is its own line), then adjacent lines are merged in pairs, again and again. So recent lines cover one message each, and older lines cover more. A message not summarized yet shows as "${NOT_YET}".
+const SECTION = `Your memory of this thread may come as <chat> lines \`id+n|text\`, each standing for n messages from position id. The lines form a binary tree: each message is compressed into a line (a short message is its own line), then adjacent lines are merged in pairs, again and again. So recent lines cover one message each, and older lines cover more. Consecutive messages not summarized yet share one line naming their range; zoom opens those messages directly.
 
 Tools:
 - zoom(id, n) opens line id+n into the two lines it was made from;
 - zoom(id, 1) gives message id whole, a long one in pages: zoom(id, 1, at) gives the page from character at.
 
-The memory is yours. A person's latest word on a thing is the truth; an agent's word, yours included, is a claim, so before you rely on one, zoom or search to what a person said. Whenever you need any information, first find its latest mention in the memory and zoom until you have it whole, before any other source, and before you act, guess or ask. Zoom is your way into the tree; when you know words it used, a tool that searches this thread's messages, if you have one, finds them faster. Lines keep little of tool output, so say in your answer what you learned that will matter later.`
+The memory is yours. A person's latest word on a thing is the truth; an agent's word, yours included, is a claim, so before you rely on one, zoom or search to what a person said. When you need something said earlier in this thread, find its latest mention and zoom until you have it whole, before you act on it, guess or ask. Zoom is your way into the tree; when you know words it used, a tool that searches this thread's messages, if you have one, finds them faster. Lines keep little of tool output, so say in your answer what you learned that will matter later.`
 
 export function server(core) {
 	const name = process.env.MEMORY_MODEL || core.config?.memory?.model
@@ -107,28 +116,6 @@ export function server(core) {
 		const to = recipient && (await core.agentOf(recipient.conversation, slot))
 		if (to) await core.runners.online(to.runner, signal)
 		return to
-	}
-
-	async function lines(tx, threadId) {
-		const map = new Map()
-		const own = await collect((cursor) =>
-			tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
-		)
-		for (const { kind, data } of own)
-			if (kind === KIND && !map.has(key(data.l, data.i))) map.set(key(data.l, data.i), data)
-		const { parent } = await tx.conversation(threadId)
-		if (!parent) return map
-		const upTo = await collect((cursor) =>
-			tx.scanEntries(
-				{ conversationId: parent.conversationId, maxEntryId: parent.at, order: 'ascending' },
-				500,
-				cursor,
-			),
-		)
-		const shown = upTo.filter((entry) => entry.kind === 'agent-ide.message').length
-		for (const [coordinates, line] of await lines(tx, parent.conversationId))
-			if ((line.i + 1) * 2 ** line.l <= shown && !map.has(coordinates)) map.set(coordinates, line)
-		return map
 	}
 
 	/** The line, or undefined while the thread has no one to write it */
@@ -165,23 +152,17 @@ export function server(core) {
 	}
 
 	const Line = defineTask({
-		name: 'agent-ide.line',
+		name: 'ade.line',
 		version: 1,
 		initial: ({ backfill }) => ({ phase: backfill ? 'backfill' : 'write' }),
 		phases: {
 			/** The thread's first agent is here: each message without its line, and each pair not merged, gets its task */
-			backfill: ({ conversationId: threadId, input }, rt, ctx) =>
-				rt.commit(async (tx) => {
+			async backfill({ conversationId: threadId, input }, rt, ctx) {
+				const earlier = (await core.messages(threadId)).filter(
+					(message) => input.entry === undefined || message.id < input.entry,
+				)
+				return rt.commit(async (tx) => {
 					const have = await lines(tx, threadId)
-					const earlier = (
-						await collect((cursor) =>
-							tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
-						)
-					).filter(
-						(message) =>
-							message.kind === 'agent-ide.message' &&
-							(input.entry === undefined || message.id < input.entry),
-					)
 					for (const [i, message] of earlier.entries())
 						if (!have.has(key(0, i)))
 							await tx.createTask(Line, { entry: message.id }, background(threadId))
@@ -191,7 +172,8 @@ export function server(core) {
 					// Switched on, it has no message of its own to write
 					if (input.entry === undefined) return finished()
 					return { status: 'running', checkpoint: { phase: 'write' } }
-				}, ctx),
+				}, ctx)
+			},
 			async write({ conversationId: threadId, input }, rt, ctx) {
 				const all = await core.messages(threadId)
 				const have = await core.commit((tx) => lines(tx, threadId))
@@ -207,7 +189,7 @@ export function server(core) {
 					const limit = `into one line of at most ${LINE} bytes (about 70 words), the length of this ruler:\n${RULER}`
 					let source, task
 					if (!l) {
-						source = said(all[i])
+						source = kept(all[i])
 						task = `${render(memory(have, i, CONTEXT))}\n\n${ask} ${limit}\n<input>\n${source}\n</input>`
 					} else {
 						const [left, right] = [have.get(key(l - 1, 2 * i)), have.get(key(l - 1, 2 * i + 1))]
@@ -253,7 +235,7 @@ export function server(core) {
 			// Memory's early start isn't this thread's: Pi compacts it only once the window is nearly full
 			const { compactions = [] } = (await api.snapshot(LiveDoc, api.conversationId, context)) ?? {}
 			const early = compactions.find((status) => status.taskId === api.taskId)?.blocking === false
-			return reason === 'threshold' && early ? { decline: true } : undefined
+			return reason === 'threshold' && early ? { decline: /** @type {const} */ (true) } : undefined
 		}
 		const T = (await cutPosition(api.conversationId, firstKept, home.thread)) + 1
 		return T > 0
@@ -269,14 +251,14 @@ export function server(core) {
 			: undefined
 	}
 
-	async function catchUp(threadId, held, all, agent) {
-		if (!remembers(await core.thread(threadId))) return held.map(said).join('\n\n')
+	async function catchUp(threadId, held, all, agent, told) {
+		if (!remembers(await core.thread(threadId))) return held.map(told).join('\n\n')
 		const most = await budget(agent)
 		let first = held.length - 1,
-			size = bytes(said(held[first]))
-		while (first > 0 && size + bytes(said(held[first - 1])) + 2 <= most)
-			size += bytes(said(held[--first])) + 2
-		const whole = held.slice(first).map(said).join('\n\n')
+			size = bytes(told(held[first]))
+		while (first > 0 && size + bytes(told(held[first - 1])) + 2 <= most)
+			size += bytes(told(held[--first])) + 2
+		const whole = held.slice(first).map(told).join('\n\n')
 		if (!first) return whole
 		const at = (entry) => all.findIndex((message) => message.id === entry.id)
 		const older = memory(
@@ -290,14 +272,23 @@ export function server(core) {
 
 	async function open(thread, id, n) {
 		const all = await core.messages(thread)
-		const l = Math.log2(n)
-		if (!Number.isInteger(l) || !Number.isInteger(id) || id < 0 || id % n || id >= all.length)
+		if (!Number.isInteger(n) || n < 1 || !Number.isInteger(id) || id < 0 || id >= all.length)
 			throw new Error(`No line ${id}+${n}; zoom one from your memory`)
-		if (n === 1) return said(all[id])
+		if (n === 1) return kept(all[id])
 		const have = await core.commit((tx) => lines(tx, thread))
+		if (!have.has(key(Math.log2(n), id / n)))
+			return all
+				.slice(id, id + n)
+				.map((message, offset) => `${id + offset}|${kept(message)}`)
+				.join('\n\n')
+		const l = Math.log2(n)
+		if (!Number.isInteger(l) || id % n)
+			throw new Error(`No line ${id}+${n}; zoom one from your memory`)
 		const half = (index) => have.get(key(l - 1, index)) ?? unwritten(l - 1, index)
-		return [half(2 * (id / n)), half(2 * (id / n) + 1)].filter(
-			(line) => (line.i * n) / 2 < all.length,
+		return collapse(
+			[half(2 * (id / n)), half(2 * (id / n) + 1)]
+				.filter((line) => (line.i * n) / 2 < all.length)
+				.map(span),
 		)
 	}
 
@@ -318,23 +309,58 @@ export function server(core) {
 					{
 						type: 'text',
 						text:
-							typeof opened === 'string' ? page(opened, id, at) : opened.map(rendered).join('\n'),
+							typeof opened === 'string'
+								? page(opened, id, at, n)
+								: opened.map((line) => `${line.id}+${line.n}|${line.text}`).join('\n'),
 					},
 				],
 			}
 		},
 	})
 
+	/**
+	 * `POST {lines: [{id, n, text}]}` loads recorded lines: each spans `n` messages from `id`, aligned powers of two within the thread.
+	 * Existing lines stay, and memory turns on without calling a model.
+	 */
 	async function serve(thread, query, body) {
 		if (thread === undefined) throw new Error('Memory is per thread: /api/threads/:id/memory')
+		if (body?.lines) {
+			const total = (await core.messages(thread)).length
+			for (const { id, n } of body.lines)
+				if (
+					!Number.isInteger(id) ||
+					id < 0 ||
+					!Number.isInteger(n) ||
+					!Number.isInteger(Math.log2(n)) ||
+					id % n ||
+					id + n > total
+				)
+					throw new Error(`No line ${id}+${n} in this thread`)
+			return core.commit(async (tx) => {
+				const have = await lines(tx, thread)
+				const row = await core.threadIn(tx, thread)
+				for (const { id, n, text } of body.lines) {
+					const l = Math.log2(n),
+						i = id / n
+					if (have.has(key(l, i))) continue
+					const line = { l, i, text, size: bytes(text) }
+					await tx.appendEntry(thread, { kind: KIND, data: line })
+					have.set(key(l, i), line)
+				}
+				row.memory = true
+				return { memory: true }
+			})
+		}
 		if (body !== undefined) return turn(thread, body)
 		if (query.has('zoom')) {
 			const opened = await open(thread, ...query.get('zoom').split(',').map(Number))
-			return typeof opened === 'string' ? { message: opened } : { lines: opened.map(span) }
+			return typeof opened === 'string' ? { message: opened } : { lines: opened }
 		}
 		const T = (await core.messages(thread)).length
 		const budget = Math.min(Number(query.get('budget')) || PANEL, PANEL)
-		return { lines: memory(await core.commit((tx) => lines(tx, thread)), T, budget).map(span) }
+		return {
+			lines: collapse(memory(await core.commit((tx) => lines(tx, thread)), T, budget).map(span)),
+		}
 	}
 
 	/** Told only to agents of a thread that remembers */
@@ -349,7 +375,7 @@ export function server(core) {
 		await core.conversation(threadId)
 		return core.commit(async (tx) => {
 			const row = await core.threadIn(tx, threadId)
-			if (on && !remembers(row)) await tx.createTask(Line, { backfill: true }, background(threadId))
+			if (on) await tx.createTask(Line, { backfill: true }, background(threadId))
 			row.memory = on
 			return { memory: on }
 		})
@@ -373,12 +399,19 @@ export function server(core) {
 
 	return {
 		extension: defineExtension({
-			name: 'agent-ide.memory',
+			name: 'ade.memory',
 			tasks: [Line],
 			tools: [zoom],
 			sections: [{ key: 'memory', tag: false, render: section }],
 			hooks: [hook(CompactionTask, { beforeCompact })],
 		}),
+		/** Resume missing messages too, not only tasks that survived the previous server. */
+		async start() {
+			for (const archived of [false, true])
+				for (const row of await core.threadList(undefined, archived))
+					if (remembers(await core.thread(row.id)))
+						await core.commit((tx) => tx.createTask(Line, { backfill: true }, background(row.id)))
+		},
 		posted,
 		catchUp,
 		serve,
@@ -388,8 +421,31 @@ export function server(core) {
 	}
 }
 
+/** Every line a thread has, its own and those it inherits up to where it was forked, by `l:i` */
+export async function lines(tx, threadId) {
+	const map = new Map()
+	const own = await collect((cursor) =>
+		tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
+	)
+	for (const { kind, data } of own)
+		if (kind === KIND && !map.has(key(data.l, data.i))) map.set(key(data.l, data.i), data)
+	const { parent } = await tx.conversation(threadId)
+	if (!parent) return map
+	const upTo = await collect((cursor) =>
+		tx.scanEntries(
+			{ conversationId: parent.conversationId, maxEntryId: parent.at, order: 'ascending' },
+			500,
+			cursor,
+		),
+	)
+	const shown = upTo.filter((entry) => entry.kind === 'ade.message').length
+	for (const [coordinates, line] of await lines(tx, parent.conversationId))
+		if ((line.i + 1) * 2 ** line.l <= shown && !map.has(coordinates)) map.set(coordinates, line)
+	return map
+}
+
 /** Lines over messages from..T-1, merging the most due pair, (T - last) / 2^l, until they fit the budget */
-function memory(lines, T, budget, from = 0) {
+export function memory(lines, T, budget, from = 0) {
 	const list = Array.from(
 		{ length: T - from },
 		(_, offset) => lines.get(key(0, from + offset)) ?? unwritten(0, from + offset),
@@ -417,15 +473,37 @@ function memory(lines, T, budget, from = 0) {
 }
 
 /** Message `id` from character `at`, up to PAGE characters or PAGE_LINES lines, and where to go on */
-function page(text, id, at) {
+function page(text, id, at, n = 1) {
 	if (!Number.isInteger(at) || at < 0 || (at && at >= text.length))
 		throw new Error(`Message ${id} has ${text.length} characters; no page at ${at}`)
 	const head = text.slice(at, at + PAGE)
 	let end = at + (head.match(PAGE_LINES)?.[0] ?? head).length
 	if ((text.charCodeAt(end) & 0xfc00) === 0xdc00) end--
 	return end < text.length
-		? `${text.slice(at, end)}\n\n[characters ${at} to ${end} of ${text.length}: zoom(${id}, 1, ${end}) goes on]`
+		? `${text.slice(at, end)}\n\n[characters ${at} to ${end} of ${text.length}: zoom(${id}, ${n}, ${end}) goes on]`
 		: text.slice(at)
 }
 
-const render = (list) => `<chat>\n${list.map(rendered).join('\n')}\n</chat>`
+/** Adjacent gaps are one readable, zoomable span, even across binary-tree boundaries. */
+function collapse(list) {
+	const result = []
+	for (const line of list) {
+		const last = result.at(-1)
+		if (line.text === NOT_YET && last?.text === NOT_YET && last.id + last.n === line.id)
+			last.n += line.n
+		else result.push({ ...line })
+	}
+	return result.map((line) =>
+		line.text !== NOT_YET
+			? line
+			: {
+					...line,
+					text: `messages ${line.id}–${line.id + line.n - 1} not summarized yet`,
+				},
+	)
+}
+
+const render = (list) =>
+	`<chat>\n${collapse(list.map(span))
+		.map((line) => `${line.id}+${line.n}|${line.text}`)
+		.join('\n')}\n</chat>`

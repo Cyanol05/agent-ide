@@ -1,10 +1,20 @@
-import { readFile } from 'node:fs/promises'
+import { mkdirSync } from 'node:fs'
+import { readdir, readFile } from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-/** agent-ide.json in the folder it starts in: its settings, which env vars override */
+/** Where ade.sqlite, ade.log and ade.json live: $XDG_CONFIG_HOME/ade, or DB_PATH's folder when that's set */
+export function dataDir() {
+	if (process.env.DB_PATH) return path.dirname(path.resolve(process.env.DB_PATH))
+	const dir = path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'ade')
+	mkdirSync(dir, { recursive: true })
+	return dir
+}
+
+/** ade.json: its settings, which env vars override */
 export async function readConfig() {
-	const file = path.resolve('agent-ide.json')
+	const file = path.join(dataDir(), 'ade.json')
 	const text = await readFile(file, 'utf8').catch((error) => {
 		if (error.code === 'ENOENT') return '{}'
 		throw error
@@ -12,7 +22,7 @@ export async function readConfig() {
 	try {
 		return { file, config: JSON.parse(text) }
 	} catch (error) {
-		throw new Error(`${file}: ${error.message}`)
+		throw new Error(`${file}: ${error.message}`, { cause: error })
 	}
 }
 
@@ -31,9 +41,27 @@ export async function about(name) {
 		.match(/^.*?\.(?=\s|$)/)?.[0]
 }
 
+/** Each module in modules/ → whether it's on by default, from its own `export const on` */
+export async function builtIn() {
+	const files = (await readdir(new URL('./modules/', import.meta.url))).filter((file) =>
+		file.endsWith('.js'),
+	)
+	return Object.fromEntries(
+		await Promise.all(
+			files
+				.sort()
+				.map(async (file) => [
+					path.basename(file, '.js'),
+					(await import(`./modules/${file}`)).on === true,
+				]),
+		),
+	)
+}
+
 /** A module exports `server(core)` and/or `runner(core)`, which return its hooks */
-export async function load(end, defaults, core, settings) {
+export async function load(end, core, settings) {
 	const { file, config } = settings ?? (await readConfig())
+	const defaults = await builtIn()
 	let on = Object.keys(defaults).filter((name) => defaults[name])
 	for (const [where, list] of [
 		[file, config.modules],

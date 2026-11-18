@@ -1,14 +1,15 @@
 /** Helpers the server and its modules share */
 
-/** A durable task's terminal result */
+/** A durable task's terminal result
+ * @param {'completed' | 'aborted'} [status] */
 export const finished = (status = 'completed', result = null) => ({
-	status: 'terminal',
+	status: /** @type {const} */ ('terminal'),
 	outcome: { status, result },
 })
 
 /** A background task owned by its thread */
 export const background = (threadId) => ({
-	ownership: { kind: 'conversation' },
+	ownership: { kind: /** @type {const} */ ('conversation') },
 	conversationId: threadId,
 	background: true,
 })
@@ -70,16 +71,27 @@ export function field(value, name) {
 	return value.trim()
 }
 
-/** A message as an agent reads it */
-export function said({ data: message }) {
-	const agent = Boolean(message.answer || message.error || message.from)
-	const who = agent
-		? `${message.author} (agent${message.from ? `, ${message.re ? 'answering' : 'writing'} from thread ${message.from}` : ''})`
-		: message.author
-	const output = message.shell
-		? `\n${[`exit ${message.shell.code ?? message.shell.error}`, message.shell.stdout, message.shell.stderr].filter(Boolean).join('\n')}`
+/** Whether an agent wrote it, in this thread or from another */
+export const byAgent = (message) =>
+	Boolean(message.answer || message.error || message.from || message.waitingOnPerson)
+
+/** A message's text, with what its shell command gave */
+export const written = (message) =>
+	`${message.body}${
+		message.shell
+			? `\n${[`exit ${message.shell.code ?? message.shell.error}`, message.shell.stdout, message.shell.stderr].filter(Boolean).join('\n')}`
+			: ''
+	}`
+
+/** A message as an agent reads it: inside a tag that names who wrote it, or, a person's when `plain`, as typed */
+export function said({ data: message }, plain = false) {
+	if (plain && !byAgent(message)) return written(message)
+	const from = String(message.author).replace(/[&"<>]/g, (c) => `&#${c.charCodeAt(0)};`)
+	const agent = byAgent(message)
+		? ` agent${message.from ? ` thread="${message.from}"${message.re ? ' answering' : ''}` : ''}`
 		: ''
-	return `${who}: ${`${message.body}${output}`.replace(/\n/g, '\n  ')}`
+	/** A body can't open or close a tag of this name, so nothing in it can pass for someone else's message */
+	return `<message from="${from}"${agent}>\n${written(message).replace(/<(\/?message)/gi, '&lt;$1')}\n</message>`
 }
 
 /** Bot names a message @mentions, in mention order, ignoring case and trailing dots. */

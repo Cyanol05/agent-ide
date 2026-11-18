@@ -10,10 +10,9 @@ import {
 	onSettled,
 	Show,
 } from 'solid-js'
-import { entries, homeBot, threads, titleOf } from './server.js'
+import { colorOf, entries, homeBot, threadOf, titleOf } from './server.js'
 import { Cross } from './thread.js'
-import { authorLabel, doing, messageText, touched } from './agent.js'
-import { Dot } from './dot.js'
+import { authorLabel, doing, messageText, shortLabel, touched } from './agent.js'
 
 /**
  * A turn's line. While its agent works, the step it's in now, and below it the last few steps and the words coming in;
@@ -38,8 +37,9 @@ export function Turn(props) {
 		if (running)
 			return running.name === 'post'
 				? `asking ${askedThread(running) ? titleOf(askedThread(running)) : (running.args.title ?? 'a new thread')}`
-				: `${running.name}(${argsLine(running)})`
-		if (props.agent.status === 'blocked') return 'waiting for its runner'
+				: `${running.name}(${(touched(running.args) ?? JSON.stringify(running.args)).split('\n')[0]})`
+		if (props.agent.status === 'blocked')
+			return `waiting for ${props.agent.to?.runner ?? 'its runner'} to come online`
 		return messageText(live()?.message) ? 'writing' : 'thinking'
 	}
 	const calls = () => steps().filter((step) => step.name)
@@ -62,14 +62,16 @@ export function Turn(props) {
 			<details onToggle=${(event) => setOpen(event.currentTarget.open)}>
 				<summary>
 					<small>
-						<${Show} when=${() => props.live}><${Dot} state=${() => props.agent.status} /><//>
 						<${Show} when=${() => props.above !== props.agent.name}
 							><span>${() => authorLabel(props.agent.name)}</span>${' · '}<//
 						><span class="now">${line}</span>
 					</small>
 				</summary>
 				<${Show} when=${open}>
-					<ol class="steps" style=${() => `--label: ${labelWidth(steps())}ch`}>
+					<ol
+						class="steps"
+						style=${() => `--label: ${Math.max(...steps().map((step) => (step.name ?? step.label ?? '').length))}ch`}
+					>
 						<${For} each=${steps} keyed=${(step) => step.key}
 							>${(step) => html`<${Step} step=${() => step()} />`}<//
 						>
@@ -82,15 +84,15 @@ export function Turn(props) {
 }
 
 /**
- * A post, from the thread that sent it: the message as a sent step, with the asked thread's dot hanging beside it while
- * it works, then the answer as a received one when it comes.
+ * A post, from the thread that sent it: the message as a sent step, pulsing while the asked thread works, then the
+ * answer as a received one when it comes.
  */
 export function Exchange(props) {
 	const asked = () => askedThread(props.step)
 	const who = () =>
 		props.answer?.data.author ??
 		homeBot(asked())?.name ??
-		threads.find((thread) => thread.id === asked())?.agents?.[0]?.name ??
+		threadOf(asked())?.agents?.[0]?.name ??
 		props.step.args.to ??
 		''
 	const took = () => {
@@ -98,14 +100,12 @@ export function Exchange(props) {
 		const end = props.back
 		return start && end && end - start >= 1000 ? seconds(end - start) : ''
 	}
-	const working = () =>
-		!props.answer && threads.find((thread) => thread.id === asked())?.status === 'working'
+	const working = () => !props.answer && threadOf(asked())?.status === 'working'
 
 	return html`
-		<li class=${() => ({ exchange: true, handed: litIn(props.thread, props.answer?.id) })}>
-			<span class="lead"
-				><${Show} when=${working}><${Dot} state="working" title="Working on it" /><//
-			></span>
+		<li
+			class=${() => ({ exchange: true, live: working(), handed: litIn(props.thread, props.answer?.id) })}
+		>
 			<ol class="steps">
 				<${Cross}
 					sent=${true}
@@ -137,10 +137,6 @@ function Step(props) {
 	`
 }
 
-/** The widest label among a turn's steps, so their inputs start at one column */
-const labelWidth = (steps) =>
-	Math.max(...steps.map((step) => (step.name ?? step.label ?? '').length))
-
 function Call(props) {
 	const result = () => props.step.result
 	const [open, setOpen] = createSignal(false)
@@ -160,7 +156,9 @@ function Call(props) {
 			<details onToggle=${(event) => toggle(event.currentTarget.open)}>
 				<summary>
 					<span class="tool">${() => props.step.name ?? props.step.label}</span>
-					<span class="in">${() => input(props.step)}</span>
+					<span class="in"
+						>${() => (props.step.name ? JSON.stringify(props.step.args) : (props.step.in ?? props.step.text ?? ''))}</span
+					>
 				</summary>
 				<${Show} when=${open}>
 					<div class="whole">
@@ -176,8 +174,6 @@ ${() => (props.step.name ? JSON.stringify(props.step.args, null, 2) : props.step
 	`
 }
 
-const input = (step) => (step.name ? JSON.stringify(step.args) : (step.in ?? step.text ?? ''))
-
 /** The messages an opened handed step lights where they are in the thread */
 const [lit, setLit] = createRoot(() => createSignal(null))
 /** Lights a step's messages, or with `null` puts out what `step` lit */
@@ -191,16 +187,6 @@ const light = (on, step) =>
 	)
 export const litIn = (thread, id) => lit()?.thread === thread && !!lit()?.ids.has(id)
 
-/** What a delivery carried that the thread doesn't show: a note that the agent moved, and memory's lines for what didn't fit */
-const unseenIn = (text) =>
-	[
-		[/^\[You now run as [^\n]*\]/, 'a note'],
-		[/<chat>\n[\s\S]*?\n<\/chat>/, 'memory lines'],
-	].flatMap(([pattern, word]) => {
-		const found = text.match(pattern)
-		return found ? [{ word, text: found[0] }] : []
-	})
-
 /**
  * A turn's handed step as the thread sees it: none when it was handed just the one message above it, else a count of
  * the messages and a reply from each thread that answered, and only the words the thread doesn't show.
@@ -210,7 +196,14 @@ function handedStep(step, thread, messages) {
 	const held = step.held.map((id) => byId.get(id) ?? { id, data: {} })
 	const replies = held.filter((entry) => entry.data.from && entry.data.re)
 	const said = held.length - replies.length
-	const unseen = unseenIn(step.text ?? '')
+	/** What a delivery carried that the thread doesn't show: a note that the agent moved, and memory's lines for what didn't fit */
+	const unseen = [
+		[/^\[You now run as [^\n]*\]/, 'a note'],
+		[/<chat>\n[\s\S]*?\n<\/chat>/, 'memory lines'],
+	].flatMap(([pattern, word]) => {
+		const found = (step.text ?? '').match(pattern)
+		return found ? [{ word, text: found[0] }] : []
+	})
 	if (said === 1 && !replies.length && !unseen.length) return null
 	return {
 		...step,
@@ -239,29 +232,18 @@ function summary(turn) {
 		),
 	].filter(Boolean)
 	const commands = tools.filter((step) => step.name === 'bash').length
-	const posts = (word, list) =>
-		list.length && `${word} ${list.map((step) => titleOf(askedThread(step))).join(', ')}`
+	const answeredThreads = tools.filter((step) => step.name === 'post' && answered(step))
 	const parts = [
 		edited.length && `edited ${edited.join(', ')}`,
 		commands && plural(commands, 'command'),
-		posts(
-			'answered',
-			tools.filter((step) => step.name === 'post' && answered(step)),
-		),
+		answeredThreads.length &&
+			`answered ${answeredThreads.map((step) => titleOf(askedThread(step))).join(', ')}`,
 		tools.length && plural(tools.length, 'step'),
 		turn.end - turn.start >= 1000 && seconds(turn.end - turn.start),
 	]
 	// A turn with no call only thought, before its answer or instead of one
 	return parts.filter(Boolean).join(' · ') || 'thought'
 }
-
-/** A step's arguments in one line, what it touches first */
-const argsLine = ({ name, args }) =>
-	name === 'post'
-		? args.thread
-			? `#${args.thread}`
-			: (args.title ?? '')
-		: (touched(args) ?? JSON.stringify(args)).split('\n')[0]
 
 /** A post's ask: the thread it went to, or for an answer, the thread it answered */
 const askedThread = (step) => step.result?.details?.thread ?? step.args.thread
@@ -290,17 +272,17 @@ const [conversations, setConversations] = createRoot(() => createStore({}, { sha
 
 export { conversations }
 
-/** Takes an agent's entries off the socket: whole on each new watch, then each one once, as it's written */
-export function heard(conversation, entries, whole) {
+/**
+ * Takes an agent's entries off the socket: as far back as the thread's messages on each new watch, then each one once,
+ * as it's written; `older` ones, for an earlier page of messages, go before
+ */
+export function heard(conversation, entries, { whole, older } = {}) {
 	const shown = entries.filter((entry) => entry.kind !== 'pi.system')
 	setConversations((all) => {
-		all[conversation] = whole || !all[conversation] ? shown : [...all[conversation], ...shown]
+		const had = all[conversation]
+		all[conversation] = whole || !had ? shown : older ? [...shown, ...had] : [...had, ...shown]
 	})
 }
-
-/** A delivery's words, whether Pi kept them as a string or as blocks beside images */
-const handedText = (message) =>
-	typeof message?.content === 'string' ? message.content : messageText(message)
 
 /**
  * Where an agent's newest compaction cuts, as the thread's message ids: the first message of the first delivery the agent still reads whole.
@@ -312,9 +294,7 @@ export function cutsOf(conversation) {
 		.filter((entry) => entry.kind === 'pi.compaction')
 		.slice(-1)
 		.flatMap((entry) => {
-			const kept = all.find(
-				(other) => other.kind === 'agent-ide.delivery' && other.id >= entry.head,
-			)
+			const kept = all.find((other) => other.kind === 'ade.delivery' && other.id >= entry.head)
 			const first = Math.min(...(kept?.data?.held ?? []))
 			if (!Number.isFinite(first)) return []
 			const summary = messageText(entry.model?.[0]) || ''
@@ -325,6 +305,16 @@ export function cutsOf(conversation) {
 				n: Number(line[2]),
 				text: line[3],
 			}))
+			for (let index = lines.length - 1; index >= 0; index--) {
+				const line = lines[index]
+				if (!line.text.includes('not summarized yet')) continue
+				const next = lines[index + 1]
+				if (next?.text.includes('not summarized yet') && line.at + line.n === next.at) {
+					line.n += next.n
+					lines.splice(index + 1, 1)
+				}
+				line.text = `messages ${line.at}–${line.at + line.n - 1} not summarized yet`
+			}
 			return [
 				{
 					key: `${conversation}:cut:${entry.id}`,
@@ -344,7 +334,7 @@ export function turnsOf(conversation) {
 	const turns = []
 	for (const entry of conversations[conversation] ?? []) {
 		const message = entry.model?.[0]
-		if (entry.kind === 'agent-ide.delivery') {
+		if (entry.kind === 'ade.delivery') {
 			turns.push({
 				key: `${conversation}:${entry.id}`,
 				delivery: entry.id,
@@ -356,7 +346,7 @@ export function turnsOf(conversation) {
 					{
 						key: `${entry.id}:handed`,
 						label: 'handed',
-						text: handedText(message),
+						text: typeof message?.content === 'string' ? message.content : messageText(message),
 						held: entry.data?.held ?? [],
 					},
 				],
@@ -404,11 +394,143 @@ export function turnsOf(conversation) {
 export const newestCut = (cuts) =>
 	cuts.reduce((best, cut) => (!best || cut.id > best.id ? cut : best), null)
 
-/** The posts a turn made that ask another thread, rather than answer one */
-export const asksOf = (steps) =>
-	steps.filter(
-		(step) => step.name === 'post' && !step.result?.error && !answered(step) && askedThread(step),
-	)
+/**
+ * The tool calls that change something lasting beyond the run, by name, each with whether a finished call did: these get
+ * their own row in the thread instead of folding into their turn. A post that asks another thread; a bot rewriting itself;
+ * a batch of canvas actions.
+ */
+const LASTING = {
+	post: (step) => !answered(step) && askedThread(step),
+	bot: (step) => step.result.details?.before && changedOf(step).length,
+	canvas_act: () => true,
+}
+/** A turn's finished calls that changed something lasting */
+export const lastingOf = (steps) =>
+	steps.filter((step) => step.result && !step.result.error && LASTING[step.name]?.(step))
+
+/** What a bot call changed of its bot, as the words its row names */
+const changedOf = (step) => ['instructions', 'model'].filter((key) => step.args[key] !== undefined)
+
+/** jsdiff from esm.sh, fetched the first time a change is opened */
+let jsdiff
+/** Keep the change's own line and the next nonblank one; the rest folds into ⋯. */
+function contextOf(lines) {
+	for (let index = 1; index < lines.length; index++) if (lines[index].trim()) return index + 1
+	return lines.length
+}
+
+/**
+ * Old against new as one run of words: removed, added and the same, with the same text far from any change folded. A
+ * fold keeps its exact text, so opening it reads as the whole.
+ */
+function wordDiff(diffWords, before, after) {
+	const parts = diffWords(before, after)
+	return parts.flatMap((part, index) => {
+		if (part.added) return [{ kind: 'added', text: part.value }]
+		if (part.removed) return [{ kind: 'removed', text: part.value }]
+		const lines = part.value.split('\n')
+		const first = index === 0
+		const last = index === parts.length - 1
+		if (first && last) return [{ kind: 'same', text: part.value }]
+		const head = first ? 0 : contextOf(lines)
+		const tail = last ? 0 : contextOf([...lines].reverse())
+		if (lines.length - head - tail < 2) return [{ kind: 'same', text: part.value }]
+		return [
+			head && { kind: 'same', text: `${lines.slice(0, head).join('\n')}\n` },
+			{ kind: 'fold', text: lines.slice(head, lines.length - tail).join('\n') },
+			tail && { kind: 'same', text: `\n${lines.slice(lines.length - tail).join('\n')}` },
+		].filter(Boolean)
+	})
+}
+
+/** Unchanged text out of sight, as ⋯ until clicked */
+function Fold(props) {
+	const [open, setOpen] = createSignal(false)
+	return html`
+		<${Show}
+			when=${open}
+			fallback=${() => html`
+				<button
+					type="button"
+					class="ghost fold"
+					title="Show the unchanged text"
+					onClick=${() => setOpen(true)}
+				>
+					⋯
+				</button>
+			`}
+			>${() => props.text}<//
+		>
+	`
+}
+
+/**
+ * A bot rewriting itself, on its own row: ✎, its name in its colour, what changed; opened, each one as a word diff of
+ * old against new.
+ */
+export function Changed(props) {
+	const [diffWords, setDiffWords] = createSignal()
+	const [failed, setFailed] = createSignal()
+	const changes = () =>
+		changedOf(props.step).map((key) => ({
+			key,
+			before: props.step.result.details.before[key] ?? '',
+			after: props.step.args[key],
+		}))
+	const opened = (event) => {
+		if (!event.currentTarget.open || diffWords()) return
+		;(jsdiff ??= import('https://esm.sh/diff@9.0.0').catch((error) => {
+			jsdiff = undefined
+			throw error
+		})).then(
+			(module) => setDiffWords(() => module.diffWords),
+			(error) => setFailed(`Couldn't load the diff from esm.sh: ${error.message}`),
+		)
+	}
+	return html`
+		<li class="elsewhere">
+			<ol class="steps">
+				<li class="call changed">
+					<details onToggle=${opened}>
+						<summary
+							title=${() => `${props.agent.name} changed its ${changedOf(props.step).join(' and ')}`}
+						>
+							<span class="tool" style=${() => colorOf(props.agent.name)}
+								>${() => shortLabel(props.agent.name)}</span
+							>
+							<span class="in">${() => changedOf(props.step).join(' · ')}</span>
+						</summary>
+						<div class="whole">
+							<${Show} when=${failed}>${() => html`<p class="failed">${failed}</p>`}<//>
+							<${For} each=${changes} keyed=${(change) => change.key}
+								>${(change) => html`
+									<div class="change">
+										<span class="key">${() => change().key}</span>
+										<${Show} when=${diffWords}
+											>${() => html`
+												<div class="diff">
+													<${For}
+														each=${() => wordDiff(diffWords(), change().before, change().after)}
+														>${(segment) =>
+															segment.kind === 'fold'
+																? html`<${Fold} text=${segment.text} />`
+																: segment.kind === 'same'
+																	? segment.text
+																	: html`<span class=${segment.kind}>${segment.text}</span>`}<//
+													>
+												</div>
+											`}<//
+										>
+									</div>
+								`}<//
+							>
+						</div>
+					</details>
+				</li>
+			</ol>
+		</li>
+	`
+}
 
 /** Each post's answer, looked up by the thread it asked instead of scanning every message per post */
 export function answersIn(messages) {

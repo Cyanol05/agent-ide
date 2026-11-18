@@ -1,6 +1,6 @@
 threads*.db*
 *.sqlite*
-agent-ide.json
+ade.json
 node_modules/
 .mull/
 .env*
@@ -9,3 +9,8 @@ bun.lock
 *.log
 
 .work/
+
+# what try.js's scripted bot writes in the folder it runs in
+/notes.md
+
+/.scratch/

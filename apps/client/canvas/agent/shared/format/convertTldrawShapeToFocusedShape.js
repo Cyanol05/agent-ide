@@ -1,0 +1,260 @@
+import { Box, createShapeId, isPageId, reverseRecordsDiff, Vec } from '../../../tldraw.js'
+import { convertTldrawFillToFocusedFill } from './FocusedFill.js'
+import { convertTldrawFontSizeAndScaleToFocusedFontSize } from './FocusedFontSize.js'
+/**
+ * Convert a tldraw shape to a focused shape
+ */
+export function convertTldrawShapeToFocusedShape(editor, shape) {
+	switch (shape.type) {
+		case 'text':
+			return convertTextShapeToFocused(editor, shape)
+		case 'geo':
+			return convertGeoShapeToFocused(editor, shape)
+		case 'line':
+			return convertLineShapeToFocused(editor, shape)
+		case 'arrow':
+			return convertArrowShapeToFocused(editor, shape)
+		case 'note':
+			return convertNoteShapeToFocused(editor, shape)
+		case 'draw':
+			return convertDrawShapeToFocused(editor, shape)
+		default:
+			return convertUnknownShapeToFocused(editor, shape)
+	}
+}
+export function convertTldrawShapeToFocusedType(shape) {
+	switch (shape.type) {
+		case 'geo': {
+			const geoShape = shape
+			return GEO_TO_FOCUSED_TYPES[geoShape.props.geo]
+		}
+		case 'text':
+		case 'line':
+		case 'arrow':
+		case 'note':
+		case 'draw':
+			return shape.type
+		default:
+			return 'unknown'
+	}
+}
+const GEO_TO_FOCUSED_TYPES = {
+	rectangle: 'rectangle',
+	ellipse: 'ellipse',
+	triangle: 'triangle',
+	diamond: 'diamond',
+	hexagon: 'hexagon',
+	oval: 'pill',
+	cloud: 'cloud',
+	'x-box': 'x-box',
+	'check-box': 'check-box',
+	heart: 'heart',
+	pentagon: 'pentagon',
+	octagon: 'octagon',
+	star: 'star',
+	rhombus: 'parallelogram-right',
+	'rhombus-2': 'parallelogram-left',
+	trapezoid: 'trapezoid',
+	'arrow-right': 'fat-arrow-right',
+	'arrow-left': 'fat-arrow-left',
+	'arrow-up': 'fat-arrow-up',
+	'arrow-down': 'fat-arrow-down',
+}
+export function convertTldrawIdToSimpleId(id) {
+	return id.slice(6)
+}
+function convertDrawShapeToFocused(editor, shape) {
+	return {
+		_type: 'draw',
+		color: shape.props.color,
+		fill: convertTldrawFillToFocusedFill(shape.props.fill),
+		note: shape.meta.note ?? '',
+		shapeId: convertTldrawIdToSimpleId(shape.id),
+	}
+}
+function convertTextShapeToFocused(editor, shape) {
+	const util = editor.getShapeUtil(shape)
+	const text = util.getText(shape) ?? ''
+	const bounds = getSimpleBounds(editor, shape)
+	const position = new Vec()
+	let anchor = 'top-left'
+	switch (shape.props.textAlign) {
+		case 'middle': {
+			anchor = 'top-center'
+			position.x = bounds.center.x
+			position.y = bounds.top
+			break
+		}
+		case 'end': {
+			anchor = 'top-right'
+			position.x = bounds.right
+			position.y = bounds.top
+			break
+		}
+		case 'start': {
+			anchor = 'top-left'
+			position.x = bounds.left
+			position.y = bounds.top
+			break
+		}
+	}
+	return {
+		_type: 'text',
+		anchor,
+		color: shape.props.color,
+		fontSize: convertTldrawFontSizeAndScaleToFocusedFontSize(editor, shape),
+		maxWidth: shape.props.autoSize ? null : shape.props.w,
+		note: shape.meta.note ?? '',
+		shapeId: convertTldrawIdToSimpleId(shape.id),
+		text,
+		x: position.x,
+		y: position.y,
+	}
+}
+function convertGeoShapeToFocused(editor, shape) {
+	const util = editor.getShapeUtil(shape)
+	const text = util.getText(shape)
+	const bounds = getSimpleBounds(editor, shape)
+	const shapeTextAlign = shape.props.align
+	let newTextAlign
+	switch (shapeTextAlign) {
+		case 'start-legacy':
+			newTextAlign = 'start'
+			break
+		case 'middle-legacy':
+			newTextAlign = 'middle'
+			break
+		case 'end-legacy':
+			newTextAlign = 'end'
+			break
+		default:
+			newTextAlign = shapeTextAlign
+			break
+	}
+	return {
+		_type: GEO_TO_FOCUSED_TYPES[shape.props.geo],
+		color: shape.props.color,
+		fill: convertTldrawFillToFocusedFill(shape.props.fill),
+		h: shape.props.h,
+		note: shape.meta.note ?? '',
+		shapeId: convertTldrawIdToSimpleId(shape.id),
+		text: text ?? '',
+		textAlign: newTextAlign,
+		w: shape.props.w,
+		x: bounds.x,
+		y: bounds.y,
+	}
+}
+function convertLineShapeToFocused(editor, shape) {
+	const bounds = getSimpleBounds(editor, shape)
+	const points = Object.values(shape.props.points).sort((a, b) => a.index.localeCompare(b.index))
+	return {
+		_type: 'line',
+		color: shape.props.color,
+		note: shape.meta.note ?? '',
+		shapeId: convertTldrawIdToSimpleId(shape.id),
+		x1: points[0].x + bounds.x,
+		x2: points[1].x + bounds.x,
+		y1: points[0].y + bounds.y,
+		y2: points[1].y + bounds.y,
+	}
+}
+function convertArrowShapeToFocused(editor, shape) {
+	const bounds = getSimpleBounds(editor, shape)
+	const bindings = editor.store.query.records('binding').get()
+	const arrowBindings = bindings.filter((b) => b.type === 'arrow' && b.fromId === shape.id)
+	const startBinding = arrowBindings.find((b) => b.props.terminal === 'start')
+	const endBinding = arrowBindings.find((b) => b.props.terminal === 'end')
+	return {
+		_type: 'arrow',
+		bend: shape.props.bend * -1,
+		color: shape.props.color,
+		fromId: startBinding ? convertTldrawIdToSimpleId(startBinding.toId) : null,
+		note: shape.meta.note ?? '',
+		shapeId: convertTldrawIdToSimpleId(shape.id),
+		text: shape.meta.text ?? '',
+		toId: endBinding ? convertTldrawIdToSimpleId(endBinding.toId) : null,
+		x1: shape.props.start.x + bounds.x,
+		x2: shape.props.end.x + bounds.x,
+		y1: shape.props.start.y + bounds.y,
+		y2: shape.props.end.y + bounds.y,
+	}
+}
+function convertNoteShapeToFocused(editor, shape) {
+	const util = editor.getShapeUtil(shape)
+	const text = util.getText(shape)
+	const bounds = getSimpleBounds(editor, shape)
+	return {
+		_type: 'note',
+		color: shape.props.color,
+		note: shape.meta.note ?? '',
+		shapeId: convertTldrawIdToSimpleId(shape.id),
+		text: text ?? '',
+		x: bounds.x,
+		y: bounds.y,
+	}
+}
+function convertUnknownShapeToFocused(editor, shape) {
+	const bounds = getSimpleBounds(editor, shape)
+	return {
+		_type: 'unknown',
+		note: shape.meta.note ?? '',
+		shapeId: convertTldrawIdToSimpleId(shape.id),
+		subType: shape.type,
+		x: bounds.x,
+		y: bounds.y,
+	}
+}
+function getSimpleBounds(editor, shape) {
+	// Compute page position from the shape record's own x/y, not the editor's cached bounds.
+	// This is critical for diffing historical shape records where the editor's
+	// current state differs from the shape record being converted.
+	const pagePoint = getShapePagePoint(editor, shape)
+	// Try to get dimensions from shape props first
+	const props = shape.props
+	if (props.w !== undefined && props.h !== undefined) {
+		return new Box(pagePoint.x, pagePoint.y, props.w, props.h)
+	}
+	// Fall back to editor bounds for dimensions only (position comes from shape record)
+	const bounds = editor.getShapePageBounds(shape)
+	if (bounds) {
+		return new Box(pagePoint.x, pagePoint.y, bounds.w, bounds.h)
+	}
+	// Create a mock shape and get the bounds, then reverse the creation of the mock shape
+	let mockBounds
+	const diff = editor.store.extractingChanges(() => {
+		editor.run(
+			() => {
+				const mockId = createShapeId()
+				editor.createShape({
+					...shape,
+					id: mockId,
+				})
+				mockBounds = editor.getShapePageBounds(mockId)
+			},
+			{ ignoreShapeLock: false, history: 'ignore' },
+		)
+	})
+	const reverseDiff = reverseRecordsDiff(diff)
+	editor.store.applyDiff(reverseDiff)
+	if (!mockBounds) {
+		throw new Error('Failed to get bounds for shape')
+	}
+	return new Box(pagePoint.x, pagePoint.y, mockBounds.w, mockBounds.h)
+}
+/**
+ * Get the page-space position of a shape from its record's x/y values.
+ * For shapes at the root level, this is just shape.x/y.
+ * For shapes inside frames/groups, we transform through the parent's page transform.
+ */
+function getShapePagePoint(editor, shape) {
+	// If the shape is at the root level (parent is a page), use x/y directly
+	if (isPageId(shape.parentId)) {
+		return new Vec(shape.x, shape.y)
+	}
+	// For shapes inside parents, get the parent's page transform and apply it
+	// Note: We use the editor's current parent transform, which is correct as long
+	// as the parent itself hasn't moved in the same diff (uncommon case)
+	const parentTransform = editor.getShapePageTransform(shape.parentId)
+	return parentTransform.applyToPoint(new Vec(shape.x, shape.y))
+}

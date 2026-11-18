@@ -19,15 +19,19 @@ import { report } from './notice.js'
 import { RunnerList } from './runner.js'
 import { Settings } from './settings.js'
 import { BotItem, NewBot } from './bot.js'
+import { PiSessions } from './pi-sessions.js'
 
 export function ThreadList() {
 	const [creating, setCreating] = createSignal(false)
 	const [archivedPage, setArchivedPage] = createSignal(false)
+	const [blockedOnly, setBlockedOnly] = createSignal(false)
+	const blocked = () =>
+		threads.filter((thread) => !thread.archived && thread.status === 'blocked').length
 	return html`
 		<nav class="thread-list" aria-label="Threads">
 			<${Show}
 				when=${() => !archivedPage()}
-				fallback=${html`<${ArchivedPage} onBack=${() => setArchivedPage(false)} />`}
+				fallback=${html`<${ArchivedPage} onBack=${(_e) => setArchivedPage(false)} />`}
 			>
 				<${Show} when=${() => server().modules.includes('bots')}>
 					<h2>Bots</h2>
@@ -47,13 +51,15 @@ export function ThreadList() {
 						current=${() => !current()}
 						onPick=${(_e) => openThread(null)}
 					/>
+					<${Show} when=${() => server().modules.includes('pi-sessions')}><${PiSessions} /><//>
 					<${For}
 						each=${() =>
 							threads.filter(
 								(thread) =>
 									!thread.archived &&
-									!homeBot(thread.id) &&
-									!threads.some((other) => other.id === thread.parent),
+									(blockedOnly()
+										? thread.status === 'blocked'
+										: !homeBot(thread.id) && !threads.some((other) => other.id === thread.parent)),
 							)}
 					>
 						${(thread) => html`<${ThreadItem} thread=${() => thread} />`}
@@ -70,6 +76,23 @@ export function ThreadList() {
 				</ul>
 			<//>
 			<footer class="list-foot">
+				<${Show} when=${() => server().modules.includes('blocked')}>
+					<button
+						type="button"
+						class=${() => ['ghost small foot-toggle blocked-toggle', { some: blocked() }]}
+						aria-pressed=${() => String(blockedOnly())}
+						aria-label=${() => (blocked() ? `Blocked, ${blocked()}` : 'Blocked')}
+						onClick=${() => {
+							setArchivedPage(false)
+							setBlockedOnly((value) => !value)
+						}}
+					>
+						<span>Blocked</span>
+						<${Show} when=${() => blocked()}
+							><small class="count" aria-hidden="true">${() => blocked()}</small><//
+						>
+					</button>
+				<//>
 				<${RunnerList} />
 				<${Settings} />
 			</footer>

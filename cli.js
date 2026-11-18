@@ -23,8 +23,13 @@ const usage = `node cli.js [--server url] [--as name] <command>
   runners          every runner holding a key, online or not, and its models
   key <runner>     a new key for a runner, replacing its old one, and the line that connects it
   revoke <runner>  take its key away: it goes offline and leaves the list
-  stop <thread>    stop its agents and commands`
+  stop <thread>    stop its agents and commands
+  import <runner> [session]
+                   with pi-sessions on: list the pi sessions in the runner's folder (--dir for another),
+                   or start a new thread from one, by id or path, and print "thread N"; --title names it`
 
+/** @template {import("node:util").ParseArgsOptionsConfig} T
+ * @param {T} options */
 const parse = (options) => {
 	try {
 		return parseArgs({ allowPositionals: true, options })
@@ -44,7 +49,10 @@ const {
 	values: flags,
 	positionals: [command, ...rest],
 } = parse({
-	server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://127.0.0.1:3000' },
+	server: {
+		type: 'string',
+		default: process.env.ADE_SERVER || 'http://127.0.0.1:3000',
+	},
 	as: { type: 'string', default: defaultAs() },
 	thread: { type: 'string' },
 	to: { type: 'string', multiple: true },
@@ -99,10 +107,10 @@ function show({ id, data: message }) {
 async function post() {
 	const body = rest.join(' ')
 	if (!body) throw new Error('post what?')
-	const id = flags.thread
-		? Number(flags.thread)
-		: (await api('POST', '/api/threads', { title: flags.title ?? defaultTitle(body) })).id
-	if (!flags.thread) console.log(`thread ${id}`)
+	const fresh = !flags.thread
+	const id = fresh
+		? (await api('POST', '/api/threads', { title: flags.title ?? defaultTitle(body) })).id
+		: Number(flags.thread)
 	const seen = (await api('GET', `/api/threads/${id}`)).entries.at(-1)?.id ?? 0
 	const to = flags.to && (flags.to.includes('nobody') ? null : flags.to.map(agent))
 	/** Listen before posting so even an immediate answer can't slip between the read and the wait */
@@ -117,8 +125,22 @@ async function post() {
 			...(flags.to ? { to } : {}),
 			...(flags.steer ? { steer: true } : {}),
 			requestId: crypto.randomUUID(),
+		}).catch(async (error) => {
+			// A new thread that never got its message isn't worth keeping
+			if (fresh) await api('POST', `/api/threads/${id}/archive`, { archived: true }).catch(() => {})
+			if (error.message.startsWith('No runner named ')) {
+				const names = (await api('GET', '/api/runners')).map((runner) => runner.name)
+				error.message += names.length
+					? `. Runners: ${names.join(', ')}`
+					: '. No runner has connected yet'
+			}
+			throw error
 		})
-		if (flags['no-wait'] || !(posted.command || posted.to?.length)) return
+		if (fresh) console.log(`thread ${id}`)
+		const asked = posted.command || posted.to?.length
+		if (!asked && !flags.to)
+			console.error('Asked nobody: name a model@runner, a runner or a bot with --to')
+		if (flags['no-wait'] || !asked) return
 		let last = posted.entry ?? seen
 		let waiting = ''
 		for (;;) {
@@ -191,7 +213,7 @@ const commands = {
 	async key() {
 		const { key, connect } = await api('POST', '/api/runners', { name: rest[0] })
 		console.log(
-			`AGENT_IDE_KEY=${key}\n\nOn the runner's machine:\n  ${connect}\nor from a clone:\n  AGENT_IDE_KEY=${key} node runner.js --server ${flags.server} --name ${rest[0]} --dir .`,
+			`ADE_KEY=${key}\n\nOn the runner's machine:\n  ${connect}\nor from a clone:\n  ADE_KEY=${key} node runner.js --server ${flags.server} --name ${rest[0]} --dir .`,
 		)
 	},
 	async revoke() {
@@ -199,6 +221,25 @@ const commands = {
 		console.log(`${rest[0]} revoked`)
 	},
 	stop: () => api('POST', `/api/threads/${Number(rest[0])}/stop`),
+	async import() {
+		const [runner, session] = rest
+		if (!runner) throw new Error('import from which runner?')
+		if (!session) {
+			const query = new URLSearchParams({ runner, ...(flags.dir ? { dir: flags.dir } : {}) })
+			for (const found of await api('GET', `/api/pi-sessions?${query}`))
+				console.log(
+					`${found.id}  ${found.modified.slice(0, 16).replace('T', ' ')}  ${found.messageCount} messages  ${found.name ?? found.firstMessage.slice(0, 60)}`,
+				)
+			return
+		}
+		const { id } = await api('POST', '/api/pi-sessions', {
+			runner,
+			session,
+			...(flags.dir ? { dir: flags.dir } : {}),
+			...(flags.title ? { title: flags.title } : {}),
+		})
+		console.log(`thread ${id}`)
+	},
 }
 
 if (flags.help || !commands[command]) {

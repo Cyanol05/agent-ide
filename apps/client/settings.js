@@ -1,6 +1,5 @@
 /** The server's settings: its modules, on or off, and memory's model. Its own machine changes them; saving restarts it. */
 import html from '@solidjs/html'
-import { Icon } from './icons.js'
 import {
 	createEffect,
 	createRoot,
@@ -20,6 +19,7 @@ import { report } from './notice.js'
 import { placePopover } from './popover.js'
 import { Switch } from './dot.js'
 import { markdown } from './markdown.js'
+import { Icon } from './icons.js'
 
 export function Settings() {
 	let button, panel
@@ -68,10 +68,12 @@ export function Settings() {
 		<button
 			class="ghost small foot-toggle settings-toggle"
 			type="button"
+			aria-label="Settings"
+			title="Settings"
 			ref=${(el) => (button = el)}
 			popovertarget=${id}
 		>
-			Settings
+			<${Icon} name="settings" />
 		</button>
 		<div
 			class="popover"
@@ -87,14 +89,7 @@ export function Settings() {
 				title="Settings"
 				detailTitle="Memory’s agent"
 				open=${picking}
-				close=${html`<button
-					type="button"
-					class="ghost small close"
-					aria-label="Close"
-					onClick=${() => panel.hidePopover()}
-				>
-					<${Icon} name="close" />
-				</button>`}
+				onClose=${(_event) => panel.hidePopover()}
 				onBack=${(event) => setPicking(false)}
 				detail=${html` <div class="memory-model">
 						<p>
@@ -109,7 +104,7 @@ export function Settings() {
 								? chosen()
 								: { runner: runner.name, model: runner.model }}
 						selectedRunner=${() => chosen().runner}
-						first=${html`<li class="models">
+						before=${html`<li class="models">
 							<button
 								type="button"
 								class="ghost model"

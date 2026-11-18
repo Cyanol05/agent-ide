@@ -3,13 +3,30 @@
  * On by default; MODULES=-talk turns it off.
  * A `post` call does everything in one commit, with a receipt keyed by its task id, so a replay finds it.
  */
-import { num, obj, opt, str } from '@earendil-works/pi-schema'
+import { num, obj, opt, str, union } from '@earendil-works/pi-schema'
 import { defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
-import { AGENT, writtenTo, field, keyOf, said, mentioned } from '../util.js'
+import { AGENT, writtenTo, keyOf, said, mentioned } from '../util.js'
+import { defaultTitle } from '../apps/client/title.js'
+
+export const on = true
 
 export function server(core) {
 	const { agentOf, home } = core
+	/** Numbers and digit strings are ids; other strings are exact titles. */
+	async function resolveThread(thread) {
+		if (typeof thread !== 'string') return thread
+		if (/^\d+$/.test(thread)) return Number(thread)
+		const rows = (await Promise.all([core.threadList(), core.threadList(undefined, true)])).flat()
+		const matches = rows.filter((row) => row.title === thread)
+		if (matches.length !== 1)
+			throw new Error(
+				matches.length
+					? `Several threads have title ${JSON.stringify(thread)}: ${matches.map((row) => row.id).join(', ')}`
+					: `No thread has title ${JSON.stringify(thread)}`,
+			)
+		return matches[0].id
+	}
 	const answered = async (thread, by) =>
 		new Set(
 			(await core.messages(thread))
@@ -17,6 +34,11 @@ export function server(core) {
 				.flatMap((entry) => entry.data.re ?? []),
 		)
 
+	/**
+	 * A thread answers the thread that started it on its own; anywhere else, an agent answers with `post`.
+	 * A new thread's omitted or blank title is the first 60 characters of the trimmed body, or "An image" for an empty one, as in the client and CLI;
+	 * it stays with auto-title off, and is polished after the first answer with it on.
+	 */
 	const post = defineTool({
 		name: 'post',
 		description:
@@ -26,15 +48,25 @@ export function server(core) {
 			"A bot posting to a thread it's in speaks there as itself instead, and replies stay there. " +
 			'People see posts folded, as agent-to-agent talk; anything a person must know or do, say plainly in your own reply to them.',
 		parameters: obj({
-			thread: opt(num({ description: 'The thread to post to. Leave out to start a new one.' })),
-			title: opt(str({ description: "The new thread's title" })),
+			thread: opt(
+				union([num(), str()], {
+					description:
+						'The thread id (number or digit string) or exact title to post to. Duplicate titles fail and list matching ids. Leave out to start a new one.',
+				}),
+			),
+			title: opt(
+				str({
+					description:
+						"The new thread's title; optional, defaults to the first 60 characters of the body",
+				}),
+			),
 			body: str(),
 			to: opt(
 				str({
 					description:
 						"Who should answer. A bot by its name. From anywhere, 12 is thread 12's agent and 12/ada a bot there, which also picks the thread. " +
 						"Or model@runner, where model is anything `pi --model` takes, or a runner alone for its default model: it starts the thread's agent as that, or switches the one there, which keeps its conversation. " +
-						'Or "nobody". Leave out for whom the thread last asked, or whom its director picks; in a new thread, yourself.',
+						'Or "nobody". Leave out for whom the thread last asked, or whom its director picks; a new thread needs it, or a bot @mentioned in the body.',
 				}),
 			),
 		}),
@@ -43,11 +75,22 @@ export function server(core) {
 			const saved = await core.receipt(`post ${api.taskId}`, 'post')
 			if (saved) return saved.result
 			const { thread: from, name } = await home(api.conversationId)
-			const thread = args.thread ?? (Number(args.to?.match(/^(\d+)(?:\/|$)/)?.[1]) || undefined)
+			const thread =
+				(await resolveThread(args.thread)) ??
+				(Number(args.to?.match(/^(\d+)(?:\/|$)/)?.[1]) || undefined)
 			if (thread === from) throw new Error('That is your own thread; just answer')
+			/** A new thread says who should answer, by `to` or by @mentioning bots */
+			const asks =
+				thread === undefined && args.to === undefined
+					? mentioned(args.body, await core.botNames()).filter((bot) => bot !== name)
+					: []
+			if (thread === undefined && args.to === undefined && !asks.length)
+				throw new Error(
+					'Say who should answer: a bot by name, or model@runner (e.g. anthropic/claude-opus-5-5:medium@oskar).',
+				)
 			if (/^\$\s/.test(args.body))
 				throw new Error('Run commands with your own bash tool, not as a post')
-			const title = thread === undefined ? field(args.title, 'title') : ''
+			const title = thread === undefined ? args.title?.trim() || defaultTitle(args.body) : ''
 			if (thread !== undefined) await core.conversation(thread)
 			/** A bot that's in the thread speaks there as itself, like a person in the room: no question from home, no answer back */
 			const member =
@@ -149,19 +192,18 @@ export function server(core) {
 				{ author: name, body: args.body },
 				{
 					director: thread !== undefined && !asked,
-					explicit:
-						args.to === undefined
+					explicit: asks.length
+						? () =>
+								Promise.all(
+									asks.map((bot) => core.whom(undefined, bot, false, context.abortSignal)),
+								)
+						: args.to === undefined
 							? undefined
 							: async () =>
 									args.to === 'nobody'
 										? []
 										: [await core.whom(thread, args.to, false, context.abortSignal)],
-					fallback: async () =>
-						thread === undefined
-							? [await agentOf(api.conversationId)]
-							: asker
-								? [asker]
-								: await core.lastAsked(thread),
+					fallback: async () => (asker ? [asker] : await core.lastAsked(thread)),
 				},
 			)
 			/** Only a thread you started answers you on its own */
@@ -211,7 +253,12 @@ export function server(core) {
 			"With `agent`, read that agent's own work in the thread instead: what it was handed, the tool calls it made and what they printed, word for word. " +
 			'Answers from threads you started come to you; no need to read for them.',
 		parameters: obj({
-			thread: opt(num({ description: 'With `query` or `agent`, your own thread by default' })),
+			thread: opt(
+				union([num(), str()], {
+					description:
+						'The thread id (number or digit string) or exact title. Duplicate titles fail and list matching ids. With `query` or `agent`, your own thread by default.',
+				}),
+			),
 			agent: opt(
 				str({
 					description:
@@ -222,12 +269,14 @@ export function server(core) {
 			query: opt(str({ description: 'Only entries containing this text, ignoring case' })),
 		}),
 		replay: 'safe',
-		execute: async (args, api) => {
+		execute: async (input, api) => {
+			const args = /** @type {any} */ (input)
 			const { thread: mine, name } = await home(api.conversationId)
+			const thread = await resolveThread(args.thread)
 			const lines = []
 			if (args.agent !== undefined) {
 				const [, at, agent = args.agent] = args.agent.match(/^(\d+)\/(.+)$/) ?? []
-				const text = await work(Number(at) || args.thread || mine, { ...args, agent })
+				const text = await work(Number(at) || thread || mine, { ...args, agent })
 				return { output: [{ type: 'text', text }] }
 			}
 			if (args.thread === undefined && args.query === undefined) {
@@ -243,7 +292,7 @@ export function server(core) {
 				}
 			} else {
 				const query = args.query?.toLowerCase()
-				const found = (await core.messages(args.thread ?? mine)).filter(
+				const found = (await core.messages(thread ?? mine)).filter(
 					(entry) => !query || said(entry).toLowerCase().includes(query),
 				)
 				for (const { id, data: message } of found.slice(-(args.last ?? 20))) {
@@ -315,7 +364,7 @@ export function server(core) {
 		key: 'talk',
 		tag: false,
 		render: () =>
-			"A message from another thread says which. Whatever text you end a turn with is posted, so while you wait for answers from other threads, end your turn with no text at all, not even to say you are waiting: each answer wakes you. When you have nothing new to tell, end with no text too. Don't sleep or poll.",
+			"Answers to your posts wake you, even mid-turn: while you wait for one, end your turn with no text, and don't sleep or poll.",
 	}
 
 	async function reply(posts, answeredIn, agent, body) {
@@ -348,7 +397,7 @@ export function server(core) {
 
 	return {
 		extension: defineExtension({
-			name: 'agent-ide.talk',
+			name: 'ade.talk',
 			tools: [post, threads],
 			sections: [section],
 		}),

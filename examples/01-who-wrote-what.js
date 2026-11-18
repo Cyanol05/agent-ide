@@ -54,10 +54,10 @@ check(
 )
 
 const own = await conversationOf(view, 'echo/echo@laptop')
-const user = own.entries?.find((e) => e.kind === 'agent-ide.delivery')
+const user = own.entries?.find((e) => e.kind === 'ade.delivery')
 check(
-	text(user?.model[0]) === 'oskar: hello' && user.data.held.join() === String(input?.id),
-	"in the agent's conversation the message is a delivery: user text with its author, naming what it held",
+	text(user?.model[0]) === 'hello' && user.data.held.join() === String(input?.id),
+	"in the agent's conversation the message is a delivery: the text as typed, naming what it held",
 	JSON.stringify(user),
 )
 check(
@@ -80,7 +80,8 @@ check(
 	JSON.stringify(ana),
 )
 check(
-	answers(v2 ?? { entries: [] })[1]?.data.body === 'echo@laptop heard: ana: me too',
+	answers(v2 ?? { entries: [] })[1]?.data.body ===
+		`echo@laptop heard: [Every message above without a tag is oskar's.]\n\n<message from="ana">\nme too\n</message>`,
 	"the agent catches up on what's new, not its own answer",
 	JSON.stringify(v2?.entries.at(-1)),
 )

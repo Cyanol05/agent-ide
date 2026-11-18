@@ -46,9 +46,9 @@ await server({ MODULES: 'talk' })
 check(Boolean(await answered(id)), 'the next accepted delivery resumes after the crash')
 const v = await view(id)
 const c = await conversationOf(v, 'echo/echo@bot')
-const inputs = c.entries.filter((e) => e.kind === 'agent-ide.delivery').map((e) => text(e.model[0]))
+const inputs = c.entries.filter((e) => e.kind === 'ade.delivery').map((e) => text(e.model[0]))
 check(
-	inputs.length === 1 && inputs[0].includes('oskar: first\n\noskar: second'),
+	inputs.length === 1 && inputs[0].includes('first\n\nsecond'),
 	'it takes the undelivered message too, once and in thread order',
 	JSON.stringify(inputs),
 )

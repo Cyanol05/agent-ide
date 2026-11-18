@@ -2,9 +2,10 @@
  * Each thread keeps its draft, images and pick when you move away; a new thread keeps its own.
  * The draft's text, not its images, also lives in localStorage by thread id, so it survives a reload or closing the tab.
  * Asking a thread's agent as another model switches it. A pick is one model plus any bots; in a bot's home, it is the bot's model.
- * In a thread of bots with the director picking, a message whose sender chose no one goes without `to`, and a choice holds for one message.
+ * In a group thread, a message whose sender chose no one goes without `to`, and a choice holds for one message.
  */
 import { defaultTitle } from './title.js'
+import { threadMention } from './markdown.js'
 import html from '@solidjs/html'
 import { Icon } from './icons.js'
 import {
@@ -27,17 +28,18 @@ import {
 	current,
 	entries,
 	homeBot,
+	loadEarlier,
 	openThread,
 	reloadBots,
 	runners,
 	sending,
 	server,
 	threads,
+	threadOf,
 } from './server.js'
 import { agentTo, formatAgent, thinkingWord } from './agent.js'
 import { placePopover } from './popover.js'
-import { ModelPicker } from './model-picker.js'
-import { Dot } from './dot.js'
+import { matches, metered, Metered, ModelPicker } from './model-picker.js'
 import { conversations } from './run.js'
 import { Compaction, Memory } from './agent-memory.js'
 import { Panes } from './panes.js'
@@ -48,49 +50,71 @@ export function Composer(props) {
 	let input, box, picker, button, chooser, anchor, recall, recallButton, mentionList
 	const [mention, setMention] = createSignal(null)
 	const [highlighted, setHighlighted] = createSignal(0)
-	const mentionable = () => (mention() ? mentionsFor(mention().query, props.thread) : [])
+	const mentionable = () =>
+		!mention()
+			? []
+			: mention().slash
+				? skillsFor(mention().query, props.thread)
+				: mentionsFor(mention().query, props.thread)
+	const optionId = (option) => `mention-${props.thread ?? 'new'}-${option.key}`
+	/** `@` anywhere lists bots and threads; `/` opening the message lists the skills of the runner it asks */
 	const findMention = () => {
 		const before = input.value.slice(0, input.selectionStart)
-		const found =
-			input.selectionStart === input.selectionEnd && before.match(/(?:^|[\s(])@([\w.-]*)$/)
-		const next =
-			found && bots.length && !homeBot(props.thread)
-				? { start: before.length - found[1].length - 1, query: found[1] }
+		const caret = input.selectionStart === input.selectionEnd
+		const found = caret && before.match(/(?:^|[\s(])@([\w.-]*)$/)
+		const slash = caret && before.match(/^\/(?:skill:)?([\w.-]*)$/)
+		const next = found
+			? { start: before.length - found[1].length - 1, query: found[1] }
+			: slash
+				? { start: 0, query: slash[1], slash: true }
 				: null
-		if (next?.query !== mention()?.query || next?.start !== mention()?.start) setHighlighted(0)
+		if (slash) loadSkills(props.thread)
+		if (
+			next?.query !== mention()?.query ||
+			next?.start !== mention()?.start ||
+			next?.slash !== mention()?.slash
+		)
+			setHighlighted(0)
 		setMention(next)
 	}
-	const pickMention = (bot) => {
+	/** A bot goes in as `@name` and asks it; a thread as `@"its title"`, which the message shows as a link to it */
+	const pickMention = (option) => {
 		const { start } = mention()
-		const text = `${input.value.slice(0, start)}@${bot.name} `
+		const text = `${input.value.slice(0, start)}${option.written} `
 		const value = text + input.value.slice(input.selectionStart).replace(/^\s/, '')
 		changeDraft((draft) => {
 			draft.draft = value
 		})
 		input.value = value
 		input.setSelectionRange(text.length, text.length)
+		setMention(null)
+		input.focus()
+		const { bot } = option
+		if (!bot) return
 		// It asks the bots the draft mentions, as a mention of bots already here does
 		const named = value.toLowerCase()
 		const kept = askedBots(props.thread).filter(
 			(to) => to.name !== bot.name && named.includes(`@${to.name.toLowerCase()}`),
 		)
-		setPick(null, [...snapshot(kept), botAgent(bot)], null, props.thread)
-		setMention(null)
-		input.focus()
+		setPick(null, [...snapshot(kept), botAgent(bot)], props.thread)
 	}
 	createEffect(
 		() => mentionable().length > 0,
 		(open) => {
 			if (!mentionList) return
 			mentionList.togglePopover(open)
-			if (open) onSettled(() => placePopover(mentionList, box, false))
+			if (open)
+				onSettled(() => {
+					mentionList.style.setProperty('--composer-width', `${box.offsetWidth}px`)
+					placePopover(mentionList, box, false)
+				})
 		},
 	)
 	const asking = () =>
 		directed(props.thread)
-			? "director's pick"
+			? 'the thread'
 			: recipients(props.thread)
-					.map((to) => recipientLabel(to, props.thread))
+					.map((to) => recipientWords(to, props.thread).filter(Boolean).join(' · '))
 					.join(' + ')
 	const [lines, setLines] = createSignal(false)
 	const [compacting, setCompacting] = createSignal(false)
@@ -132,7 +156,6 @@ export function Composer(props) {
 	)
 	const touch = () => matchMedia('(pointer: coarse)').matches
 	const active = () => current() === props.thread
-	const busy = () => threads.find((thread) => thread.id === props.thread)?.status === 'working'
 	createEffect(
 		() => [draft().draft, active()],
 		() => {
@@ -178,8 +201,8 @@ export function Composer(props) {
 		const body = draft().draft,
 			images = snapshot(draft().images),
 			to = snapshot(recipients(props.thread))
-		// In a thread of bots, a choice holds for one message; the next is the director's again
-		if (directing(props.thread)) setCompose((store) => void delete store.picks[props.thread])
+		// A choice holds for one message, including the invitation that turns a solo thread into a group
+		if (props.thread) setCompose((store) => void delete store.picks[props.thread])
 		let id = props.thread
 		const key = id ?? 'new'
 		changeDraft((draft) => {
@@ -212,8 +235,25 @@ export function Composer(props) {
 			}, key)
 		}
 	}
-	const typeRecipients = (event) => {
-		const text = event.currentTarget.value
+	/** The bots the search matches, under the models */
+	const pickerBots = (search) => {
+		const matching = () => bots.filter((bot) => matches(search, bot.name))
+		return html`
+			<${Show} when=${() => matching().length}
+				><li><h3>Bots</h3></li><//
+			>
+			<${For} each=${matching}>
+				${(bot) =>
+					PickerBot(
+						bot,
+						() => picker.hidePopover(),
+						() => props.thread,
+					)}
+			<//>
+		`
+	}
+	/** A line of `model:thinking@runner` and bots' names, comma between them, as the pick */
+	const pickRecipients = (text) => {
 		const next = text
 			.split(',')
 			.map((text) => text.trim())
@@ -228,7 +268,6 @@ export function Composer(props) {
 		setPick(
 			next.find((to) => !to.name) ?? null,
 			next.filter((to) => to.name),
-			text,
 			props.thread,
 		)
 	}
@@ -282,9 +321,7 @@ export function Composer(props) {
 					aria-controls=${() => `mentions-${props.thread ?? 'new'}`}
 					aria-expanded=${() => String(mentionable().length > 0)}
 					aria-activedescendant=${() =>
-						mentionable().length
-							? `mention-${props.thread ?? 'new'}-${mentionable()[highlighted()]?.name}`
-							: undefined}
+						mentionable().length ? optionId(mentionable()[highlighted()]) : undefined}
 					onBlur=${() => setMention(null)}
 					onClick=${findMention}
 					onKeyUp=${(event) => {
@@ -333,7 +370,6 @@ export function Composer(props) {
 							setPick(
 								snapshot(agent(props.thread)),
 								snapshot(askedBots(props.thread)),
-								null,
 								props.thread,
 							)
 						changeDraft((draft) => {
@@ -421,7 +457,7 @@ export function Composer(props) {
 						homeBot(props.thread)
 							? `The model ${homeBot(props.thread).name} runs as`
 							: directed(props.thread)
-								? 'The director picks a bot, or nobody; pick one here to choose'
+								? 'The director picks the agent, bots, or nobody; pick one here to choose'
 								: recipients(props.thread).map(formatAgent).join(', ')}
 					onClick=${() => {
 						openThread(props.thread)
@@ -429,14 +465,6 @@ export function Composer(props) {
 						picker.togglePopover()
 					}}
 				>
-					<${Dot}
-						state=${() =>
-							directed(props.thread) || recipients(props.thread).length
-								? busy()
-									? 'working'
-									: 'on'
-								: ''}
-					/>
 					<span
 						><${Show}
 							when=${() => !directed(props.thread) && recipients(props.thread).length}
@@ -445,6 +473,9 @@ export function Composer(props) {
 								>${(to, index) => [
 									() => (index() ? ' + ' : ''),
 									() => recipientWords(to, props.thread)[0],
+									html`<${Show} when=${() => !to.name && metered(to.runner, to.model)}
+										>${' '}<${Metered}
+									/><//>`,
 									html`<${Show} when=${() => recipientWords(to, props.thread)[1]}
 										><span class="thinking-word">
 											· ${() => recipientWords(to, props.thread)[1]}</span
@@ -461,20 +492,21 @@ export function Composer(props) {
 					<ul
 						role="listbox"
 						id=${() => `mentions-${props.thread ?? 'new'}`}
-						aria-label="Bots to mention"
+						aria-label=${() => (mention()?.slash ? 'Skills' : 'Bots and threads to mention')}
 					>
-						<${For} each=${() => mentionable()}>
-							${(bot, index) =>
-								PickerBot(
-									bot,
-									() => setMention(null),
-									() => props.thread,
-									{
-										id: () => `mention-${props.thread ?? 'new'}-${bot.name}`,
-										highlighted: () => highlighted() === index(),
-										pick: () => pickMention(bot),
-									},
-								)}
+						<${For} each=${() => mentionable()} keyed=${(option) => option.key}>
+							${(option, index) =>
+								MentionRow(option, {
+									id: () => optionId(option()),
+									highlighted: () => highlighted() === index(),
+									pick: () => pickMention(option()),
+									note: () =>
+										option().bot
+											? isHere(option().bot, props.thread)
+												? formatAgent(option().bot.to)
+												: 'not in this thread yet'
+											: option().kind,
+								})}
 						<//>
 					</ul>
 				</div>
@@ -484,16 +516,18 @@ export function Composer(props) {
 				popover
 				ref=${(el) => (recall = el)}
 				onToggle=${(event) => {
-					if (event.newState === 'open') placePopover(recall, recallButton)
-					else setLines(false)
+					// The tape counts the thread's messages from its first, so opening it brings them all
+					if (event.newState === 'open') {
+						placePopover(recall, recallButton)
+						loadEarlier(props.thread, true)
+					} else setLines(false)
 				}}
 			>
 				<${Show} when=${() => active()}>
 					<${Panes}
 						title="Context"
-						close=${html`<button type="button" class="ghost small close" aria-label="Close" onClick=${() => recall.hidePopover()}><${Icon} name="close" /></button>`}
+						onClose=${(_event) => recall.hidePopover()}
 						detailTitle="Memory’s lines"
-						actions=${html`<button type="button" class="small" onClick=${() => recall.hidePopover()}>Done</button>`}
 						open=${() => lines()}
 						onBack=${() => setLines(false)}
 						detail=${html`<${Show} when=${() => lines()}><${Memory} /><//>`}
@@ -541,14 +575,6 @@ export function Composer(props) {
 					else anchor = box
 				}}
 			>
-				<button
-					type="button"
-					class="ghost small close"
-					aria-label="Close"
-					onClick=${() => picker.hidePopover()}
-				>
-					<${Icon} name="close" />
-				</button>
 				<${ModelPicker}
 					getTo=${(runner) => toFor(runner, props.thread)}
 					selectedRunner=${() => agent(props.thread)?.runner}
@@ -557,81 +583,74 @@ export function Composer(props) {
 						picker.hidePopover()
 					}}
 					onConfigure=${(to) => configure(to, props.thread)}
+					onRecipients=${() =>
+						homeBot(props.thread)
+							? undefined
+							: (text) => {
+									pickRecipients(text)
+									picker.hidePopover()
+								}}
 					folders=${true}
-				>
-					<${Show} when=${() => !homeBot(props.thread)}>
-						<${Show} when=${() => bots.length}>
-							<li><h3>Bots</h3></li>
-						<//>
-						<${For} each=${() => bots}>
-							${(bot) =>
-								PickerBot(
-									bot,
-									() => picker.hidePopover(),
-									() => props.thread,
-								)}
-						<//>
-					<//>
-				<//>
-				<${Show} when=${() => !homeBot(props.thread)}>
-					<input
-						class="recipients"
-						aria-label="Recipients"
-						autocomplete="off"
-						autocapitalize="none"
-						autocorrect="off"
-						spellcheck="false"
-						title="model:thinking@runner, and any bots' names, comma between them"
-						value=${() => pick(props.thread)?.typed ?? recipients(props.thread).map(formatAgent).join(', ')}
-						onInput=${typeRecipients}
-						onKeyDown=${(event) => {
-							if (event.key === 'Enter') event.preventDefault()
-						}}
-					/>
-				<//>
+					close=${html`<button
+						type="button"
+						class="ghost small close"
+						aria-label="Close"
+						onClick=${() => picker.hidePopover()}
+					>
+						<${Icon} name="close" />
+					</button>`}
+					after=${(search) => (homeBot(props.thread) ? null : pickerBots(search))}
+				/>
 			</div>
 		</form>
 	`
 }
 
-/**
- * A click asks only the bot; shift-click adds it beside the agent, or takes it off.
- * As an @mention option, the row is highlighted by the keys, says whether the bot is here yet, and a tap picks it.
- */
-function PickerBot(bot, close, thread, mention) {
+/** A click asks only the bot; shift-click adds it beside the agent, or takes it off */
+function PickerBot(bot, close, thread) {
 	const selected = () => askedBots(thread()).some((to) => to.name === bot.name)
 	return html`
-		<li role=${() => (mention ? 'presentation' : undefined)}>
+		<li>
 			<button
 				type="button"
-				role=${() => (mention ? 'option' : undefined)}
-				id=${mention?.id}
-				tabindex=${() => (mention ? '-1' : undefined)}
-				aria-selected=${() => (mention ? String(mention.highlighted()) : undefined)}
 				class="ghost model"
-				aria-pressed=${() => (mention ? undefined : String(selected()))}
-				onMouseDown=${(event) => {
-					if (mention) event.preventDefault()
-				}}
+				aria-pressed=${() => String(selected())}
 				onClick=${(event) => {
-					if (mention) return mention.pick()
-					if (!event.shiftKey) return (setPick(null, [botAgent(bot)], null, thread()), close())
+					if (!event.shiftKey) return (setPick(null, [botAgent(bot)], thread()), close())
 					const others = askedBots(thread()).filter((to) => to.name !== bot.name)
 					setPick(
 						snapshot(agent(thread())),
 						selected() ? others : [...others, botAgent(bot)],
-						null,
 						thread(),
 					)
 				}}
 			>
 				<span style=${() => colorOf(bot.name)}>${() => bot.name}</span>
-				<small
-					>${() =>
-						mention && !isHere(bot, thread())
-							? 'not in this thread yet'
-							: formatAgent(bot.to)}</small
+				<small>${() => formatAgent(bot.to)}</small>
+			</button>
+		</li>
+	`
+}
+
+/** An option in the @ and / list: a row like a bot's in the picker, its name and what it is, highlighted by the keys, picked by a tap */
+function MentionRow(option, mention) {
+	return html`
+		<li role="presentation">
+			<button
+				type="button"
+				role="option"
+				id=${mention.id}
+				tabindex="-1"
+				aria-selected=${() => String(mention.highlighted())}
+				class="ghost model"
+				onMouseDown=${(event) => event.preventDefault()}
+				onClick=${() => mention.pick()}
+				title=${() => option().description}
+			>
+				<span style=${() => (option().bot ? colorOf(option().bot.name) : '')}
+					>${() => option().label}</span
 				>
+				<small>${mention.note}</small>
 			</button>
 		</li>
 	`
@@ -654,9 +673,9 @@ const persistDraft = (key, text) => {
 		else localStorage.removeItem(draftKey(key))
 	} catch {}
 }
-/** Each thread's pick, `{agent, bots, typed}`, kept by thread id; a new thread's under `new` */
+/** Each thread's pick, `{agent, bots}`, kept by thread id; a new thread's under `new` */
 const pick = (thread = current()) => compose.picks[thread ?? 'new'] ?? null
-const here = (thread = current()) => threads.find((row) => row.id === thread)?.agents ?? []
+const here = (thread = current()) => threadOf(thread)?.agents ?? []
 const lastTo = (thread = current()) =>
 	(entries[thread] ?? []).findLast((event) => event.data.to?.length)?.data.to
 const fallback = (runner) =>
@@ -682,27 +701,70 @@ const askedBots = (thread = current()) =>
 const isHere = (bot, thread) =>
 	here(thread).some((agent) => agent.to?.name === bot.name) ||
 	askedBots(thread).some((to) => to.name === bot.name)
-/** The bots an @ could mention, by the start of their name: those in the thread first */
+/**
+ * What an @ could mention, as options that say what they write, by the start of a bot's name or of any word in a thread's title: bots first, those in the thread
+ * before the rest, then other threads once something's typed. A bot's home mentions threads only; archived threads never come.
+ */
 const mentionsFor = (query, thread) => {
 	const typed = query.toLowerCase()
-	const matching = bots.filter((bot) => bot.name.toLowerCase().startsWith(typed))
+	const starts = (words) => words.toLowerCase().startsWith(typed)
+	const matching = homeBot(thread) ? [] : bots.filter((bot) => starts(bot.name))
+	const titled = typed
+		? threads
+				.filter((row) => row.id !== thread && row.title && row.title.split(/[^\w.-]+/).some(starts))
+				.slice(0, 8)
+		: []
 	return [
 		...matching.filter((bot) => isHere(bot, thread)),
 		...matching.filter((bot) => !isHere(bot, thread)),
 	]
+		.map((bot) => ({ key: bot.name, label: bot.name, written: `@${bot.name}`, bot }))
+		.concat(
+			titled.map((row) => ({
+				key: `thread-${row.id}`,
+				label: row.title,
+				written: threadMention(row.title),
+				kind: 'thread',
+			})),
+		)
 }
-/** A thread of two or more bots, with the director picking: a message whose sender chose no one goes without `to` */
-const directing = (thread) =>
-	Boolean(
-		thread &&
-		server().settings?.director?.picks &&
-		!homeBot(thread) &&
-		here(thread).filter((agent) => agent.to?.name).length > 1,
-	)
+/** Each runner folder's skills, `runner:dir` → [{name, description}], fetched once per page */
+const [skills, setSkills] = createRoot(() => createStore({}))
+/** Where the message's agent works: the runner and folder its skills come from */
+const workplace = (thread) => {
+	const to = recipients(thread)[0]
+	return to?.runner && { runner: to.runner, dir: to.dir ?? '' }
+}
+const loadSkills = (thread) => {
+	const at = workplace(thread)
+	if (!at || !server().modules?.includes('context')) return
+	const key = `${at.runner}:${at.dir}`
+	if (key in skills) return
+	setSkills((store) => void (store[key] = []))
+	api(`/api/context?runner=${encodeURIComponent(at.runner)}&dir=${encodeURIComponent(at.dir)}`)
+		.then(({ skills: found }) => setSkills((store) => void (store[key] = found ?? [])))
+		.catch(() => setSkills((store) => void delete store[key]))
+}
+/** The skills a `/` could pick, by the start of their name, for the runner and folder the message goes to */
+const skillsFor = (query, thread) => {
+	const at = workplace(thread)
+	const typed = query.toLowerCase()
+	return (skills[at ? `${at.runner}:${at.dir}` : ''] ?? [])
+		.filter((skill) => skill.name.toLowerCase().startsWith(typed))
+		.map((skill) => ({
+			key: `skill-${skill.name}`,
+			label: skill.name,
+			written: `/skill:${skill.name}`,
+			kind: 'skill',
+			description: skill.description,
+		}))
+}
+/** A thread with at least two agents/bots: a message whose sender chose no one goes without `to` */
+const directing = (thread) => Boolean(thread && here(thread).filter((agent) => agent.to).length > 1)
 const directed = (thread) => directing(thread) && !pick(thread)
 export const recipients = (thread = current()) =>
 	[agent(thread), ...askedBots(thread)].filter(Boolean)
-/** A bot by its name, an agent by its model and the picker's word for its thinking; the runner is the picker's to show. Without thinking asked, it keeps the running level, or the runner's known pi default. */
+/** A bot by its name, an agent by its model and provider, then the picker's word for its thinking; the runner is the picker's to show. Without thinking asked, it keeps the running level, or the runner's known pi default. */
 const recipientWords = (to, thread) => {
 	const running = here(thread).find(
 		(agent) =>
@@ -712,15 +774,18 @@ const recipientWords = (to, thread) => {
 	const thinkingLevel =
 		to.thinkingLevel ?? (running ? running.thinkingLevel : runner?.thinkingLevel)
 	if (to.name) return [to.name]
-	return [to.model?.split('/').pop(), thinkingLevel && thinkingWord(thinkingLevel)]
+	const provider = to.model?.includes('/') && to.model.split('/')[0]
+	return [
+		[to.model?.split('/').pop(), provider].filter(Boolean).join(' · '),
+		thinkingLevel && thinkingWord(thinkingLevel),
+	]
 }
-const recipientLabel = (to, thread) => recipientWords(to, thread).filter(Boolean).join(' · ')
 /** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
 export const toFor = (runner, thread = current()) =>
 	agent(thread)?.runner === runner.name ? agent(thread) : fallback(runner)
-const setPick = (to, bots, typed = null, thread = current()) =>
+const setPick = (to, bots, thread = current()) =>
 	setCompose((store) => {
-		store.picks[thread ?? 'new'] = { agent: to, bots, typed }
+		store.picks[thread ?? 'new'] = { agent: to, bots }
 		if (to && !to.name) store.settings[to.runner] = to
 	})
 /** Choosing a model replaces the agent's pick and keeps the bots; in a bot's home, it is the bot's own model */
@@ -731,7 +796,7 @@ export function choose(to, always = true, thread = current()) {
 			.then(() => reloadBots())
 			.catch(report)
 	if (always || agent(thread)?.runner === to.runner)
-		setPick(to, snapshot(askedBots(thread)), null, thread)
+		setPick(to, snapshot(askedBots(thread)), thread)
 	else setCompose((store) => void (store.settings[to.runner] = to))
 }
 /** A runner's settings change the agent's pick only when the agent is on that runner */

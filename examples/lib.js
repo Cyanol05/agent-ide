@@ -1,4 +1,5 @@
 /** What every example shares */
+import WebSocket from 'ws'
 import { spawn } from 'node:child_process'
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import os from 'node:os'
@@ -12,16 +13,16 @@ import {
 } from '@earendil-works/pi-ai/providers/faux'
 import { messageText as text, serveRunner } from '../remote.js'
 
-/** The shell's agent-ide settings stay out of every server and runner an example starts: a dev shell's MODULES=+director routes posts with no `to` to nobody. `shellEnv` keeps what was there, so a script like try.js can still layer its own MODULES on top. */
+/** The shell's ade settings stay out of every server and runner an example starts: a dev shell's MODULES=+director routes posts with no `to` to nobody. `shellEnv` keeps what was there, so a script like try.js can still layer its own MODULES on top. */
 export const shellEnv = {}
 for (const name of [
 	'MODULES',
 	'MEMORY_MODEL',
 	'SEARCH_URL',
 	'STATUS',
-	'AGENT_IDE_KEY',
-	'AGENT_IDE_LENT',
-	'AGENT_IDE_SERVER',
+	'ADE_KEY',
+	'ADE_LENT',
+	'ADE_SERVER',
 ]) {
 	shellEnv[name] = process.env[name]
 	delete process.env[name]
@@ -35,7 +36,7 @@ export let base
 let port = 0
 
 /** Its on-disk path, case as stored, since a shell's `pwd` prints that and macOS's temp folder sits behind a symlink */
-const tmp = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'agent-ide-example-')))
+const tmp = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'ade-example-')))
 export const db = path.join(tmp, 'store.sqlite')
 export const dir = path.join(tmp, 'folder')
 mkdirSync(dir)
@@ -58,7 +59,7 @@ process.on('exit', () => {
 process.on('SIGINT', () => process.exit(130))
 process.on('SIGTERM', () => process.exit(143))
 
-/** Servers start in the example's own folder, so the checkout's agent-ide.json stays out too */
+/** Servers start in the example's own folder with their own DB_PATH, so ade.json and the store come from there, never ~/.config/ade */
 export function start(file, args = [], env = {}, cwd = tmp) {
 	const child = spawn(process.execPath, [path.join(repo, file), ...args], {
 		cwd,
@@ -76,8 +77,8 @@ export function start(file, args = [], env = {}, cwd = tmp) {
 	return child
 }
 
-export async function server(env = {}, { cwd } = {}) {
-	const child = start('server.js', [], { RUNNER: '0', ...env }, cwd)
+export async function server(env = {}, { cwd, args = ['--no-runner'] } = {}) {
+	const child = start('server.js', args, env, cwd)
 	if (!port) {
 		child.stdout.on('data', (chunk) => {
 			port ||= Number(/http:\/\/127\.0\.0\.1:(\d+)/.exec(chunk)?.[1])
@@ -89,10 +90,10 @@ export async function server(env = {}, { cwd } = {}) {
 	return child
 }
 
-export async function runner(name, { args = [], env = {}, wait = true } = {}) {
-	const child = start('runner.js', ['--server', base, '--name', name, '--dir', dir, ...args], {
+export async function runner(name, { args = [], env = {}, wait = true, dir: folder = dir } = {}) {
+	const child = start('runner.js', ['--server', base, '--name', name, '--dir', folder, ...args], {
 		HOME: home,
-		AGENT_IDE_KEY: await keyFor(name),
+		ADE_KEY: await keyFor(name),
 		...env,
 	})
 	if (wait)
@@ -103,7 +104,7 @@ export async function runner(name, { args = [], env = {}, wait = true } = {}) {
 				if (!output.includes(`${name} online at`)) return
 				child.stdout.off('data', ready)
 				child.off('exit', exited)
-				resolve()
+				resolve(undefined)
 			}
 			const exited = (code) => {
 				child.stdout.off('data', ready)
@@ -137,7 +138,7 @@ export const conversationOf = async (thread, name) =>
 /** A thread's memory lines, from its raw Pi conversation */
 export const linesOf = async (id) =>
 	(await api('GET', `/api/conversations/${id}`)).json.entries
-		.filter((entry) => entry.kind === 'agent-ide.line')
+		.filter((entry) => entry.kind === 'ade.line')
 		.map((entry) => ({ id: entry.id, ...entry.data }))
 export const answers = (thread) => thread.entries.filter((entry) => entry.data.answer)
 export const brief = (thread) =>
@@ -158,8 +159,8 @@ export async function until(fn, ms = 8000, every = 100) {
 
 export const kill = (child, signal = 'SIGTERM') =>
 	new Promise((resolve) => {
-		if (child.exitCode !== null || child.signalCode !== null) return resolve()
-		child.once('exit', () => resolve())
+		if (child.exitCode !== null || child.signalCode !== null) return resolve(undefined)
+		child.once('exit', () => resolve(undefined))
 		child.kill(signal)
 	})
 
@@ -199,6 +200,7 @@ export const answered = (id, count = 1, ms) =>
 	}, ms)
 
 let failed = 0
+/** @param {unknown} [extra] */
 export function check(ok, what, extra = '') {
 	console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}${ok ? '' : ` ${extra}`}`)
 	if (!ok) failed++
@@ -211,7 +213,17 @@ export function done() {
 /** A runner in this process, reconnecting like runner.js, serving `models` as `serveRunner` does */
 export async function localRunner(
 	name,
-	{ models, resolve, echo, onTell, model = '', query = [], readOnly = false, ops, readable },
+	{
+		models,
+		resolve,
+		echo,
+		onTell = undefined,
+		model = '',
+		query = [],
+		readOnly = false,
+		ops = undefined,
+		readable = undefined,
+	},
 ) {
 	let socket,
 		closing = false

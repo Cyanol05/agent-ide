@@ -28,7 +28,7 @@ const DEFAULT_SERVER = {
 /** What's on screen survives a reload: read before first paint, written after every answer */
 const cached = (key, fallback) => {
 	try {
-		const found = localStorage.getItem(`agent-ide.${key}`)
+		const found = localStorage.getItem(`ade.${key}`)
 		return found === null ? fallback : JSON.parse(found)
 	} catch {
 		return fallback
@@ -36,7 +36,7 @@ const cached = (key, fallback) => {
 }
 const cache = (key, value) => {
 	try {
-		localStorage.setItem(`agent-ide.${key}`, JSON.stringify(value))
+		localStorage.setItem(`ade.${key}`, JSON.stringify(value))
 	} catch {}
 }
 export const url = params.get('server') || location.origin
@@ -57,7 +57,7 @@ export const api = (path, body, method = body === undefined ? 'GET' : 'POST') =>
 		})
 
 /** A socket belongs to its caller; disposing it also cancels a pending reconnect. */
-export function watch(receive, opened = () => {}, closed = () => {}) {
+export function watch(receive, opened = (_socket) => {}, closed = () => {}) {
 	let socket, timer
 	const connect = () => {
 		socket = new WebSocket(`${url.replace(/^http/, 'ws')}/ws`)
@@ -84,6 +84,12 @@ export const [newThreadTools, setNewThreadTools] = createSignal(null)
 export const [minted, setMinted] = createSignal(null)
 /** Each thread's messages. They never change once written, so the store is shallow: a read tracks the thread's list, not each message's fields */
 export const [entries, setEntries] = createStore({}, { shallow: true })
+/** Whether a thread has messages before the ones on screen, which come a page at a time as you scroll up */
+export const [earlier, setEarlier] = createStore({})
+/** Each watched thread's way to ask for its page before the ones it has, or all of them; answers once they're in */
+export const pagers = new Map()
+export const loadEarlier = (thread, all = false) =>
+	earlier[thread] ? (pagers.get(thread)?.(all) ?? Promise.resolve()) : Promise.resolve()
 /** Your message shows the moment you send it, marked `sending`, after the thread's last, until its socket brings the server's copy; `drop` takes it back when the send failed */
 export function sending(thread, data) {
 	const entry = {
@@ -142,8 +148,10 @@ export function hrefOf(id) {
 }
 
 export function drawer(which) {
-	for (const name of ['list', 'side'])
-		document.body.classList.toggle(name, name === which && !document.body.classList.contains(name))
+	document.body.classList.toggle(
+		'list',
+		which === 'list' && !document.body.classList.contains('list'),
+	)
 }
 
 export const {
@@ -152,35 +160,143 @@ export const {
 	runners,
 	server,
 	bots,
+	threadOf,
 	family,
 	columns,
 	closeColumn,
 	reloadThreads,
 	reloadArchivedThreads,
 	reloadBots,
+	changeThread,
+	removeRow,
 } = createRoot(() => {
 	const [server, setServer] = createSignal(cached('server', DEFAULT_SERVER))
 	const [bots, setBots] = createStore(cached('bots', []))
 	const [threads, setThreads] = createStore(cached('threads', []))
 	const [archivedThreads, setArchivedThreads] = createStore([])
 	const [runners, setRunners] = createStore(cached('runners', []))
-	/** Each fetch keeps its row's identity when nothing in it changed, so a keyed `For` leaves it alone */
+	/** Each fetch keeps its row's identity when nothing in it changed, so a keyed `For` leaves it alone; an answer older than the one already shown is dropped */
 	const reloadServer = () =>
 		api('/api/server').then((data) => {
 			setServer(data)
 			cache('server', data)
 		})
-	const reloadList = (path, set, key, cacheKey = path, enabled = true) =>
-		(enabled ? api(`/api/${path}`) : Promise.resolve([])).then((data) => {
-			set(reconcile(data, key))
+	const answered = {}
+	const reloadList = (path, show, cacheKey = path, enabled = true) => {
+		const asked = performance.now()
+		return (enabled ? api(`/api/${path}`) : Promise.resolve([])).then((data) => {
+			if (asked < (answered[path] ?? 0)) return
+			answered[path] = asked
+			show(data)
 			if (cacheKey) cache(cacheKey, data)
 		})
+	}
+	/** Rows you removed that the server hasn't confirmed, by list; every fetch leaves them out until it does */
+	const leaving = { bots: new Set(), runners: new Set() }
+	let fetchedBots = cached('bots', [])
+	let fetchedRunners = cached('runners', [])
+	const showBots = () =>
+		setBots(
+			reconcile(
+				fetchedBots.filter((bot) => !leaving.bots.has(bot.name)),
+				'name',
+			),
+		)
+	const showRunners = () =>
+		setRunners(
+			reconcile(
+				fetchedRunners.filter((runner) => !leaving.runners.has(runner.name)),
+				'name',
+			),
+		)
 	const reloadBots = () =>
-		reloadList('bots', setBots, 'name', 'bots', untrack(server).modules.includes('bots'))
-	const reloadThreads = () => reloadList('threads', setThreads, 'id')
+		reloadList(
+			'bots',
+			(data) => {
+				fetchedBots = data
+				showBots()
+			},
+			'bots',
+			untrack(server).modules.includes('bots'),
+		)
+	const reloadRunners = () =>
+		reloadList('runners', (data) => {
+			fetchedRunners = data
+			showRunners()
+		})
+	/** Changes to a thread's row (archived, title) that the server hasn't confirmed; both lists show them over every fetch until it does */
+	const pending = new Map()
+	let fetchedThreads = cached('threads', [])
+	let fetchedArchived = []
+	const showThreads = () => {
+		const fresh = new Set(fetchedThreads.map((row) => row.id))
+		const rows = [...fetchedThreads, ...fetchedArchived.filter((row) => !fresh.has(row.id))]
+			.map((row) => (pending.has(row.id) ? { ...row, ...pending.get(row.id) } : row))
+			.sort((a, b) => b.id - a.id)
+		setThreads(
+			reconcile(
+				rows
+					.filter((row) => !row.archived)
+					.map((row) => (row.family ? row : { ...row, family: [{ id: row.id, depth: 0 }] })),
+				'id',
+			),
+		)
+		setArchivedThreads(
+			reconcile(
+				rows.filter((row) => row.archived),
+				'id',
+			),
+		)
+	}
+	const reloadThreads = () =>
+		reloadList('threads', (data) => {
+			fetchedThreads = data
+			showThreads()
+		})
 	/** Its own fetch; the main list never carries archived threads */
-	const reloadArchivedThreads = () => reloadList('threads/archived', setArchivedThreads, 'id', null)
-	const reloadRunners = () => reloadList('runners', setRunners, 'name')
+	const reloadArchivedThreads = () =>
+		reloadList(
+			'threads/archived',
+			(data) => {
+				fetchedArchived = data
+				showThreads()
+			},
+			null,
+		)
+	/** Shows a change to a thread's row at once, then asks the server; a refusal puts the row back and throws */
+	const changeThread = async (id, change, request) => {
+		const mine = { ...pending.get(id), ...change }
+		pending.set(id, mine)
+		showThreads()
+		const settle = () => {
+			if (pending.get(id) === mine) pending.delete(id)
+			showThreads()
+		}
+		try {
+			await request()
+		} catch (failure) {
+			settle()
+			throw failure
+		}
+		await Promise.all([reloadThreads(), reloadArchivedThreads()]).finally(settle)
+	}
+	/** Takes a bot or runner row away at once, then asks the server; a refusal puts it back and throws */
+	const removeRow = async (list, name, request) => {
+		const show = list === 'bots' ? showBots : showRunners
+		leaving[list].add(name)
+		show()
+		const settle = () => {
+			leaving[list].delete(name)
+			show()
+		}
+		try {
+			await request()
+		} catch (failure) {
+			settle()
+			throw failure
+		}
+		await (list === 'bots' ? reloadBots() : reloadRunners()).finally(settle)
+	}
 	const reload = () => {
 		reloadThreads()
 		reloadArchivedThreads()
@@ -201,13 +317,10 @@ export const {
 			() => setConnected(false),
 		)
 	})
+	const threadOf = (id) => threads.find((thread) => thread.id === id)
 	/** The open thread's family, as the server sends it: one thread until the list has it, `[null]` for a new one */
 	const family = createMemo(() =>
-		current()
-			? (threads.find((thread) => thread.id === current())?.family.map((member) => member.id) ?? [
-					current(),
-				])
-			: [null],
+		current() ? (threadOf(current())?.family.map((member) => member.id) ?? [current()]) : [null],
 	)
 	/** Family members you opened in this page; closing forgets one */
 	const [open, setOpen] = createSignal(new Set())
@@ -235,12 +348,15 @@ export const {
 		runners,
 		server,
 		bots,
+		threadOf,
 		family,
 		columns,
 		closeColumn,
 		reloadThreads,
 		reloadArchivedThreads,
 		reloadBots,
+		changeThread,
+		removeRow,
 	}
 })
 
@@ -251,12 +367,19 @@ export async function createThread(title) {
 	if (!latest(current)) openThread(id)
 	return id
 }
-export async function archiveThread(id, archived) {
-	await api(`/api/threads/${id}/archive`, { archived })
+/** The row moves the moment you ask; if the server refuses, it moves back and this throws why */
+export function archiveThread(id, archived) {
 	if (archived && family().includes(id)) openThread(null)
-	reloadThreads()
-	reloadArchivedThreads()
+	return changeThread(id, { archived }, () => api(`/api/threads/${id}/archive`, { archived }))
 }
+export const renameThread = (id, title) =>
+	changeThread(id, { title }, () => api(`/api/threads/${id}/title`, { title }))
+export const forgetBot = (name) =>
+	removeRow('bots', name, () => api(`/api/bots/${encodeURIComponent(name)}`, undefined, 'DELETE'))
+export const revokeRunner = (name) =>
+	removeRow('runners', name, () =>
+		api(`/api/runners/${encodeURIComponent(name)}`, undefined, 'DELETE'),
+	)
 
 export const fork = async (id, at) => openThread((await api(`/api/threads/${id}/fork`, { at })).id)
 
@@ -280,7 +403,4 @@ export const colorOf = (name, property = 'color') => {
 	return hue === undefined ? '' : `${property}: ${paint(hue)}`
 }
 export const forkedFrom = (thread) => thread?.conversation?.parent?.conversationId
-export const titleOf = (id) => {
-	const thread = threads.find((thread) => thread.id === id)
-	return thread ? thread.title : `thread ${id}`
-}
+export const titleOf = (id) => threadOf(id)?.title ?? `thread ${id}`

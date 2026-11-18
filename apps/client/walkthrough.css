@@ -362,6 +362,7 @@ body:not(.chat) {
 	/* The chat's own parts: its list's foot and edge, a phone's bar, and its motion. */
 	.list-foot,
 	.list-edge,
+	.side-edge,
 	.app-bar {
 		display: none;
 	}

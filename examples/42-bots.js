@@ -24,6 +24,8 @@ const route = (runner) => (request) => {
 	if (t.includes('make wren')) return call('bot', { name: 'wren', instructions: 'Review diffs.' })
 	if (t.includes('ask wren'))
 		return call('post', { to: 'wren', title: 'a diff', body: 'look at this' })
+	if (t.includes('nudge wren')) return call('post', { title: 'again', body: '@wren look again' })
+	if (t.includes('ask anyone')) return call('post', { title: 'anyone', body: 'look at this' })
 	return say(`${runner}: ${t}`)
 }
 await scriptedRunner('laptop', route('laptop'))
@@ -40,15 +42,24 @@ let v = await answered(home)
 check(
 	made.status === 201 &&
 		homeRow?.title === 'ada' &&
-		homeRow.tools.join() === '-write,-edit,-bash' &&
+		homeRow.tools === null &&
 		v.agents.map((a) => a.name).join() === 'ada' &&
 		prompt.laptop.includes("You're new"),
-	'one call makes ada and her home, hands off; asked there, she joins as her model and knows she is new',
+	'one call makes ada and her home, with every tool; asked there, she joins as her model and knows she is new',
 	JSON.stringify([made.json, homeRow, prompt.laptop]),
 )
 
 await post(home, 'be a pirate', 'ada')
 await answered(home, 2)
+const ownAt = (await api('GET', `/api/threads/${home}`)).json.agents[0].conversation
+const rewrote = (await api('GET', `/api/conversations/${ownAt}`)).json.entries.find(
+	(e) => e.kind === 'pi.tool-result' && e.model[0].toolName === 'bot',
+)?.model[0].details
+check(
+	rewrote?.before?.instructions === '' && rewrote.before.model === 'echo/echo@laptop',
+	'rewriting herself, her bot call keeps what she was before, so a thread can show old against new',
+	JSON.stringify(rewrote),
+)
 const shed = await thread('shed')
 await post(shed, 'build it?', 'ada')
 v = await answered(shed)
@@ -118,7 +129,7 @@ const atHome = (await api('GET', `/api/threads/${home}`)).json.agents[0]
 await post(home, 'where are you now?', { runner: 'desk', model: 'echo/echo', name: 'ada' })
 v = await answered(home, 6)
 const own = (await api('GET', `/api/conversations/${atHome.conversation}`)).json.entries
-const told = text(own.filter((e) => e.kind === 'agent-ide.delivery').at(-1)?.model[0])
+const told = text(own.filter((e) => e.kind === 'ade.delivery').at(-1)?.model[0])
 check(
 	atHome.to.runner === 'laptop' &&
 		v.agents.length === 1 &&
@@ -128,6 +139,22 @@ check(
 		told.startsWith('[You now run as echo/echo on desk,'),
 	'asked as another model, a bot switches in place like any agent, keeps her name and is told',
 	JSON.stringify([atHome, v.agents, told]),
+)
+
+await post(home, 'nudge wren', 'ada')
+await answered(home, 7)
+await post(home, 'ask anyone', 'ada')
+v = await answered(home, 8)
+const again = (await api('GET', '/api/threads')).json.find(
+	(t) => t.parent === home && t.title === 'again',
+)
+check(
+	again?.agents.map((a) => a.name).join() === 'wren' &&
+		answers(await (await api('GET', `/api/threads/${again.id}`)).json)[0]?.data.author === 'wren' &&
+		answers(v).at(-1).data.body.includes('Say who should answer') &&
+		!(await api('GET', '/api/threads')).json.some((t) => t.title === 'anyone'),
+	'a new thread asks whom `to` names or the bots its body @mentions; with neither, post refuses',
+	JSON.stringify([again, answers(v).at(-1)?.data.body]),
 )
 
 const hide = await api('POST', `/api/threads/${home}/archive`, { archived: true })
@@ -157,12 +184,12 @@ await post(shed, 'what did ada say?', 'echo/echo@desk')
 v = await answered(shed, 4)
 const plain = v.agents.find((a) => !a.to.name)
 const handed = (await api('GET', `/api/conversations/${plain?.conversation}`)).json.entries
-	?.filter((e) => e.kind === 'agent-ide.delivery')
+	?.filter((e) => e.kind === 'ade.delivery')
 	.map((e) => text(e.model[0]))
 check(
 	v.agents.map((a) => a.name).join() === 'ada,echo@desk' &&
 		answers(v).at(-1).data.author === 'echo@desk' &&
-		handed?.[0].includes('\n\nada (agent): laptop: oskar: build it?'),
+		handed?.[0].includes('\n\n<message from="ada" agent>\nlaptop: build it?\n</message>'),
 	"a thread holds one agent and any bots; the agent reads a bot's words marked as an agent's",
 	JSON.stringify([v.agents, handed]),
 )

@@ -18,14 +18,17 @@ import {
 } from 'solid-js'
 import {
 	api,
+	archivedThreads,
 	bots,
 	closeColumn,
 	colorOf,
 	columns,
 	current,
-	drawer,
+	earlier,
 	entries,
+	loadEarlier,
 	merged,
+	pagers,
 	fork,
 	followThread,
 	forkedFrom,
@@ -34,20 +37,23 @@ import {
 	me,
 	newThreadTools,
 	openThread,
+	setEarlier,
 	setEntries,
 	setPeople,
 	threads,
 	titleOf,
 	watch,
+	threadOf,
 } from './server.js'
 import { authorLabel, doing, setDoing, shortLabel } from './agent.js'
 import {
 	answersIn,
-	asksOf,
+	Changed,
 	conversations,
 	cutsOf,
 	Exchange,
 	heard,
+	lastingOf,
 	litIn,
 	newestCut,
 	Turn,
@@ -58,6 +64,8 @@ import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageUrl } from './images.js'
 import { markdown } from './markdown.js'
+import { sideOf, toggleSide } from './side.js'
+import { CanvasRow } from './canvas.js'
 
 /** A folded summary's text, without the literal <summary> wrapper tags some memories still carry */
 const stripSummaryTag = (text) =>
@@ -76,11 +84,13 @@ const firstLine = (text) =>
 
 /** Each asked thread's first message, the question, and its answer if it had one yet, fetched once for the home of the bot it asks; `null` when it isn't one */
 const [questions, setQuestions] = createRoot(() => createStore({}, { shallow: true }))
-const asking = new Set()
+const fetching = new Set()
 
 export function Thread(props) {
-	const thread = createMemo(() => threads.find((thread) => thread.id === props.id))
+	const thread = createMemo(() => threadOf(props.id))
 	const messages = () => entries[props.id] ?? []
+	/** Each message's position in the thread, from 0, as memory and the overview count them */
+	const positions = createMemo(() => new Map(messages().map((entry, at) => [entry.id, at])))
 	/** In a bot's home, the threads others asked it in: it's their one agent, and they started outside its family. A room has more than one. */
 	const askedHere = createMemo(() => {
 		const bot = homeBot(props.id)
@@ -98,13 +108,13 @@ export function Thread(props) {
 		() => askedHere().map((other) => other.id),
 		(ids) => {
 			for (const id of ids)
-				if (!asking.has(id)) {
-					asking.add(id)
+				if (!fetching.has(id)) {
+					fetching.add(id)
 					api(`/api/threads/${id}`)
 						.then((view) => {
 							const first = view.entries[0]
 							// Asked a moment ago, its question may not be in yet; the next look asks again
-							if (!first) return asking.delete(id)
+							if (!first) return fetching.delete(id)
 							const answer = view.entries.find((entry) => entry.data.re?.includes(first.id))
 							setQuestions((all) => {
 								all[id] = first.data.from ? { question: first, answer } : null
@@ -115,6 +125,11 @@ export function Thread(props) {
 		},
 	)
 	const [unfolded, setUnfolded] = createSignal(false)
+	const [openedGaps, setOpenedGaps] = createStore({})
+	/** Where the messages on screen start: the oldest one, while there are more before it */
+	const start = createMemo(() =>
+		earlier[props.id] ? (messages().find((entry) => !entry.sending)?.id ?? 0) : -Infinity,
+	)
 	/** Each agent's turns and cuts, worked out again only when its own conversation grows, not when a message lands */
 	const owner = getOwner()
 	const memos = new Map()
@@ -133,6 +148,22 @@ export function Thread(props) {
 	 * A turn that only answered is its answer; an answer to a post shows in the post.
 	 */
 	let built = new Map()
+	/** The newest compaction's cut, once the messages on screen reach it */
+	const cut = createMemo(() => {
+		const newest = newestCut(
+			(latest(thread)?.agents ?? []).flatMap((agent) =>
+				perConversation(agent.conversation)
+					.cuts()
+					.map((cut) => ({ ...cut, cut: true })),
+			),
+		)
+		return newest && newest.at >= start() ? newest : null
+	})
+	/** Scrolled near the top, the page before comes, unless what's above is folded into memory lines */
+	const nearTop = () => {
+		if (list && list.scrollTop < list.clientHeight && earlier[props.id] && (!cut() || unfolded()))
+			loadEarlier(props.id)
+	}
 	const rows = createProjection(
 		() => {
 			const all = messages()
@@ -185,27 +216,41 @@ export function Thread(props) {
 				turns.flatMap((row) => (row.turn ? row.turn.steps.map((step) => answerOf(step)?.id) : [])),
 			)
 			const shown = all.filter((entry) => !answers.has(entry.id))
-			const asks = turns
+			// What a turn changed beyond itself, each on its own row after it: an ask, with its answer, or a bot rewriting itself
+			const lasting = turns
 				.filter((row) => row.turn)
 				.flatMap((row) =>
-					asksOf(row.turn.steps)
-						.filter((step) => step.result)
-						.map((step, index) => {
-							const answer = answerOf(step) || undefined
-							const back =
-								answer &&
-								perConversation(row.agent.conversation)
-									.turns()
-									.find((turn) => turn.held.includes(answer.id))?.start
+					lastingOf(row.turn.steps).map((step, index) => {
+						const at = row.at + (index + 1) / 1000
+						if (step.name === 'canvas_act')
 							return {
-								key: `${row.key}:ask:${step.key}`,
-								ask: step,
+								key: `${row.key}:${step.name}:${step.key}`,
+								drew: step,
 								agent: row.agent,
-								answer,
-								back,
-								at: row.at + (index + 1) / 1000,
+								at,
 							}
-						}),
+						if (step.name !== 'post')
+							return {
+								key: `${row.key}:${step.name}:${step.key}`,
+								changed: step,
+								agent: row.agent,
+								at,
+							}
+						const answer = answerOf(step) || undefined
+						const back =
+							answer &&
+							perConversation(row.agent.conversation)
+								.turns()
+								.find((turn) => turn.held.includes(answer.id))?.start
+						return {
+							key: `${row.key}:ask:${step.key}`,
+							ask: step,
+							agent: row.agent,
+							answer,
+							back,
+							at,
+						}
+					}),
 				)
 			// A question from another thread, where it came in, on one line that opens to it and its answer
 			const asked = askedHere().flatMap((other) => {
@@ -228,21 +273,17 @@ export function Thread(props) {
 				at: entry.id,
 				sent: sentTo(entry),
 			}))
-			const cuts = (latest(thread)?.agents ?? []).flatMap((agent) =>
-				perConversation(agent.conversation)
-					.cuts()
-					.map((cut) => ({ ...cut, cut: true })),
-			)
 			// One cut line, the newest compaction's; what the agent reads as lines folds into them, unless opened from it
-			const newest = newestCut(cuts)
+			const newest = cut()
 			const folded = newest && !unfolded() ? newest : null
-			const above = (row) => folded && row.at < folded.at
+			// Only what lies among the messages on screen; older rows come with their page
+			const shows = (row) => row.at >= start() && !(folded && row.at < folded.at)
 			const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
 			const rows = [
-				...said.filter((row) => !above(row)),
-				...turns.filter((row) => !above(row)),
-				...asks.filter((row) => !above(row)),
-				...asked.filter((row) => !above(row)),
+				...said.filter(shows),
+				...turns.filter(shows),
+				...lasting.filter(shows),
+				...asked.filter(shows),
 				...lines,
 				...(newest ? [newest] : []),
 			].sort((one, other) => one.at - other.at)
@@ -274,7 +315,8 @@ export function Thread(props) {
 	const ready = () =>
 		!!entries[props.id] &&
 		(thread()?.agents ?? []).every((agent) => conversations[agent.conversation])
-	const titleClick = () => (current() !== props.id ? openThread(props.id) : drawer('side'))
+	const titleClick = () =>
+		current() !== props.id ? openThread(props.id) : toggleSide(props.id, 'details')
 	let list,
 		followed,
 		sizes,
@@ -292,9 +334,23 @@ export function Thread(props) {
 		() => props.id,
 		(id) => {
 			if (!id) return
-			let first = true
-			/** Agents whose whole conversation came on this watch; the next batch from each is appended */
+			let first = true,
+				socket,
+				asking = null,
+				answered = () => {}
+			/** Agents whose conversation came on this watch; the next batch from each is appended */
 			const followed = new Set()
+			const answer = () => {
+				asking = null
+				answered()
+			}
+			pagers.set(id, (all) => {
+				if (asking) return asking.then(() => all && loadEarlier(id, true))
+				if (!socket || socket.readyState !== socket.OPEN) return Promise.resolve()
+				asking = new Promise((resolve) => (answered = () => resolve(undefined)))
+				socket.send(JSON.stringify({ earlier: id, all }))
+				return asking
+			})
 			stuck = true
 			sent = null
 			if (room) room.style.height = '0px'
@@ -304,7 +360,25 @@ export function Thread(props) {
 			const close = watch(
 				(message) => {
 					if (message.thread !== id) return
-					if (message.entries && !message.agent) {
+					if (message.older && !message.agent) {
+						// An earlier page goes on top, and the view stays where it was
+						hold()
+						setEntries((all) => {
+							const have = new Set((all[id] ?? []).map((entry) => entry.id))
+							all[id] = [
+								...message.entries.filter((entry) => !have.has(entry.id)),
+								...(all[id] ?? []),
+							]
+						})
+						setEarlier((all) => {
+							all[id] = message.earlier
+						})
+						answer()
+					} else if (message.entries && !message.agent) {
+						if ('earlier' in message)
+							setEarlier((all) => {
+								all[id] = message.earlier
+							})
 						const snapshot = first
 						first = false
 						// Your own send always shows, live or in a reconnect's snapshot; others' entries follow only a view already at the bottom.
@@ -324,8 +398,11 @@ export function Thread(props) {
 							all[id] = message.people
 						})
 					if (message.agent && message.entries) {
-						heard(message.agent, message.entries, !followed.has(message.agent))
-						followed.add(message.agent)
+						heard(message.agent, message.entries, {
+							whole: !message.older && !followed.has(message.agent),
+							older: message.older,
+						})
+						if (!message.older) followed.add(message.agent)
 					}
 					if (message.live)
 						setDoing((work) => {
@@ -334,15 +411,19 @@ export function Thread(props) {
 							reconcile(message.live, 'callId')(work[id][message.agent])
 						})
 				},
-				(socket) => {
+				(opened) => {
+					socket = opened
 					first = true
 					followed.clear()
+					answer()
 					socket.send(JSON.stringify({ watch: id }))
 				},
 			)
 			// Its messages stay, so coming back shows them at once while the snapshot catches up.
 			return () => {
 				close()
+				answer()
+				pagers.delete(id)
 				document.removeEventListener('visibilitychange', onVisible)
 				setDoing((work) => {
 					delete work[id]
@@ -353,7 +434,8 @@ export function Thread(props) {
 	/** Your last message's row; the room under it is what the answer hasn't filled yet. The row, not its offset, so rows folding above it (a compaction) move it too */
 	let sent = null,
 		room,
-		bottom = () => {}
+		bottom = () => {},
+		hold = () => {}
 	// What you send keeps some of the view free under it, so the answer fills that without moving anything, and what came before stays in sight
 	createEffect(
 		() => messages().at(-1)?.sending,
@@ -372,8 +454,8 @@ export function Thread(props) {
 			if (!sent.isConnected) sent = [...list.querySelectorAll(':scope > li.mine')].at(-1) ?? null
 			if (sent === null) return void (room.style.height = '0px')
 			const style = getComputedStyle(list)
-			const top = parseFloat(style.paddingTop)
-			const seen = list.clientHeight - top - parseFloat(style.paddingBottom)
+			const top = Number.parseFloat(style.paddingTop)
+			const seen = list.clientHeight - top - Number.parseFloat(style.paddingBottom)
 			const offset = (element, edge) =>
 				element.getBoundingClientRect()[edge] - list.getBoundingClientRect().top + list.scrollTop
 			const mine = offset(sent, 'bottom')
@@ -424,13 +506,31 @@ export function Thread(props) {
 			stuck = list.scrollTop + list.clientHeight >= list.scrollHeight - 4
 			followed = list.scrollHeight
 		}
+		/**
+		 * The first row in view before an earlier page goes on top, and where its end sat; it stays there until that page is
+		 * laid out. Its end, since its author's name goes once the row above it is theirs too.
+		 */
+		let kept = null
+		hold = () => {
+			const edge = list.getBoundingClientRect().top
+			const row = [...list.children].find((row) => row.getBoundingClientRect().bottom > edge)
+			if (!row) return
+			kept = { row, bottom: row.getBoundingClientRect().bottom }
+			requestAnimationFrame(() => requestAnimationFrame(() => (kept = null)))
+		}
 		bottom = () => {
+			if (kept) {
+				list.scrollTop += kept.row.getBoundingClientRect().bottom - kept.bottom
+				followed = list.scrollHeight
+				return nearTop()
+			}
 			if (held) return keep()
 			if (padded && sent === null) room.style.height = '0px'
 			padded = false
 			fill()
 			if (stuck) list.scrollTop = list.scrollHeight
 			followed = list.scrollHeight
+			nearTop()
 		}
 		sizes = new ResizeObserver(() => {
 			const column = list.parentElement
@@ -441,8 +541,8 @@ export function Thread(props) {
 				const style = getComputedStyle(element)
 				return (
 					element.getBoundingClientRect().height +
-					parseFloat(style.marginTop) +
-					parseFloat(style.marginBottom)
+					Number.parseFloat(style.marginTop) +
+					Number.parseFloat(style.marginBottom)
 				)
 			}
 			column.style.setProperty(
@@ -477,8 +577,9 @@ export function Thread(props) {
 				<h2 class="title">
 					<button
 						type="button"
-						class="thread-pill"
+						class="ghost thread-name"
 						title="Thread details and tools"
+						aria-pressed=${() => String(sideOf(props.id)?.key === 'details')}
 						style=${() => colorOf(homeBot(props.id)?.name ?? '')}
 						onClick=${titleClick}
 					>
@@ -515,6 +616,7 @@ export function Thread(props) {
 						// Only a scroll at the height we last followed is the reader's; one from content moving under them keeps following
 						if (list.scrollHeight === followed)
 							stuck = list.scrollTop + list.clientHeight >= list.scrollHeight - 4
+						nearTop()
 					}}
 					aria-label="Messages"
 				>
@@ -541,10 +643,25 @@ export function Thread(props) {
 												title=${() => `messages ${row().at} to ${row().at + row().n - 1}`}
 											>
 												<details>
-													<summary><small>${() => firstLine(row().text)}</small></summary>
+													<summary
+														onClick=${() => {
+															if (row().text.includes('not summarized yet'))
+																api(
+																	`/api/threads/${props.id}/memory?zoom=${row().at},${row().n}`,
+																).then((opened) =>
+																	setOpenedGaps((all) => {
+																		all[row().key] =
+																			opened.message ??
+																			opened.lines.map((line) => line.text).join('\n')
+																	}),
+																)
+														}}
+													>
+														<small>${() => firstLine(row().text)}</small>
+													</summary>
 													<div
 														class="body markdown"
-														innerHTML=${() => markdown(stripSummaryTag(row().text))}
+														innerHTML=${() => markdown(stripSummaryTag(openedGaps[row().key] ?? (row().text.includes('not summarized yet') ? 'Opening…' : row().text)), links)}
 													/>
 												</details>
 											</li>
@@ -563,45 +680,65 @@ export function Thread(props) {
 								`}
 							>
 								<${Show}
-									when=${() => !row().asked}
+									when=${() => !row().drew}
 									fallback=${() => html`
-										<${Asked}
-											thread=${() => row().asked}
-											question=${() => row().question}
-											answer=${() => row().answer}
+										<${CanvasRow}
+											step=${() => row().drew}
+											agent=${() => row().agent}
+											thread=${() => props.id}
 										/>
 									`}
 								>
 									<${Show}
-										when=${() => !row().ask}
+										when=${() => !row().changed}
 										fallback=${() => html`
-											<${Exchange}
-												thread=${() => props.id}
-												step=${() => row().ask}
-												agent=${() => row().agent}
-												answer=${() => row().answer}
-												back=${() => row().back}
-											/>
+											<${Changed} step=${() => row().changed} agent=${() => row().agent} />
 										`}
 									>
 										<${Show}
-											when=${() => row().turn || row().live}
+											when=${() => !row().asked}
 											fallback=${() => html`
-												<${Message}
-													thread=${() => props.id}
-													entry=${() => row().entry}
-													sent=${() => row().sent}
-													above=${() => row().above}
+												<${Asked}
+													thread=${() => row().asked}
+													question=${() => row().question}
+													answer=${() => row().answer}
 												/>
 											`}
 										>
-											<${Turn}
-												thread=${() => props.id}
-												agent=${() => row().agent}
-												turn=${() => row().turn}
-												live=${() => row().live}
-												above=${() => row().above}
-											/>
+											<${Show}
+												when=${() => !row().ask}
+												fallback=${() => html`
+													<${Exchange}
+														thread=${() => props.id}
+														step=${() => row().ask}
+														agent=${() => row().agent}
+														answer=${() => row().answer}
+														back=${() => row().back}
+													/>
+												`}
+											>
+												<${Show}
+													when=${() => row().turn || row().live}
+													fallback=${() => html`
+														<${Message}
+															thread=${() => props.id}
+															entry=${() => row().entry}
+															at=${() =>
+																earlier[props.id] ? undefined : positions().get(row().entry.id)}
+															sent=${() => row().sent}
+															above=${() => row().above}
+														/>
+													`}
+												>
+													<${Turn}
+														thread=${() => props.id}
+														agent=${() => row().agent}
+														turn=${() => row().turn}
+														live=${() => row().live}
+														above=${() => row().above}
+													/>
+												<//>
+											<//>
 										<//>
 									<//>
 								<//>
@@ -620,6 +757,9 @@ function Message(props) {
 	const data = () => props.entry.data
 	const elsewhere = () => data().from && data().from !== props.thread
 	const crossed = () => !!(elsewhere() || props.sent)
+	// A person's own words, a paste most of all; an agent's or bot's answer is what you came to read, so it stays whole
+	const person = () =>
+		!data().author?.includes('@') && !bots.some((bot) => bot.name === data().author)
 	const forks = () =>
 		threads.filter(
 			(thread) =>
@@ -629,9 +769,11 @@ function Message(props) {
 		)
 	return html`
 		<li
+			data-message=${() => props.at}
 			class=${() => ({
 				handed: litIn(props.thread, props.entry.id),
 				elsewhere: crossed(),
+				failed: !!data().error,
 				mine: !elsewhere() && data().author === me,
 				same: !crossed() && data().author !== me && props.above === data().author,
 			})}
@@ -644,7 +786,9 @@ function Message(props) {
 							>${() => authorLabel(data().author)}</span
 						></small
 					>
-					<${Body} data=${() => data()} />
+					<${Show} when=${person} fallback=${html`<${Body} data=${() => data()} />`}>
+						<${Clamp}><${Body} data=${() => data()} /><//>
+					<//>
 					<${Images} images=${() => data().images} />
 				`}
 			>
@@ -686,6 +830,35 @@ function Message(props) {
 }
 
 /**
+ * A long message folded to its first lines, fading out over a Show more; only when it really runs past them, measured as it
+ * lays out. Each starts folded, and stays as you leave it while it's on screen.
+ */
+function Clamp(props) {
+	const [open, setOpen] = createSignal(false)
+	const [long, setLong] = createSignal(false)
+	let box, sizes, fold
+	onSettled(() => {
+		sizes = new ResizeObserver(() => {
+			// Folded, the box is cut at its max height; open, it's measured against the height it had folded
+			if (!open()) fold = box.clientHeight
+			setLong(box.scrollHeight > fold + 1)
+		})
+		sizes.observe(box)
+		return () => sizes.disconnect()
+	})
+	return html`
+		<div class=${() => ({ clamp: true, open: open(), long: long() })} ref=${(el) => (box = el)}>
+			${() => props.children}
+		</div>
+		<${Show} when=${long}>
+			<button class="ghost small more" onClick=${() => setOpen((was) => !was)}>
+				${() => (open() ? 'Show less' : 'Show more')}
+			</button>
+		<//>
+	`
+}
+
+/**
  * A message that crossed threads, as a step of a run: → sent or ← received, the other side in its bot's colour, then the
  * message's first line, quieter. Every row starts closed; a tap opens it to the whole message in ink, then any answer that
  * came of it, and last a way to the other thread.
@@ -694,7 +867,7 @@ function Message(props) {
  */
 export function Cross(props) {
 	const bot = () => bots.some((bot) => bot.name === props.author)
-	const title = () => threads.find((thread) => thread.id === props.thread)?.title
+	const title = () => threadOf(props.thread)?.title
 	const label = () =>
 		props.name ?? (bot() || !title() ? shortLabel(props.author) || titleOf(props.thread) : title())
 	return html`
@@ -740,14 +913,35 @@ const Asked = (props) => html`
 	</li>
 `
 
-/** What a message says: markdown, except a `$ cmd` and an error, which stay as written */
+/** A thread a message mentions by title, archived ones too; the newest of that title */
+const threadLink = (title) => {
+	const thread = [...threads, ...archivedThreads].find((row) => row.title === title)
+	return thread && { href: hrefOf(thread.id), id: thread.id, title }
+}
+
+/** A bot a message @mentions, in its colour; mentions match names ignoring case, as `mentioned` does */
+const botColor = (name) => {
+	const bot = bots.find((bot) => bot.name.toLowerCase() === name.toLowerCase())
+	return bot ? colorOf(bot.name) : ''
+}
+
+/** What message markdown links: threads by title, bots by name */
+export const links = { threadLink, botColor }
+
+/** What a message says: markdown, except a `$ cmd` and an error, which stay as written. A thread it mentions opens here. */
 const Body = (props) => html`
 	<${Show}
 		when=${() => !props.data.shell && !props.data.error}
 		fallback=${html`<span class="body">${() => props.data.body}</span>`}
 	>
-		<div class="body markdown" innerHTML=${() => markdown(props.data.body)} />
-	<//>
+		<div
+			class="body markdown"
+			innerHTML=${() => markdown(props.data.body, links)}
+			onClick=${(event) => {
+				const link = event.target.closest('a[data-thread]')
+				if (link) followThread(event, Number(link.dataset.thread))
+			}}
+		/><//>
 `
 
 const Images = (props) => html`

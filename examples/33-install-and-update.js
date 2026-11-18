@@ -1,7 +1,6 @@
 /** `curl -fsSL <server>/connect-runner | sh` installs a runner from the server and starts it */
 import { spawn } from 'node:child_process'
 import { cpSync, mkdirSync, readFileSync, readdirSync, appendFileSync, symlinkSync } from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import {
 	answered,
@@ -21,7 +20,7 @@ import {
 const tmp = path.dirname(db)
 const HOME = path.join(tmp, 'installed-home')
 mkdirSync(HOME)
-const installed = path.join(HOME, '.agent-ide', 'runner')
+const installed = path.join(HOME, '.local', 'share', 'ade', 'runner')
 const procs = []
 process.on('exit', () => {
 	for (const p of procs)
@@ -46,11 +45,12 @@ const ask = async (id, n) => {
 	return (await answered(id, n, 20000))?.entries.at(-1).data.body ?? ''
 }
 
+/** @type {import('node:child_process').ChildProcess} */
 let srv = await server()
 const port = new URL(base).port
 const key = await keyFor('fresh')
 start('sh', ['-c', `curl -fsSL ${base}/connect-runner | sh -s -- --dir ${dir} --name fresh`], {
-	env: { ...process.env, HOME, XDG_CONFIG_HOME: '', AGENT_IDE_KEY: key },
+	env: { ...process.env, HOME, XDG_CONFIG_HOME: '', XDG_DATA_HOME: '', ADE_KEY: key },
 })
 check(
 	await until(async () => (await runnerOf('fresh'))?.online, 60000),
@@ -59,10 +59,10 @@ check(
 const before = readFileSync(path.join(installed, 'version'), 'utf8')
 check(!(await runnerOf('fresh')).outdated, "it runs the server's own runner")
 check(
-	readdirSync(path.join(HOME, '.config', 'agent-ide')).some(
-		(file) => readFileSync(path.join(HOME, '.config', 'agent-ide', file), 'utf8') === key,
+	readdirSync(path.join(HOME, '.config', 'ade')).some(
+		(file) => readFileSync(path.join(HOME, '.config', 'ade', file), 'utf8') === key,
 	),
-	'and keeps its key in ~/.config/agent-ide, for starts without curl',
+	'and keeps its key in ~/.config/ade, for starts without curl',
 )
 const {
 	json: { id },

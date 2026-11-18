@@ -1,8 +1,7 @@
 /** Runners show their agents and choose whom the composer asks. */
 import html from '@solidjs/html'
-import { Icon } from './icons.js'
 import { createMemo, createSignal, createUniqueId, For, Show } from 'solid-js'
-import { api, minted, runners, server, setMinted, threads } from './server.js'
+import { api, minted, revokeRunner, runners, server, setMinted, threads } from './server.js'
 import { rowOf, doing, lastToolCall, modelsOf, THINKING_LEVELS } from './agent.js'
 import { choose, configure, recipients, toFor } from './composer.js'
 import { placePopover } from './popover.js'
@@ -123,10 +122,7 @@ export function RunnerList() {
 			ref=${(el) => (button = el)}
 			popovertarget=${id}
 		>
-			<${For} each=${() => runners}
-				>${(runner) => html`<${Dot} state=${() => (runner.online ? 'on' : '')} />`}<//
-			>
-			<span>${() => `${online()} online`}</span>
+			<span>${() => `${online()} runner${online() === 1 ? '' : 's'}`}</span>
 		</button>
 		<div
 			class="popover runner-list"
@@ -137,11 +133,7 @@ export function RunnerList() {
 				if (event.newState === 'open') placePopover(panel, button)
 			}}
 		>
-			<${Panes}
-				title="Runners"
-				open=${() => false}
-				close=${html`<button type="button" class="ghost small close" aria-label="Close" onClick=${() => panel.hidePopover()}><${Icon} name="close" /></button>`}
-			>
+			<${Panes} title="Runners" open=${() => false} onClose=${(_event) => panel.hidePopover()}>
 				<ul class="rows">
 					<${For} each=${() => runners}
 						>${(runner) => html`<${RunnerItem} runner=${() => runner} />`}<//
@@ -154,17 +146,19 @@ export function RunnerList() {
 }
 
 function RunnerItem(props) {
-	const work = createMemo(() =>
+	const asking = (status) =>
 		threads.flatMap((thread) =>
 			thread.agents
-				.filter((agent) => agent.to.runner === props.runner.name && agent.status === 'working')
+				.filter((agent) => agent.to?.runner === props.runner.name && agent.status === status)
 				.map((agent) => ({
 					thread: thread.id,
 					title: thread.title,
 					conversation: agent.conversation,
 				})),
-		),
-	)
+		)
+	const work = createMemo(() => asking('working'))
+	/** Threads asking it while it's away */
+	const waiting = createMemo(() => [...new Set(asking('blocked').map((work) => work.title))])
 	const call = () =>
 		work()
 			.map((agent) => lastToolCall(doing[agent.thread]?.[agent.conversation]))
@@ -172,7 +166,7 @@ function RunnerItem(props) {
 	const revoke = async (_e) => {
 		const { name } = props.runner
 		try {
-			await api(`/api/runners/${encodeURIComponent(name)}`, undefined, 'DELETE')
+			await revokeRunner(name)
 			if (minted()?.name === name) setMinted(null)
 		} catch (failure) {
 			report(failure)
@@ -188,7 +182,7 @@ function RunnerItem(props) {
 					<small class=${() => ({ doing: props.runner.online })}
 						>${() =>
 							!props.runner.online
-								? 'offline'
+								? `offline${waiting().length ? `, ${waiting().join(', ')} waiting for it` : ''}`
 								: call() ||
 									`working in ${work()
 										.map((work) => work.title)
@@ -204,7 +198,7 @@ function RunnerItem(props) {
 					why=${() =>
 						"It goes offline and can't dial back; threads that asked it wait for the name." +
 						(props.runner.own
-							? " It's the server's own runner, so it's back when the server restarts, unless RUNNER=0."
+							? " It's the server's own runner, so it's back when the server restarts, unless it starts with --no-runner."
 							: '')}
 					onConfirm=${revoke}
 					>revoke<//
@@ -261,7 +255,17 @@ export function ConnectRunner(props) {
 						required
 						value=${() => name()}
 						onInput=${(event) => {
-							setName(event.currentTarget.value)
+							// A name is letters, digits, dot, dash or underscore: a space becomes a dash as you type.
+							const input = event.currentTarget
+							const typed = input.value
+							const caret = input.selectionStart ?? typed.length
+							const tidy = (text) => text.replace(/\s/g, '-').replace(/[^\w.-]/g, '')
+							if (tidy(typed) !== typed) {
+								input.value = tidy(typed)
+								const at = tidy(typed.slice(0, caret)).length
+								input.setSelectionRange(at, at)
+							}
+							setName(input.value)
 							setCutting(false)
 						}}
 					/>
@@ -283,6 +287,17 @@ export function ConnectRunner(props) {
 							${() => (copied() ? 'Copied' : 'Copy')}
 						</button>
 					</div>
+					<${Show}
+						when=${() =>
+							/^curl -fsSL https?:\/\/(localhost|127(?:\.\d+){3}|\[::1\])[:/]/i.test(
+								minted().connect,
+							)}
+					>
+						<p class="mute">
+							Other machines can't reach this server. Start it with <code>HOST=0.0.0.0</code>
+							(Tailscale recommended).
+						</p>
+					<//>
 					<p class="mute">
 						${() =>
 							`Run it on ${minted().name}, in the folder agents should work in. ` +

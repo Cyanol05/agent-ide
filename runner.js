@@ -1,3 +1,4 @@
+import WebSocket from 'ws'
 import { readdirSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -15,19 +16,22 @@ import { runnerBundle, serveRunner } from './remote.js'
 
 // Prefer the installed pi's default; an internal path change must not stop the runner.
 const { DEFAULT_THINKING_LEVEL } = await import(
-	new URL('./core/defaults.js', import.meta.resolve('@earendil-works/pi-coding-agent'))
+	new URL('./core/defaults.js', import.meta.resolve('@earendil-works/pi-coding-agent')).href
 ).catch(() => ({ DEFAULT_THINKING_LEVEL: 'medium' }))
 
 const { values: args } = parseArgs({
 	options: {
-		server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://localhost:3000' },
+		server: {
+			type: 'string',
+			default: process.env.ADE_SERVER || 'http://localhost:3000',
+		},
 		name: { type: 'string', default: os.hostname() },
 		dir: { type: 'string', multiple: true, default: [process.cwd()] },
 		'discover-dirs': { type: 'boolean', default: false },
 		owner: { type: 'string', default: '' },
 		'read-only': { type: 'boolean', default: false },
 		allow: { type: 'string', multiple: true, default: [] },
-		key: { type: 'string', default: process.env.AGENT_IDE_KEY },
+		key: { type: 'string', default: process.env.ADE_KEY },
 		'key-file': { type: 'string' },
 		help: { type: 'boolean', short: 'h' },
 	},
@@ -35,28 +39,26 @@ const { values: args } = parseArgs({
 if (args.help) {
 	console.log(`node runner.js [options]
 
-  --server url      server to dial (AGENT_IDE_SERVER or http://localhost:3000)
+  --server url      server to dial (ADE_SERVER or http://localhost:3000)
   --name name       runner's name (this machine's hostname)
   --dir folder      folder agents work in (current folder); repeat for more
   --discover-dirs   offer git and jj checkouts beneath the folders
   --owner name      take work only from this person and those allowed
   --allow name      also take work from this person or @runner; repeat for more
   --read-only       refuse writes and commands
-  --key key         runner key (AGENT_IDE_KEY or the saved key)
-  --key-file file   read the saved key here instead of ~/.config/agent-ide/key
+  --key key         runner key (ADE_KEY or the saved key)
+  --key-file file   read the saved key here instead of ~/.config/ade/key
   -h, --help        print these options`)
 	process.exit(0)
 }
-/** The key connect-runner saved, for starts without it */
-function saved(file) {
+if (!args.key) {
 	const config = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')
 	try {
-		return readFileSync(file || path.join(config, 'agent-ide', 'key'), 'utf8').trim()
+		args.key = readFileSync(args['key-file'] || path.join(config, 'ade', 'key'), 'utf8').trim()
 	} catch {
-		return ''
+		args.key = ''
 	}
 }
-args.key ||= saved(args['key-file'])
 const roots = [...new Set(args.dir.map((dir) => path.resolve(dir)))]
 const dir = roots[0]
 const server = new URL(args.server).origin
@@ -66,7 +68,7 @@ const name = args.name
 const { modelRuntime: models, diagnostics } = await createAgentSessionServices({ cwd: dir })
 for (const diagnostic of diagnostics)
 	if (diagnostic.type === 'error') console.log(`pi: ${diagnostic.message}`)
-const echo = fauxProvider({ provider: 'echo', models: [{ id: 'echo' }] })
+const echo = fauxProvider({ provider: 'echo', models: [{ id: 'echo' }, { id: 'try' }] })
 models.registerNativeProvider(echo.provider)
 
 /** What `pi --model pattern` runs */
@@ -100,18 +102,10 @@ const defaultModel = () => {
 	}
 }
 
-/** The models pi has enabled here, as `pi --models` expands them */
-async function offers() {
-	const patterns = SettingsManager.create(dir).getEnabledModels() ?? []
-	const { scopedModels } = await resolveModelScopeWithDiagnostics(patterns, models)
-	return [...new Set(scopedModels.map(({ model }) => `${model.provider}/${model.id}`))]
-}
-
 /** Sent to the server, which asks a runner its updater started to update when the server's differs */
 const { version } = await runnerBundle(import.meta.dirname).catch(() => ({ version: '' }))
-const launched = process.env.AGENT_IDE_LAUNCHER === '1'
 
-const modules = await load('runner', { status: true, context: true }, { name, server, dir, roots })
+const modules = await load('runner', { name, server, dir, roots })
 
 function folders() {
 	const found = []
@@ -136,6 +130,28 @@ function folders() {
 
 let warnedOffers = false
 
+/**
+ * Which models are billed per token: their provider is logged in with an API key rather than a subscription's OAuth,
+ * and pi lists a cost above zero. Sent as those providers, and their models that cost nothing, which are few.
+ */
+async function billing() {
+	const available = await models.getAvailable().catch(() => [])
+	const auths = Object.fromEntries(
+		await Promise.all(
+			[...new Set(available.map(({ provider }) => provider))].map(async (provider) => [
+				provider,
+				(await models.checkAuth(provider).catch(() => undefined))?.type,
+			]),
+		),
+	)
+	const keyed = available.filter(({ provider }) => auths[provider] === 'api_key')
+	const paid = (model) => Object.values(model.cost ?? {}).some((cost) => cost > 0)
+	return {
+		metered: [...new Set(keyed.filter(paid).map(({ provider }) => provider))],
+		free: keyed.filter((model) => !paid(model)).map((model) => `${model.provider}/${model.id}`),
+	}
+}
+
 async function connect() {
 	const { model, thinkingLevel, error } = defaultModel()
 	const query = new URLSearchParams({
@@ -149,13 +165,31 @@ async function connect() {
 		version,
 		...(args['read-only'] ? { readOnly: '1' } : {}),
 	})
-	if (error) console.log(`pi's default model doesn't resolve: ${error}`)
-	const offered = await offers().catch((error) => {
+	if (error) {
+		const loggedIn = (await models.getAvailable().catch(() => [])).some(
+			({ provider }) => provider !== 'echo',
+		)
+		console.log(
+			loggedIn
+				? `pi's default model doesn't resolve: ${error}`
+				: "pi isn't logged in, so only echo answers: install pi (`npm i -g @earendil-works/pi-coding-agent`), run `pi`, then `/login`.",
+		)
+	}
+	let offered = []
+	try {
+		const { scopedModels } = await resolveModelScopeWithDiagnostics(
+			SettingsManager.create(dir).getEnabledModels() ?? [],
+			models,
+		)
+		offered = [...new Set(scopedModels.map(({ model }) => `${model.provider}/${model.id}`))]
+	} catch (error) {
 		if (!warnedOffers) console.error(`${name}: couldn't list models: ${error.message}`)
 		warnedOffers = true
-		return []
-	})
+	}
 	for (const ref of offered) query.append('offer', ref)
+	const { metered, free } = await billing()
+	for (const provider of metered) query.append('metered', provider)
+	for (const ref of free) query.append('free', ref)
 	for (const who of args.allow) query.append('allow', who)
 	for (const folder of folders()) query.append('folder', folder)
 	const socket = new WebSocket(`${server.replace(/^http/, 'ws')}/ws?${query}`, {
@@ -169,9 +203,15 @@ async function connect() {
 		models,
 		resolve,
 		echo,
-		ops: Object.fromEntries(
-			modules.filter((module) => module.call).map((module) => [module.name, module.call]),
-		),
+		ops: {
+			...Object.fromEntries(
+				modules.filter((module) => module.call).map((module) => [module.name, module.call]),
+			),
+			/** Every model pi is logged in for, beyond the scoped ones it offers first */
+			available: async () => [
+				...new Set((await models.getAvailable()).map((model) => `${model.provider}/${model.id}`)),
+			],
+		},
 		readOnly: args['read-only'],
 		send: (text) => socket.readyState === WebSocket.OPEN && socket.send(text),
 		onTell: (message) =>
@@ -182,12 +222,12 @@ async function connect() {
 	const from = args.owner ? `, to ${[args.owner, ...args.allow].join(', ')}` : ''
 	const online = () =>
 		// The server's own runner: the server already printed its row
-		process.env.AGENT_IDE_LENT ||
+		process.env.ADE_LENT ||
 		console.log(
 			`${name} online at ${server}, offering pi's logins and ${roots.join(', ')}${args['read-only'] ? ' to read only' : ''}${from}`,
 		)
 	socket.onmessage = ({ data }) =>
-		JSON.parse(data).op === 'ready' ? online() : runner.receive(data)
+		JSON.parse(String(data)).op === 'ready' ? online() : runner.receive(data)
 	socket.onclose = ({ code, reason }) => {
 		runner.stopAll()
 		for (const module of modules) module.disconnected?.()
@@ -203,7 +243,7 @@ async function connect() {
 
 let warned = false
 function update() {
-	if (launched) {
+	if (process.env.ADE_LAUNCHER === '1') {
 		console.log(`${name}: the server runs a newer runner; updating…`)
 		process.exit(75)
 	}

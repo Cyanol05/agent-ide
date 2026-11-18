@@ -1,51 +1,37 @@
-# agent-ide
+# ade
 
-agent-ide is yet another chat app for working with agents.
+Ade is yet another app for working with agents.
 
-Threads live on a server you own, and agents run on your own machines, in folders you choose. Built on [Pi Durable](https://www.npmjs.com/package/@earendil-works/pi-durable), so a restart or crash loses nothing.
+> Threads live on a server you own, and agents run on the machines you want, in folders you choose.
 
-So, what's different about this one? Not much, but it adds patterns I've found to prove themselves useful enough to write here:
+The basics:
 
-Bots aka agents with a name, instructions and a hands-off home thread. Agents and bots can message each other. Bots remember long threads as short summary lines they can zoom back into. Threads are multiplayer and group chats as well, invite your bots.
+- one command to start anywhere: `npx github:oskarrough/ade`
+- one command to let agents work on another machine
+- threads survive crashes, restarts and reloads
+- works with any model provider, via pi
 
-## Try it
+I run it on my office computer, which is always on, at localhost:3000. That's all I need for daily work, and my laptop and home PC can join as runners when I want agents working there.
 
-You need Node.js 24+ and [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) logged in: run `pi` and `/login` once with any provider. Then, in the folder you want agents to work in:
+## Start
 
-```sh
-npx github:oskarrough/agent-ide
-```
-
-Open the server's URL for a walkthrough and the chat app. That's it.
-
-## Another machine
-
-The other machine needs to reach the server. To let it connect over your network, start the server with:
+Install [pi](https://www.npmjs.com/package/@earendil-works/pi-coding-agent) and log in: `pi`, then `/login` with any provider. Then, in the folder you want agents to work in:
 
 ```sh
-HOST=0.0.0.0 npx github:oskarrough/agent-ide
+npx github:oskarrough/ade
 ```
 
-Click "Add runner" on the page, or run this on the server's machine:
+`pnpm dlx` and `bunx` work just as well, or fork/clone the repo and `npm link` (or `pnpm link`) it to get an `ade` command.
 
-```sh
-npx github:oskarrough/agent-ide key laptop
-```
+Open the address it prints for a walkthrough and the app.
 
-Either gives you a command to run on the other machine, in the folder agents should work in. Keep it private: it holds the runner's key.
+Agents start in the folder you run it from; add more with `--dir ~/sites --dir ~/notes`, and threads start in the first. File tools stay inside these folders, but shell commands don't. Ade has no sandbox: doing one properly is hard, and a half-baked one would only make you feel safe.
 
-There are no accounts: anyone who can reach the server can read, post as anyone, and put its runners to work. Keep it on a trusted network. To use [Tailscale](https://tailscale.com) instead:
-
-```sh
-npx github:oskarrough/agent-ide
-tailscale serve 3000
-```
-
-Open `https://<your-machine>.<your-tailnet>.ts.net` on the other machine or your phone.
+To let agents work on another machine, click "Add runner" (or run `npx github:oskarrough/ade key laptop`) for the command to run there; keep it private, it holds a key. There are no accounts, so reach the server only over Tailscale: `tailscale serve <port>`, using the port ade printed. That's it.
 
 ## Settings
 
-Settings live in `agent-ide.json` in the folder you start in. For example, to turn web search on and talk off:
+Settings live in `~/.config/ade/ade.json` (or under `$XDG_CONFIG_HOME`), wherever you start. For example, to turn web search on and talk off:
 
 ```json
 {
@@ -55,115 +41,32 @@ Settings live in `agent-ide.json` in the folder you start in. For example, to tu
 
 Use `+` and `-` to change the defaults; a list of bare names replaces them.
 
-The server's address, working folder and data path are set in the environment, not the file:
+The server's address, port and data file come from the environment (`HOST`, `PORT`, `DB_PATH`), and so can `MODULES`. These win over the file.
 
-```sh
-HOST=0.0.0.0 npx github:oskarrough/agent-ide  # open the printed address on your phone or another machine
-PORT=3001 npx github:oskarrough/agent-ide     # a fixed port; otherwise the first free one from 3000
-RUNNER=~/code npx github:oskarrough/agent-ide # agents work here instead of the folder you start in
-RUNNER=0 npx github:oskarrough/agent-ide      # don't connect this machine as a runner
-DB_PATH=other.sqlite npx github:oskarrough/agent-ide
-```
+## What it does
 
-These win over the file; leave them unset to choose from the page.
+So, what's different about this one? Not much, but it adds patterns I've found useful enough to write down. Each is a module; you can switch any of them on or off.
 
-```sh
-MODULES=+web-search,-talk npx github:oskarrough/agent-ide
-MEMORY_MODEL=sonnet@laptop npx github:oskarrough/agent-ide
-```
+- bots are agents with a name, instructions and a home thread; they look things up themselves and hand every change to a worker (`bots`)
+- agents and bots message each other (`talk`)
+- group messages go to the thread, not the last bot you asked; the director picks who answers, including the thread's agent (`director`)
+- bots remember long threads as short summary lines they can zoom back into, so they can stick around for good (`memory`)
+- agents get their folder's AGENTS.md and skills, like in pi (`context`)
+- see what agents are doing on a runner's terminal (`status`)
+- threads get a short title once their first message is answered (`auto-title`)
+- agents can search the web (`web-search`, off by default)
+- Matrix rooms become threads (`matrix`, off by default)
+- a short recap per thread says where it stands (`overview`, off by default)
+- a canvas per thread that people and agents draw on together, with tldraw (`canvas`, off by default)
+- move threads to and from pi (`pi-sessions`, off by default)
+- agents explicitly ask for your answer; the thread stays blocked until you write (`blocked`, off by default)
 
-From a clone, use `node server.js` in place of `npx github:oskarrough/agent-ide`.
+In a group (the thread's agent plus bots, at least two), leave `to` out to let the director choose who answers, or nobody. `@name` asks that bot for one message; the next unaddressed message goes to the director again. People don't count toward the group. Solo chats and `$` commands keep the last recipient.
 
-Threads and conversations live in `agent-ide.sqlite` in the folder you start in, with the server's output in `agent-ide.log` beside it. `DB_PATH` moves both: `other.sqlite` logs to `other.log`.
+The chooser uses the thread agent's model and runner with thinking off (the first bot's setup in a bot-only group). Set `director.model` in ade.json to use a cheaper model on that runner, or include `@runner`; `DIRECTOR_MODEL` overrides it. After three seconds, an error, or an invalid pick, the thread's agent answers instead. The message's `picked` line says the pick failed; bot-only groups report the failure without asking anyone. `director.timeoutMs` changes that limit, and `director.picks: false` disables model picks without restoring sticky group recipients.
 
-## Modules
+With `blocked` on, `ask_person` posts the agent's question in the thread. Its message carries `waitingOnPerson: true`; the latest marked question stays open until any person posts a message after it. Agent messages and reads do not clear it, and restarts keep it. The sidebar's Blocked filter lists blocked threads, including child threads and bot homes; the same dot also marks threads waiting for an offline runner.
 
-Everything is a module that you can turn on and off.
+For each module's settings, see the top of its file in [modules/](modules). A module there with `export const on = true` is on by default; a new file there is a new module.
 
-On by default: talk, status, context, bots, director and memory.  
-Off: auto-title, web-search and matrix.
-
-- **talk** gives agents `post` and `threads`, to ask other threads and read them. A thread answers the thread that started it on its own; anywhere else, an agent answers with `post`.
-- **memory** summarizes messages so agents can keep working in long threads. It's used by default in threads with bots; you can switch it on or off for any thread.
-- **director** asks the bots a message @mentions, one after another. It can also pick who answers when nobody's named.
-- **bots** lets you create named bots and give them instructions and a colour. A bot without a picked colour (`color`, a hue) gets one from the order bots were made.
-- **context** hands agents the AGENTS.md and skills in their folder, and the folder itself, the way pi does.
-- **status** shows what agents are doing on a runner's terminal.
-- **auto-title** turns a thread's first message into a short title once it's answered. `POST /api/threads/:id/auto-title` writes a new one whenever you ask and answers with it, or with why it couldn't; a rename in the meantime wins.
-- **web-search** gives agents a `web_search` tool.
-- **matrix** makes Matrix rooms into threads.
-
-For each module's settings, see the top of its file in [modules/](modules).
-
-## What's what
-
-- **Server**: the one process you start. It keeps every thread and every agent's conversation in one SQLite file.
-- **Runner**: connects a machine to the server, offering its folders and the model logins pi has there. Agents reach nothing outside those folders. The server holds no logins.
-- **Agent**: a model, how hard it thinks, and the runner it works on, written `sonnet:high@laptop`. Every part is optional; `laptop` alone is that runner's default model. Each thread has one. Change its model or runner whenever you like and it keeps the conversation. It has no name.
-- **Thread**: what people, one agent and any bots write to each other. _Hands off_ prevents its agents from editing files or running commands.
-- **Bot**: one name in many threads, with a home thread, the agent it joins as, and instructions. Only bots have names.
-- **Conversation**: what one agent has read, its tool calls and its answers.
-- **Client**: the web page, the CLI or a Matrix room you use to read and write in threads; the server keeps the data.
-- **Module**: a feature you can switch on or off. Each module file's first lines say what it does and how to set it.
-
-## The API
-
-Everything the page does, you can do with a few requests. Say who you are with `x-user`:
-
-```sh
-api() { curl -s -H 'x-user: oskar' -H 'content-type: application/json' "localhost:3000/api/$1" ${2:+-d "$2"}; }
-
-api threads '{"title": "hello"}' # → {"id": 3}
-api threads/3/entries '{"body": "what machine is this?", "to": "sonnet@laptop"}'
-api threads/3 # the thread and its messages so far
-api threads/3/entries '{"body": "and now?", "to": "opus:high@laptop"}' # same agent, new model
-api threads/3/fork '{"at": 5}' # a new thread from message 5
-api threads/3/stop '{}'
-```
-
-A message's `to` says whom it asks: an agent like `sonnet@laptop`, a bot's name, or `null` for nobody. Leave it out and it asks whoever the thread asked last. A body starting with `$ ` runs that command on the runner instead.
-
-To watch a thread live, open `/ws` and send `{"watch": 3}`. You get new messages and each agent's work as it happens; a bare `{}` means "fetch the list again".
-
-```
-GET    /api/server                     modules, settings, whether you may add runners
-GET    /api/runners
-POST   /api/runners {name}             a key, and the command that connects it
-DELETE /api/runners/:name
-GET    /api/threads
-POST   /api/threads {title, parent?, tools?}
-GET    /api/threads/:id
-GET    /api/threads/archived
-POST   /api/threads/:id/archive {archived}
-POST   /api/threads/:id/entries {body, to?, images?, steer?}
-POST   /api/threads/:id/fork {at, title?}
-POST   /api/threads/:id/title {title}
-POST   /api/threads/:id/tools {tools}  as pi --tools takes them
-POST   /api/threads/:id/read
-POST   /api/threads/:id/stop
-POST   /api/threads/:id/compact
-GET    /api/conversations/:id          an agent's own conversation, tool calls and all
-```
-
-Modules add their own routes under `/api/<module>`. The routes are in `server.js`, the runner protocol in [remote.js](remote.js).
-
-The CLI is the same API from a terminal:
-
-```sh
-node cli.js post "hello" --to sonnet@laptop    # prints the answer as it lands
-node cli.js threads
-node cli.js read 3
-node cli.js wait 3                             # waits for its agents, then prints the answers
-node cli.js stop 3
-```
-
-Run from an agent's own shell, `post` writes as that agent (its model and thinking, like `sonnet:high`), whatever its model; anywhere else it writes as you.
-
-A new thread prints `thread N` on stdout, followed by any answers; progress and errors go to stderr. To capture just its id without waiting:
-
-```sh
-thread=$(node cli.js post "hello" --to sonnet@laptop --no-wait)
-node cli.js wait "${thread#thread }"
-```
-
-`node cli.js --help` has the rest.
+Scripting it? See [the API and CLI](docs/api.md).

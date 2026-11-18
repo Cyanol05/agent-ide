@@ -1,3 +1,4 @@
+import WebSocket from 'ws'
 /** A runner dials in with its own key, so nobody can take its name, and a revoked one goes offline and stays out */
 import { api, base, check, done, runner, server } from './lib.js'
 
@@ -14,7 +15,7 @@ const dial = (name, key) =>
 		socket.onclose = ({ code, reason }) => resolve({ code, reason })
 	})
 
-const nokey = await runner('stray', { env: { AGENT_IDE_KEY: '' }, wait: false })
+const nokey = await runner('stray', { env: { ADE_KEY: '' }, wait: false })
 const out = []
 nokey.stdout.on('data', (d) => out.push(String(d)))
 check((await exited(nokey)) === 1, 'a runner without a key is turned away, and stops')

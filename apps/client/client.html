@@ -11,9 +11,9 @@
 	<link rel="icon" href="/icons/192.png" />
 	<link rel="apple-touch-icon" href="/icons/180.png" />
 	<meta name="mobile-web-app-capable" content="yes" />
-	<meta name="apple-mobile-web-app-title" content="agent-ide" />
+	<meta name="apple-mobile-web-app-title" content="ade" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-	<title>agent-ide</title>
+	<title>ade</title>
 	<link rel="stylesheet" href="/base.css" />
 	<link rel="stylesheet" href="/app.css" />
 	<link rel="stylesheet" href="/walkthrough.css" />
@@ -34,14 +34,14 @@
 	<body class="chat">
 		<main class="page">
 			<section data-focus="all">
-				<h1>agent-ide</h1>
+				<h1>ade</h1>
 				<p>
 					Why use this over ChatGPT, Claude, T3 and the rest? Maybe you wouldn't. I do, because I
 					like being able to change absolutely everything.
 				</p>
 				<p>
-					agent-ide is a minimal, stable base for building on AI. It's the chat app you know, with
-					many threads and any model you like, plus a few things on top:
+					ade is a minimal, stable base for building on AI. It's the chat app you know, with many
+					threads and any model you like, plus a few things on top:
 				</p>
 				<ol class="promises">
 					<li><b>Threads with many authors.</b> You, friends, agents and bots, in one thread.</li>
@@ -55,16 +55,15 @@
 				</ol>
 				<p>
 					It runs on a server you own, with agents on your own machines, and nothing third-party
-					except the model. The core is over ten thousand lines: fork it, point your AI at it,
-					change it.
+					except the model. Fork it, point your AI at it, change it. The core is over ten thousand lines.
 				</p>
 				<p>The rest of this page walks you through it.</p>
 			</section>
 
 			<section data-focus="server">
-				<h2>Hello, Agent IDE</h2>
+				<h2>Hello, ade</h2>
 				<p>Start it where it can stay on.</p>
-				<pre>npx github:oskarrough/agent-ide</pre>
+				<pre>pnpm dlx github:oskarrough/ade</pre>
 			</section>
 
 			<section data-focus="runners">
@@ -89,13 +88,21 @@
 			<section data-focus="thread">
 				<h2>Agents talk to each other</h2>
 				<p>
-					An agent can ask another thread. The answer comes back once and wakes whoever asked. Each
-					turn an agent works is one line; open it for every step. An ask reads like those steps: →
-					and whom it went to, in the colour of their bot, then the question's first line; ← and the
-					same name, then the answer's. A message that came in unasked is ← and who sent it. Each is
-					one line; open it to read it whole. Everything else stays where it was said.
+					An agent can ask another thread, no title needed. A thread it started answers it back by
+					itself; any other thread answers only when someone posts to it on purpose. The answer
+					comes back once and wakes whoever asked. In the steps, → is the ask and ← is the answer,
+					each one line; open it to read it whole. A bot rewriting its own instructions or model
+					gets a line too: ✎, its name and what changed; open it to see old against new.
 				</p>
 				<p>Want a second opinion? Have the agent ask two others, and put their answers together.</p>
+				<p>
+					To point at another thread, type @ and a word of its title. The message links it, and the
+					agent gets just the title, to read the thread itself if it needs to.
+				</p>
+				<p>
+					Start a message with / for the skills where the agent works. Pick one, and the agent reads
+					that skill before the rest of your message, as in pi.
+				</p>
 				<div class="try">
 					<button data-try="talk">Have the agent ask two others</button>
 				</div>
@@ -149,8 +156,8 @@
 				</p>
 				<p>
 					Load a thread of three people building a shed: 32 messages, where the gate code and the
-					colour change halfway. Watch the lines get written, from the messages up. Then ask an
-					agent what's true now.
+					colour change halfway. Its memory lines were written by an agent and saved with the
+					example, so loading it needs no model. Open a line, then ask an agent what's true now.
 				</p>
 				<div class="try">
 					<button data-try="shed">Load the example thread</button
@@ -183,11 +190,11 @@ sequenceDiagram
   A-->>You: its answer, live as it lands
 </pre>
 				<p>
-					Everything is a module. Bots, memory and @mentions are on; Matrix rooms and web search you
-					switch on in settings, beside the runners. The words, the principles and the API are in
-					the
-					<a href="https://github.com/oskarrough/agent-ide#readme">README</a>. The code is small
-					enough to read in an evening.
+					Everything is a module. Bots, memory and @mentions are on; Matrix rooms, web search, a
+					page per thread saying where it stands and a canvas per thread you switch on in settings,
+					beside the runners. The words, the principles and the API are in the
+					<a href="https://github.com/oskarrough/ade#readme">README</a>. The code is small enough to
+					read in an evening.
 				</p>
 			</section>
 

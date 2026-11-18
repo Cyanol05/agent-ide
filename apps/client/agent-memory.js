@@ -12,7 +12,7 @@ import {
 	Show,
 	untrack,
 } from 'solid-js'
-import { api, connected, current, entries, server, threads } from './server.js'
+import { api, connected, current, entries, server, threadOf } from './server.js'
 import { cutsOf, newestCut, plural } from './run.js'
 
 /**
@@ -34,9 +34,7 @@ export function Compaction() {
 function CompactionOf(props) {
 	const cut = createMemo(() =>
 		newestCut(
-			(threads.find((thread) => thread.id === props.thread)?.agents ?? []).flatMap((agent) =>
-				cutsOf(agent.conversation),
-			),
+			(threadOf(props.thread)?.agents ?? []).flatMap((agent) => cutsOf(agent.conversation)),
 		),
 	)
 	const messages = () => entries[props.thread] ?? []
@@ -121,8 +119,9 @@ function ThreadMemory(props) {
 		if (!total) return { total, budget, cut: [], nodes: [] }
 		const { lines: cut } = await read(`?budget=${budget}`)
 		const nodes =
-			cut.length === 1 && cut[0].n >= total
-				? [{ ...cut[0], kind: 'cut' }]
+			cut.some((line) => line.text.includes('not summarized yet')) ||
+			(cut.length === 1 && cut[0].n >= total)
+				? cut.map((line) => ({ ...line, kind: 'cut' }))
 				: await openTree(read, 0, 2 ** Math.ceil(Math.log2(total)), cut)
 		return { total, budget, cut, nodes }
 	})
@@ -139,7 +138,7 @@ function ThreadMemory(props) {
 	`
 	function Line(props) {
 		const [expanded, setExpanded] = createSignal(false)
-		const waiting = () => props.line.text.startsWith('(not summarized')
+		const waiting = () => props.line.text.includes('not summarized yet')
 		const opened = createMemo(() =>
 			expanded() ? read(`?zoom=${props.line.id},${props.line.n}`) : null,
 		)
@@ -157,14 +156,8 @@ function ThreadMemory(props) {
 				}}
 			>
 				<small>${() => key(props.line)}</small>
-				<span
-					>${() =>
-						!waiting()
-							? props.line.text
-							: props.line.id + props.line.n > tree().total
-								? `the last ${tree().total - props.line.id} messages, waiting for more before they merge`
-								: 'being written, from the messages up'}</span
-				>
+				<span>${() => props.line.text}</span>
+
 				<${Show} when=${() => props.line.children}>
 					<${Lines} nodes=${() => props.line.children} />
 				<//>
@@ -266,8 +259,10 @@ async function openTree(read, id, n, cut) {
 	)
 }
 
-const bytes = (text) => new TextEncoder().encode(text).length
 const sizeOf = (lines) =>
-	lines.reduce((sum, line) => sum + bytes(`${key(line)}|${line.text}`) + 1, 0)
+	lines.reduce(
+		(sum, line) => sum + new TextEncoder().encode(`${key(line)}|${line.text}`).length + 1,
+		0,
+	)
 const inside = (line, id, n) => line.id >= id && line.id + line.n <= id + n
 const key = (line) => `${line.id}+${line.n}`

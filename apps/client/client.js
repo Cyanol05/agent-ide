@@ -3,10 +3,10 @@ import html from '@solidjs/html'
 import { Icon } from './icons.js'
 import { render } from '@solidjs/web'
 import { createEffect, createSignal, Errored, Loading, onSettled } from 'solid-js'
-import { colorOf, current, drawer, homeBot, params, threads, titleOf } from './server.js'
+import { colorOf, current, drawer, homeBot, params, titleOf, threadOf } from './server.js'
+import { sideOf, toggleSide } from './side.js'
 import { Dot } from './dot.js'
 import { System } from './system.js'
-import { ThreadDetails } from './thread-details.js'
 import { Tutorial } from './tutorial.js'
 
 function Client() {
@@ -85,16 +85,16 @@ function Client() {
 						<${Icon} name="back" />
 					</button>
 					<button
-						class="thread-pill"
+						class="ghost thread-name"
 						type="button"
+						aria-pressed=${() => String(sideOf(current())?.key === 'details')}
 						style=${() => colorOf(homeBot(current())?.name ?? '')}
-						onClick=${() => drawer('side')}
+						onClick=${() => toggleSide(current(), 'details')}
 					>
-						<${Dot} state=${() => threads.find((thread) => thread.id === current())?.status} />
+						<${Dot} state=${() => threadOf(current())?.status} />
 						<span>${() => (current() ? titleOf(current()) : 'New thread')}</span>
 					</button>
 				</header>
-				<${ThreadDetails} />
 				<${System} />
 				<${Tutorial} story=${() => !chat()} />
 			<//>

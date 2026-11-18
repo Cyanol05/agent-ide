@@ -1,4 +1,8 @@
-/** A list and its detail share one frame. The list stays mounted, keeping its scroll and draft. */
+/**
+ * A thing you open: its top page, a page opened from it that leads back, and a close on both. The popovers and the side
+ * column share it. The top page stays mounted under the one opened over it, keeping its scroll and draft. Its head is
+ * its `title`, or `head` in its place (the side column's tabs), then its `actions`.
+ */
 import html from '@solidjs/html'
 import { Icon } from './icons.js'
 import { createEffect, createMemo, onSettled, Show } from 'solid-js'
@@ -14,6 +18,15 @@ export function Panes(props) {
 			else if (origin?.isConnected) origin.focus({ preventScroll: true })
 		})
 	})
+	const close = () =>
+		html`<button
+			type="button"
+			class="ghost small close"
+			aria-label="Close"
+			onClick=${(event) => props.onClose(event)}
+		>
+			<${Icon} name="close" />
+		</button>`
 	return html`
 		<div
 			class="panes"
@@ -31,8 +44,8 @@ export function Panes(props) {
 				style=${() => ({ visibility: props.open ? 'hidden' : 'visible' })}
 			>
 				<header>
-					<h2>${() => props.title}</h2>
-					${() => props.close}
+					${() => props.head ?? html`<h2>${() => props.title}</h2>`} ${() => props.actions}
+					${close()}
 				</header>
 				<div class="pane-body">${() => props.children}</div>
 			</section>
@@ -48,8 +61,8 @@ export function Panes(props) {
 						>
 							<${Icon} name="back" />
 						</button>
-						<h2>${() => props.title}</h2>
-						${() => props.actions}
+						<h2>${() => props.detailTitle}</h2>
+						${close()}
 					</header>
 					<div class="pane-body">${() => props.detail}</div>
 				</section>

@@ -17,11 +17,17 @@ import path from 'node:path'
 const [server, ...given] = process.argv.slice(2)
 const updates = !given.includes('--no-update')
 const args = given.filter((arg) => arg !== '--no-update')
-const home = process.env.AGENT_IDE_HOME || path.join(os.homedir(), '.agent-ide', 'runner')
+const home =
+	process.env.ADE_HOME ||
+	path.join(
+		process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'),
+		'ade',
+		'runner',
+	)
 const bun = Boolean(process.versions.bun)
 if (!server) throw new Error('usage: runner-updater.js <server> [runner options]')
 if (!bun && Number(process.versions.node.split('.')[0]) < 24)
-	throw new Error("agent-ide's runner needs Node.js 24 or newer")
+	throw new Error("ade's runner needs Node.js 24 or newer")
 
 const read = (file) =>
 	existsSync(path.join(home, file)) ? readFileSync(path.join(home, file), 'utf8') : ''
@@ -41,7 +47,7 @@ async function install() {
 		}
 		const manifest = JSON.stringify(
 			{
-				name: 'agent-ide-runner',
+				name: 'ade-runner',
 				private: true,
 				type: 'module',
 				dependencies: bundle.dependencies,
@@ -106,7 +112,7 @@ for (;;) {
 	}
 	runner = spawn(process.execPath, [path.join(home, 'runner.js'), '--server', server, ...args], {
 		stdio: 'inherit',
-		env: { ...process.env, ...(updates && !stale ? { AGENT_IDE_LAUNCHER: '1' } : {}) },
+		env: { ...process.env, ...(updates && !stale ? { ADE_LAUNCHER: '1' } : {}) },
 	})
 	const code = await new Promise((resolve) =>
 		runner.on('exit', (code) => {

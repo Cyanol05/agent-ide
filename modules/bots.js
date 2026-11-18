@@ -1,28 +1,30 @@
 /**
  * A bot is one name in many threads: a home thread, the agent it joins as, instructions, and the hue it's shown in if
  * someone picked one. Ask `ada` anywhere and an
- * agent named ada joins as that; at home, hands off, it rewrites its own instructions with the `bot` tool. MODULES=+bots
+ * agent named ada joins as that, with every tool a thread agent has; at home it rewrites its own instructions with the `bot` tool. On by default;
+ * MODULES=-bots turns it off.
  */
 import { obj, opt, str } from '@earendil-works/pi-schema'
 import { defineDoc, defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
 import { AGENT, agentTo } from '../util.js'
 
-/** A bot's name → { home, to, instructions, color? }: color is a hue someone picked */
+export const on = true
+
+/** A bot's name → { home, to, instructions, color? }: color is a hue someone picked; without one, a bot gets its hue from the order bots were made */
 const Bots = defineDoc({
-	kind: 'agent-ide.bots',
+	kind: 'ade.bots',
 	version: 1,
 	scope: 'session',
 	checkpointWhen: () => true,
 	initial: () => ({}),
 })
-const HANDS_OFF = ['-write', '-edit', '-bash']
 
 export function server(core) {
 	const bots = () => core.commit(async (tx) => JSON.parse(JSON.stringify(await tx.doc(Bots))))
 	const list = async () => Object.entries(await bots()).map(([name, bot]) => ({ name, ...bot }))
 
-	async function change({ name, to, instructions, color }) {
+	async function change({ name, to, instructions, color = undefined }) {
 		if (typeof name !== 'string' || !/^[\w.-]{1,40}$/.test(name))
 			throw new Error('A name is 1 to 40 letters, digits, _ . or -')
 		if ((await core.known())[name]) throw new Error(`${name} is a runner; pick another name`)
@@ -46,7 +48,7 @@ export function server(core) {
 		const all = await tx.doc(Bots)
 		if (!all[name]) {
 			if (!to) throw new Error(`${name} is new: say what it runs as, to: model@runner`)
-			const home = await core.startThread(tx, name, null, HANDS_OFF)
+			const home = await core.startThread(tx, name, null)
 			all[name] = { home, to, instructions: instructions ?? '' }
 		} else {
 			if (to) all[name].to = to
@@ -103,7 +105,8 @@ export function server(core) {
 			model: opt(str({ description: 'model@runner, as `pi --model` takes the model' })),
 		}),
 		replay: 'safe',
-		execute: async (args, api) => {
+		execute: async (input, api) => {
+			const args = /** @type {any} */ (input)
 			const at = await core.home(api.conversationId)
 			const mine = at && (await bots())[at.name]
 			if (!mine || mine.home !== at.thread) throw new Error('Only a bot can, in its home thread')
@@ -116,8 +119,17 @@ export function server(core) {
 				instructions: args.instructions,
 				to: args.model ?? (name === at.name ? undefined : { ...own, name: undefined }),
 			})
-			const made = await core.once(`bot ${api.taskId}`, 'bot', (tx) => write(tx, asked))
+			/** What she was before, read in the same commit as the change: the call's result keeps it as `details.before`, `{instructions, model}`, so a thread can show old against new */
+			const made = await core.once(`bot ${api.taskId}`, 'bot', async (tx) => {
+				const was = (await tx.doc(Bots))[name]
+				const before = was && {
+					instructions: was.instructions,
+					model: `${was.to.model}${was.to.thinkingLevel ? `:${was.to.thinkingLevel}` : ''}@${was.to.runner}`,
+				}
+				return { ...(await write(tx, asked)), ...(before && { before }) }
+			})
 			return {
+				...(name === at.name && { details: { before: made.before } }),
 				output: [
 					{
 						type: 'text',
@@ -130,6 +142,14 @@ export function server(core) {
 			}
 		},
 	})
+
+	/** How a bot talks: thread agents keep their own voice, so this is in the bot's section only */
+	const voice =
+		"Talk like a person in a chat with friends: lead with the answer, maybe a reaction or a reason, and stop. You lead, so give the picture, not the work: what changed, what's next, what needs a decision. The details belong to whoever did the work; bring them in only when someone asks. Everyone here already sees the thread, tool calls and posts; say only what's new. No headings, bold or bullets unless asked for a list, and no ids or mechanics unless someone must act on them. If you can check something, check it; if you can't, say you're guessing."
+
+	/** Hands off by habit, not by withholding tools: a bot has the shell, and uses it to look */
+	const handsOff =
+		'Look things up yourself (gh, git, logs, files) and hand every change to a worker.'
 
 	const section = {
 		key: 'bot',
@@ -156,6 +176,8 @@ export function server(core) {
 				others.length &&
 					agent.tools.some((tool) => tool.name === 'post') &&
 					`The other bot${others.length > 1 ? 's are' : ' is'} ${others.join(', ')}: post with \`to\` set to a name to ask one.`,
+				handsOff,
+				voice,
 				home && 'This is your home. Ask before you change your model.',
 			]
 				.filter(Boolean)
@@ -169,6 +191,6 @@ export function server(core) {
 		botAgent,
 		instructionsOf,
 		botNames,
-		extension: defineExtension({ name: 'agent-ide.bots', tools: [bot], sections: [section] }),
+		extension: defineExtension({ name: 'ade.bots', tools: [bot], sections: [section] }),
 	}
 }

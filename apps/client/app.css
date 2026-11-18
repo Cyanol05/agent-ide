@@ -1,13 +1,9 @@
 /* The app: the chat fills the window. The walkthrough, when it's on, lays its story over this. */
 
-.thread > ul,
-.thread-list > ul {
-	overscroll-behavior: contain;
-}
-
 /* The two lists that scroll: a thin bar, quiet until you touch it. */
 .thread-list > ul,
 .thread > ul {
+	overscroll-behavior: contain;
 	scrollbar-width: thin;
 	scrollbar-color: var(--edge) transparent;
 }
@@ -107,13 +103,7 @@
 			font-family: var(--font-mono);
 			margin-right: var(--space-2);
 		}
-	}
 
-	ul ul {
-		margin-left: var(--space-4);
-	}
-
-	li {
 		&.pending {
 			color: var(--mute);
 			font-style: italic;
@@ -147,6 +137,10 @@
 		&.below {
 			color: var(--mute);
 		}
+	}
+
+	ul ul {
+		margin-left: var(--space-4);
 	}
 
 	.whole {
@@ -202,18 +196,20 @@ agent-memory {
 }
 
 /* Why the model wrote no new title, under the title, in its words' muted size. */
-.thread-details > .title-failed {
+.thread-details .title-failed {
 	display: block;
+	flex-basis: 100%;
 	margin: 0 var(--space-2);
 	color: var(--wait);
 	font-size: var(--text-small);
 }
 
-.thread-details > h2.thread-title {
+.thread-details h2.thread-title {
 	display: flex;
 	gap: var(--space-1);
+	flex: 1;
 	align-items: center;
-	margin: var(--space-2) var(--space-1) 0;
+	margin: 0;
 	font-size: var(--text);
 	font-weight: 600;
 
@@ -231,7 +227,6 @@ agent-memory {
 	align-items: center;
 	font-size: var(--text-ui);
 
-	/* Its dot where a thread row's sits, so the switch reads as one of them. */
 	> .switch {
 		flex: none;
 	}
@@ -296,7 +291,6 @@ agent-memory {
 	font-size: var(--text-ui);
 	--step: color-mix(in srgb, CanvasText 4%, transparent);
 
-	/* The row is the control: a link to the thread, or the button that makes one. */
 	> .row {
 		flex: 1;
 		min-width: 0;
@@ -365,7 +359,6 @@ agent-memory {
 	border-right: 1px solid var(--line);
 	transition: opacity var(--duration-popover) var(--ease-out);
 
-	/* Only the columns beside it get a line; at the window's edge there is nothing to divide. */
 	&:last-child {
 		border-right: 0;
 	}
@@ -393,7 +386,7 @@ agent-memory {
 		background: linear-gradient(transparent, Canvas var(--fade-bottom));
 	}
 
-	/* The head is no bar, just the pill and, beside it, its own close. */
+	/* The head: the thread's name and, beside it, its own close, on the page's own surface so nothing scrolls through it. */
 	> header {
 		position: absolute;
 		inset: 0 0 auto;
@@ -402,10 +395,10 @@ agent-memory {
 		align-items: center;
 		justify-content: center;
 		gap: var(--space-2);
-		margin: var(--space-2) var(--space-4);
+		padding: var(--space-2) var(--space-4);
+		background: Canvas;
 		pointer-events: none;
 		font-size: var(--text-ui);
-		font-weight: 600;
 
 		button {
 			pointer-events: auto;
@@ -417,7 +410,6 @@ agent-memory {
 			height: var(--control);
 		}
 
-		/* The heading only wraps the pill, so all of the pill is its button. */
 		> h2.title {
 			display: flex;
 			flex: 0 1 auto;
@@ -444,6 +436,7 @@ agent-memory {
 		position: absolute;
 		inset: calc(var(--control) + 2 * var(--space-2)) 0 auto;
 		z-index: 2;
+		background: Canvas;
 
 		&:empty {
 			display: none;
@@ -520,7 +513,12 @@ agent-memory {
 				}
 			}
 
-			/* What an opened handed step was given, lit where it already is, as the memory panel lights the cut an agent reads. */
+			&.failed {
+				padding-left: var(--space-3);
+				box-shadow: inset 2px 0 var(--danger);
+				color: var(--danger);
+			}
+
 			&.handed {
 				box-shadow: inset 2px 0 var(--pick);
 				background: color-mix(in srgb, var(--pick) 7%, Canvas);
@@ -547,11 +545,11 @@ agent-memory {
 				summary > small {
 					display: inline;
 					margin: 0;
+				}
 
-					/* A live turn's dot, a word's space before what it's doing. */
-					> .dot {
-						margin-right: var(--space-1);
-					}
+				&.live summary > small {
+					--blink-low: 0.55;
+					animation: blink 2.4s ease-in-out infinite;
 				}
 			}
 
@@ -615,8 +613,9 @@ agent-memory {
 				}
 
 				/* A message that crossed threads is a step too: → sent or ← received, the other side in its bot's colour, the
-				   first line quieter than the name; opened, its words at the step's size, in ink, and any answer under them. */
-				> li:is(.sent, .received) {
+				   first line quieter than the name; opened, its words at the step's size, in ink, and any answer under them.
+				   A bot rewriting itself reads the same way: ✎, its name, what changed; opened, each as a word diff of old against new. */
+				> li:is(.sent, .received, .changed) {
 					> details > summary {
 						/* A long name gives way at three quarters of the row, so the first line always shows. */
 						.tool {
@@ -637,7 +636,6 @@ agent-memory {
 						font-size: var(--text-small);
 						line-height: var(--text-small-line);
 
-						/* Its code blocks too, not a size up from the words around them. */
 						pre {
 							font-size: inherit;
 							line-height: inherit;
@@ -648,12 +646,10 @@ agent-memory {
 						}
 					}
 
-					/* What came of a question, under it. */
 					.whole > .answer {
 						margin-top: var(--space-2);
 					}
 
-					/* The way to the other thread, last, quiet as a step's line. */
 					.whole > .open {
 						margin-top: var(--space-1);
 						color: var(--mute);
@@ -668,6 +664,47 @@ agent-memory {
 
 				> li.received > details > summary::before {
 					content: '←';
+				}
+
+				> li.changed > details > summary::before {
+					content: '✎';
+				}
+
+				/* Old against new as one run of words: removed struck through in a quiet red, added in a quiet green, the same in
+				   ink, and unchanged stretches far from a change folded into ⋯. */
+				> li.changed .change {
+					margin-top: var(--space-1);
+
+					> .key {
+						display: block;
+						color: var(--mute);
+					}
+
+					.diff {
+						white-space: pre-wrap;
+						overflow-wrap: anywhere;
+					}
+
+					.removed {
+						color: color-mix(in srgb, var(--danger) 70%, var(--mute));
+						background: color-mix(in srgb, var(--danger) 10%, transparent);
+						text-decoration: line-through;
+					}
+
+					.added {
+						color: color-mix(in srgb, var(--ok) 75%, var(--ink));
+						background: color-mix(in srgb, var(--ok) 12%, transparent);
+					}
+
+					.fold {
+						padding: 0 var(--space-1);
+						font: inherit;
+						white-space: normal;
+					}
+				}
+
+				> li.changed .failed {
+					color: var(--danger);
 				}
 
 				.whole {
@@ -699,19 +736,9 @@ agent-memory {
 				animation: appear 0s 0.4s both;
 			}
 
-			/* The dot while the asked thread works hangs in the margin, so the words never move; a row's gap from them, centred on their line as a row centres it. */
-			&.exchange .lead {
-				position: absolute;
-				top: 0;
-				right: 100%;
-				display: flex;
-				align-items: center;
-				padding-right: var(--space-2);
-				height: var(--text-small-line);
-			}
-
-			summary span[style] > .thread-link {
-				color: inherit;
+			&.exchange.live > .steps {
+				--blink-low: 0.55;
+				animation: blink 2.4s ease-in-out infinite;
 			}
 
 			summary {
@@ -727,6 +754,18 @@ agent-memory {
 				padding: var(--space-2) var(--space-4);
 				border: 1px solid var(--line);
 				border-radius: var(--radius);
+			}
+
+			.clamp:not(.open) {
+				max-height: calc(12 * var(--text-line));
+				overflow: hidden;
+			}
+			.clamp.long:not(.open) {
+				mask-image: linear-gradient(
+					to bottom,
+					black calc(100% - 2 * var(--text-line)),
+					transparent
+				);
 			}
 
 			.fork {
@@ -827,7 +866,6 @@ agent-memory {
 			}
 		}
 
-		/* Send sits centred on the field's first line. */
 		button.send {
 			margin-bottom: var(--edge-gap);
 		}
@@ -843,7 +881,6 @@ agent-memory {
 				calc(-1 * (var(--space-1) + var(--space-2) + 1px));
 			min-height: var(--foot-height);
 
-			/* Its + on the field's first letter above it. */
 			button.add {
 				margin-left: calc(-1 * var(--space-1));
 			}
@@ -856,8 +893,8 @@ agent-memory {
 			min-width: 0;
 			margin-left: auto;
 
-			/* One line each, cut with a dot once space runs out: the bar never grows a second row. */
-			span:not(.dot) {
+			/* One line each, cut with an ellipsis once space runs out: the bar never grows a second row. */
+			span {
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
@@ -935,7 +972,7 @@ agent-memory {
 	}
 
 	pre {
-		padding: var(--space-2) var(--space-2);
+		padding: var(--space-2);
 		font-size: var(--text-ui);
 		line-height: var(--text-ui-line);
 		white-space: pre;
@@ -981,48 +1018,6 @@ agent-memory {
 .thread-link {
 	color: var(--mute);
 	text-decoration: none;
-}
-
-/* This thread's sheet, from the right at every size, in chat and beside the story: its family, and whether its hands are off. */
-body .scrim {
-	display: block;
-	position: fixed;
-	inset: 0;
-	z-index: 9;
-	background: rgb(0 0 0 / 0.4);
-	opacity: 0;
-	pointer-events: none;
-	transition: opacity var(--duration-sheet) var(--ease-sheet);
-}
-
-body.list .scrim,
-body.side .scrim {
-	opacity: 1;
-	pointer-events: auto;
-}
-
-body .thread-details {
-	display: block;
-	font-size: var(--text-ui);
-	position: fixed;
-	top: 0;
-	bottom: 0;
-	right: 0;
-	z-index: 10;
-	width: min(85vw, 22rem);
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	background: Canvas;
-	padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-2)
-		calc(var(--space-4) + env(safe-area-inset-bottom));
-	visibility: hidden;
-	border-left: 1px solid var(--line);
-	transform: translateX(100%);
-}
-
-body.side .thread-details {
-	transform: none;
-	visibility: visible;
 }
 
 /* A sheet's own headings, and a bot's parts within it, read as one kind of small label. */
@@ -1091,9 +1086,10 @@ body.side .thread-details {
 	}
 }
 
-/* A page of threads: its header is the way back. */
+/* A page of the thread list: back, then the page's name. */
 .page-head {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--space-2);
 	margin: 0 var(--space-2) var(--space-2);
@@ -1115,7 +1111,6 @@ body.side .thread-details {
 	resize: none;
 }
 
-/* Names as a message's author line has them. */
 .thread-details #members {
 	margin: 0 var(--space-2) var(--space-2);
 	color: var(--mute);
@@ -1123,7 +1118,6 @@ body.side .thread-details {
 	line-height: var(--text-small-line);
 }
 
-/* Instructions follow Tools as Tools follows the thread, not as a first heading. */
 .thread-details .bot > h3:first-child {
 	margin-top: var(--space-4);
 }
@@ -1139,19 +1133,6 @@ body.side .thread-details {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-	/* Visible the moment it opens, so what's inside can take focus; hidden only once it has slid away. */
-	.thread-details {
-		transition:
-			transform var(--duration-sheet) var(--ease-sheet),
-			visibility 0s var(--duration-sheet);
-	}
-
-	body.side .thread-details {
-		transition:
-			transform var(--duration-sheet) var(--ease-sheet),
-			visibility 0s;
-	}
-
 	:is(.thread-list > ul, .thread-family) > li {
 		transition: background-color var(--duration-press) var(--ease-out);
 	}
@@ -1187,8 +1168,8 @@ body.side .thread-details {
 	}
 }
 
-/* The thread's name as a pill: in each thread's head on a big screen, in the bar on a phone; its light first. */
-.thread-pill {
+/* The thread's name, the button for its details: in each thread's head on a big screen, in the bar on a phone; its light first. */
+.thread-name {
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
@@ -1208,7 +1189,13 @@ body.side .thread-details {
 	}
 }
 
-/* A runner, its models as rows with a check on the one asked, and how hard it thinks as a row of steps. */
+/* A model billed per use, on an API key rather than a subscription: a quiet $ after its provider. */
+.metered {
+	color: var(--mute);
+	font-size: var(--text-small);
+}
+
+/* A search, then each runner's models as rows with a check on the one asked, then how hard it thinks as a row of steps. */
 .model {
 	display: flex;
 	align-items: start;
@@ -1225,6 +1212,40 @@ body.side .thread-details {
 }
 
 .model-controls {
+	/* The search and the thinking stay put; only the list between them scrolls, however long it gets. */
+	display: flex;
+	flex-direction: column;
+	max-height: inherit;
+	min-height: 0;
+
+	.search {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		flex: none;
+		padding-bottom: var(--space-2);
+
+		input {
+			flex: 1;
+		}
+	}
+
+	.model-list {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scrollbar-width: none;
+		/* The last rows fade while there is more below; scrolled to the end, or with nothing to scroll, they don't. */
+		mask-image: linear-gradient(to top, rgb(0 0 0 / var(--more-below)), #000 var(--space-5));
+		animation: model-list-end linear both;
+		animation-timeline: scroll(self);
+	}
+
+	.model-list::-webkit-scrollbar {
+		display: none;
+	}
+
 	/* Rows follow each other like a model's; a line only before the next runner or the bots. */
 	> ul {
 		gap: 0;
@@ -1238,22 +1259,34 @@ body.side .thread-details {
 
 	.models {
 		display: grid;
-		margin-top: var(--space-2);
 	}
 
-	/* A model is a row; the one asked carries a check. */
+	/* A model is a row; the one asked carries a check, the one Enter would pick a soft fill. */
 	.model > svg.icon {
 		align-self: center;
 		margin-left: auto;
 		color: var(--pick);
 	}
 
-	/* On the models' words, past their buttons' border. */
+	.model[data-highlighted] {
+		background: color-mix(in srgb, CanvasText 10%, transparent);
+		color: var(--ink);
+	}
+
 	h3 {
 		margin: var(--space-2) calc(var(--space-2) + 1px) var(--space-1);
 		font-size: var(--text-small);
 		font-weight: 500;
 		color: var(--mute);
+	}
+
+	.foot {
+		flex: none;
+		border-top: 1px solid var(--line);
+
+		select {
+			width: 100%;
+		}
 	}
 
 	.thinking {
@@ -1264,12 +1297,35 @@ body.side .thread-details {
 	}
 }
 
-/* The same choice as one line you can write, for several at once or a model the list doesn't offer. */
-.model-picker {
-	.recipients {
-		display: block;
-		width: 100%;
-		margin: var(--space-2) 0 0;
+@property --more-below {
+	syntax: '<number>';
+	inherits: false;
+	initial-value: 1;
+}
+
+@keyframes model-list-end {
+	from {
+		--more-below: 0;
+	}
+	95% {
+		--more-below: 0;
+	}
+	to {
+		--more-below: 1;
+	}
+}
+
+/* The picker is its own column: the popover doesn't scroll, its list does. */
+.model-picker:not(.mentions) {
+	overflow: hidden;
+
+	&:popover-open {
+		display: flex;
+		flex-direction: column;
+	}
+
+	> .model-controls {
+		flex: 1 1 auto;
 	}
 }
 
@@ -1312,7 +1368,6 @@ body.side .thread-details {
 		}
 	}
 
-	/* A module's option opens its detail in the same frame. */
 	.option {
 		display: flex;
 		align-items: center;
@@ -1366,7 +1421,7 @@ body.side .thread-details {
 	}
 }
 
-:is(.thread-details, .model-picker) > button.close {
+.model-picker .search > button.close {
 	display: none;
 }
 
@@ -1478,16 +1533,61 @@ button.foot-toggle {
 	&.runner-toggle {
 		flex: 0 1 auto;
 	}
+
+	/* Blocked stays muted with nothing blocked; with some, its words go ink and a count sits beside them, like an unread count. */
+	&.blocked-toggle {
+		gap: var(--space-1);
+
+		&.some {
+			color: var(--ink);
+		}
+	}
+
+	.count {
+		min-width: var(--space-4);
+		padding: 0 var(--space-1);
+		border-radius: var(--radius-small);
+		background: var(--line);
+		color: var(--ink);
+		text-align: center;
+		font-variant-numeric: tabular-nums;
+	}
+
+	&.settings-toggle {
+		margin-inline-start: auto;
+		width: var(--small-button);
+		padding: 0;
+	}
 }
 
-/* The bots an @ can mention: a small popover over the message box, on phones too, never a sheet. */
+/* The bots and threads an @ can mention: a small popover over the message box, on phones too, never a sheet, never wider than the box.
+   A row's name takes one line and ends in … when it's too long; what it is sits on the right edge. */
 .model-picker.mentions {
 	inset: auto;
-	width: min(20rem, calc(100vw - 1rem));
+	width: min(22.5rem, var(--composer-width, 100vw), calc(100vw - 1rem));
 	max-height: min(40dvh, 20rem);
 	border: 1px solid var(--line);
 	border-radius: var(--radius-large);
 	padding: var(--space-2);
+
+	.model {
+		align-items: baseline;
+
+		> span {
+			flex: 1 1 auto;
+			min-width: 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		> small {
+			flex: none;
+			max-width: 50%;
+			margin-left: auto;
+			color: var(--mute);
+		}
+	}
 }
 
 /* The thread list's right edge drags; a line shows where while you hover or drag. */
@@ -1507,6 +1607,29 @@ button.foot-toggle {
 	body.resizing & {
 		outline: none;
 		background: linear-gradient(to right, transparent 2px, var(--edge) 2px 4px, transparent 4px);
+	}
+}
+
+/* The side column's edges drag the same way; they take no room between it and the threads beside it, and at the window's edge there is none. */
+.side-edge {
+	flex: none;
+	align-self: stretch;
+	position: relative;
+	z-index: 2;
+	width: 7px;
+	margin-inline: -3px -4px;
+	cursor: col-resize;
+	touch-action: none;
+
+	&:hover,
+	&:focus-visible,
+	body.resizing & {
+		outline: none;
+		background: linear-gradient(to right, transparent 3px, var(--edge) 3px 5px, transparent 5px);
+	}
+
+	&:last-child {
+		display: none;
 	}
 }
 
@@ -1608,7 +1731,7 @@ body.resizing {
 .tape {
 	display: grid;
 	gap: var(--space-2);
-	padding: var(--space-2) var(--space-2);
+	padding: var(--space-2);
 
 	.reel {
 		display: flex;
@@ -1687,7 +1810,7 @@ body.resizing {
 		z-index: 4;
 	}
 
-	/* No surface of its own: the messages scroll up behind it and past it, and only the pill, the back button and the dot are drawn on top of them. */
+	/* The bar, on the page's own surface so the messages scroll under it, not through it. */
 	.app-bar {
 		display: grid;
 		grid-template-columns: 1fr auto 1fr;
@@ -1697,18 +1820,7 @@ body.resizing {
 		inset: 0 0 auto;
 		z-index: 6;
 		padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-2) var(--space-2);
-
-		/* A slight wash from the very top, gone by the pill's middle: a message fades out as it slides out, and reads solid until then. */
-		&::before {
-			content: '';
-			position: absolute;
-			inset: 0 0 auto;
-			height: calc(var(--bar-height) / 2);
-			background: linear-gradient(Canvas, transparent);
-			z-index: -1;
-			pointer-events: none;
-		}
-
+		background: Canvas;
 		font-size: var(--text-ui);
 
 		> button:first-child {
@@ -1716,7 +1828,7 @@ body.resizing {
 			height: var(--control);
 		}
 
-		.thread-pill {
+		.thread-name {
 			max-width: calc(100vw - 8rem);
 		}
 	}
@@ -1731,6 +1843,14 @@ body.resizing {
 
 	.thread:not(.current) {
 		display: none;
+	}
+
+	/* A phone shows one column: the side column, when it's open, over its thread, under the bar. */
+	.threads > .side {
+		position: absolute;
+		inset: 0;
+		z-index: 3;
+		padding-top: calc(var(--control) + 3 * var(--space-2) + env(safe-area-inset-top));
 	}
 
 	.thread {
@@ -1791,35 +1911,18 @@ body.resizing {
 		visibility: hidden;
 	}
 
-	body.list .scrim {
-		opacity: 0;
-		pointer-events: none;
-	}
-
 	.list-foot {
 		margin: auto calc(-1 * var(--space-2)) 0;
 		padding-left: var(--space-2);
 	}
 
-	.list-edge {
+	:is(.list-edge, .side-edge) {
 		display: none;
 	}
 
-	.thread-details > .thread-title {
-		width: calc(100% - 3.6rem);
-	}
-
-	/* A sheet closes from its top corner; on a big screen a click outside does it. */
-	:is(.thread-details, .model-picker:not(.mentions)) > button.close {
+	/* A sheet closes from its top corner, the picker beside its search; on a big screen a click outside does it. */
+	.model-picker .search > button.close {
 		display: flex;
-		position: absolute;
-		top: calc(var(--space-2) + env(safe-area-inset-top));
-		right: var(--space-2);
-		z-index: 1;
-	}
-
-	.model-picker:not(.mentions) > button.close {
-		top: var(--space-2);
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
@@ -1829,4 +1932,79 @@ body.resizing {
 				visibility var(--duration-sheet) var(--ease-sheet);
 		}
 	}
+}
+
+/* The side column: beside the thread, as wide as a narrow thread, its pages in one frame whose body scrolls on its own. */
+.side {
+	display: flex;
+	flex: 0 1 var(--side-width, 26rem);
+	flex-direction: column;
+	min-width: 18rem;
+	align-self: stretch;
+	overflow: hidden;
+	border-right: 1px solid var(--line);
+	background: Canvas;
+	font-size: var(--text);
+	line-height: var(--text-line);
+
+	&:last-child {
+		border-right: 0;
+	}
+
+	.panes,
+	.pane {
+		height: 100%;
+		max-height: none;
+	}
+
+	.pane-body {
+		flex: 1;
+		padding: var(--space-2) var(--space-4) var(--space-5);
+	}
+}
+
+.panes nav.tabs {
+	display: flex;
+	flex: 1;
+	gap: var(--space-1);
+}
+
+/* A thread's overview: its recap, and while it's rewritten, the refresh icon breathing like a live turn. */
+.overview button.writing > svg.icon {
+	--blink-low: 0.55;
+	animation: blink 2.4s ease-in-out infinite;
+}
+
+/* A canvas takes the column's whole height and more of its width; tldraw draws everything inside its board. */
+.side.canvas {
+	flex-basis: var(--side-width, 44rem);
+
+	.pane-body {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		padding: 0;
+
+		> p {
+			margin: 0;
+			padding: var(--space-2) var(--space-4);
+		}
+	}
+
+	.board {
+		position: relative;
+		flex: 1;
+		min-height: 0;
+	}
+}
+
+/* An editor brought up for an agent with no canvas on screen: laid out and drawn, so text measures and exports, but off the page. */
+.unseen-canvas {
+	position: fixed;
+	top: 0;
+	left: -10000px;
+	width: 1200px;
+	height: 800px;
+	opacity: 0;
+	pointer-events: none;
 }

@@ -45,9 +45,9 @@ const second = (
 ).json.entry
 const v = (await answered(id)) ?? (await view(id))
 const inputs = (await conversationOf(v, 'echo/echo@bot')).entries
-	.filter((e) => e.kind === 'agent-ide.delivery')
+	.filter((e) => e.kind === 'ade.delivery')
 	.map((e) => text(e.model[0]))
-check(inputs.includes('oskar: second'), 'Pi placed the steer', JSON.stringify(inputs))
+check(inputs.includes('second'), 'Pi placed the steer', JSON.stringify(inputs))
 check(answers(v).length === 1, 'both inputs share one answer')
 check(
 	JSON.stringify(answers(v)[0]?.data.re) === JSON.stringify([first, second]),
@@ -132,7 +132,7 @@ const {
 } = await api('POST', '/api/threads', { title: 'gap' })
 const cyInputs = async () =>
 	(await conversationOf(await view(gap), 'echo/echo@cy')).entries
-		?.filter((e) => e.kind === 'agent-ide.delivery')
+		?.filter((e) => e.kind === 'ade.delivery')
 		.map((e) => text(e.model[0])) ?? []
 await api('POST', `/api/threads/${gap}/entries`, { body: 'work', to: toCy })
 await until(
@@ -161,7 +161,7 @@ await api('POST', `/api/threads/${gap}/entries`, { body: 'again', to: toCy })
 await answered(gap, 1)
 const last = (await cyInputs()).at(-1)
 check(
-	last === 'oskar: and a follow-up\n\noskar: again',
+	last === 'and a follow-up\n\nagain',
 	'the next input carries the withdrawn follow-up',
 	JSON.stringify(last),
 )

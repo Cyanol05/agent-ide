@@ -1,55 +1,59 @@
 /** Details and tools for the thread on screen, or the one about to start. */
 import html from '@solidjs/html'
-import { Icon } from './icons.js'
 import { createEffect, createSignal, For, Show } from 'solid-js'
+import { Icon } from './icons.js'
+import { Panes } from './panes.js'
+import { openSide, PageTabs } from './side.js'
 import {
 	api,
 	colorOf,
-	current,
-	drawer,
 	family,
 	forkedFrom,
 	homeBot,
 	newThreadTools,
 	people,
+	renameThread,
 	reloadThreads,
 	server,
 	setNewThreadTools,
-	threads,
+	threadOf,
+	titleOf,
 } from './server.js'
 import { shortLabel } from './agent.js'
 import { BotSettings, botThreads } from './bot.js'
 import { ThreadItem } from './thread-list.js'
 import { Dot, Switch } from './dot.js'
+import { PiSource } from './pi-sessions.js'
 
-export function ThreadDetails() {
-	const here = () => threads.find((thread) => thread.id === current())
+/** A thread's details as a page of the side column: its title, who's in it, its bot, its family and tools; a bot's threads open over them */
+export function DetailsPage(props) {
+	const id = () => props.id
+	const here = () => threadOf(id())
 	// A bot's home is named for it already, so only who else is there; each once, as an ask's line names them
 	const members = () => [
 		...new Map(
-			[...(people[current()] ?? []), ...(here()?.agents ?? []).map((agent) => agent.name)]
-				.filter((name) => name !== homeBot(current())?.name)
+			[...(people[id()] ?? []), ...(here()?.agents ?? []).map((agent) => agent.name)]
+				.filter((name) => name !== homeBot(id())?.name)
 				.map((name) => [shortLabel(name), name]),
 		).values(),
 	]
-	const depth = (id) => here()?.family.find((member) => member.id === id)?.depth ?? 0
-	const parentOf = (id) => {
-		const thread = threads.find((member) => member.id === id)
+	const depth = (member) => here()?.family.find((one) => one.id === member)?.depth ?? 0
+	const parentOf = (member) => {
+		const thread = threadOf(member)
 		return thread?.parent ?? forkedFrom(thread)
 	}
 	/**
-	 * The sheet's own line of descent: ancestors up to the root, itself, and its own descendants.
+	 * The thread's own line of descent: ancestors up to the root, itself, and its own descendants.
 	 * No siblings or cousins. A root thread's line is still every one of its children.
 	 */
 	const lineage = () => {
 		const ids = family()
-		const id = current()
-		if (!ids.includes(id)) return ids
+		if (!ids.includes(id())) return ids
 		const ancestors = new Set()
-		for (let above = parentOf(id); ids.includes(above); above = parentOf(above))
+		for (let above = parentOf(id()); ids.includes(above); above = parentOf(above))
 			ancestors.add(above)
 		const descendants = new Set()
-		const open = [id]
+		const open = [id()]
 		while (open.length) {
 			const parent = open.pop()
 			for (const child of ids)
@@ -58,42 +62,49 @@ export function ThreadDetails() {
 					open.push(child)
 				}
 		}
-		return ids.filter((member) => member === id || ancestors.has(member) || descendants.has(member))
+		return ids.filter(
+			(member) => member === id() || ancestors.has(member) || descendants.has(member),
+		)
 	}
-	// A bot's threads are a page of their own: a bot with hundreds of them must not push its own settings off the sheet
+	// A bot's threads are a page of their own: a bot with hundreds of them must not push its own settings off the page
 	const [page, setPage] = createSignal(false)
-	createEffect(current, () => {
-		setPage(false)
-	})
-	let sheet
-	createEffect(page, (open) => {
-		if (open) sheet.scrollTop = 0
-	})
 	const botFamily = () => {
-		const bot = homeBot(current())
+		const bot = homeBot(id())
 		return bot ? botThreads(bot) : { own: [], elsewhere: [] }
 	}
-	// The same tools for whichever thread is on screen, mounted anew when it changes
 	const tools = () =>
 		html`<h2>Tools</h2>
-			<${For} each=${() => [current()]}>${(id) => html`<${Tools} thread=${id} />`}<//>`
+			<${Tools} thread=${id()} />`
 	return html`
-		<div class="scrim" onClick=${() => drawer(null)}></div>
-		<section
-			class="thread-details"
-			aria-label="Thread details"
-			ref=${(element) => (sheet = element)}
-		>
-			<button
-				type="button"
-				class="ghost small close"
-				aria-label="Close"
-				onClick=${() => drawer(null)}
+		<aside class="side thread-details" aria-label="Thread details">
+			<${Panes}
+				title=${() => (id() ? titleOf(id()) : 'New thread')}
+				head=${html`<${PageTabs} id=${id()} />`}
+				onClose=${(_event) => openSide(id(), null)}
+				open=${page}
+				onBack=${(_event) => setPage(false)}
+				detailTitle="Threads"
+				detail=${html`<ul class="thread-family">
+						<${For} each=${() => botFamily().own}
+							>${(thread) =>
+								html`<${ThreadItem}
+									thread=${() => thread}
+									depth=${() => depth(thread.id) - 1}
+								/>`}<//
+						>
+					</ul>
+					<${Show} when=${() => botFamily().elsewhere.length}>
+						<h2>Also in</h2>
+						<ul class="thread-family">
+							<${For} each=${() => botFamily().elsewhere}
+								>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//
+							>
+						</ul>
+					<//>`}
 			>
-				<${Icon} name="close" />
-			</button>
-			<${Show} when=${() => !page()}>
-				<${Show} when=${current} keyed>${(id) => html`<${Title} thread=${id} />`}<//>
+				<${Show} when=${id} fallback=${html`<h2>New thread</h2>`}>
+					<${Title} thread=${id()} />
+				<//>
 				<${Show} when=${() => members().length > 1}>
 					<h2>In this thread</h2>
 					<p id="members">
@@ -107,7 +118,10 @@ export function ThreadDetails() {
 						<//>
 					</p>
 				<//>
-				<${Show} when=${() => homeBot(current())} keyed
+				<${Show} when=${() => server().modules.includes('pi-sessions') && id()}>
+					<${PiSource} thread=${id()} />
+				<//>
+				<${Show} when=${() => homeBot(id())} keyed
 					>${(bot) =>
 						html`<${BotSettings}
 							bot=${() => bot}
@@ -115,15 +129,10 @@ export function ThreadDetails() {
 							tools=${tools()}
 						/>`}<//
 				>
-				<${Show} when=${() => !homeBot(current())}>
+				<${Show} when=${() => !homeBot(id())}>
 					<${Show} when=${() => lineage().length > 1}>
 						<ul class="thread-family">
-							<${For}
-								each=${() =>
-									lineage()
-										.map((id) => threads.find((thread) => thread.id === id))
-										.filter(Boolean)}
-							>
+							<${For} each=${() => lineage().map(threadOf).filter(Boolean)}>
 								${(thread) =>
 									html`<${ThreadItem} thread=${() => thread} depth=${() => depth(thread.id)} />`}
 							<//>
@@ -132,47 +141,19 @@ export function ThreadDetails() {
 					${tools()}
 				<//>
 			<//>
-			<${Show} when=${page}>
-				<header class="page-head">
-					<button
-						type="button"
-						class="ghost small"
-						aria-label="Back to the bot"
-						onClick=${() => setPage(false)}
-					>
-						<${Icon} name="back" />
-					</button>
-					<h2>Threads</h2>
-				</header>
-				<ul class="thread-family">
-					<${For} each=${() => botFamily().own}
-						>${(thread) =>
-							html`<${ThreadItem} thread=${() => thread} depth=${() => depth(thread.id) - 1} />`}<//
-					>
-				</ul>
-				<${Show} when=${() => botFamily().elsewhere.length}>
-					<h2>Also in</h2>
-					<ul class="thread-family">
-						<${For} each=${() => botFamily().elsewhere}
-							>${(thread) => html`<${ThreadItem} thread=${() => thread} />`}<//
-						>
-					</ul>
-				<//>
-			<//>
-		</section>
+		</aside>
 	`
 }
 
 function Title(props) {
-	const title = () => threads.find((thread) => thread.id === props.thread)?.title ?? ''
+	const title = () => threadOf(props.thread)?.title ?? ''
 	const [error, setError] = createSignal('')
 	const save = async (field) => {
 		const next = field.value.trim()
 		if (next === title()) return
 		setError('')
 		try {
-			await api(`/api/threads/${props.thread}/title`, { title: next })
-			reloadThreads()
+			await renameThread(props.thread, next)
 		} catch (failure) {
 			setError(failure.message)
 			field.value = title()
@@ -230,8 +211,7 @@ function Title(props) {
 }
 
 function Tools(props) {
-	const tools = () =>
-		props.thread ? threads.find((thread) => thread.id === props.thread)?.tools : newThreadTools()
+	const tools = () => (props.thread ? threadOf(props.thread)?.tools : newThreadTools())
 	let field
 	const [text, setText] = createSignal('')
 	createEffect(
@@ -256,7 +236,7 @@ function Tools(props) {
 		setError('')
 		setNewThreadTools(tools)
 	}
-	const here = () => props.thread && threads.find((thread) => thread.id === props.thread)
+	const here = () => props.thread && threadOf(props.thread)
 	return html`
 		<div class="hands">
 			<${Switch}

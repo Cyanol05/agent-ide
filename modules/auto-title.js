@@ -1,12 +1,14 @@
-/** Polishes a default thread title once after its first answer, leaving chosen titles alone. MODULES=+auto-title.
+/** Polishes a default thread title once after its first answer, leaving chosen titles alone. On by default; MODULES=-auto-title turns it off.
  * `POST /api/threads/:id/auto-title` writes a new one on request, whatever the title is, and answers once it's written; a rename meanwhile wins.
- * `auto-title.model` in agent-ide.json selects a model:thinking, optionally @runner; the default is
+ * `auto-title.model` in ade.json selects a model:thinking, optionally @runner; the default is
  * the thread agent's own model and runner with thinking off (or the answering bot's with no thread agent). Failed attempts are logged, never retried.
  */
 import { defineDoc, defineExtension, defineTask } from '@earendil-works/pi-durable'
 import { messageText } from '../remote.js'
 import { AGENT, agentTo, background, finished } from '../util.js'
 import { defaultTitle } from '../apps/client/title.js'
+
+export const on = true
 
 const SYSTEM_PROMPT = `You are a title generator. You output ONLY a thread title. Nothing else.
 
@@ -72,7 +74,7 @@ function sanitizeThreadTitle(raw) {
 export function server(core) {
 	const modelName = core.config?.['auto-title']?.model
 	const Title = defineDoc({
-		kind: 'agent-ide.auto-title',
+		kind: 'ade.auto-title',
 		version: 1,
 		scope: 'conversation',
 		history: 'latest',
@@ -81,7 +83,7 @@ export function server(core) {
 		initial: () => ({ scheduled: false }),
 	})
 	const AutoTitle = defineTask({
-		name: 'agent-ide.auto-title',
+		name: 'ade.auto-title',
 		version: 1,
 		initial: () => ({ phase: 'write' }),
 		phases: {
@@ -157,7 +159,7 @@ export function server(core) {
 	}
 	return {
 		serve,
-		extension: defineExtension({ name: 'agent-ide.auto-title', tasks: [AutoTitle] }),
+		extension: defineExtension({ name: 'ade.auto-title', tasks: [AutoTitle] }),
 		async posted(tx, threadId, entry) {
 			if (!entry.data.answer) return
 			const state = await tx.doc(Title, threadId)

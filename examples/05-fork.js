@@ -82,10 +82,14 @@ check(
 	brief(fv),
 )
 const inputs = (await conversationOf(fv, 'echo/echo@laptop')).entries
-	.filter((e) => e.kind === 'agent-ide.delivery')
+	.filter((e) => e.kind === 'ade.delivery')
 	.map((e) => text(e.model[0]))
 check(
-	JSON.stringify(inputs) === JSON.stringify(['oskar: hello', 'ben: other way']),
+	JSON.stringify(inputs) ===
+		JSON.stringify([
+			'hello',
+			`[Every message above without a tag is oskar's.]\n\n<message from="ben">\nother way\n</message>`,
+		]),
 	'the forked agent read hello once, then only ben',
 	JSON.stringify(inputs),
 )
@@ -144,7 +148,7 @@ check(
 	early.agents.length === 1 &&
 		early.agents[0].name === asking.agents[0]?.name &&
 		early.agents[0].conversation !== asking.agents[0]?.conversation &&
-		!earlyHome.entries?.some((e) => e.kind === 'agent-ide.delivery'),
+		!earlyHome.entries?.some((e) => e.kind === 'ade.delivery'),
 	'forked before its first answer, the agent comes along in a conversation of its own that has seen nothing',
 	JSON.stringify([early.agents, earlyHome.entries]),
 )
@@ -155,7 +159,7 @@ srv = await server({ MODULES: '+director' })
 laptop = await runner('laptop', { wait: false })
 const after = await answered(a, 3, 15000)
 check(
-	Boolean(after?.entries.find((e) => e.data.author === 'cy')),
+	Boolean(after?.entries.some((e) => e.data.author === 'cy')),
 	'after restart the source answers its queued message',
 	brief(after),
 )
@@ -184,12 +188,11 @@ const settled = await answered(early.id)
 const earlyInputs = (
 	await conversationOf(settled ?? (await view(early.id)), 'echo/echo@bot')
 ).entries
-	.filter((e) => e.kind === 'agent-ide.delivery')
+	.filter((e) => e.kind === 'ade.delivery')
 	.map((e) => text(e.model[0]))
 check(
 	routed.json.to?.[0] === 'echo@bot' &&
-		JSON.stringify(earlyInputs) ===
-			JSON.stringify(['oskar: try this\n\noskar: @echo/echo@bot try another way']),
+		JSON.stringify(earlyInputs) === JSON.stringify(['try this\n\n@echo/echo@bot try another way']),
 	'the director reaches it, and its first input carries the inherited question exactly once',
 	JSON.stringify([routed.json, earlyInputs]),
 )
