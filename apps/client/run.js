@@ -287,11 +287,15 @@ const [conversations, setConversations] = createRoot(() => createStore({}, { sha
 
 export { conversations }
 
-/** Takes an agent's entries off the socket: whole on each new watch, then each one once, as it's written */
-export function heard(conversation, entries, whole) {
+/**
+ * Takes an agent's entries off the socket: as far back as the thread's messages on each new watch, then each one once,
+ * as it's written; `older` ones, for an earlier page of messages, go before
+ */
+export function heard(conversation, entries, { whole, older } = {}) {
 	const shown = entries.filter((entry) => entry.kind !== 'pi.system')
 	setConversations((all) => {
-		all[conversation] = whole || !all[conversation] ? shown : [...all[conversation], ...shown]
+		const had = all[conversation]
+		all[conversation] = whole || !had ? shown : older ? [...shown, ...had] : [...had, ...shown]
 	})
 }
 

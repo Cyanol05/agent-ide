@@ -1798,14 +1798,33 @@ function notify() {
 }
 harness.observeCommits({ advance: notify, end: () => {} })
 
-/** A browser watches one thread */
+/** Messages one page brings: the newest when a browser opens a thread, then each earlier page as it scrolls up */
+const PAGE = 50
+
+/** A browser watches one thread, or asks for its page before the ones it has */
 const watch = (socket, id) =>
 	(socket.watches = (socket.watches ?? Promise.resolve())
 		.then(() => rewatch(socket, id))
 		.catch(() => {}))
+const earlier = (socket, id, all) =>
+	(socket.watches = (socket.watches ?? Promise.resolve())
+		.then(() => socket.pages?.id === id && socket.pages.back(all))
+		.catch(() => {}))
+/**
+ * Where an agent's conversation reaches far enough back for the messages from `from` on: a turn before them,
+ * and the start of what its newest compaction keeps
+ */
+const covers = (from) => (entries) => {
+	const compaction = entries.findLast((entry) => entry.kind === 'pi.compaction')
+	if (compaction && compaction.head < entries[0].id) return false
+	return entries.some(
+		(entry) =>
+			entry.kind === DELIVERY && entry.data?.held?.length && Math.max(...entry.data.held) < from,
+	)
+}
 async function rewatch(socket, id) {
 	const old = socket.watching
-	socket.watching = undefined
+	socket.watching = socket.pages = undefined
 	for (const watch of old ?? []) await watch.stop()
 	const row = typeof id === 'number' && (await harness.watchDoc(Thread, id, context))
 	if (!row) return
@@ -1819,10 +1838,33 @@ async function rewatch(socket, id) {
 	if (!keep(messages)) return
 	/** Who's there changes with a message, or a read */
 	const present = async () => ({ people: await people(id) })
-	await told(handle, messages, async (entries) =>
-		send({ entries: entries.filter((entry) => entry.kind === KIND), ...(await present()) }),
+	const only = (entries) => entries.filter((entry) => entry.kind === KIND)
+	/** Its newest page of messages, at least PAGE of them, or all there are */
+	const page = (after) => (entries) =>
+		only(entries).filter((entry) => entry.id < after).length >= PAGE
+	const thread = await told(
+		handle,
+		messages,
+		async (entries, more) => send({ entries: only(entries), ...more, ...(await present()) }),
+		{ enough: page(Infinity) },
 	)
-	const followed = new Set()
+	/** The oldest message the browser has, or 0 once it has them all, which its agents' turns reach back to */
+	const from = () => (thread.earlier() ? (only(thread.entries())[0]?.id ?? 0) : 0)
+	/** Each followed agent's way back through its conversation */
+	const pagers = new Map()
+	socket.pages = {
+		id,
+		/** The page before the oldest message sent, or all of them: each agent's turns for it first, then the messages */
+		back: async (all) => {
+			const oldest = only(thread.entries())[0]?.id ?? Infinity
+			const older = await thread.back(all ? () => false : page(oldest))
+			for (const [agent, back] of pagers) {
+				const entries = await back(covers(from()))
+				if (entries.length) send({ agent, older: true, entries })
+			}
+			send({ older: true, earlier: older.earlier, entries: only(older.entries) })
+		},
+	}
 	/** By conversation, which stays as an agent switches model or runner */
 	const follow = async (agents) => {
 		for (const { conversation: agent } of Object.values(agents)) {
@@ -1844,9 +1886,9 @@ async function rewatch(socket, id) {
 				return { ...doing(value), ...named }
 			}
 			send({ agent, live: await live(watch.value) })
-			// Its conversation, whole once, then each entry as it's written, beside its live work
+			// Its conversation as far back as the messages sent, then each entry as it's written, beside its live work
 			const shown = ({ id, kind, model, data, head }) => ({ id, kind, model, data, head })
-			await told(
+			const transcript = await told(
 				handle,
 				watch,
 				(entries) =>
@@ -1854,39 +1896,63 @@ async function rewatch(socket, id) {
 						agent,
 						entries: entries.filter((entry) => entry.kind !== 'pi.system').map(shown),
 					}),
-				async (value) => send({ agent, live: await live(value) }),
+				{ then: async (value) => send({ agent, live: await live(value) }), enough: covers(from()) },
+			)
+			pagers.set(agent, async (enough) =>
+				(await transcript.back(enough)).entries
+					.filter((entry) => entry.kind !== 'pi.system')
+					.map(shown),
 			)
 		}
 	}
+	const followed = new Set()
 	await follow(row.value.agents)
 	row.start(async ({ value }) => (await follow(value.agents), send(await present())))
 }
 /**
- * A conversation's entries through Pi's transcript, which keeps them whole: all of them first, then each new batch once.
- * `then` hears every update after its batch.
+ * A conversation's entries through Pi's transcript, which keeps them whole: the newest first, back as far as `enough`
+ * says, then each new batch once; the first batch says whether more lie `earlier`. `then` hears every update after
+ * its batch. `back(enough)` loads further back and answers the entries it added, oldest first.
  */
-async function told(handle, watch, send, then) {
+async function told(handle, watch, send, { then, enough = () => true } = {}) {
 	const transcript = new ConversationTranscript(
 		(query, limit, ctx) => handle.entries(query, limit, undefined, ctx),
-		{ pageSize: 500 },
+		{ pageSize: 200 },
 	)
-	let newest = 0,
+	let view,
+		newest = 0,
+		oldest = Infinity,
 		first = true
+	const entries = () => view.items.flatMap((item) => (item.kind === 'entry' ? [item.entry] : []))
+	const more = () => view.items[0]?.kind === 'earlier'
+	const load = async (enough) => {
+		while (more() && !enough(entries())) view = await transcript.loadEarlier(context)
+	}
 	const tell = async (value) => {
-		let view = transcript.merge(value)
-		while (view.items[0]?.kind === 'earlier') view = await transcript.loadEarlier(context)
+		view = transcript.merge(value)
 		for (let gap; (gap = view.items.find((item) => item.kind === 'gap'));)
 			view = await transcript.fillGap(gap, context)
-		const fresh = view.items.flatMap((item) =>
-			item.kind === 'entry' && item.entry.id > newest ? [item.entry] : [],
-		)
+		if (first) await load(enough)
+		const fresh = entries().filter((entry) => entry.id > newest)
 		if (!fresh.length && !first) return
+		if (first) oldest = entries()[0]?.id ?? Infinity
+		const said = first ? { earlier: more() } : {}
 		first = false
 		newest = fresh.at(-1)?.id ?? newest
-		await send(fresh)
+		await send(fresh, said)
 	}
 	await tell(watch.value)
 	watch.start(async ({ value }) => (await tell(value), await then?.(value)))
+	return {
+		entries,
+		earlier: more,
+		back: async (enough) => {
+			await load(enough)
+			const added = entries().filter((entry) => entry.id < oldest)
+			oldest = entries()[0]?.id ?? oldest
+			return { entries: added, earlier: more() }
+		},
+	}
 }
 /** An agent's newest delivery entry from `first` on, for a run longer than its watch's window */
 async function lastDelivery(handle, first) {
@@ -1982,7 +2048,11 @@ async function upgrade(req, raw, head) {
 			}
 		})
 	if (!name) {
-		listen((text) => watch(socket, JSON.parse(text).watch))
+		listen((text) => {
+			const message = JSON.parse(text)
+			if ('earlier' in message) earlier(socket, message.earlier, message.all)
+			else watch(socket, message.watch)
+		})
 		return clients.add(socket)
 	}
 	/** A runner shows its key before it counts, so nobody can take its name */

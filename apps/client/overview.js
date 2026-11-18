@@ -8,7 +8,7 @@ import { createMemo, createSignal, onSettled, refresh, Show, untrack } from 'sol
 import { openSide, PageTabs } from './side.js'
 import { Panes } from './panes.js'
 import { Icon } from './icons.js'
-import { api, followThread } from './server.js'
+import { api, followThread, loadEarlier } from './server.js'
 import { markdown } from './markdown.js'
 import { report } from './notice.js'
 import { links } from './thread.js'
@@ -87,13 +87,18 @@ const Page = (props) => html`
 			const at = link?.getAttribute('href')?.match(/^#message-(\d+)$/)?.[1]
 			if (!at) return
 			event.preventDefault()
-			const rows = document.querySelectorAll(
-				`.thread[data-thread="${props.thread}"] li[data-message]`,
+			// Messages count from the thread's first, so the thread brings all of them before one is found
+			loadEarlier(props.thread, true).then(() =>
+				requestAnimationFrame(() => {
+					const rows = document.querySelectorAll(
+						`.thread[data-thread="${props.thread}"] li[data-message]`,
+					)
+					const row = [...rows].find((row) => row.dataset.message === at)
+					row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+					row?.classList.add('handed')
+					setTimeout(() => row?.classList.remove('handed'), 1500)
+				}),
 			)
-			const row = [...rows].find((row) => row.dataset.message === at)
-			row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-			row?.classList.add('handed')
-			setTimeout(() => row?.classList.remove('handed'), 1500)
 		}}
 	/>
 `

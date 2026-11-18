@@ -24,8 +24,11 @@ import {
 	colorOf,
 	columns,
 	current,
+	earlier,
 	entries,
+	loadEarlier,
 	merged,
+	pagers,
 	fork,
 	followThread,
 	forkedFrom,
@@ -35,6 +38,7 @@ import {
 	newThreadTools,
 	openThread,
 	server,
+	setEarlier,
 	setEntries,
 	setPeople,
 	threads,
@@ -122,6 +126,10 @@ export function Thread(props) {
 		},
 	)
 	const [unfolded, setUnfolded] = createSignal(false)
+	/** Where the messages on screen start: the oldest one, while there are more before it */
+	const start = createMemo(() =>
+		earlier[props.id] ? (messages().find((entry) => !entry.sending)?.id ?? 0) : -Infinity,
+	)
 	/** Each agent's turns and cuts, worked out again only when its own conversation grows, not when a message lands */
 	const owner = getOwner()
 	const memos = new Map()
@@ -140,6 +148,22 @@ export function Thread(props) {
 	 * A turn that only answered is its answer; an answer to a post shows in the post.
 	 */
 	let built = new Map()
+	/** The newest compaction's cut, once the messages on screen reach it */
+	const cut = createMemo(() => {
+		const newest = newestCut(
+			(latest(thread)?.agents ?? []).flatMap((agent) =>
+				perConversation(agent.conversation)
+					.cuts()
+					.map((cut) => ({ ...cut, cut: true })),
+			),
+		)
+		return newest && newest.at >= start() ? newest : null
+	})
+	/** Scrolled near the top, the page before comes, unless what's above is folded into memory lines */
+	const nearTop = () => {
+		if (list && list.scrollTop < list.clientHeight && earlier[props.id] && (!cut() || unfolded()))
+			loadEarlier(props.id)
+	}
 	const rows = createProjection(
 		() => {
 			const all = messages()
@@ -249,21 +273,17 @@ export function Thread(props) {
 				at: entry.id,
 				sent: sentTo(entry),
 			}))
-			const cuts = (latest(thread)?.agents ?? []).flatMap((agent) =>
-				perConversation(agent.conversation)
-					.cuts()
-					.map((cut) => ({ ...cut, cut: true })),
-			)
 			// One cut line, the newest compaction's; what the agent reads as lines folds into them, unless opened from it
-			const newest = newestCut(cuts)
+			const newest = cut()
 			const folded = newest && !unfolded() ? newest : null
-			const above = (row) => folded && row.at < folded.at
+			// Only what lies among the messages on screen; older rows come with their page
+			const shows = (row) => row.at >= start() && !(folded && row.at < folded.at)
 			const lines = folded ? folded.lines.map((line) => ({ ...line, line: true })) : []
 			const rows = [
-				...said.filter((row) => !above(row)),
-				...turns.filter((row) => !above(row)),
-				...lasting.filter((row) => !above(row)),
-				...asked.filter((row) => !above(row)),
+				...said.filter(shows),
+				...turns.filter(shows),
+				...lasting.filter(shows),
+				...asked.filter(shows),
 				...lines,
 				...(newest ? [newest] : []),
 			].sort((one, other) => one.at - other.at)
@@ -314,9 +334,23 @@ export function Thread(props) {
 		() => props.id,
 		(id) => {
 			if (!id) return
-			let first = true
-			/** Agents whose whole conversation came on this watch; the next batch from each is appended */
+			let first = true,
+				socket,
+				asking = null,
+				answered = () => {}
+			/** Agents whose conversation came on this watch; the next batch from each is appended */
 			const followed = new Set()
+			const answer = () => {
+				asking = null
+				answered()
+			}
+			pagers.set(id, (all) => {
+				if (asking) return asking.then(() => all && loadEarlier(id, true))
+				if (!socket || socket.readyState !== socket.OPEN) return Promise.resolve()
+				asking = new Promise((resolve) => (answered = resolve))
+				socket.send(JSON.stringify({ earlier: id, all }))
+				return asking
+			})
 			stuck = true
 			sent = null
 			if (room) room.style.height = '0px'
@@ -326,7 +360,25 @@ export function Thread(props) {
 			const close = watch(
 				(message) => {
 					if (message.thread !== id) return
-					if (message.entries && !message.agent) {
+					if (message.older && !message.agent) {
+						// An earlier page goes on top, and the view stays where it was
+						hold()
+						setEntries((all) => {
+							const have = new Set((all[id] ?? []).map((entry) => entry.id))
+							all[id] = [
+								...message.entries.filter((entry) => !have.has(entry.id)),
+								...(all[id] ?? []),
+							]
+						})
+						setEarlier((all) => {
+							all[id] = message.earlier
+						})
+						answer()
+					} else if (message.entries && !message.agent) {
+						if ('earlier' in message)
+							setEarlier((all) => {
+								all[id] = message.earlier
+							})
 						const snapshot = first
 						first = false
 						// Your own send always shows, live or in a reconnect's snapshot; others' entries follow only a view already at the bottom.
@@ -346,8 +398,11 @@ export function Thread(props) {
 							all[id] = message.people
 						})
 					if (message.agent && message.entries) {
-						heard(message.agent, message.entries, !followed.has(message.agent))
-						followed.add(message.agent)
+						heard(message.agent, message.entries, {
+							whole: !message.older && !followed.has(message.agent),
+							older: message.older,
+						})
+						if (!message.older) followed.add(message.agent)
 					}
 					if (message.live)
 						setDoing((work) => {
@@ -356,15 +411,19 @@ export function Thread(props) {
 							reconcile(message.live, 'callId')(work[id][message.agent])
 						})
 				},
-				(socket) => {
+				(opened) => {
+					socket = opened
 					first = true
 					followed.clear()
+					answer()
 					socket.send(JSON.stringify({ watch: id }))
 				},
 			)
 			// Its messages stay, so coming back shows them at once while the snapshot catches up.
 			return () => {
 				close()
+				answer()
+				pagers.delete(id)
 				document.removeEventListener('visibilitychange', onVisible)
 				setDoing((work) => {
 					delete work[id]
@@ -375,7 +434,8 @@ export function Thread(props) {
 	/** Your last message's row; the room under it is what the answer hasn't filled yet. The row, not its offset, so rows folding above it (a compaction) move it too */
 	let sent = null,
 		room,
-		bottom = () => {}
+		bottom = () => {},
+		hold = () => {}
 	// What you send keeps some of the view free under it, so the answer fills that without moving anything, and what came before stays in sight
 	createEffect(
 		() => messages().at(-1)?.sending,
@@ -446,13 +506,31 @@ export function Thread(props) {
 			stuck = list.scrollTop + list.clientHeight >= list.scrollHeight - 4
 			followed = list.scrollHeight
 		}
+		/**
+		 * The first row in view before an earlier page goes on top, and where its end sat; it stays there until that page is
+		 * laid out. Its end, since its author's name goes once the row above it is theirs too.
+		 */
+		let kept = null
+		hold = () => {
+			const edge = list.getBoundingClientRect().top
+			const row = [...list.children].find((row) => row.getBoundingClientRect().bottom > edge)
+			if (!row) return
+			kept = { row, bottom: row.getBoundingClientRect().bottom }
+			requestAnimationFrame(() => requestAnimationFrame(() => (kept = null)))
+		}
 		bottom = () => {
+			if (kept) {
+				list.scrollTop += kept.row.getBoundingClientRect().bottom - kept.bottom
+				followed = list.scrollHeight
+				return nearTop()
+			}
 			if (held) return keep()
 			if (padded && sent === null) room.style.height = '0px'
 			padded = false
 			fill()
 			if (stuck) list.scrollTop = list.scrollHeight
 			followed = list.scrollHeight
+			nearTop()
 		}
 		sizes = new ResizeObserver(() => {
 			const column = list.parentElement
@@ -538,6 +616,7 @@ export function Thread(props) {
 						// Only a scroll at the height we last followed is the reader's; one from content moving under them keeps following
 						if (list.scrollHeight === followed)
 							stuck = list.scrollTop + list.clientHeight >= list.scrollHeight - 4
+						nearTop()
 					}}
 					aria-label="Messages"
 				>
@@ -629,7 +708,8 @@ export function Thread(props) {
 														<${Message}
 															thread=${() => props.id}
 															entry=${() => row().entry}
-															at=${() => positions().get(row().entry.id)}
+															at=${() =>
+																earlier[props.id] ? undefined : positions().get(row().entry.id)}
 															sent=${() => row().sent}
 															above=${() => row().above}
 														/>

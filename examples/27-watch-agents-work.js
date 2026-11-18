@@ -1,4 +1,4 @@
-/** A browser watching a thread hears its messages, every one first and then each as it lands, and what each agent is doing as it changes */
+/** A browser watching a thread hears its messages, its newest page first, earlier pages when it asks, then each as it lands, and what each agent is doing as it changes */
 import {
 	fauxAssistantMessage,
 	fauxThinking,
@@ -46,7 +46,11 @@ function watch(thread) {
 		if (m.thread === thread) heard.push(m)
 	}
 	socket.onopen = () => socket.send(JSON.stringify({ watch: thread }))
-	return { heard, close: () => socket.close() }
+	return {
+		heard,
+		earlier: (all) => socket.send(JSON.stringify({ earlier: thread, all })),
+		close: () => socket.close(),
+	}
 }
 // Live work is keyed by the agent's conversation, which stays as it switches model or runner
 const lives = (heard) => heard.filter((m) => m.live).map((m) => m.live)
@@ -56,8 +60,9 @@ const said = (heard) =>
 const first = watch(id)
 await until(async () => first.heard.length)
 check(
-	JSON.stringify(first.heard) === JSON.stringify([{ thread: id, entries: [], people: [] }]),
-	'a new thread says first that it has no messages, no people and no agents',
+	JSON.stringify(first.heard) ===
+		JSON.stringify([{ thread: id, entries: [], earlier: false, people: [] }]),
+	'a new thread says first that it has no messages, none before them, no people and no agents',
 	JSON.stringify(first.heard),
 )
 const {
@@ -187,13 +192,51 @@ await kill(srv, 'SIGKILL')
 srv = await server()
 const restarted = watch(id)
 const now = await until(async () => lives(restarted.heard)[0], 8000, 20)
-const whole = said(restarted.heard.slice(0, 1))
+// A long thread opens on its newest page; each earlier one comes when asked, the agent's turns for it first
+const opened = restarted.heard[0]
 check(
-	JSON.stringify(whole.slice(0, 4)) === JSON.stringify(['work', long, 'again', long]) &&
-		JSON.stringify(whole.slice(4).sort()) === JSON.stringify([...burst].sort()),
-	'after a restart, watching again starts with the whole thread',
-	JSON.stringify(restarted.heard[0])?.slice(0, 200),
+	opened.earlier === true &&
+		opened.entries.length >= 50 &&
+		opened.entries.length < burst.length &&
+		opened.entries.every((entry) => entry.data.body.startsWith('note ')),
+	'after a restart, watching again starts with the newest page and says there are messages before it',
+	`${opened.entries.length} ${opened.earlier}`,
 )
+const pages = [opened.entries]
+for (let more = true; more;) {
+	const from = restarted.heard.length
+	restarted.earlier()
+	const page = await until(async () => restarted.heard.slice(from).find((m) => m.older && !m.agent))
+	if (!page) break
+	pages.unshift(page.entries)
+	more = page.earlier
+}
+const paged = pages.flat().map((entry) => entry.data.body)
+check(
+	JSON.stringify(paged.slice(0, 4)) === JSON.stringify(['work', long, 'again', long]) &&
+		JSON.stringify(paged.slice(4).sort()) === JSON.stringify([...burst].sort()) &&
+		pages.length > 2,
+	'asked for earlier pages, it brings the rest, each message once, until none is left',
+	`${pages.length} pages, ${paged.length} messages`,
+)
+const turns = restarted.heard.filter((m) => m.agent && m.entries).flatMap((m) => m.entries)
+check(
+	turns.filter((entry) => entry.kind === 'ade.delivery').length === 2 &&
+		restarted.heard.findIndex((m) => m.agent && m.older) <
+			restarted.heard.findLastIndex((m) => m.older && !m.agent),
+	"the agent's turns for the earlier messages come before them",
+)
+const again = watch(id)
+await until(async () => again.heard.length)
+again.earlier(true)
+const rest = await until(async () => again.heard.find((m) => m.older && !m.agent))
+check(
+	rest?.earlier === false &&
+		JSON.stringify([...rest.entries, ...again.heard[0].entries].map((entry) => entry.data.body)) ===
+			JSON.stringify(paged),
+	'asked for all of it, the rest comes at once',
+)
+again.close()
 check(
 	now && !now.run && !now.tools.length,
 	'after a restart, watching again says the agent is idle',

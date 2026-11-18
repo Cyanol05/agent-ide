@@ -22,7 +22,8 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   setTitle, setTitleIn, setTools, toolList, toolsOf   a thread's title and tools
   receipt, once                     a retried request does its work once
   routes                            every HTTP route, as the README lists them
-  watch, rewatch, told, doing       /ws: a browser watching one thread and its agents' live work
+  watch, rewatch, told, doing       /ws: a browser watching one thread and its agents' live work, its newest PAGE of messages first
+  earlier, covers                   an earlier page on request, after the agent turns that reach back to it
   mintKey, revoke, upgrade          runner keys and the runner's socket; a module's own thread socket (its `connect`)
   saveSettings, restart, connectSelf   settings, restart, the server lending its own machine, under the name it first got
 echo.js                  echo/try scripted model responses: file tools, slow commands, posts, bots and director
@@ -68,9 +69,10 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   client.html            the walkthrough and the app's page; the promises every change serves
   client.js              root: just the chat, or the live system around it
   server.js              the server as the client sees it: api, watch, lists (threads, runners, bots),
-                         threadOf, current, openThread, fork, entries store
+                         threadOf, current, openThread, fork, entries store, earlier and loadEarlier (the page before, or all)
   thread.js              one thread on screen
-    Thread               subscribes to the thread over /ws, keeps its messages, follows the bottom (follow)
+    Thread               subscribes to the thread over /ws, keeps its messages, follows the bottom (follow), asks for the
+                         page before near the top (nearTop) and holds the view still as it lands (hold)
     rows                 projection: messages plus each agent's turns, a row for each lasting call (an ask, a bot change),
                          live turn, compaction cuts, folded memory lines
     Asked                in a bot's home, a question another thread asked it, a received `Cross` row that opens to the question and its answer (askedHere)

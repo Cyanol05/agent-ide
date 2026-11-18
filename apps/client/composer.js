@@ -28,6 +28,7 @@ import {
 	current,
 	entries,
 	homeBot,
+	loadEarlier,
 	openThread,
 	reloadBots,
 	runners,
@@ -512,8 +513,11 @@ export function Composer(props) {
 				popover
 				ref=${(el) => (recall = el)}
 				onToggle=${(event) => {
-					if (event.newState === 'open') placePopover(recall, recallButton)
-					else setLines(false)
+					// The tape counts the thread's messages from its first, so opening it brings them all
+					if (event.newState === 'open') {
+						placePopover(recall, recallButton)
+						loadEarlier(props.thread, true)
+					} else setLines(false)
 				}}
 			>
 				<${Show} when=${() => active()}>
