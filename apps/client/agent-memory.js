@@ -12,7 +12,7 @@ import {
 	Show,
 	untrack,
 } from 'solid-js'
-import { api, connected, current, entries, server, threads, threadOf } from './server.js'
+import { api, connected, current, entries, server, threadOf } from './server.js'
 import { cutsOf, newestCut, plural } from './run.js'
 
 /**

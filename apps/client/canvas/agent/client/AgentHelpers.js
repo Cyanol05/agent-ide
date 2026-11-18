@@ -405,8 +405,8 @@ export class AgentHelpers {
 			return value
 		}
 		if (typeof value === 'string') {
-			const parsedValue = parseFloat(value)
-			if (isNaN(parsedValue)) {
+			const parsedValue = Number.parseFloat(value)
+			if (Number.isNaN(parsedValue)) {
 				return null
 			}
 			return parsedValue

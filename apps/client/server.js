@@ -57,7 +57,7 @@ export const api = (path, body, method = body === undefined ? 'GET' : 'POST') =>
 		})
 
 /** A socket belongs to its caller; disposing it also cancels a pending reconnect. */
-export function watch(receive, opened = () => {}, closed = () => {}) {
+export function watch(receive, opened = (_socket) => {}, closed = () => {}) {
 	let socket, timer
 	const connect = () => {
 		socket = new WebSocket(`${url.replace(/^http/, 'ws')}/ws`)

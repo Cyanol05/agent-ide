@@ -98,6 +98,7 @@ export function Wires(props) {
 }
 
 const directions = { left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1] }
+/** @param {number | "to"} at */
 const point = (rect, side, at = 0.5) => {
 	const horizontal = side === 'left' || side === 'right'
 	const size = horizontal ? rect.height : rect.width
@@ -110,7 +111,9 @@ const point = (rect, side, at = 0.5) => {
 
 function visible(node) {
 	if (!node?.isConnected) return false
-	let { left, right, top, bottom, width, height } = node.getBoundingClientRect()
+	const rect = node.getBoundingClientRect()
+	const { width, height } = rect
+	let { left, right, top, bottom } = rect
 	if (!width || !height) return false
 	for (let parent = node.parentElement; parent; parent = parent.parentElement) {
 		const style = getComputedStyle(parent),

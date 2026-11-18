@@ -106,7 +106,7 @@ function convertTextShapeToFocused(editor, shape) {
 		maxWidth: shape.props.autoSize ? null : shape.props.w,
 		note: shape.meta.note ?? '',
 		shapeId: convertTldrawIdToSimpleId(shape.id),
-		text: text,
+		text,
 		x: position.x,
 		y: position.y,
 	}

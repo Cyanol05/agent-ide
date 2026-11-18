@@ -93,7 +93,7 @@ const Page = (props) => html`
 					const rows = document.querySelectorAll(
 						`.thread[data-thread="${props.thread}"] li[data-message]`,
 					)
-					const row = [...rows].find((row) => row.dataset.message === at)
+					const row = [...rows].find((row) => row.getAttribute('data-message') === at)
 					row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
 					row?.classList.add('handed')
 					setTimeout(() => row?.classList.remove('handed'), 1500)

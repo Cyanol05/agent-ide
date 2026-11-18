@@ -16,7 +16,7 @@ export function Tutorial(props) {
 		const sections = new IntersectionObserver(
 			(list) => {
 				for (const entry of list)
-					if (entry.isIntersecting) stage.dataset.focus = entry.target.dataset.focus
+					if (entry.isIntersecting) stage.dataset.focus = entry.target.getAttribute('data-focus')
 			},
 			{ rootMargin: '-45% 0px -45% 0px' },
 		)

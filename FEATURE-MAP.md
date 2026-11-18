@@ -66,6 +66,7 @@ modules/
                          The other way: bring (what pi hands its model from a session, into a new thread: newAgent, setUp, post), serve
                          (`/api/pi-sessions`), listPiSessions and readPiSession (the runner's `pi-session-list` and `-read`, over pi's own projection and convertToLlm)
 apps/client/             the web client, Solid 2, no build (README.md there)
+  browser-modules.d.ts   checker declarations for browser-only CDN imports (tldraw, zod, diff)
   client.html            the walkthrough and the app's page; the promises every change serves
   client.js              root: just the chat, or the live system around it
   server.js              the server as the client sees it: api, watch, lists (threads, runners, bots),

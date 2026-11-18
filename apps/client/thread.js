@@ -37,7 +37,6 @@ import {
 	me,
 	newThreadTools,
 	openThread,
-	server,
 	setEarlier,
 	setEntries,
 	setPeople,
@@ -347,7 +346,7 @@ export function Thread(props) {
 			pagers.set(id, (all) => {
 				if (asking) return asking.then(() => all && loadEarlier(id, true))
 				if (!socket || socket.readyState !== socket.OPEN) return Promise.resolve()
-				asking = new Promise((resolve) => (answered = resolve))
+				asking = new Promise((resolve) => (answered = () => resolve(undefined)))
 				socket.send(JSON.stringify({ earlier: id, all }))
 				return asking
 			})
@@ -454,8 +453,8 @@ export function Thread(props) {
 			if (!sent.isConnected) sent = [...list.querySelectorAll(':scope > li.mine')].at(-1) ?? null
 			if (sent === null) return void (room.style.height = '0px')
 			const style = getComputedStyle(list)
-			const top = parseFloat(style.paddingTop)
-			const seen = list.clientHeight - top - parseFloat(style.paddingBottom)
+			const top = Number.parseFloat(style.paddingTop)
+			const seen = list.clientHeight - top - Number.parseFloat(style.paddingBottom)
 			const offset = (element, edge) =>
 				element.getBoundingClientRect()[edge] - list.getBoundingClientRect().top + list.scrollTop
 			const mine = offset(sent, 'bottom')
@@ -541,8 +540,8 @@ export function Thread(props) {
 				const style = getComputedStyle(element)
 				return (
 					element.getBoundingClientRect().height +
-					parseFloat(style.marginTop) +
-					parseFloat(style.marginBottom)
+					Number.parseFloat(style.marginTop) +
+					Number.parseFloat(style.marginBottom)
 				)
 			}
 			column.style.setProperty(

@@ -30,6 +30,7 @@ export function System() {
 		const row = (to) =>
 			`[data-runner="${CSS.escape(to.runner)}"] [data-agent="${CSS.escape(rowOf(to))}"]`
 		const state = (status) => (['working', 'blocked'].includes(status) ? status : '')
+		/** @type {{ from: string, to: string, fromSide: string, toSide: string, fromAt: number | string, toAt: number, state: string }[]} */
 		const edges = [
 			{
 				from: '.client',
