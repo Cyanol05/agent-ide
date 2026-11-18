@@ -37,7 +37,7 @@ export function Turn(props) {
 		if (running)
 			return running.name === 'post'
 				? `asking ${askedThread(running) ? titleOf(askedThread(running)) : (running.args.title ?? 'a new thread')}`
-				: `${running.name}(${argsLine(running)})`
+				: `${running.name}(${(touched(running.args) ?? JSON.stringify(running.args)).split('\n')[0]})`
 		if (props.agent.status === 'blocked')
 			return `waiting for ${props.agent.to?.runner ?? 'its runner'} to come online`
 		return messageText(live()?.message) ? 'writing' : 'thinking'
@@ -68,7 +68,10 @@ export function Turn(props) {
 					</small>
 				</summary>
 				<${Show} when=${open}>
-					<ol class="steps" style=${() => `--label: ${labelWidth(steps())}ch`}>
+					<ol
+						class="steps"
+						style=${() => `--label: ${Math.max(...steps().map((step) => (step.name ?? step.label ?? '').length))}ch`}
+					>
 						<${For} each=${steps} keyed=${(step) => step.key}
 							>${(step) => html`<${Step} step=${() => step()} />`}<//
 						>
@@ -134,10 +137,6 @@ function Step(props) {
 	`
 }
 
-/** The widest label among a turn's steps, so their inputs start at one column */
-const labelWidth = (steps) =>
-	Math.max(...steps.map((step) => (step.name ?? step.label ?? '').length))
-
 function Call(props) {
 	const result = () => props.step.result
 	const [open, setOpen] = createSignal(false)
@@ -157,7 +156,9 @@ function Call(props) {
 			<details onToggle=${(event) => toggle(event.currentTarget.open)}>
 				<summary>
 					<span class="tool">${() => props.step.name ?? props.step.label}</span>
-					<span class="in">${() => input(props.step)}</span>
+					<span class="in"
+						>${() => (props.step.name ? JSON.stringify(props.step.args) : (props.step.in ?? props.step.text ?? ''))}</span
+					>
 				</summary>
 				<${Show} when=${open}>
 					<div class="whole">
@@ -173,8 +174,6 @@ ${() => (props.step.name ? JSON.stringify(props.step.args, null, 2) : props.step
 	`
 }
 
-const input = (step) => (step.name ? JSON.stringify(step.args) : (step.in ?? step.text ?? ''))
-
 /** The messages an opened handed step lights where they are in the thread */
 const [lit, setLit] = createRoot(() => createSignal(null))
 /** Lights a step's messages, or with `null` puts out what `step` lit */
@@ -188,16 +187,6 @@ const light = (on, step) =>
 	)
 export const litIn = (thread, id) => lit()?.thread === thread && !!lit()?.ids.has(id)
 
-/** What a delivery carried that the thread doesn't show: a note that the agent moved, and memory's lines for what didn't fit */
-const unseenIn = (text) =>
-	[
-		[/^\[You now run as [^\n]*\]/, 'a note'],
-		[/<chat>\n[\s\S]*?\n<\/chat>/, 'memory lines'],
-	].flatMap(([pattern, word]) => {
-		const found = text.match(pattern)
-		return found ? [{ word, text: found[0] }] : []
-	})
-
 /**
  * A turn's handed step as the thread sees it: none when it was handed just the one message above it, else a count of
  * the messages and a reply from each thread that answered, and only the words the thread doesn't show.
@@ -207,7 +196,14 @@ function handedStep(step, thread, messages) {
 	const held = step.held.map((id) => byId.get(id) ?? { id, data: {} })
 	const replies = held.filter((entry) => entry.data.from && entry.data.re)
 	const said = held.length - replies.length
-	const unseen = unseenIn(step.text ?? '')
+	/** What a delivery carried that the thread doesn't show: a note that the agent moved, and memory's lines for what didn't fit */
+	const unseen = [
+		[/^\[You now run as [^\n]*\]/, 'a note'],
+		[/<chat>\n[\s\S]*?\n<\/chat>/, 'memory lines'],
+	].flatMap(([pattern, word]) => {
+		const found = (step.text ?? '').match(pattern)
+		return found ? [{ word, text: found[0] }] : []
+	})
 	if (said === 1 && !replies.length && !unseen.length) return null
 	return {
 		...step,
@@ -236,29 +232,18 @@ function summary(turn) {
 		),
 	].filter(Boolean)
 	const commands = tools.filter((step) => step.name === 'bash').length
-	const posts = (word, list) =>
-		list.length && `${word} ${list.map((step) => titleOf(askedThread(step))).join(', ')}`
+	const answeredThreads = tools.filter((step) => step.name === 'post' && answered(step))
 	const parts = [
 		edited.length && `edited ${edited.join(', ')}`,
 		commands && plural(commands, 'command'),
-		posts(
-			'answered',
-			tools.filter((step) => step.name === 'post' && answered(step)),
-		),
+		answeredThreads.length &&
+			`answered ${answeredThreads.map((step) => titleOf(askedThread(step))).join(', ')}`,
 		tools.length && plural(tools.length, 'step'),
 		turn.end - turn.start >= 1000 && seconds(turn.end - turn.start),
 	]
 	// A turn with no call only thought, before its answer or instead of one
 	return parts.filter(Boolean).join(' · ') || 'thought'
 }
-
-/** A step's arguments in one line, what it touches first */
-const argsLine = ({ name, args }) =>
-	name === 'post'
-		? args.thread
-			? `#${args.thread}`
-			: (args.title ?? '')
-		: (touched(args) ?? JSON.stringify(args)).split('\n')[0]
 
 /** A post's ask: the thread it went to, or for an answer, the thread it answered */
 const askedThread = (step) => step.result?.details?.thread ?? step.args.thread
@@ -298,10 +283,6 @@ export function heard(conversation, entries, { whole, older } = {}) {
 		all[conversation] = whole || !had ? shown : older ? [...shown, ...had] : [...had, ...shown]
 	})
 }
-
-/** A delivery's words, whether Pi kept them as a string or as blocks beside images */
-const handedText = (message) =>
-	typeof message?.content === 'string' ? message.content : messageText(message)
 
 /**
  * Where an agent's newest compaction cuts, as the thread's message ids: the first message of the first delivery the agent still reads whole.
@@ -355,7 +336,7 @@ export function turnsOf(conversation) {
 					{
 						key: `${entry.id}:handed`,
 						label: 'handed',
-						text: handedText(message),
+						text: typeof message?.content === 'string' ? message.content : messageText(message),
 						held: entry.data?.held ?? [],
 					},
 				],
@@ -422,20 +403,9 @@ const changedOf = (step) => ['instructions', 'model'].filter((key) => step.args[
 
 /** jsdiff from esm.sh, fetched the first time a change is opened */
 let jsdiff
-const loadDiff = () =>
-	(jsdiff ??= import('https://esm.sh/diff@9.0.0').catch((error) => {
-		jsdiff = undefined
-		throw error
-	}))
-
-/** Lines of unchanged text kept on each side of a change, past its own and not counting blank ones; the rest folds into ⋯ */
-const CONTEXT = 1
-
-/** How many of these lines, from the start, hold the change's own line and the next CONTEXT that aren't blank */
+/** Keep the change's own line and the next nonblank one; the rest folds into ⋯. */
 function contextOf(lines) {
-	let kept = 0
-	for (let index = 1; index < lines.length; index++)
-		if (lines[index].trim() && ++kept === CONTEXT) return index + 1
+	for (let index = 1; index < lines.length; index++) if (lines[index].trim()) return index + 1
 	return lines.length
 }
 
@@ -499,7 +469,10 @@ export function Changed(props) {
 		}))
 	const opened = (event) => {
 		if (!event.currentTarget.open || diffWords()) return
-		loadDiff().then(
+		;(jsdiff ??= import('https://esm.sh/diff@9.0.0').catch((error) => {
+			jsdiff = undefined
+			throw error
+		})).then(
 			(module) => setDiffWords(() => module.diffWords),
 			(error) => setFailed(`Couldn't load the diff from esm.sh: ${error.message}`),
 		)

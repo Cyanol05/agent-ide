@@ -1,13 +1,9 @@
 /* The app: the chat fills the window. The walkthrough, when it's on, lays its story over this. */
 
-.thread > ul,
-.thread-list > ul {
-	overscroll-behavior: contain;
-}
-
 /* The two lists that scroll: a thin bar, quiet until you touch it. */
 .thread-list > ul,
 .thread > ul {
+	overscroll-behavior: contain;
 	scrollbar-width: thin;
 	scrollbar-color: var(--edge) transparent;
 }
@@ -107,13 +103,7 @@
 			font-family: var(--font-mono);
 			margin-right: var(--space-2);
 		}
-	}
 
-	ul ul {
-		margin-left: var(--space-4);
-	}
-
-	li {
 		&.pending {
 			color: var(--mute);
 			font-style: italic;
@@ -147,6 +137,10 @@
 		&.below {
 			color: var(--mute);
 		}
+	}
+
+	ul ul {
+		margin-left: var(--space-4);
 	}
 
 	.whole {
@@ -233,7 +227,6 @@ agent-memory {
 	align-items: center;
 	font-size: var(--text-ui);
 
-	/* Its dot where a thread row's sits, so the switch reads as one of them. */
 	> .switch {
 		flex: none;
 	}
@@ -298,7 +291,6 @@ agent-memory {
 	font-size: var(--text-ui);
 	--step: color-mix(in srgb, CanvasText 4%, transparent);
 
-	/* The row is the control: a link to the thread, or the button that makes one. */
 	> .row {
 		flex: 1;
 		min-width: 0;
@@ -367,7 +359,6 @@ agent-memory {
 	border-right: 1px solid var(--line);
 	transition: opacity var(--duration-popover) var(--ease-out);
 
-	/* Only the columns beside it get a line; at the window's edge there is nothing to divide. */
 	&:last-child {
 		border-right: 0;
 	}
@@ -419,7 +410,6 @@ agent-memory {
 			height: var(--control);
 		}
 
-		/* The heading only wraps the pill, so all of the pill is its button. */
 		> h2.title {
 			display: flex;
 			flex: 0 1 auto;
@@ -523,14 +513,12 @@ agent-memory {
 				}
 			}
 
-			/* A turn that gave no answer: the reason in the failed step's red, ruled off so it never reads as the agent speaking. */
 			&.failed {
 				padding-left: var(--space-3);
 				box-shadow: inset 2px 0 var(--danger);
 				color: var(--danger);
 			}
 
-			/* What an opened handed step was given, lit where it already is, as the memory panel lights the cut an agent reads. */
 			&.handed {
 				box-shadow: inset 2px 0 var(--pick);
 				background: color-mix(in srgb, var(--pick) 7%, Canvas);
@@ -559,7 +547,6 @@ agent-memory {
 					margin: 0;
 				}
 
-				/* A live turn says so by breathing: the dots' pulse, slower and shallower, since a thread's dot already marks it. */
 				&.live summary > small {
 					--blink-low: 0.55;
 					animation: blink 2.4s ease-in-out infinite;
@@ -649,7 +636,6 @@ agent-memory {
 						font-size: var(--text-small);
 						line-height: var(--text-small-line);
 
-						/* Its code blocks too, not a size up from the words around them. */
 						pre {
 							font-size: inherit;
 							line-height: inherit;
@@ -660,12 +646,10 @@ agent-memory {
 						}
 					}
 
-					/* What came of a question, under it. */
 					.whole > .answer {
 						margin-top: var(--space-2);
 					}
 
-					/* The way to the other thread, last, quiet as a step's line. */
 					.whole > .open {
 						margin-top: var(--space-1);
 						color: var(--mute);
@@ -712,7 +696,6 @@ agent-memory {
 						background: color-mix(in srgb, var(--ok) 12%, transparent);
 					}
 
-					/* ⋯ sits in the text like a word, the button only in its hover fill. */
 					.fold {
 						padding: 0 var(--space-1);
 						font: inherit;
@@ -753,14 +736,9 @@ agent-memory {
 				animation: appear 0s 0.4s both;
 			}
 
-			/* While the asked thread works, its line breathes like a live turn's. */
 			&.exchange.live > .steps {
 				--blink-low: 0.55;
 				animation: blink 2.4s ease-in-out infinite;
-			}
-
-			summary span[style] > .thread-link {
-				color: inherit;
 			}
 
 			summary {
@@ -778,7 +756,6 @@ agent-memory {
 				border-radius: var(--radius);
 			}
 
-			/* A person's long message, folded to twelve lines that fade out over its Show more */
 			.clamp:not(.open) {
 				max-height: calc(12 * var(--text-line));
 				overflow: hidden;
@@ -889,7 +866,6 @@ agent-memory {
 			}
 		}
 
-		/* Send sits centred on the field's first line. */
 		button.send {
 			margin-bottom: var(--edge-gap);
 		}
@@ -905,7 +881,6 @@ agent-memory {
 				calc(-1 * (var(--space-1) + var(--space-2) + 1px));
 			min-height: var(--foot-height);
 
-			/* Its + on the field's first letter above it. */
 			button.add {
 				margin-left: calc(-1 * var(--space-1));
 			}
@@ -997,7 +972,7 @@ agent-memory {
 	}
 
 	pre {
-		padding: var(--space-2) var(--space-2);
+		padding: var(--space-2);
 		font-size: var(--text-ui);
 		line-height: var(--text-ui-line);
 		white-space: pre;
@@ -1136,7 +1111,6 @@ agent-memory {
 	resize: none;
 }
 
-/* Names as a message's author line has them. */
 .thread-details #members {
 	margin: 0 var(--space-2) var(--space-2);
 	color: var(--mute);
@@ -1144,7 +1118,6 @@ agent-memory {
 	line-height: var(--text-small-line);
 }
 
-/* Instructions follow Tools as Tools follows the thread, not as a first heading. */
 .thread-details .bot > h3:first-child {
 	margin-top: var(--space-4);
 }
@@ -1294,7 +1267,6 @@ agent-memory {
 		color: var(--ink);
 	}
 
-	/* On the models' words, past their buttons' border. */
 	h3 {
 		margin: var(--space-2) calc(var(--space-2) + 1px) var(--space-1);
 		font-size: var(--text-small);
@@ -1390,7 +1362,6 @@ agent-memory {
 		}
 	}
 
-	/* A module's option opens its detail in the same frame. */
 	.option {
 		display: flex;
 		align-items: center;
@@ -1553,7 +1524,6 @@ button.foot-toggle {
 		white-space: nowrap;
 	}
 
-	/* Runners say how many are online, in words alone; each one's dot is in its list. */
 	&.runner-toggle {
 		flex: 0 1 auto;
 	}
@@ -1577,7 +1547,6 @@ button.foot-toggle {
 		font-variant-numeric: tabular-nums;
 	}
 
-	/* Settings is a gear alone, square, at the foot's far end. */
 	&.settings-toggle {
 		margin-inline-start: auto;
 		width: var(--small-button);
@@ -1606,7 +1575,6 @@ button.foot-toggle {
 			white-space: nowrap;
 		}
 
-		/* What it is stays muted, on the highlighted row too. */
 		> small {
 			flex: none;
 			max-width: 50%;
@@ -1757,7 +1725,7 @@ body.resizing {
 .tape {
 	display: grid;
 	gap: var(--space-2);
-	padding: var(--space-2) var(--space-2);
+	padding: var(--space-2);
 
 	.reel {
 		display: flex;
@@ -1989,7 +1957,6 @@ body.resizing {
 	}
 }
 
-/* The column's tabs stand where a page's name would. */
 .panes nav.tabs {
 	display: flex;
 	flex: 1;
@@ -2012,7 +1979,6 @@ body.resizing {
 		overflow: hidden;
 		padding: 0;
 
-		/* Loading or failing, it reads like the other pages' text, at their inset. */
 		> p {
 			margin: 0;
 			padding: var(--space-2) var(--space-4);

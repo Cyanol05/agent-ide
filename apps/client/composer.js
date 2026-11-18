@@ -114,7 +114,7 @@ export function Composer(props) {
 		directed(props.thread)
 			? 'the thread'
 			: recipients(props.thread)
-					.map((to) => recipientLabel(to, props.thread))
+					.map((to) => recipientWords(to, props.thread).filter(Boolean).join(' · '))
 					.join(' + ')
 	const [lines, setLines] = createSignal(false)
 	const [compacting, setCompacting] = createSignal(false)
@@ -773,7 +773,6 @@ const recipientWords = (to, thread) => {
 	if (to.name) return [to.name]
 	return [to.model?.split('/').pop(), thinkingLevel && thinkingWord(thinkingLevel)]
 }
-const recipientLabel = (to, thread) => recipientWords(to, thread).filter(Boolean).join(' · ')
 /** What a runner's controls show: the agent asked, if it runs there, else what was last chosen there */
 export const toFor = (runner, thread = current()) =>
 	agent(thread)?.runner === runner.name ? agent(thread) : fallback(runner)

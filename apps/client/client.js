@@ -3,17 +3,7 @@ import html from '@solidjs/html'
 import { Icon } from './icons.js'
 import { render } from '@solidjs/web'
 import { createEffect, createSignal, Errored, Loading, onSettled } from 'solid-js'
-import {
-	colorOf,
-	current,
-	drawer,
-	homeBot,
-	params,
-	server,
-	threads,
-	titleOf,
-	threadOf,
-} from './server.js'
+import { colorOf, current, drawer, homeBot, params, titleOf, threadOf } from './server.js'
 import { sideOf, toggleSide } from './side.js'
 import { Dot } from './dot.js'
 import { System } from './system.js'

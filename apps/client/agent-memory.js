@@ -264,8 +264,10 @@ async function openTree(read, id, n, cut) {
 	)
 }
 
-const bytes = (text) => new TextEncoder().encode(text).length
 const sizeOf = (lines) =>
-	lines.reduce((sum, line) => sum + bytes(`${key(line)}|${line.text}`) + 1, 0)
+	lines.reduce(
+		(sum, line) => sum + new TextEncoder().encode(`${key(line)}|${line.text}`).length + 1,
+		0,
+	)
 const inside = (line, id, n) => line.id >= id && line.id + line.n <= id + n
 const key = (line) => `${line.id}+${line.n}`
