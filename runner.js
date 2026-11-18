@@ -20,14 +20,17 @@ const { DEFAULT_THINKING_LEVEL } = await import(
 
 const { values: args } = parseArgs({
 	options: {
-		server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://localhost:3000' },
+		server: {
+			type: 'string',
+			default: (process.env.ADE_SERVER ?? process.env.AGENT_IDE_SERVER) || 'http://localhost:3000',
+		},
 		name: { type: 'string', default: os.hostname() },
 		dir: { type: 'string', multiple: true, default: [process.cwd()] },
 		'discover-dirs': { type: 'boolean', default: false },
 		owner: { type: 'string', default: '' },
 		'read-only': { type: 'boolean', default: false },
 		allow: { type: 'string', multiple: true, default: [] },
-		key: { type: 'string', default: process.env.AGENT_IDE_KEY },
+		key: { type: 'string', default: process.env.ADE_KEY ?? process.env.AGENT_IDE_KEY },
 		'key-file': { type: 'string' },
 		help: { type: 'boolean', short: 'h' },
 	},
@@ -35,14 +38,14 @@ const { values: args } = parseArgs({
 if (args.help) {
 	console.log(`node runner.js [options]
 
-  --server url      server to dial (AGENT_IDE_SERVER or http://localhost:3000)
+  --server url      server to dial (ADE_SERVER or http://localhost:3000)
   --name name       runner's name (this machine's hostname)
   --dir folder      folder agents work in (current folder); repeat for more
   --discover-dirs   offer git and jj checkouts beneath the folders
   --owner name      take work only from this person and those allowed
   --allow name      also take work from this person or @runner; repeat for more
   --read-only       refuse writes and commands
-  --key key         runner key (AGENT_IDE_KEY or the saved key)
+  --key key         runner key (ADE_KEY or the saved key)
   --key-file file   read the saved key here instead of ~/.config/ade/key
   -h, --help        print these options`)
 	process.exit(0)
@@ -109,7 +112,7 @@ async function offers() {
 
 /** Sent to the server, which asks a runner its updater started to update when the server's differs */
 const { version } = await runnerBundle(import.meta.dirname).catch(() => ({ version: '' }))
-const launched = process.env.AGENT_IDE_LAUNCHER === '1'
+const launched = (process.env.ADE_LAUNCHER ?? process.env.AGENT_IDE_LAUNCHER) === '1'
 
 const modules = await load('runner', { name, server, dir, roots })
 
@@ -191,7 +194,7 @@ async function connect() {
 	const from = args.owner ? `, to ${[args.owner, ...args.allow].join(', ')}` : ''
 	const online = () =>
 		// The server's own runner: the server already printed its row
-		process.env.AGENT_IDE_LENT ||
+		(process.env.ADE_LENT ?? process.env.AGENT_IDE_LENT) ||
 		console.log(
 			`${name} online at ${server}, offering pi's logins and ${roots.join(', ')}${args['read-only'] ? ' to read only' : ''}${from}`,
 		)

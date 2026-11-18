@@ -455,7 +455,7 @@ registry.install(
 		sandbox: new CodemodeSandbox({ memoryLimitBytes: 256 * 1024 * 1024 }),
 	}),
 )
-registry.install(defineExtension({ name: 'agent-ide', tasks: [Anchor, Admit, Deliver, Shell] }))
+registry.install(defineExtension({ name: 'ade', tasks: [Anchor, Admit, Deliver, Shell] }))
 const storage = await openNodeSqliteStorage(file)
 const harness = await Harness.open(
 	storage,
@@ -1722,13 +1722,13 @@ async function handleRequest(req, res) {
 /** Finds bun or Node, then hands over to the updater, which keeps the runner up to date with this server */
 const runnerScript = (server) => `#!/bin/sh
 # Connects this machine to the ade server at ${server}, with a key from \`node cli.js key laptop\` there:
-#   curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=air_… sh -s -- --dir ~/code [--name laptop] [--read-only] [--no-update]
+#   curl -fsSL ${server}/connect-runner | ADE_KEY=air_… sh -s -- --dir ~/code [--name laptop] [--read-only] [--no-update]
 set -e
 if command -v bun >/dev/null 2>&1; then run=bun; elif command -v node >/dev/null 2>&1; then run=node; else
   echo "ade's runner needs Node.js 24 or newer"; exit 1
 fi
 mkdir -p "$HOME/.agent-ide"
-if [ -n "$AGENT_IDE_KEY" ]; then
+if [ -n "\${ADE_KEY:-$AGENT_IDE_KEY}" ]; then
   config="\${XDG_CONFIG_HOME:-$HOME/.config}/ade"
   name=$("$run" -e "process.stdout.write(require('node:os').hostname())")
   next_name=
@@ -1739,7 +1739,7 @@ if [ -n "$AGENT_IDE_KEY" ]; then
   case "$name" in ''|*[!a-zA-Z0-9._-]*) echo 'Invalid runner name' >&2; exit 1 ;; esac
   mkdir -p "$config"
   keyfile="$config/key.$name"
-  (umask 077 && printf %s "$AGENT_IDE_KEY" > "$keyfile")
+  (umask 077 && printf %s "\${ADE_KEY:-$AGENT_IDE_KEY}" > "$keyfile")
   set -- "$@" --key-file "$keyfile"
 fi
 curl -fsSL "${server}/runner/updater.js" -o "$HOME/.agent-ide/runner-updater.js"
@@ -1903,7 +1903,7 @@ async function mintKey(name, server) {
 	return {
 		name,
 		key,
-		connect: `curl -fsSL ${server}/connect-runner | AGENT_IDE_KEY=${key} sh -s -- --name ${name} --dir .`,
+		connect: `curl -fsSL ${server}/connect-runner | ADE_KEY=${key} sh -s -- --name ${name} --dir .`,
 	}
 }
 async function revoke(name) {
@@ -2100,7 +2100,7 @@ async function connectSelf(url) {
 		// Its online line would repeat the server's runner row
 		{
 			stdio: ['inherit', 'pipe', 'pipe'],
-			env: { ...process.env, AGENT_IDE_KEY: key, AGENT_IDE_LENT: '1' },
+			env: { ...process.env, ADE_KEY: key, ADE_LENT: '1' },
 		},
 	)
 	lent.name = name

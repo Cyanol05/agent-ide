@@ -41,7 +41,7 @@ check(
 	JSON.stringify(reports),
 )
 check(
-	record('')?.app === 'agent-ide' && record('')?.msg.includes('laptop'),
+	record('')?.app === 'ade' && record('')?.msg.includes('laptop'),
 	'root record names the app and the runner',
 	JSON.stringify(record('')),
 )

@@ -12,13 +12,16 @@ import {
 } from '@earendil-works/pi-ai/providers/faux'
 import { messageText as text, serveRunner } from '../remote.js'
 
-/** The shell's agent-ide settings stay out of every server and runner an example starts: a dev shell's MODULES=+director routes posts with no `to` to nobody. `shellEnv` keeps what was there, so a script like try.js can still layer its own MODULES on top. */
+/** The shell's ade settings stay out of every server and runner an example starts: a dev shell's MODULES=+director routes posts with no `to` to nobody. `shellEnv` keeps what was there, so a script like try.js can still layer its own MODULES on top. */
 export const shellEnv = {}
 for (const name of [
 	'MODULES',
 	'MEMORY_MODEL',
 	'SEARCH_URL',
 	'STATUS',
+	'ADE_KEY',
+	'ADE_LENT',
+	'ADE_SERVER',
 	'AGENT_IDE_KEY',
 	'AGENT_IDE_LENT',
 	'AGENT_IDE_SERVER',
@@ -35,7 +38,7 @@ export let base
 let port = 0
 
 /** Its on-disk path, case as stored, since a shell's `pwd` prints that and macOS's temp folder sits behind a symlink */
-const tmp = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'agent-ide-example-')))
+const tmp = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'ade-example-')))
 export const db = path.join(tmp, 'store.sqlite')
 export const dir = path.join(tmp, 'folder')
 mkdirSync(dir)
@@ -92,7 +95,7 @@ export async function server(env = {}, { cwd, args = ['--no-runner'] } = {}) {
 export async function runner(name, { args = [], env = {}, wait = true, dir: folder = dir } = {}) {
 	const child = start('runner.js', ['--server', base, '--name', name, '--dir', folder, ...args], {
 		HOME: home,
-		AGENT_IDE_KEY: await keyFor(name),
+		ADE_KEY: await keyFor(name),
 		...env,
 	})
 	if (wait)

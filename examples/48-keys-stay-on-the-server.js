@@ -46,7 +46,7 @@ check(
 const minted = await request(base, 'POST', '/api/runners', { name: 'pasted' }, { origin: base })
 const { key, connect } = await minted.json()
 check(
-	minted.status === 201 && connect.includes(`AGENT_IDE_KEY=${key}`),
+	minted.status === 201 && connect.includes(`ADE_KEY=${key}`),
 	'the local page mints a private runner command with a runner key',
 )
 check(
@@ -87,7 +87,7 @@ const p = spawn('sh', ['-c', connect], {
 	cwd: dir,
 	detached: true,
 	stdio: ['ignore', 'pipe', 'pipe'],
-	env: { ...process.env, HOME: home, XDG_CONFIG_HOME: '', AGENT_IDE_KEY: '' },
+	env: { ...process.env, HOME: home, XDG_CONFIG_HOME: '', ADE_KEY: '' },
 })
 process.on('exit', () => {
 	try {

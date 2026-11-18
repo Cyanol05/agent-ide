@@ -62,7 +62,7 @@ export function runner({ name, server }) {
 	let shown = new Map()
 	function show(root, threads = []) {
 		const next = new Map([
-			['', report({ state: root.state, app: 'agent-ide', msg: text(root.msg, 2048) })],
+			['', report({ state: root.state, app: 'ade', msg: text(root.msg, 2048) })],
 		])
 		for (const thread of threads)
 			next.set(

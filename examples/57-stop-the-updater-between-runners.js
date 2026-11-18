@@ -24,7 +24,7 @@ const start = () => {
 		process.execPath,
 		[`${repo}/runner-updater.js`, `http://127.0.0.1:${server.address().port}`],
 		{
-			env: { ...process.env, AGENT_IDE_HOME: home },
+			env: { ...process.env, ADE_HOME: home },
 			stdio: ['ignore', 'pipe', 'pipe'],
 		},
 	)

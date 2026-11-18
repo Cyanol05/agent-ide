@@ -157,7 +157,7 @@ for (const status of ['1', '0']) {
 await kill(srv)
 
 fresh()
-const own = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-own-'))
+const own = mkdtempSync(path.join(os.tmpdir(), 'ade-own-'))
 const settings = path.join(path.dirname(db), 'ade.json')
 writeFileSync(settings, JSON.stringify({ modules: ['talk', 'web-search', './mine.js'] }))
 writeFileSync(

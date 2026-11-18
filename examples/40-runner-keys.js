@@ -14,7 +14,7 @@ const dial = (name, key) =>
 		socket.onclose = ({ code, reason }) => resolve({ code, reason })
 	})
 
-const nokey = await runner('stray', { env: { AGENT_IDE_KEY: '' }, wait: false })
+const nokey = await runner('stray', { env: { ADE_KEY: '' }, wait: false })
 const out = []
 nokey.stdout.on('data', (d) => out.push(String(d)))
 check((await exited(nokey)) === 1, 'a runner without a key is turned away, and stops')

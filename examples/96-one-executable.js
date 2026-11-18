@@ -19,7 +19,7 @@ const base = /http:\/\/127\.0\.0\.1:\d+/.exec(output)[0]
 const run = async (...args) =>
 	(
 		await promisify(execFile)(process.execPath, [`${repo}/${bin}`, ...args], {
-			env: { ...process.env, AGENT_IDE_SERVER: base },
+			env: { ...process.env, ADE_SERVER: base },
 		})
 	).stdout
 check((await run('runner', '--help')).includes('--key-file'), 'runner dispatch removes only runner')

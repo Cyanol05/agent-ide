@@ -13,7 +13,7 @@ await once(wss, 'listening')
 const runner = start(
 	'runner.js',
 	['--server', `http://127.0.0.1:${wss.address().port}`, '--name', 'laptop', '--dir', dir],
-	{ HOME: home, AGENT_IDE_KEY: 'any' },
+	{ HOME: home, ADE_KEY: 'any' },
 )
 const [socket] = await once(wss, 'connection')
 const replies = new Map()

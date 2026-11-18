@@ -1,4 +1,4 @@
-/** A scratch agent-ide to click through: its own store and port, a real runner `bot` with a scripted echo model, and one thread it has already answered.
+/** A scratch ade to click through: its own store and port, a real runner `bot` with a scripted echo model, and one thread it has already answered.
  * The bots and director modules are on, with three bots, ada, bram and cleo, that answer at once, each naming itself, its
  * persona and what it was shown last, so who answered and what they saw read off the reply. Send to one by name (`--to ada`).
  * The director picks too: in a thread of bots, a message naming no one goes to whoever's persona it mentions (review,
@@ -31,5 +31,5 @@ await api('POST', `/api/threads/${thread.id}/entries`, {
 
 console.log(`ade at ${base}/?thread=${thread.id}
 the bot works in ${process.cwd()}; send to echo/try@bot, "post" or "slow" in a message for more
-bots: ${Object.keys(personas).join(', ')}; from a terminal: export AGENT_IDE_SERVER=${base}; node cli.js post --to ada hi
+bots: ${Object.keys(personas).join(', ')}; from a terminal: export ADE_SERVER=${base}; node cli.js post --to ada hi
 stop: kill ${process.pid}`)

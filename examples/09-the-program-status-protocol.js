@@ -5,7 +5,7 @@ import { api, base, check, dir, done, home, keyFor, repo, server, until, view } 
 const srv = await server()
 
 /** A terminal double over pipes: Node has no built-in PTY allocator. It answers nothing, so no query can pass. */
-const env = { ...process.env, HOME: home, AGENT_IDE_KEY: await keyFor('laptop') }
+const env = { ...process.env, HOME: home, ADE_KEY: await keyFor('laptop') }
 const terminal = spawn(
 	process.execPath,
 	[
@@ -29,7 +29,7 @@ const encode = (text) => Buffer.from(text).toString('base64')
 const report = (pairs) => `\x1b]7501;${pairs}\x1b\\`
 
 check(
-	Boolean(await shows(report(`state=idle:app=agent-ide:msg=${encode('laptop: online')}`))),
+	Boolean(await shows(report(`state=idle:app=ade:msg=${encode('laptop: online')}`))),
 	'online: the root record is idle, names the app and the runner',
 	JSON.stringify(out),
 )
@@ -57,7 +57,7 @@ check(
 	JSON.stringify(out.slice(-400)),
 )
 check(
-	Boolean(await shows(report(`state=working:app=agent-ide:msg=${encode('laptop: 1 working')}`))),
+	Boolean(await shows(report(`state=working:app=ade:msg=${encode('laptop: 1 working')}`))),
 	'and so is the root',
 )
 
@@ -89,7 +89,7 @@ check(
 	Boolean(
 		await shows(
 			report(`state=clear:id=${broken}`) +
-				report(`state=error:app=agent-ide:msg=${encode(`laptop: offline, retrying ${base}`)}`),
+				report(`state=error:app=ade:msg=${encode(`laptop: offline, retrying ${base}`)}`),
 		),
 	),
 	'server gone: thread records cleared, the root is an error, not idle',

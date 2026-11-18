@@ -50,7 +50,7 @@ let srv = await server()
 const port = new URL(base).port
 const key = await keyFor('fresh')
 start('sh', ['-c', `curl -fsSL ${base}/connect-runner | sh -s -- --dir ${dir} --name fresh`], {
-	env: { ...process.env, HOME, XDG_CONFIG_HOME: '', AGENT_IDE_KEY: key },
+	env: { ...process.env, HOME, XDG_CONFIG_HOME: '', ADE_KEY: key },
 })
 check(
 	await until(async () => (await runnerOf('fresh'))?.online, 60000),

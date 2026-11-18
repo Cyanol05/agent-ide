@@ -47,7 +47,10 @@ const {
 	values: flags,
 	positionals: [command, ...rest],
 } = parse({
-	server: { type: 'string', default: process.env.AGENT_IDE_SERVER || 'http://127.0.0.1:3000' },
+	server: {
+		type: 'string',
+		default: (process.env.ADE_SERVER ?? process.env.AGENT_IDE_SERVER) || 'http://127.0.0.1:3000',
+	},
 	as: { type: 'string', default: defaultAs() },
 	thread: { type: 'string' },
 	to: { type: 'string', multiple: true },
@@ -208,7 +211,7 @@ const commands = {
 	async key() {
 		const { key, connect } = await api('POST', '/api/runners', { name: rest[0] })
 		console.log(
-			`AGENT_IDE_KEY=${key}\n\nOn the runner's machine:\n  ${connect}\nor from a clone:\n  AGENT_IDE_KEY=${key} node runner.js --server ${flags.server} --name ${rest[0]} --dir .`,
+			`ADE_KEY=${key}\n\nOn the runner's machine:\n  ${connect}\nor from a clone:\n  ADE_KEY=${key} node runner.js --server ${flags.server} --name ${rest[0]} --dir .`,
 		)
 	},
 	async revoke() {

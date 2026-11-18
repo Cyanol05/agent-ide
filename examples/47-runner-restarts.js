@@ -8,7 +8,7 @@ import { api, base, check, db, dir, done, keyFor, repo, server, until } from './
 
 const home = path.join(path.dirname(db), 'shared home')
 mkdirSync(home)
-const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: '', AGENT_IDE_KEY: '' }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: '', ADE_KEY: '' }
 const procs = []
 process.on('exit', () => {
 	for (const p of procs)
@@ -40,7 +40,7 @@ const commands = []
 for (const name of ['first', 'second']) {
 	const key = await keyFor(name)
 	const p = start(`curl -fsSL ${base}/connect-runner | sh -s -- --name ${name} --dir '${dir}'`, {
-		AGENT_IDE_KEY: key,
+		ADE_KEY: key,
 	})
 	check(await until(() => online(name), 60000), `${name} connects`, p.output)
 	if (p.exitCode !== null) done()
@@ -52,7 +52,7 @@ for (const name of ['first', 'second']) {
 const renewed = await keyFor('first')
 const reinstall = start(
 	`curl -fsSL ${base}/connect-runner | sh -s -- --name=first --dir '${dir}'`,
-	{ AGENT_IDE_KEY: renewed },
+	{ ADE_KEY: renewed },
 )
 check(await until(() => online('first'), 30000), 'reinstalling first connects with its new key')
 await stop(reinstall)
@@ -72,7 +72,7 @@ for (const [i, name] of ['first', 'second'].entries()) {
 
 const hostname = os.hostname()
 const unnamed = start(`curl -fsSL ${base}/connect-runner | sh -s -- --dir '${dir}'`, {
-	AGENT_IDE_KEY: await keyFor(hostname),
+	ADE_KEY: await keyFor(hostname),
 })
 check(await until(() => online(hostname), 30000), 'an unnamed runner uses its hostname')
 check(readdirSync(keys).includes(`key.${hostname}`), 'its key is saved under the hostname')
@@ -88,7 +88,7 @@ const fake = createServer((req, res) => res.end(JSON.stringify(bundle)))
 await new Promise((resolve) => fake.listen(0, '127.0.0.1', resolve))
 const p = start(
 	`'${process.execPath}' '${path.join(repo, 'runner-updater.js')}' http://127.0.0.1:${fake.address().port}`,
-	{ AGENT_IDE_HOME: old },
+	{ ADE_HOME: old },
 )
 await new Promise((resolve) => p.on('exit', resolve))
 check(
@@ -100,11 +100,7 @@ mkdirSync(path.join(old, 'node_modules'))
 writeFileSync(path.join(old, 'node_modules', 'kept'), 'installed')
 writeFileSync(
 	path.join(old, 'package.json'),
-	JSON.stringify(
-		{ name: 'agent-ide-runner', private: true, type: 'module', dependencies },
-		null,
-		2,
-	),
+	JSON.stringify({ name: 'ade-runner', private: true, type: 'module', dependencies }, null, 2),
 )
 bundle = {
 	...bundle,
@@ -115,7 +111,7 @@ bundle = {
 }
 const reused = start(
 	`'${process.execPath}' '${path.join(repo, 'runner-updater.js')}' http://127.0.0.1:${fake.address().port}`,
-	{ AGENT_IDE_HOME: old },
+	{ ADE_HOME: old },
 )
 await new Promise((resolve) => reused.on('exit', resolve))
 check(

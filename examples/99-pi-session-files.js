@@ -103,7 +103,7 @@ check(
 const [user, call1, result, final] = session.buildSessionContext().messages
 check(
 	text(user) === 'run echo secret-42',
-	'the person’s message is what pi sees, without agent-ide’s author prefix',
+	'the person’s message is what pi sees, without ade’s author prefix',
 	text(user),
 )
 const tool = call1.content.find((part) => part.type === 'toolCall')
@@ -187,7 +187,7 @@ const cut = session.getEntries().find((entry) => entry.type === 'compaction')
 const [summary, kept] = session.buildSessionContext().messages
 check(
 	cut.summary === 'SUMMARY OF EARLIER WORK' && summary.role === 'compactionSummary',
-	'pi reads the compaction as its own, with the summary and none of agent-ide’s wrapping',
+	'pi reads the compaction as its own, with the summary and none of ade’s wrapping',
 	JSON.stringify(cut.summary),
 )
 check(
@@ -220,7 +220,7 @@ check(
 	'and the source’s file is as it was',
 )
 
-// Someone carries on in pi: agent-ide never reads it, and goes on from its own last entry
+// Someone carries on in pi: ade never reads it, and goes on from its own last entry
 const piTurn = {
 	type: 'message',
 	id: 'a1b2c3d4',
@@ -229,7 +229,7 @@ const piTurn = {
 	message: { role: 'user', content: 'asked in pi', timestamp: Date.now() },
 }
 appendFileSync(listed.path, `${JSON.stringify(piTurn)}\n`)
-await post(id, 'back in agent-ide', {
+await post(id, 'back in ade', {
 	runner: 'laptop',
 	model: 'script/two',
 	thinkingLevel: 'high',
@@ -244,7 +244,7 @@ check(
 		!session
 			.buildSessionContext()
 			.messages.some((message) => text(message).includes('asked in pi')),
-	'what pi added stays in the file as a branch of its own; agent-ide’s turns go on beside it',
+	'what pi added stays in the file as a branch of its own; ade’s turns go on beside it',
 )
 // A write that can't be done is said once, not at every change: a read-only runner never writes
 let complaints = 0

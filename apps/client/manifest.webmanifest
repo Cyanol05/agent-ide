@@ -1,6 +1,6 @@
 {
-	"name": "agent-ide",
-	"short_name": "agent-ide",
+	"name": "ade",
+	"short_name": "ade",
 	"start_url": "/?chat",
 	"display": "standalone",
 	"background_color": "#121212",

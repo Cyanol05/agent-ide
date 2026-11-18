@@ -1,7 +1,7 @@
 /** Writes each agent's conversation as a pi session file on its runner, in the folder's own sessions directory, so `pi --resume` there lists it and carries on, and starts a thread from a pi session there.
  * Off by default; MODULES=+pi-sessions turns it on. One file per conversation, so a fork starts its own on its first message,
  * and a file only grows, as entries commit; a runner that was offline writes what it missed when it comes back.
- * Nothing syncs: what someone adds to a file in pi, agent-ide never reads. `GET /api/pi-sessions?runner=r&dir=d` lists a folder's pi sessions and
+ * Nothing syncs: what someone adds to a file in pi, ade never reads. `GET /api/pi-sessions?runner=r&dir=d` lists a folder's pi sessions and
  * `POST /api/pi-sessions {runner, dir?, session, title?}` copies what pi would hand its model from one into a new thread, as whoever asks; importing again after more work in pi makes another thread.
  * A runner writes where pi would: `PI_CODING_AGENT_SESSION_DIR` or the `sessionDir` setting there, else `~/.pi/agent/sessions/--<folder>--/`.
  */
@@ -39,10 +39,10 @@ export async function server(core) {
 	const DELIVERY = 'agent-ide.delivery'
 	const followed = new Map()
 	const touched = new Set()
-	/** Pi has no place for a reset, and a system message would put agent-ide's tools where pi's own belong */
+	/** Pi has no place for a reset, and a system message would put ade's tools where pi's own belong */
 	const sendable = (entry) => entry.kind !== 'pi.system' && entry.kind !== 'pi.reset' && entry.model
 
-	/** What the person typed, where agent-ide handed the agent a tag naming them (once a second person has written) or a note before it: pi sees the one, and an import brings back the one */
+	/** What the person typed, where ade handed the agent a tag naming them (once a second person has written) or a note before it: pi sees the one, and an import brings back the one */
 	function typed(entry, said) {
 		if (entry.kind !== DELIVERY) return entry
 		const [only, ...more] = entry.data.held
@@ -227,7 +227,7 @@ export async function server(core) {
 						const images = Array.isArray(message.content)
 							? message.content.filter((part) => part.type === 'image')
 							: []
-						// Written as agent-ide writes a message to its agent, though nothing is to be delivered: the agent has read it
+						// Written as ade writes a message to its agent, though nothing is to be delivered: the agent has read it
 						const sent = await tx.appendEntry(threadId, {
 							kind: MESSAGE,
 							data: {
@@ -322,7 +322,7 @@ function sessionDir(cwd) {
 	return path.join(getAgentDir(), 'sessions', safe)
 }
 
-/** Open sessions by folder and id: where agent-ide's own entries end */
+/** Open sessions by folder and id: where ade's own entries end */
 const opened = new Map()
 
 async function open(dir, id) {
@@ -333,7 +333,7 @@ async function open(dir, id) {
 	const text = await readFile(state.file, 'utf8')
 	state.tail = text.endsWith('\n')
 	for (const entry of parseSessionEntries(text)) {
-		// What pi added is a branch of its own; agent-ide carries on from its last entry
+		// What pi added is a branch of its own; ade carries on from its last entry
 		if (entry.type === 'session' || !isOurs(entry.id)) continue
 		state.leaf = entry.id
 		if (entry.type === 'session_info') state.title = entry.name

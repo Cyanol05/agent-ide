@@ -1,4 +1,4 @@
-// Matrix rooms as agent-ide threads. Every message posts once into its room's thread, or its Matrix thread's, even
+// Matrix rooms as ade threads. Every message posts once into its room's thread, or its Matrix thread's, even
 // across restarts. Only MATRIX_USERS ask anyone: a mention asks MATRIX_AGENT and starts a Matrix thread, anything else
 // asks whom the thread last asked. Answers go back to the room in order, and a fork sends nothing.
 //

@@ -1,4 +1,4 @@
-/** A page's traffic and jank, for an agent watching agent-ide in a browser: load it before the page's own scripts,
+/** A page's traffic and jank, for an agent watching ade in a browser: load it before the page's own scripts,
  * `agent-browser --session <yours> open --init-script scripts/page-spy.js <url>`, then read it back with
  * `agent-browser --session <yours> eval 'JSON.stringify(spy)'`.
  * spy.fetches: each request as `ms path`; spy.socket: each /ws frame as `ms first-160-chars`; spy.long: main-thread stalls as `ms:duration` */

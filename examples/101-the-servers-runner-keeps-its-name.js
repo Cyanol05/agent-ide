@@ -8,7 +8,7 @@ import { answered, api, check, dir, done, kill, server, until } from './lib.js'
 const named = (hostname) => ({
 	NODE_OPTIONS: `--import=data:text/javascript,${encodeURIComponent(`import os from 'node:os';os.hostname=()=>'${hostname}'`)}`,
 })
-const HOME = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-home-'))
+const HOME = mkdtempSync(path.join(os.tmpdir(), 'ade-home-'))
 const rows = async () => (await api('GET', '/api/runners')).json
 const online = async (name) => (await rows()).find((row) => row.name === name)?.online
 

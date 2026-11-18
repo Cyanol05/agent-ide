@@ -8,9 +8,9 @@ const name = os.hostname()
 const online = async () =>
 	(await api('GET', '/api/runners')).json.find((r) => r.name === name)?.online
 /** No pi logins of yours: echo needs none */
-const HOME = mkdtempSync(path.join(os.tmpdir(), 'agent-ide-home-'))
+const HOME = mkdtempSync(path.join(os.tmpdir(), 'ade-home-'))
 
-const other = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'agent-ide-other-')))
+const other = realpathSync.native(mkdtempSync(path.join(os.tmpdir(), 'ade-other-')))
 let srv = await server({ HOME }, { args: ['--dir', dir, '--dir', other] })
 check(await until(online), `the server's machine is a runner, ${name}`)
 const folders = (await api('GET', '/api/runners')).json.find((r) => r.name === name)?.folders
