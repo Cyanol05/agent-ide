@@ -30,9 +30,10 @@ const RUNNER_PACKAGES = [
 	'@earendil-works/pi-durable',
 ]
 export async function runnerBundle(dir) {
-	const read = (file) => readFile(path.join(dir, file), 'utf8')
 	const files = Object.fromEntries(
-		await Promise.all(RUNNER_FILES.map(async (file) => [file, await read(file)])),
+		await Promise.all(
+			RUNNER_FILES.map(async (file) => [file, await readFile(path.join(dir, file), 'utf8')]),
+		),
 	)
 	const require = createRequire(path.join(dir, 'package.json'))
 	const dependencies = Object.fromEntries(

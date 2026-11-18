@@ -28,7 +28,6 @@ const list = (name) =>
 		.split(',')
 		.map((item) => item.trim())
 		.filter(Boolean)
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 /** A no that asking again won't change */
 const refused = (error) => error.status >= 400 && error.status < 500 && error.status !== 429
 /** Anyone in a room can write */
@@ -283,7 +282,7 @@ export function server(core) {
 				return await fn()
 			} catch (error) {
 				console.error(`matrix ${what}: ${error.message}`)
-				await sleep(5000)
+				await new Promise((resolve) => setTimeout(resolve, 5000))
 			}
 		}
 	}

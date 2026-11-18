@@ -50,16 +50,14 @@ if (args.help) {
   -h, --help        print these options`)
 	process.exit(0)
 }
-/** The key connect-runner saved, for starts without it */
-function saved(file) {
+if (!args.key) {
 	const config = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')
 	try {
-		return readFileSync(file || path.join(config, 'ade', 'key'), 'utf8').trim()
+		args.key = readFileSync(args['key-file'] || path.join(config, 'ade', 'key'), 'utf8').trim()
 	} catch {
-		return ''
+		args.key = ''
 	}
 }
-args.key ||= saved(args['key-file'])
 const roots = [...new Set(args.dir.map((dir) => path.resolve(dir)))]
 const dir = roots[0]
 const server = new URL(args.server).origin
@@ -103,16 +101,8 @@ const defaultModel = () => {
 	}
 }
 
-/** The models pi has enabled here, as `pi --models` expands them */
-async function offers() {
-	const patterns = SettingsManager.create(dir).getEnabledModels() ?? []
-	const { scopedModels } = await resolveModelScopeWithDiagnostics(patterns, models)
-	return [...new Set(scopedModels.map(({ model }) => `${model.provider}/${model.id}`))]
-}
-
 /** Sent to the server, which asks a runner its updater started to update when the server's differs */
 const { version } = await runnerBundle(import.meta.dirname).catch(() => ({ version: '' }))
-const launched = process.env.ADE_LAUNCHER === '1'
 
 const modules = await load('runner', { name, server, dir, roots })
 
@@ -162,11 +152,17 @@ async function connect() {
 				: "pi isn't logged in, so only echo answers: install pi (`npm i -g @earendil-works/pi-coding-agent`), run `pi`, then `/login`.",
 		)
 	}
-	const offered = await offers().catch((error) => {
+	let offered = []
+	try {
+		const { scopedModels } = await resolveModelScopeWithDiagnostics(
+			SettingsManager.create(dir).getEnabledModels() ?? [],
+			models,
+		)
+		offered = [...new Set(scopedModels.map(({ model }) => `${model.provider}/${model.id}`))]
+	} catch (error) {
 		if (!warnedOffers) console.error(`${name}: couldn't list models: ${error.message}`)
 		warnedOffers = true
-		return []
-	})
+	}
 	for (const ref of offered) query.append('offer', ref)
 	for (const who of args.allow) query.append('allow', who)
 	for (const folder of folders()) query.append('folder', folder)
@@ -215,7 +211,7 @@ async function connect() {
 
 let warned = false
 function update() {
-	if (launched) {
+	if (process.env.ADE_LAUNCHER === '1') {
 		console.log(`${name}: the server runs a newer runner; updating…`)
 		process.exit(75)
 	}

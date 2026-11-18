@@ -83,7 +83,7 @@ export function runner(core) {
 				({ path, content }) =>
 					`<project_instructions path="${path}">\n${content}\n</project_instructions>`,
 			)
-		const shown = loader.getSkills().skills.filter((skill) => !skill.disableModelInvocation)
+		const shown = all.filter((skill) => !skill.disableModelInvocation)
 		for (const skill of shown) listed.add(path.resolve(skill.baseDir))
 		const skills = formatSkillsForPrompt(shown).trim()
 		const parts = [

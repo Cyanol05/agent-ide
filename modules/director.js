@@ -85,7 +85,7 @@ export function server(core) {
 			throw new Error('the chooser returned no valid pick')
 		return {
 			names: names.includes('nobody') ? [] : names,
-			reason: reason.split('\n')[0].trim(),
+			reason: reason.trim(),
 		}
 	}
 

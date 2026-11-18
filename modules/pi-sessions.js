@@ -25,6 +25,8 @@ import {
 	ToolResultEntry,
 } from '@earendil-works/pi-durable'
 
+import { within } from '../remote.js'
+
 export const on = false
 
 /** Conversations the server follows, `conversation` → { thread, session, seen, last, where, titled, failed }; a tick looks only at the newest entry of each */
@@ -169,11 +171,7 @@ export async function server(core) {
 		core.reach([{ runner: name }], by, known)
 		if (!core.runners.isOnline(name)) throw new Error(`${name} is offline`)
 		const cwd = path.resolve(runner.dir, dir || '.')
-		if (
-			![...(runner.folders ?? [runner.dir])].some(
-				(folder) => cwd === folder || cwd.startsWith(folder + path.sep),
-			)
-		)
+		if (!within(runner.folders ?? [runner.dir], cwd))
 			throw new Error(`${dir} is outside ${name}'s folders`)
 		return { name, cwd }
 	}
