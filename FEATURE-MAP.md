@@ -141,36 +141,13 @@ scripts/
   page-spy.js            browser init script: fetches, socket frames, stalls
   vendor-canvas-agent.js refreshes apps/client/canvas/agent from tldraw's agent starter kit
   replay-pi.js           replays pi sessions into a thread, to try memory
+examples/all.js          the suite: every numbered example but the bench, half the cores at once, a timeout each
 examples/lib.js          what examples share: start (owned child processes), kill (awaits the exit), server, runner, scriptedRunner, api, view, until, quiet/settled/online (wait for state, not the clock), check
-examples/17-memory-compaction.js   automatic and manual cuts, memory coverage and budget at small and large windows
-examples/14-one-person-reads-as-typed.js       one person is handed as typed, bots in <message from>; a second person tags everyone
-examples/27-watch-agents-work.js   socket snapshots, streaming entries, delivery identity and reconnects
-examples/all.js          suite queue, per-example timeout and interruption cleanup
-examples/92-the-server-keeps-a-log.js   the log next to the store: output, crash stack, exit code
-examples/76-import-a-pi-session.js   a pi session with a branch and a compaction becomes a thread; the agent is handed it
-examples/99-pi-session-files.js   the session file pi loads: tool call, model change, compaction, restart, fork
-examples/93-auto-title.js          one-shot default titles, explicit titles, edits in flight, failures, a new title on request
-examples/74-examples-clean-up.js   CLI checks: example exit, failure and timeout leave no server
-examples/64-settings-restart-the-server.js   settings write ade.json and restart in place; only the server's machine may
+examples/NN-*.js         one promise a user relies on each, about twenty; the file name says which
 examples/19, 23, 86–90-*-real-model.js   bench: memory recall, deep recall, introductions, another thread's
                                  fact, side question, directed mention and web search; REAL=1 only
 examples/real-model-bench.js       real runner setup, delivery settling, evidence, step budgets and the `score` line
 examples/real-model-bench.md       how to run the bench and its recorded baseline
-examples/104-try-uses-the-real-runner.js   echo/try runs real file tools, context, posts, director and bot changes
-examples/91-wait-for-the-runner.js runner startup waits for ready or rejects on exit
-examples/95-cli-address-options.js CLI folder/thinking flags preserve model addresses and reject bot-only names
-examples/96-one-executable.js installed executable dispatch, including leading CLI options
-examples/101-the-walkthrough-writes-memory.js   tutorial loader opens with recorded, zoomable memory and no runner
-examples/102-import-memory.js     recorded-line import, existing lines preserved, invalid spans rejected
-examples/100-post-without-a-title.js optional post titles with auto-title on/off; both talk tools address threads by id or exact title and reject ambiguity
-examples/105-overview-page.js     the overview recap: written after answers from the recap before and what's new, one paragraph, read by the tool
-examples/106-one-store-per-person.js ade.sqlite, ade.log and ade.json live in ~/.config/ade, whatever folder the server starts in
-examples/107-a-missing-folder-says-so.js   a renamed folder stops the run with one line; another folder takes what waited
-examples/110-a-group-message-asks-the-thread.js   @Jeroen then an unaddressed question reaches the thread agent; failed picks never stick to a bot
-examples/108-canvas.js            an agent draws with no browser open, a watching socket sees it, a hard restart keeps it, a fork copies it
-examples/109-canvas-tools.js      actions through the tab used last, or on the stored shapes with none; a tab closing mid-call; bound arrows; who drew it
-examples/110-canvas-any-page-hosts.js   with no tab on a canvas, the page used last brings an editor up; with no page, what wasn't done is named
-examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 
 Where a feature lives:
@@ -185,7 +162,7 @@ Where a feature lives:
 - Runners and keys: remote.js, runner.js, server.js mintKey/revoke/upgrade, client runner.js.
 - Forks: server.js forkThread/seenBy, client server.js fork, thread.js Message (fork link).
 - `$ cmd`: server.js Shell, printed, shells.
-- Status dots: server.js status/busiest, client dot.js. Explicit questions waiting on a person: modules/blocked.js, util.js byAgent; examples/112-waiting-on-a-person.js covers agent turns, replies and a hard restart.
+- Status dots: server.js status/busiest, client dot.js. Explicit questions waiting on a person: modules/blocked.js, util.js byAgent.
 - Pi session files, both ways: modules/pi-sessions.js; the runner's messages are `pi-session`, `pi-session-list` and `pi-session-read` in remote.js serveRunner, shipped with the runner through RUNNER_FILES; cli.js `import`.
 - Settings and modules: modules.js, server.js saveSettings/restart, client settings.js.
 

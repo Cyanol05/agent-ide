@@ -1,4 +1,4 @@
-/** A thread answers the thread that started it on its own; a post from anywhere else wakes its agent, whose answer stays home */
+/** A child keeps what's said in it; it answers the thread that started it on its own, and a post from anywhere else wakes its agent, whose answer stays home */
 import {
 	answers,
 	api,
@@ -35,9 +35,29 @@ const to = { runner: 'bot', model: 'echo/echo' }
 const {
 	json: { id: parent },
 } = await api('POST', '/api/threads', { title: 'parent' })
+
+/** Asked directly, a child answers in the child and its parent hears nothing */
+const { json: quietChild } = await api('POST', '/api/threads', { title: 'quiet child', parent })
+await api('POST', `/api/threads/${quietChild.id}/entries`, { body: 'do it', to })
+const direct = await until(async () => answers(await view(quietChild.id))[0], 10000)
+await quiet()
+check(
+	direct?.data.body === 'heard: do it',
+	'a child asked directly answers in the child',
+	brief(await view(quietChild.id)),
+)
+check(
+	(await view(parent)).entries.length === 0,
+	'and its parent hears nothing of it',
+	brief(await view(parent)),
+)
+
 await api('POST', `/api/threads/${parent}/entries`, { body: 'please delegate this', to })
 const child = await until(
-	async () => (await api('GET', '/api/threads')).json.find((t) => t.parent === parent),
+	async () =>
+		(await api('GET', '/api/threads')).json.find(
+			(t) => t.parent === parent && t.id !== quietChild.id,
+		),
 	10000,
 )
 await until(
