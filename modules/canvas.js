@@ -2,9 +2,8 @@
  * A tldraw canvas for each thread, drawn on by people in the browser and by agents with `canvas_look` and `canvas_act`.
  * Off by default; MODULES=+canvas turns it on.
  *
- * The server holds one tldraw sync room per thread that someone has open or an agent draws on, and keeps its snapshot in
- * the thread's Canvas doc, so an agent draws with no browser open and a fork starts with the canvas as it was. A browser
- * syncs over the socket at `/api/threads/:id/canvas?user=<name>&tab=<id>`.
+ * The server holds one tldraw sync room per thread in use and keeps its snapshot in the thread's Canvas doc,
+ * so a fork starts with the canvas as it was. A browser syncs over the socket at `/api/threads/:id/canvas?user=<name>&tab=<id>`.
  *
  * Agents see and change the canvas as tldraw's agent starter kit's own agent does, with its formats, actions,
  * sanitizers and lints (vendored in apps/client/canvas/agent). Those need a live editor, so the server hands each look
@@ -12,8 +11,8 @@
  * did: a look brings a picture of the area, at most 1000 px across, and what the person has selected and in view. With
  * no tab showing that canvas, the ade page someone used last (each offers itself over the socket at /api/canvas) brings
  * up an editor for it out of sight, within SUMMON_WAIT, and keeps it a minute. A tab that closes or doesn't answer within
- * HOST_WAIT, or no ade page open at all, leaves the server to do what needs no layout itself: create, update, delete,
- * move and label, with sizes guessed, and it says so, naming each action it couldn't do.
+ * HOST_WAIT, or no ade page open at all, leaves looks reading stored shapes with sizes guessed, and actions asking
+ * for ade to be opened in a browser.
  *
  * `by` on a shape is who drew or changed it last: the person, or the bot's name, or the agent's model@runner, kept in its
  * `meta.by`. `GET /api/threads/:id/canvas` answers `{shapes, tldraw}`: the stored shapes, simply, and the tldraw version
@@ -28,8 +27,7 @@ import { arr, num, obj, opt } from '@earendil-works/pi-schema'
 import { defineDoc, defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { speaker } from '../util.js'
 import { InMemorySyncStorage, TLSocketRoom } from '@tldraw/sync-core'
-import { createTLSchema, toRichText } from '@tldraw/tlschema'
-import { getIndicesAbove } from '@tldraw/utils'
+import { createTLSchema } from '@tldraw/tlschema'
 
 export const on = false
 
@@ -37,12 +35,12 @@ export const on = false
 const version = JSON.parse(
 	readFileSync(new URL('../package.json', import.meta.resolve('@tldraw/sync-core')), 'utf8'),
 ).version
-/** A person's edits are saved this long after they stop; an agent's are saved before its tool returns */
+/** Changes are saved this long after they stop */
 const SAVE = 500
 
-/** How long a tab has to answer a look or a batch of actions before the server does what it can alone */
+/** How long a tab has to answer a look or a batch of actions before the request times out */
 const HOST_WAIT = 5000
-/** How long an ade page has to bring up an editor it wasn't showing, before the server does what it can alone */
+/** How long an ade page has to bring up an editor it wasn't showing, before the request times out */
 const SUMMON_WAIT = 10000
 /** How long after its actions land a tab's changes are still the agent's, for the sync that brings them */
 const ACTED = 5000
@@ -62,10 +60,7 @@ const ACTIONS = JSON.parse(
 		return { ...value, required: value.required.filter((name) => name !== 'note') }
 	},
 )
-/** What the server does with no tab to ask: what needs no layout */
-const ALONE = ['create', 'update', 'delete', 'move', 'label']
-
-/** The starter kit's shape types and tldraw's geo kinds, both ways (its convertFocusedShapeToTldrawShape) */
+/** The starter kit's shape types and tldraw's geo kinds (its convertFocusedShapeToTldrawShape) */
 const GEO = {
 	rectangle: 'rectangle',
 	ellipse: 'ellipse',
@@ -89,14 +84,6 @@ const GEO = {
 	'fat-arrow-down': 'arrow-down',
 }
 const FOCUSED = Object.fromEntries(Object.entries(GEO).map(([focused, geo]) => [geo, focused]))
-/** The starter kit's fills and tldraw's (its FocusedFill) */
-const FILLS = {
-	none: 'none',
-	solid: 'lined-fill',
-	background: 'semi',
-	tint: 'solid',
-	pattern: 'pattern',
-}
 /** A note is a fixed square, scaled */
 const NOTE = 200
 
@@ -203,70 +190,6 @@ export function server(core) {
 	/** Every record in the room, by id */
 	const recordsOf = (storage) =>
 		storage.transaction((txn) => Object.fromEntries(txn.entries())).result
-
-	/**
-	 * One change to a thread's canvas: `make(records)` answers the records to set and the ids to delete, and what to
-	 * answer; nothing is written if it throws. Saved before it returns.
-	 */
-	async function change(threadId, make) {
-		const { storage, save } = await open(threadId)
-		try {
-			const records = recordsOf(storage)
-			const { set = [], remove = [], answer } = make(records)
-			storage.transaction((txn) => {
-				for (const id of remove) txn.delete(id)
-				for (const record of set) txn.set(record.id, record)
-			})
-			await save()
-			return answer(recordsOf(storage))
-		} finally {
-			close(threadId)
-		}
-	}
-
-	/**
-	 * A batch of actions done here, with no tab to ask: create, update, delete, move and label, one at a time on the
-	 * stored shapes, with sizes guessed, since only an editor lays text out. The rest need a tab.
-	 */
-	const alone = (threadId, actions, by) =>
-		change(threadId, (records) => {
-			const all = { ...records }
-			const gone = new Set()
-			const touched = new Set()
-			const renamed = {}
-			const applied = actions.map((action) => {
-				const type = action?._type
-				if (!ALONE.includes(type))
-					return { _type: type, skipped: 'needs an ade page open in a browser' }
-				try {
-					for (const record of apply(action, all, by, renamed)) {
-						if (record.gone) {
-							delete all[record.id]
-							gone.add(record.id)
-						} else {
-							all[record.id] = record
-							touched.add(record.id)
-						}
-					}
-					return { _type: type, ok: true }
-				} catch (error) {
-					return { _type: type, skipped: error.message }
-				}
-			})
-			return {
-				set: [...touched].filter((id) => all[id]).map((id) => all[id]),
-				remove: [...gone],
-				answer: (now) => ({
-					applied,
-					shapes: [...touched]
-						.filter((id) => now[id]?.typeName === 'shape')
-						.map((id) => blurry(simple(now[id], now))),
-					deleted: [...gone].filter((id) => id.startsWith('shape:')).map(short),
-					renamed,
-					lints: [],
-				}),
-			}
-		})
 
 	async function read(threadId, bounds) {
 		const { storage } = await open(threadId)
@@ -381,10 +304,7 @@ export function server(core) {
 	async function act(threadId, actions, by) {
 		const answer = await relay(threadId, { act: { actions } }, by)
 		if (answer.result) return answer.result
-		return {
-			...(await alone(threadId, actions, by)),
-			estimated: `Done on the stored canvas, sizes guessed: ${answer.why ?? answer.error}.`,
-		}
+		return { error: 'Open ade in a browser to draw.' }
 	}
 
 	/** Who a tool call is: the bot's name, or the agent's model@runner, and its thread */
@@ -415,14 +335,16 @@ export function server(core) {
 	const canvasAct = defineTool({
 		name: 'canvas_act',
 		description:
-			"Change your thread's canvas with tldraw's agent actions, in order, in one step a person can undo: create, update, delete, move, label, resize, rotate, align, distribute, stack, place, bringToFront, sendToBack, pen. Refer to shapes by the shapeId canvas_look gives; an arrow created with fromId and toId stays joined to them when they move. Answers what each action did, the shapes it touched as they landed, with their real bounds, and the lints they now have: fix those in place, never by drawing again somewhere else.",
+			"Change your thread's canvas with tldraw's agent actions, in order, in one step a person can undo: create, update, delete, move, label, resize, rotate, align, distribute, stack, place, bringToFront, sendToBack, pen. Requires ade open in a browser. Refer to shapes by the shapeId canvas_look gives; an arrow created with fromId and toId stays joined to them when they move. Answers what each action did, the shapes it touched as they landed, with their real bounds, and the lints they now have: fix those in place, never by drawing again somewhere else.",
 		parameters: obj({ actions: arr(ACTIONS) }),
 		replay: 'unsafe',
 		execute: async ({ actions }, api) => {
 			const { threadId, by } = await caller(api)
 			const done = await act(threadId, actions, by)
 			return {
-				output: [{ type: 'text', text: `${summary(done.applied)}\n${JSON.stringify(done)}` }],
+				output: [
+					{ type: 'text', text: done.error ?? `${summary(done.applied)}\n${JSON.stringify(done)}` },
+				],
 			}
 		},
 	})
@@ -522,8 +444,7 @@ const DID = {
 }
 
 /**
- * What a batch did, in a few words, and what it didn't and why: "moved 3, deleted 1; not done: align, stack (needs an
- * ade page open in a browser)"; the chat shows it as the call's row
+ * What a batch did, in a few words, and what it didn't and why; the chat shows it as the call's row
  */
 function summary(applied) {
 	const counts = new Map()
@@ -555,128 +476,6 @@ function blurry(shape) {
 		...(shape.by && { by: shape.by }),
 	}
 }
-
-/** An id no shape has, as the starter kit's ensureShapeIdIsUnique makes one: box, box-1, box-2 */
-function unique(id, records) {
-	let next = id
-	while (records[`shape:${next}`])
-		next = /\d+$/.test(next) ? next.replace(/\d+$/, (n) => String(+n + 1)) : `${next}-1`
-	return next
-}
-
-/** Where an anchor sits on a box, as the starter kit's move has it */
-function anchored(anchor = 'top-left', { w = 0, h = 0 }) {
-	const [vertical, horizontal] = anchor === 'center' ? ['center', 'center'] : anchor.split('-')
-	return {
-		x: { left: 0, center: w / 2, right: w }[horizontal] ?? 0,
-		y: { top: 0, center: h / 2, bottom: h }[vertical] ?? 0,
-	}
-}
-
-/** One action on the stored records, as the records it changes; a deleted one is {id, gone: true} */
-function apply(action, records, by, renamed) {
-	const page = Object.values(records)
-		.filter((record) => record.typeName === 'page')
-		.sort(byIndex)[0]
-	const shapeOf = (id) => {
-		if (records[`shape:${id}`]?.typeName !== 'shape') throw new Error(`no shape ${id}`)
-		return records[`shape:${id}`]
-	}
-	switch (action._type) {
-		case 'create': {
-			const shape = action.shape ?? {}
-			const top = Object.values(records)
-				.filter((record) => record.typeName === 'shape' && record.parentId === page.id)
-				.sort(byIndex)
-				.at(-1)?.index
-			const [index] = getIndicesAbove(top, 1)
-			const id = shape.shapeId && unique(shape.shapeId, records)
-			if (id !== shape.shapeId) renamed[shape.shapeId] = id
-			if (shape._type === 'arrow') {
-				if (!shape.fromId || !shape.toId)
-					throw new Error('an arrow not joined to two shapes needs an ade page open in a browser')
-				return arrow(
-					{ from: shape.fromId, to: shape.toId, text: shape.text, color: shape.color, id },
-					page.id,
-					index,
-					records,
-					by,
-				)
-			}
-			const type = GEO[shape._type] ?? shape._type
-			if (!['note', 'text', ...Object.values(GEO)].includes(type))
-				throw new Error(`a ${shape._type} needs an ade page open in a browser`)
-			return [
-				record(
-					{
-						...shape,
-						type,
-						id,
-						fill: FILLS[shape.fill],
-						w: shape.w ?? shape.maxWidth ?? undefined,
-					},
-					page.id,
-					index,
-					records,
-					by,
-				),
-			]
-		}
-		case 'update': {
-			const { shapeId, x, y, w, h, text, color, _type } = action.update ?? {}
-			shapeOf(shapeId)
-			return [
-				updated(
-					_type === 'arrow'
-						? { id: shapeId, text, color }
-						: { id: shapeId, x, y, w, h, text, color },
-					records,
-					by,
-				),
-			]
-		}
-		case 'label':
-			shapeOf(action.shapeId)
-			return [updated({ id: action.shapeId, text: action.text }, records, by)]
-		case 'move': {
-			const shape = shapeOf(action.shapeId)
-			const offset = anchored(action.anchor, sizeOf(shape))
-			return [
-				updated(
-					{ id: action.shapeId, x: action.x - offset.x, y: action.y - offset.y },
-					records,
-					by,
-				),
-			]
-		}
-		case 'delete': {
-			shapeOf(action.shapeId)
-			const gone = new Set([`shape:${action.shapeId}`])
-			for (let more = true; more;) {
-				more = false
-				for (const record of Object.values(records))
-					if (record.typeName === 'shape' && gone.has(record.parentId) && !gone.has(record.id))
-						more = gone.add(record.id)
-			}
-			const bindings = Object.values(records).filter(
-				(record) =>
-					record.typeName === 'binding' && (gone.has(record.fromId) || gone.has(record.toId)),
-			)
-			// A loose arrow keeps the ends it was drawn to and says who loosened it
-			const loosened = [
-				...new Set(
-					bindings.filter((binding) => !gone.has(binding.fromId)).map((binding) => binding.fromId),
-				),
-			].map((id) => stamped(records[id], by))
-			return [
-				...loosened,
-				...[...gone, ...bindings.map((binding) => binding.id)].map((id) => ({ id, gone: true })),
-			]
-		}
-	}
-}
-
-const byIndex = (one, other) => (one.index < other.index ? -1 : one.index > other.index ? 1 : 0)
 
 /** A record that says who changed it last */
 const stamped = (record, by) => ({ ...record, meta: { ...record.meta, by } })
@@ -791,177 +590,4 @@ const overlaps = (shape, area) => {
 				]
 			: [shape.x, shape.y, shape.w ?? 0, shape.h ?? 0]
 	return x <= area.x + area.w && x + w >= area.x && y <= area.y + area.h && y + h >= area.y
-}
-
-/** A fresh shape id from the agent's own, or a short random one; an id that's taken is an error, not an overwrite */
-function newId(id, records) {
-	const shapeId = `shape:${id ?? crypto.randomUUID().slice(0, 8)}`
-	if (records[shapeId]) throw new Error(`There is already a shape ${id}`)
-	return shapeId
-}
-
-const base = (id, x, y, index, parentId, by) => ({
-	id,
-	typeName: 'shape',
-	x,
-	y,
-	rotation: 0,
-	index,
-	parentId,
-	isLocked: false,
-	opacity: 1,
-	meta: { by },
-})
-
-/** A tldraw record from a simple shape, with the starter kit's defaults */
-function record({ type, x, y, w, h, text = '', color, fill, id }, parentId, index, records, by) {
-	if (typeof x !== 'number' || typeof y !== 'number') throw new Error(`A ${type} needs x and y`)
-	const geo = type
-	const richText = toRichText(text)
-	const props =
-		type === 'text'
-			? {
-					color: color ?? 'black',
-					size: 's',
-					font: 'draw',
-					textAlign: 'start',
-					w: w ?? 200,
-					richText,
-					scale: 1,
-					autoSize: w === undefined,
-				}
-			: type === 'note'
-				? {
-						color: color ?? 'yellow',
-						labelColor: 'black',
-						size: 's',
-						font: 'draw',
-						fontSizeAdjustment: 1,
-						align: 'middle',
-						verticalAlign: 'middle',
-						growY: 0,
-						url: '',
-						richText,
-						scale: w ? w / NOTE : 1,
-						textLastEditedBy: null,
-					}
-				: {
-						geo,
-						dash: 'draw',
-						url: '',
-						w: w ?? 100,
-						h: h ?? 100,
-						growY: 0,
-						scale: 1,
-						flipX: false,
-						flipY: false,
-						labelColor: 'black',
-						color: color ?? 'black',
-						fill: fill ?? 'none',
-						size: 's',
-						font: 'draw',
-						align: 'middle',
-						verticalAlign: 'middle',
-						richText,
-					}
-	const shape = {
-		...base(newId(id, records), x, y, index, parentId, by),
-		type: ['text', 'note'].includes(type) ? type : 'geo',
-		props,
-	}
-	schema.types.shape.validate(shape)
-	return shape
-}
-
-/** An arrow from one shape's middle to another's, and the two bindings that keep its ends on them */
-function arrow({ from, to, text = '', color, id }, parentId, index, records, by) {
-	const [start, end] = [from, to].map((end) => {
-		const shape = records[`shape:${end}`]
-		if (shape?.typeName !== 'shape') throw new Error(`No shape ${end} to point an arrow at`)
-		return shape
-	})
-	const head = middle(start, records),
-		tail = middle(end, records)
-	const shape = {
-		...base(newId(id, records), head.x, head.y, index, parentId, by),
-		type: 'arrow',
-		props: {
-			kind: 'arc',
-			labelColor: 'black',
-			color: color ?? 'black',
-			fill: 'none',
-			dash: 'draw',
-			size: 'm',
-			arrowheadStart: 'none',
-			arrowheadEnd: 'arrow',
-			font: 'draw',
-			start: { x: 0, y: 0 },
-			end: { x: tail.x - head.x, y: tail.y - head.y },
-			bend: 0,
-			richText: toRichText(text),
-			labelPosition: 0.5,
-			scale: 1,
-			elbowMidPoint: 0.5,
-		},
-	}
-	schema.types.shape.validate(shape)
-	const bindings = [
-		['start', start],
-		['end', end],
-	].map(([terminal, target]) => {
-		const binding = {
-			id: `binding:${crypto.randomUUID().slice(0, 8)}`,
-			typeName: 'binding',
-			type: 'arrow',
-			fromId: shape.id,
-			toId: target.id,
-			props: {
-				terminal,
-				normalizedAnchor: { x: 0.5, y: 0.5 },
-				isExact: false,
-				isPrecise: false,
-				snap: 'none',
-			},
-			meta: {},
-		}
-		schema.types.binding.validate(binding)
-		return binding
-	})
-	return [shape, ...bindings]
-}
-
-/** A shape with what an agent changed: its place on the page, size, label or colour */
-function updated({ id, x, y, w, h, text, color }, records, by) {
-	const shape = records[`shape:${id}`]
-	if (shape?.typeName !== 'shape') throw new Error(`No shape ${id}`)
-	const at = onPage(shape, records)
-	const props = { ...shape.props }
-	if (w !== undefined || h !== undefined) {
-		if (shape.type === 'geo') Object.assign(props, { w: w ?? props.w, h: h ?? props.h, growY: 0 })
-		else if (shape.type === 'note' && w !== undefined) props.scale = w / NOTE
-		else if (shape.type === 'text' && w !== undefined) Object.assign(props, { w, autoSize: false })
-		else if ('w' in props && 'h' in props)
-			Object.assign(props, { w: w ?? props.w, h: h ?? props.h })
-		else throw new Error(`A ${shape.type} can't be resized here`)
-	}
-	if (text !== undefined) {
-		if (!('richText' in props)) throw new Error(`A ${shape.type} has no label`)
-		props.richText = toRichText(text)
-	}
-	if (color !== undefined) {
-		if (!('color' in props)) throw new Error(`A ${shape.type} has no colour`)
-		props.color = color
-	}
-	const next = stamped(
-		{
-			...shape,
-			// x and y are on the page; the record keeps them from its parent
-			x: shape.x + (x ?? at.x) - at.x,
-			y: shape.y + (y ?? at.y) - at.y,
-			props,
-		},
-		by,
-	)
-	schema.types.shape.validate(next)
-	return next
 }

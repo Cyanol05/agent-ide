@@ -51,10 +51,10 @@ modules/
                          since (the new messages, numbered), misshapen (one retry), tidy (the cap), looking (who has it open),
                          serve, the `overview` tool; off by default
   canvas.js              a tldraw canvas per thread: Canvas doc (the room's snapshot; a fork copies it), rooms (one TLSocketRoom per
-                         thread in use, saved shortly after a person's edits and before an agent's tool returns, closed when empty),
+                         thread in use, saved shortly after edits, closed when empty),
                          `canvas_look` and `canvas_act`; relay hands them to the host tab (hostOf: the tab used last, tabs), else summon asks the
-                         ade page used last (pages, its /api/canvas socket) to bring an editor up, alone does
-                         create/update/delete/move/label on the stored shapes when no tab answers (apply, record, arrow, updated);
+                         ade page used last (pages, its /api/canvas socket) to bring an editor up; without a host,
+                         looks read stored shapes with estimated sizes, actions ask to open ade in a browser;
                          who drew it (`meta.by`, whose: the acting agent, else the session's user, stamped by authorizeRecord and
                          onCommittedChanges); serve (GET shapes, POST actions/look/active/answer), connect; off by default
   blocked.js             `ask_person` posts an explicitly marked question; waitingOnPerson derives whether a person has replied, used by server.js status; off by default
