@@ -1529,13 +1529,18 @@ button.foot-toggle {
 		white-space: nowrap;
 	}
 
+	/* Runners say how many are online, in words alone; each one's dot is in its list. */
 	&.runner-toggle {
 		flex: 0 1 auto;
 	}
 
 	/* Blocked stays muted with nothing blocked; with some, its words go ink and a count sits beside them, like an unread count. */
-	&.blocked-toggle.some {
-		color: var(--ink);
+	&.blocked-toggle {
+		gap: var(--space-1);
+
+		&.some {
+			color: var(--ink);
+		}
 	}
 
 	.count {

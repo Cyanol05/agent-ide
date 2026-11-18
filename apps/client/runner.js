@@ -122,9 +122,6 @@ export function RunnerList() {
 			ref=${(el) => (button = el)}
 			popovertarget=${id}
 		>
-			<${For} each=${() => runners}
-				>${(runner) => html`<${Dot} state=${() => (runner.status === 'blocked' ? 'blocked' : runner.online ? 'on' : '')} />`}<//
-			>
 			<span>${() => `${online()} runner${online() === 1 ? '' : 's'}`}</span>
 		</button>
 		<div
