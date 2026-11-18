@@ -1532,6 +1532,28 @@ button.foot-toggle {
 	&.runner-toggle {
 		flex: 0 1 auto;
 	}
+
+	/* Blocked stays muted with nothing blocked; with some, its words go ink and a count sits beside them, like an unread count. */
+	&.blocked-toggle.some {
+		color: var(--ink);
+	}
+
+	.count {
+		min-width: var(--space-4);
+		padding: 0 var(--space-1);
+		border-radius: var(--radius-small);
+		background: var(--line);
+		color: var(--ink);
+		text-align: center;
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* Settings is a gear alone, square, at the foot's far end. */
+	&.settings-toggle {
+		margin-inline-start: auto;
+		width: var(--small-button);
+		padding: 0;
+	}
 }
 
 /* The bots and threads an @ can mention: a small popover over the message box, on phones too, never a sheet, never wider than the box.

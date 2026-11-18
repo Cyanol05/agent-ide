@@ -25,6 +25,8 @@ export function ThreadList() {
 	const [creating, setCreating] = createSignal(false)
 	const [archivedPage, setArchivedPage] = createSignal(false)
 	const [blockedOnly, setBlockedOnly] = createSignal(false)
+	const blocked = () =>
+		threads.filter((thread) => !thread.archived && thread.status === 'blocked').length
 	return html`
 		<nav class="thread-list" aria-label="Threads">
 			<${Show}
@@ -77,14 +79,18 @@ export function ThreadList() {
 				<${Show} when=${() => server().modules.includes('blocked')}>
 					<button
 						type="button"
-						class="ghost small foot-toggle"
-						aria-pressed=${() => blockedOnly()}
+						class=${() => ['ghost small foot-toggle blocked-toggle', { some: blocked() }]}
+						aria-pressed=${() => String(blockedOnly())}
+						aria-label=${() => (blocked() ? `Blocked, ${blocked()}` : 'Blocked')}
 						onClick=${() => {
 							setArchivedPage(false)
 							setBlockedOnly((value) => !value)
 						}}
 					>
-						<${Dot} state="blocked" /> Blocked
+						<span>Blocked</span>
+						<${Show} when=${() => blocked()}
+							><small class="count" aria-hidden="true">${() => blocked()}</small><//
+						>
 					</button>
 				<//>
 				<${RunnerList} />

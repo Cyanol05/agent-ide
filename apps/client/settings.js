@@ -19,6 +19,7 @@ import { report } from './notice.js'
 import { placePopover } from './popover.js'
 import { Switch } from './dot.js'
 import { markdown } from './markdown.js'
+import { Icon } from './icons.js'
 
 export function Settings() {
 	let button, panel
@@ -67,10 +68,12 @@ export function Settings() {
 		<button
 			class="ghost small foot-toggle settings-toggle"
 			type="button"
+			aria-label="Settings"
+			title="Settings"
 			ref=${(el) => (button = el)}
 			popovertarget=${id}
 		>
-			Settings
+			<${Icon} name="settings" />
 		</button>
 		<div
 			class="popover"

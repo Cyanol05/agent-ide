@@ -120,7 +120,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
                          (sideOf, openSide, toggleSide), its tabs (PageTabs);
                          system.js puts the page beside the thread
   agent-memory.js        memory popover and compaction view for the visible thread
-  icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again), one viewBox and weight
+  icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again, settings), one viewBox and weight
   title.js               defaultTitle shared by new-thread client paths, CLI, post and auto-title
   settings.js            server settings: modules on/off and memory's model
   system.js, wires.js    the live system diagram and the wires between boxes
