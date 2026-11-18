@@ -115,7 +115,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   overview.js            the side column's Overview tab: the recap, Page, whose #message-N links scroll the thread there; the
                          refresh icon pulses while it's rewritten
   side.js                the side column: its pages (pagesOf: details, overview, canvas when on), which one each thread shows
-                         (sideOf, openSide, toggleSide), its tabs (PageTabs) and the thread head's buttons (SideButtons);
+                         (sideOf, openSide, toggleSide), its tabs (PageTabs);
                          system.js puts the page beside the thread
   agent-memory.js        memory popover and compaction view for the visible thread
   icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again), one viewBox and weight
@@ -194,7 +194,7 @@ Build from these; a new panel, row or button takes its sibling's markup and clas
 - Model controls: model-picker.js `ModelPicker`, `.model-controls`: a `.search` pinned on top (typing filters, arrows and Enter pick, recipients go to `onRecipients`), the `.model-list` of runners' `.models` that alone scrolls, and a pinned `.foot` with the asked runner's `.thinking` and folder ("A search, then each runner's models"); the composer and settings share it.
 - Left aside: thread-list.js `ThreadList`, `.thread-list`; each row is `li > .row` (a link, or a button, or `form.row` for a new bot), shared with the family list `.thread-family`; its foot is `.list-foot` with `.foot-toggle`s ("The list's foot").
 - Side column: `aside.side` ("The side column"), one page at a time in the same `Panes` as a popover, side.js `PageTabs` in its header: thread-details.js `DetailsPage` (`.thread-details`), overview.js `Overview` (`.overview`), canvas.js `Canvas` (`.canvas`); a bot's part is bot.js `BotSettings`, `.bot`; its fields are plain inputs.
-- Thread head: the thread's name, `h2.title > button.ghost.thread-name` (opens Details), side.js `SideButtons` (Overview, Canvas), its `.close` ("The head is no bar"); `.thread-name` is layout only; on a phone `.app-bar` ("A phone") has only the name, and the column's tabs do the rest.
+- Thread head: the thread's name, `h2.title > button.ghost.thread-name` (opens the side column on Details; its tabs do the rest), and its `.close` ("The head:"); the head, `p.from` and the phone's `.app-bar` ("The bar") sit on `Canvas` so messages scroll under them; `.thread-name` is layout only.
 - A thread-list page (Archived) has `.page-head`.
 - Message list: thread.js `Message` in `.thread > ul > li` ("The chat: agents write"), its body `.markdown`, its images `div.images`, compaction's `li.cut` and `li.line`.
 - Tool calls: run.js `Turn`, `Exchange`, `Step`, `Call`; `li.turn` is a `<details>` whose open list is `.steps`, its tools `.tool` and its words `.said`; `.exchange` and a crossed message are a `.steps` list of thread.js `Cross` rows (`li.sent`, `li.received`). There's no thinking block: a live turn's summary says "thinking".

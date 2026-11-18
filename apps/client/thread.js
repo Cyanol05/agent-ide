@@ -61,7 +61,7 @@ import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageUrl } from './images.js'
 import { markdown } from './markdown.js'
-import { sideOf, SideButtons, toggleSide } from './side.js'
+import { sideOf, toggleSide } from './side.js'
 import { CanvasRow } from './canvas.js'
 
 /** A folded summary's text, without the literal <summary> wrapper tags some memories still carry */
@@ -509,7 +509,6 @@ export function Thread(props) {
 						<${Dot} state=${() => thread()?.status} />
 					</button>
 				</h2>
-				<${SideButtons} id=${() => props.id} />
 				<${Show} when=${() => props.id && columns().length > 1}>
 					<button
 						type="button"

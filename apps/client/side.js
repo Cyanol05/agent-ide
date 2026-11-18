@@ -1,6 +1,6 @@
 /**
  * The side column beside a thread: one page at a time, its siblings as tabs (the thread's details, and Overview and
- * Canvas when their modules are on). The thread's head has a button for each; pressed again, it closes the column.
+ * Canvas when their modules are on). The thread's name opens it on Details; its tabs do the rest.
  */
 import html from '@solidjs/html'
 import { createSignal, For, Show } from 'solid-js'
@@ -51,24 +51,5 @@ export const PageTabs = (props) => html`
 				`}
 			<//>
 		</nav>
-	<//>
-`
-
-/** The thread head's buttons for its pages other than details, which its title opens */
-export const SideButtons = (props) => html`
-	<${For}
-		each=${() => (props.id ? pagesOf(props.id).filter((page) => page.key !== 'details') : [])}
-	>
-		${(page) => html`
-			<button
-				type="button"
-				class="ghost"
-				title=${page.title}
-				aria-pressed=${() => String(sideOf(props.id)?.key === page.key)}
-				onClick=${(_event) => toggleSide(props.id, page.key)}
-			>
-				${page.label}
-			</button>
-		`}
 	<//>
 `
