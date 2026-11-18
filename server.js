@@ -2127,6 +2127,7 @@ async function upgrade(req, raw, head) {
 		modelError: query('modelError'),
 		offers: url.searchParams.getAll('offer'),
 		metered: url.searchParams.getAll('metered'),
+		free: url.searchParams.getAll('free'),
 		models: resolved,
 	}
 	await commit(async (tx) => {

@@ -130,19 +130,26 @@ function folders() {
 
 let warnedOffers = false
 
-/** The providers pi is logged in to with an API key, billed per token, rather than a subscription's OAuth; echo is free */
-async function metered() {
-	const providers = new Set(
-		(await models.getAvailable().catch(() => [])).map(({ provider }) => provider),
+/**
+ * Which models are billed per token: their provider is logged in with an API key rather than a subscription's OAuth,
+ * and pi lists a cost above zero. Sent as those providers, and their models that cost nothing, which are few.
+ */
+async function billing() {
+	const available = await models.getAvailable().catch(() => [])
+	const auths = Object.fromEntries(
+		await Promise.all(
+			[...new Set(available.map(({ provider }) => provider))].map(async (provider) => [
+				provider,
+				(await models.checkAuth(provider).catch(() => undefined))?.type,
+			]),
+		),
 	)
-	providers.delete('echo')
-	const auths = await Promise.all(
-		[...providers].map(async (provider) => [
-			provider,
-			await models.checkAuth(provider).catch(() => {}),
-		]),
-	)
-	return auths.filter(([, auth]) => auth?.type === 'api_key').map(([provider]) => provider)
+	const keyed = available.filter(({ provider }) => auths[provider] === 'api_key')
+	const paid = (model) => Object.values(model.cost ?? {}).some((cost) => cost > 0)
+	return {
+		metered: [...new Set(keyed.filter(paid).map(({ provider }) => provider))],
+		free: keyed.filter((model) => !paid(model)).map((model) => `${model.provider}/${model.id}`),
+	}
 }
 
 async function connect() {
@@ -180,7 +187,9 @@ async function connect() {
 		warnedOffers = true
 	}
 	for (const ref of offered) query.append('offer', ref)
-	for (const provider of await metered()) query.append('metered', provider)
+	const { metered, free } = await billing()
+	for (const provider of metered) query.append('metered', provider)
+	for (const ref of free) query.append('free', ref)
 	for (const who of args.allow) query.append('allow', who)
 	for (const folder of folders()) query.append('folder', folder)
 	const socket = new WebSocket(`${server.replace(/^http/, 'ws')}/ws?${query}`, {

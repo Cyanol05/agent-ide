@@ -14,10 +14,13 @@ export const matches = (search, text) =>
 		.split(/\s+/)
 		.every((word) => text.toLowerCase().includes(word))
 
-/** Whether a `provider/id` model runs on an API key billed per token there, rather than a subscription, as the runner says */
-export const metered = (runner, model) =>
-	Boolean(model?.includes('/')) &&
-	(runners.find((each) => each.name === runner)?.metered ?? []).includes(model.split('/')[0])
+/** Whether a `provider/id` model is billed per token there: an API key rather than a subscription, and not free, as the runner says */
+export const metered = (runner, model) => {
+	const { metered = [], free = [] } = runners.find((each) => each.name === runner) ?? {}
+	return (
+		Boolean(model?.includes('/')) && metered.includes(model.split('/')[0]) && !free.includes(model)
+	)
+}
 
 /** The mark for a model billed per use; subscription models carry none */
 export const Metered = () =>
