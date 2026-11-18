@@ -29,6 +29,36 @@ const thread = async (title) => {
 let srv = await server(env)
 await scriptedRunner('bot', route)
 
+// Recorded memory can arrive before the rest of a thread's messages.
+const late = (await api('POST', '/api/threads', { title: 'before memory starts' })).json.id
+await post(late, 'recorded')
+await api('POST', `/api/threads/${late}/memory`, {
+	lines: [{ id: 0, n: 1, text: 'recorded' }],
+})
+await api('POST', `/api/threads/${late}/memory`, { on: false })
+await post(late, long('missed one'))
+await post(late, long('missed two'))
+// Importing turns memory on, but does not write the missing messages.
+await api('POST', `/api/threads/${late}/memory`, { lines: [] })
+const pending = (await api('GET', `/api/threads/${late}/memory`)).json.lines
+check(
+	pending.length === 2 && pending[1].id === 1 && pending[1].n === 2,
+	'consecutive unwritten messages are one span',
+	JSON.stringify(pending),
+)
+const opened = (await api('GET', `/api/threads/${late}/memory?zoom=1,2`)).json
+check(
+	opened.message?.includes('missed one') && opened.message?.includes('missed two'),
+	'opening an unwritten span gives its messages',
+)
+await api('POST', `/api/threads/${late}/memory`, { on: true })
+check(
+	Boolean(await until(async () => has(await linesOf(late), 0, 2))),
+	'starting memory fills messages received before it turned on',
+)
+requests.length = 0
+n = 0
+
 const a = await thread('short')
 await post(a, 'hi')
 const short = await until(async () => (await linesOf(a)).find((x) => x.l === 0 && x.i === 0))
@@ -75,12 +105,20 @@ check(
 	"the second message's request holds the first's line in <chat>",
 )
 
+await api('POST', `/api/threads/${late}/memory`, { on: false })
+await post(late, long('missed before restart'))
+await api('POST', `/api/threads/${late}/memory`, { lines: [] })
+
 const c = await thread('restart')
 const entries = []
 for (let k = 0; k < 8; k++) entries.push((await post(c, long(`m${k}`))).json.entry)
 await until(async () => (await linesOf(c)).length > 0, 15000)
 await kill(srv, 'SIGKILL')
 srv = await server(env)
+check(
+	Boolean(await until(async () => has(await linesOf(late), 0, 3))),
+	'server startup fills messages without surviving line tasks',
+)
 const want = [
 	[0, 8],
 	[1, 4],

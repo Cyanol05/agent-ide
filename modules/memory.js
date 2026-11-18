@@ -84,7 +84,7 @@ Use the space up to the limit, and give it by value:
 
 Avoid omissions. Name a minor item in a word or two rather than drop it: an absent item can never be found. Copy names, numbers, ids, paths and errors exactly. Tag each item with its author ("oskar: ...; echo/echo@laptop: ..."), and credit quoted text to its real author. Never make anything look further along than it was. If told the line is too long, shorten it. Non-ASCII characters cost 2-4 bytes.`
 
-const SECTION = `Your memory of this thread may come as <chat> lines \`id+n|text\`, each standing for n messages from position id. The lines form a binary tree: each message is compressed into a line (a short message is its own line), then adjacent lines are merged in pairs, again and again. So recent lines cover one message each, and older lines cover more. A message not summarized yet shows as "${NOT_YET}".
+const SECTION = `Your memory of this thread may come as <chat> lines \`id+n|text\`, each standing for n messages from position id. The lines form a binary tree: each message is compressed into a line (a short message is its own line), then adjacent lines are merged in pairs, again and again. So recent lines cover one message each, and older lines cover more. Consecutive messages not summarized yet share one line naming their range; zoom opens those messages directly.
 
 Tools:
 - zoom(id, n) opens line id+n into the two lines it was made from;
@@ -157,18 +157,12 @@ export function server(core) {
 		initial: ({ backfill }) => ({ phase: backfill ? 'backfill' : 'write' }),
 		phases: {
 			/** The thread's first agent is here: each message without its line, and each pair not merged, gets its task */
-			backfill: ({ conversationId: threadId, input }, rt, ctx) =>
-				rt.commit(async (tx) => {
+			async backfill({ conversationId: threadId, input }, rt, ctx) {
+				const earlier = (await core.messages(threadId)).filter(
+					(message) => input.entry === undefined || message.id < input.entry,
+				)
+				return rt.commit(async (tx) => {
 					const have = await lines(tx, threadId)
-					const earlier = (
-						await collect((cursor) =>
-							tx.scanEntries({ conversationId: threadId, order: 'ascending' }, 500, cursor),
-						)
-					).filter(
-						(message) =>
-							message.kind === 'ade.message' &&
-							(input.entry === undefined || message.id < input.entry),
-					)
 					for (const [i, message] of earlier.entries())
 						if (!have.has(key(0, i)))
 							await tx.createTask(Line, { entry: message.id }, background(threadId))
@@ -178,7 +172,8 @@ export function server(core) {
 					// Switched on, it has no message of its own to write
 					if (input.entry === undefined) return finished()
 					return { status: 'running', checkpoint: { phase: 'write' } }
-				}, ctx),
+				}, ctx)
+			},
 			async write({ conversationId: threadId, input }, rt, ctx) {
 				const all = await core.messages(threadId)
 				const have = await core.commit((tx) => lines(tx, threadId))
@@ -277,14 +272,23 @@ export function server(core) {
 
 	async function open(thread, id, n) {
 		const all = await core.messages(thread)
-		const l = Math.log2(n)
-		if (!Number.isInteger(l) || !Number.isInteger(id) || id < 0 || id % n || id >= all.length)
+		if (!Number.isInteger(n) || n < 1 || !Number.isInteger(id) || id < 0 || id >= all.length)
 			throw new Error(`No line ${id}+${n}; zoom one from your memory`)
 		if (n === 1) return kept(all[id])
 		const have = await core.commit((tx) => lines(tx, thread))
+		if (!have.has(key(Math.log2(n), id / n)))
+			return all
+				.slice(id, id + n)
+				.map((message, offset) => `${id + offset}|${kept(message)}`)
+				.join('\n\n')
+		const l = Math.log2(n)
+		if (!Number.isInteger(l) || id % n)
+			throw new Error(`No line ${id}+${n}; zoom one from your memory`)
 		const half = (index) => have.get(key(l - 1, index)) ?? unwritten(l - 1, index)
-		return [half(2 * (id / n)), half(2 * (id / n) + 1)].filter(
-			(line) => (line.i * n) / 2 < all.length,
+		return collapse(
+			[half(2 * (id / n)), half(2 * (id / n) + 1)]
+				.filter((line) => (line.i * n) / 2 < all.length)
+				.map(span),
 		)
 	}
 
@@ -305,7 +309,9 @@ export function server(core) {
 					{
 						type: 'text',
 						text:
-							typeof opened === 'string' ? page(opened, id, at) : opened.map(rendered).join('\n'),
+							typeof opened === 'string'
+								? page(opened, id, at, n)
+								: opened.map((line) => `${line.id}+${line.n}|${line.text}`).join('\n'),
 					},
 				],
 			}
@@ -348,11 +354,13 @@ export function server(core) {
 		if (body !== undefined) return turn(thread, body)
 		if (query.has('zoom')) {
 			const opened = await open(thread, ...query.get('zoom').split(',').map(Number))
-			return typeof opened === 'string' ? { message: opened } : { lines: opened.map(span) }
+			return typeof opened === 'string' ? { message: opened } : { lines: opened }
 		}
 		const T = (await core.messages(thread)).length
 		const budget = Math.min(Number(query.get('budget')) || PANEL, PANEL)
-		return { lines: memory(await core.commit((tx) => lines(tx, thread)), T, budget).map(span) }
+		return {
+			lines: collapse(memory(await core.commit((tx) => lines(tx, thread)), T, budget).map(span)),
+		}
 	}
 
 	/** Told only to agents of a thread that remembers */
@@ -367,7 +375,7 @@ export function server(core) {
 		await core.conversation(threadId)
 		return core.commit(async (tx) => {
 			const row = await core.threadIn(tx, threadId)
-			if (on && !remembers(row)) await tx.createTask(Line, { backfill: true }, background(threadId))
+			if (on) await tx.createTask(Line, { backfill: true }, background(threadId))
 			row.memory = on
 			return { memory: on }
 		})
@@ -397,6 +405,13 @@ export function server(core) {
 			sections: [{ key: 'memory', tag: false, render: section }],
 			hooks: [hook(CompactionTask, { beforeCompact })],
 		}),
+		/** Resume missing messages too, not only tasks that survived the previous server. */
+		async start() {
+			for (const archived of [false, true])
+				for (const row of await core.threadList(undefined, archived))
+					if (remembers(await core.thread(row.id)))
+						await core.commit((tx) => tx.createTask(Line, { backfill: true }, background(row.id)))
+		},
 		posted,
 		catchUp,
 		serve,
@@ -458,15 +473,37 @@ export function memory(lines, T, budget, from = 0) {
 }
 
 /** Message `id` from character `at`, up to PAGE characters or PAGE_LINES lines, and where to go on */
-function page(text, id, at) {
+function page(text, id, at, n = 1) {
 	if (!Number.isInteger(at) || at < 0 || (at && at >= text.length))
 		throw new Error(`Message ${id} has ${text.length} characters; no page at ${at}`)
 	const head = text.slice(at, at + PAGE)
 	let end = at + (head.match(PAGE_LINES)?.[0] ?? head).length
 	if ((text.charCodeAt(end) & 0xfc00) === 0xdc00) end--
 	return end < text.length
-		? `${text.slice(at, end)}\n\n[characters ${at} to ${end} of ${text.length}: zoom(${id}, 1, ${end}) goes on]`
+		? `${text.slice(at, end)}\n\n[characters ${at} to ${end} of ${text.length}: zoom(${id}, ${n}, ${end}) goes on]`
 		: text.slice(at)
 }
 
-const render = (list) => `<chat>\n${list.map(rendered).join('\n')}\n</chat>`
+/** Adjacent gaps are one readable, zoomable span, even across binary-tree boundaries. */
+function collapse(list) {
+	const result = []
+	for (const line of list) {
+		const last = result.at(-1)
+		if (line.text === NOT_YET && last?.text === NOT_YET && last.id + last.n === line.id)
+			last.n += line.n
+		else result.push({ ...line })
+	}
+	return result.map((line) =>
+		line.text !== NOT_YET
+			? line
+			: {
+					...line,
+					text: `messages ${line.id}–${line.id + line.n - 1} not summarized yet`,
+				},
+	)
+}
+
+const render = (list) =>
+	`<chat>\n${collapse(list.map(span))
+		.map((line) => `${line.id}+${line.n}|${line.text}`)
+		.join('\n')}\n</chat>`

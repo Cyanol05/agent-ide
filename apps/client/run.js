@@ -305,6 +305,16 @@ export function cutsOf(conversation) {
 				n: Number(line[2]),
 				text: line[3],
 			}))
+			for (let index = lines.length - 1; index >= 0; index--) {
+				const line = lines[index]
+				if (!line.text.includes('not summarized yet')) continue
+				const next = lines[index + 1]
+				if (next?.text.includes('not summarized yet') && line.at + line.n === next.at) {
+					line.n += next.n
+					lines.splice(index + 1, 1)
+				}
+				line.text = `messages ${line.at}–${line.at + line.n - 1} not summarized yet`
+			}
 			return [
 				{
 					key: `${conversation}:cut:${entry.id}`,

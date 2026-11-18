@@ -1483,6 +1483,7 @@ const remembers = hook('remembers')
 for (const [name, runner] of Object.entries(await known()))
 	models.setProvider(runnerProvider(runners, name, runner.models))
 harness.resume()
+for (const module of modules) await module.start?.()
 
 // ── HTTP: input, routes, static files, runner script ──────────────────────
 

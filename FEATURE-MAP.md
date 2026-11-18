@@ -40,7 +40,7 @@ modules/
                          thread it posts to speaks there as itself (member), and so does a bot that
                          starts a thread for two or more bots (opener in server.js's post)
   auto-title.js          first-answer title generation (AutoTitle; the model sees the opening and the newest messages, `recent`), sanitizeThreadTitle, one attempt per thread; serve: a new title on request
-  memory.js              memory lines (Line task), `zoom`, catch-up and compaction cut, each thread's switch (remembers, turn), recorded-line import (serve); render; lines, memory and rendered, which overview reads too
+  memory.js              memory lines (Line task), `zoom`, startup backfill, catch-up and compaction cut, each thread's switch (remembers, turn), recorded-line import (serve); render; lines, memory and rendered, which overview reads too
   bots.js                bots: their doc, `bot` tool, /api/bots (serve, change, remove)
   context.js             AGENTS.md, skills and the folder's path (cwd) from the runner; listed skills stay readable outside it;
                          a folder's skills by name (serve), a person's /skill:name expanded as pi does (expand, skillCommand)

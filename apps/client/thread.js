@@ -125,6 +125,7 @@ export function Thread(props) {
 		},
 	)
 	const [unfolded, setUnfolded] = createSignal(false)
+	const [openedGaps, setOpenedGaps] = createStore({})
 	/** Where the messages on screen start: the oldest one, while there are more before it */
 	const start = createMemo(() =>
 		earlier[props.id] ? (messages().find((entry) => !entry.sending)?.id ?? 0) : -Infinity,
@@ -642,10 +643,25 @@ export function Thread(props) {
 												title=${() => `messages ${row().at} to ${row().at + row().n - 1}`}
 											>
 												<details>
-													<summary><small>${() => firstLine(row().text)}</small></summary>
+													<summary
+														onClick=${() => {
+															if (row().text.includes('not summarized yet'))
+																api(
+																	`/api/threads/${props.id}/memory?zoom=${row().at},${row().n}`,
+																).then((opened) =>
+																	setOpenedGaps((all) => {
+																		all[row().key] =
+																			opened.message ??
+																			opened.lines.map((line) => line.text).join('\n')
+																	}),
+																)
+														}}
+													>
+														<small>${() => firstLine(row().text)}</small>
+													</summary>
 													<div
 														class="body markdown"
-														innerHTML=${() => markdown(stripSummaryTag(row().text), links)}
+														innerHTML=${() => markdown(stripSummaryTag(openedGaps[row().key] ?? (row().text.includes('not summarized yet') ? 'Opening…' : row().text)), links)}
 													/>
 												</details>
 											</li>

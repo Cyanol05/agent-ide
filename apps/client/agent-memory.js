@@ -119,8 +119,9 @@ function ThreadMemory(props) {
 		if (!total) return { total, budget, cut: [], nodes: [] }
 		const { lines: cut } = await read(`?budget=${budget}`)
 		const nodes =
-			cut.length === 1 && cut[0].n >= total
-				? [{ ...cut[0], kind: 'cut' }]
+			cut.some((line) => line.text.includes('not summarized yet')) ||
+			(cut.length === 1 && cut[0].n >= total)
+				? cut.map((line) => ({ ...line, kind: 'cut' }))
 				: await openTree(read, 0, 2 ** Math.ceil(Math.log2(total)), cut)
 		return { total, budget, cut, nodes }
 	})
@@ -137,7 +138,7 @@ function ThreadMemory(props) {
 	`
 	function Line(props) {
 		const [expanded, setExpanded] = createSignal(false)
-		const waiting = () => props.line.text.startsWith('(not summarized')
+		const waiting = () => props.line.text.includes('not summarized yet')
 		const opened = createMemo(() =>
 			expanded() ? read(`?zoom=${props.line.id},${props.line.n}`) : null,
 		)
@@ -155,14 +156,8 @@ function ThreadMemory(props) {
 				}}
 			>
 				<small>${() => key(props.line)}</small>
-				<span
-					>${() =>
-						!waiting()
-							? props.line.text
-							: props.line.id + props.line.n > tree().total
-								? `the last ${tree().total - props.line.id} messages, waiting for more before they merge`
-								: 'being written, from the messages up'}</span
-				>
+				<span>${() => props.line.text}</span>
+
 				<${Show} when=${() => props.line.children}>
 					<${Lines} nodes=${() => props.line.children} />
 				<//>
