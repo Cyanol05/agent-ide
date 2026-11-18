@@ -627,7 +627,7 @@ agent-memory {
 
 				/* A message that crossed threads is a step too: → sent or ← received, the other side in its bot's colour, the
 				   first line quieter than the name; opened, its words at the step's size, in ink, and any answer under them.
-				   A bot rewriting itself reads the same way: ✎, its name, what changed; opened, each old against new. */
+				   A bot rewriting itself reads the same way: ✎, its name, what changed; opened, each as a word diff of old against new. */
 				> li:is(.sent, .received, .changed) {
 					> details > summary {
 						/* A long name gives way at three quarters of the row, so the first line always shows. */
@@ -686,18 +686,42 @@ agent-memory {
 					content: '✎';
 				}
 
+				/* Old against new as one run of words: removed struck through in a quiet red, added in a quiet green, the same in
+				   ink, and unchanged stretches far from a change folded into ⋯. */
 				> li.changed .change {
 					margin-top: var(--space-1);
 
-					> span {
+					> .key {
 						display: block;
-						margin-top: var(--space-1);
 						color: var(--mute);
 					}
 
-					> .was + pre {
-						color: var(--mute);
+					.diff {
+						white-space: pre-wrap;
+						overflow-wrap: anywhere;
 					}
+
+					.removed {
+						color: color-mix(in srgb, var(--danger) 70%, var(--mute));
+						background: color-mix(in srgb, var(--danger) 10%, transparent);
+						text-decoration: line-through;
+					}
+
+					.added {
+						color: color-mix(in srgb, var(--ok) 75%, var(--ink));
+						background: color-mix(in srgb, var(--ok) 12%, transparent);
+					}
+
+					/* ⋯ sits in the text like a word, the button only in its hover fill. */
+					.fold {
+						padding: 0 var(--space-1);
+						font: inherit;
+						white-space: normal;
+					}
+				}
+
+				> li.changed .failed {
+					color: var(--danger);
 				}
 
 				.whole {

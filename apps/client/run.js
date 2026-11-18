@@ -420,21 +420,95 @@ export const lastingOf = (steps) =>
 /** What a bot call changed of its bot, as the words its row names */
 const changedOf = (step) => ['instructions', 'model'].filter((key) => step.args[key] !== undefined)
 
+/** jsdiff from esm.sh, fetched the first time a change is opened */
+let jsdiff
+const loadDiff = () =>
+	(jsdiff ??= import('https://esm.sh/diff@9.0.0').catch((error) => {
+		jsdiff = undefined
+		throw error
+	}))
+
+/** Lines of unchanged text kept on each side of a change, past its own and not counting blank ones; the rest folds into ⋯ */
+const CONTEXT = 1
+
+/** How many of these lines, from the start, hold the change's own line and the next CONTEXT that aren't blank */
+function contextOf(lines) {
+	let kept = 0
+	for (let index = 1; index < lines.length; index++)
+		if (lines[index].trim() && ++kept === CONTEXT) return index + 1
+	return lines.length
+}
+
 /**
- * A bot rewriting itself, on its own row: ✎, its name in its colour, what changed; opened, each one old against new.
+ * Old against new as one run of words: removed, added and the same, with the same text far from any change folded. A
+ * fold keeps its exact text, so opening it reads as the whole.
+ */
+function wordDiff(diffWords, before, after) {
+	const parts = diffWords(before, after)
+	return parts.flatMap((part, index) => {
+		if (part.added) return [{ kind: 'added', text: part.value }]
+		if (part.removed) return [{ kind: 'removed', text: part.value }]
+		const lines = part.value.split('\n')
+		const first = index === 0
+		const last = index === parts.length - 1
+		if (first && last) return [{ kind: 'same', text: part.value }]
+		const head = first ? 0 : contextOf(lines)
+		const tail = last ? 0 : contextOf([...lines].reverse())
+		if (lines.length - head - tail < 2) return [{ kind: 'same', text: part.value }]
+		return [
+			head && { kind: 'same', text: `${lines.slice(0, head).join('\n')}\n` },
+			{ kind: 'fold', text: lines.slice(head, lines.length - tail).join('\n') },
+			tail && { kind: 'same', text: `\n${lines.slice(lines.length - tail).join('\n')}` },
+		].filter(Boolean)
+	})
+}
+
+/** Unchanged text out of sight, as ⋯ until clicked */
+function Fold(props) {
+	const [open, setOpen] = createSignal(false)
+	return html`
+		<${Show}
+			when=${open}
+			fallback=${() => html`
+				<button
+					type="button"
+					class="ghost fold"
+					title="Show the unchanged text"
+					onClick=${() => setOpen(true)}
+				>
+					⋯
+				</button>
+			`}
+			>${() => props.text}<//
+		>
+	`
+}
+
+/**
+ * A bot rewriting itself, on its own row: ✎, its name in its colour, what changed; opened, each one as a word diff of
+ * old against new.
  */
 export function Changed(props) {
+	const [diffWords, setDiffWords] = createSignal()
+	const [failed, setFailed] = createSignal()
 	const changes = () =>
 		changedOf(props.step).map((key) => ({
 			key,
 			before: props.step.result.details.before[key] ?? '',
 			after: props.step.args[key],
 		}))
+	const opened = (event) => {
+		if (!event.currentTarget.open || diffWords()) return
+		loadDiff().then(
+			(module) => setDiffWords(() => module.diffWords),
+			(error) => setFailed(`Couldn't load the diff from esm.sh: ${error.message}`),
+		)
+	}
 	return html`
 		<li class="elsewhere">
 			<ol class="steps">
 				<li class="call changed">
-					<details>
+					<details onToggle=${opened}>
 						<summary
 							title=${() => `${props.agent.name} changed its ${changedOf(props.step).join(' and ')}`}
 						>
@@ -444,13 +518,26 @@ export function Changed(props) {
 							<span class="in">${() => changedOf(props.step).join(' · ')}</span>
 						</summary>
 						<div class="whole">
+							<${Show} when=${failed}>${() => html`<p class="failed">${failed}</p>`}<//>
 							<${For} each=${changes} keyed=${(change) => change.key}
 								>${(change) => html`
 									<div class="change">
-										<span class="was">${() => `${change().key} was`}</span>
-										<pre>${() => change().before || '(empty)'}</pre>
-										<span class="now">now</span>
-										<pre>${() => change().after || '(empty)'}</pre>
+										<span class="key">${() => change().key}</span>
+										<${Show} when=${diffWords}
+											>${() => html`
+												<div class="diff">
+													<${For}
+														each=${() => wordDiff(diffWords(), change().before, change().after)}
+														>${(segment) =>
+															segment.kind === 'fold'
+																? html`<${Fold} text=${segment.text} />`
+																: segment.kind === 'same'
+																	? segment.text
+																	: html`<span class=${segment.kind}>${segment.text}</span>`}<//
+													>
+												</div>
+											`}<//
+										>
 									</div>
 								`}<//
 							>

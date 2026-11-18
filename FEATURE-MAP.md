@@ -86,7 +86,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
     answersIn, answerOf  a post step's answer from the thread it asked
     LASTING, lastingOf   the tool calls that change something beyond the run, each its own row: posts that ask, `bot` rewrites,
                          canvas_act (canvas.js CanvasRow)
-    Changed              a bot rewriting itself: ✎, its name, what changed; opened, old against new (the call's details.before)
+    Changed              a bot rewriting itself: ✎, its name, what changed; opened, a word diff of old against new (the call's details.before; jsdiff from esm.sh on first open, wordDiff), unchanged stretches folded into ⋯ (Fold)
     Turn, Step, Call     a turn's line, opened into steps
     handedStep, light, litIn   the handed step as a count (none for the one message above); opened, it lights those messages
   composer.js            the box you type in
