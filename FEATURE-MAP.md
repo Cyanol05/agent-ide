@@ -51,9 +51,10 @@ modules/
                          counts, looking (who has it open), serve, the `overview` tool; off by default
   canvas.js              a tldraw canvas per thread: Canvas doc (the room's snapshot; a fork copies it), rooms (one TLSocketRoom per
                          thread in use, saved shortly after a person's edits and before an agent's tool returns, closed when empty),
-                         the tools over simple shapes, `canvas_read`, `canvas_create`, `canvas_update`, `canvas_delete` (change: one write,
-                         saved; simple, record, arrow and its bindings, updated), who drew it (`meta.by`: the tool's caller, the API's user,
-                         or a browser session's `user`, stamped by authorizeRecord and onCommittedChanges), serve, connect; off by default
+                         `canvas_look` and `canvas_act`; relay hands them to the host tab (hostOf: the tab used last, tabs), alone does
+                         create/update/delete/move/label on the stored shapes when no tab answers (apply, record, arrow, updated);
+                         who drew it (`meta.by`, whose: the acting agent, else the session's user, stamped by authorizeRecord and
+                         onCommittedChanges); serve (GET shapes, POST actions/look/active/answer), connect; off by default
   web-search.js          `web_search`
   status.js              Program Status Protocol (OSC 7501) on the runner's terminal
   matrix.js              Matrix rooms as threads (MatrixSend, relay, sync)
@@ -100,8 +101,13 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
                          a bot's threads as a page under them; DetailsPage is the side column's page, pushed onto the overview or on its own
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
-  canvas.js              a thread's canvas as a page of the side column: tldraw and React loaded once from esm.sh (load), at the
-                         server's tldraw version, mounted as a React island synced over /api/threads/:id/canvas (board)
+  canvas.js              a thread's canvas as a page of the side column: tldraw and React loaded once from esm.sh (load), mounted as
+                         a React island synced over /api/threads/:id/canvas (board), which also makes the tab a host: it answers the
+                         server's looks and actions, and says when it's used
+  canvas/host.js         look and act against the live editor, with the starter kit's code: blurry shapes, peripheral clusters, lints;
+                         a batch of actions in one undo step, answering what landed
+  canvas/agent/          tldraw's agent starter kit, the parts used, ported to JS (README there; scripts/vendor-canvas-agent.js refreshes it)
+  canvas/tldraw.js, canvas/zod.js   tldraw and zod from esm.sh, the one place their versions are named for the browser
   overview.js            a thread's overview column: the page's sections (parse) and child threads (groupOf) in one set of GROUPS,
                          each drawn with a status dot or the check icon; Page, whose #message-N links scroll the thread there;
                          toggleOverview/overviewOpen; the column's pages and their tabs (pagesOn, pageOf, PageTabs: overview, canvas);
@@ -124,6 +130,7 @@ apps/client/             the web client, Solid 2, no build (README.md there)
 scripts/
   try.js                 scratch server beside a real runner in the caller’s folder, using echo/try
   page-spy.js            browser init script: fetches, socket frames, stalls
+  vendor-canvas-agent.js refreshes apps/client/canvas/agent from tldraw's agent starter kit
   replay-pi.js           replays pi sessions into a thread, to try memory
 examples/lib.js          what examples share: start (owned child processes), kill (awaits the exit), server, runner, scriptedRunner, api, view, until, quiet/settled/online (wait for state, not the clock), check
 examples/17-memory-compaction.js   automatic and manual cuts, memory coverage and budget at small and large windows
@@ -152,7 +159,7 @@ examples/106-one-store-per-person.js ade.sqlite, ade.log and ade.json live in ~/
 examples/107-a-missing-folder-says-so.js   a renamed folder stops the run with one line; another folder takes what waited
 examples/110-a-group-message-asks-the-thread.js   @Jeroen then an unaddressed question reaches the thread agent; failed picks never stick to a bot
 examples/108-canvas.js            an agent draws with no browser open, a watching socket sees it, a hard restart keeps it, a fork copies it
-examples/109-canvas-tools.js      update, delete, circles, a bound arrow following a moved shape, and who drew or changed each shape
+examples/109-canvas-tools.js      actions through the tab used last, or on the stored shapes with none; a tab closing mid-call; bound arrows; who drew it
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 
@@ -162,7 +169,7 @@ Where a feature lives:
 - Asking a model / switching it: composer.js pick/choose, model-picker.js, server.js whom/reconfigure.
 - Live work you watch: server.js work/doing/watch, client agent.js doing, run.js Turn.
 - Overview pages: modules/overview.js, client overview.js, thread.js (header button, data-message), system.js (the column).
-- Canvas: modules/canvas.js (rooms, tools, the socket), server.js upgrade (a module's `connect` takes /api/threads/:id/<module> sockets), client canvas.js, overview.js PageTabs, system.js (which page the column shows).
+- Canvas: modules/canvas.js (rooms, tools, relay, the socket), client canvas.js and canvas/ (host, vendored starter kit), server.js upgrade (a module's `connect` takes /api/threads/:id/<module> sockets), client canvas.js, overview.js PageTabs, system.js (which page the column shows).
 - Memory and compaction: modules/memory.js, server.js compact/compactingAt, client agent-memory.js, thread.js rows (cuts, folded lines), run.js cutsOf.
 - Bots: modules/bots.js, client bot.js, composer.js PickerBot, client server.js homeBot/botAgent; a bot's colour is server.js `colorOf` (its picked `color` hue, else by the order bots were made), picked in bot.js `BotSettings` `.colors`.
 - Runners and keys: remote.js, runner.js, server.js mintKey/revoke/upgrade, client runner.js.

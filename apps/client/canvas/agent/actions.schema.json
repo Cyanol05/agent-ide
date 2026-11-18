@@ -1,0 +1,1199 @@
+{
+	"anyOf": [
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "create"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"shape": {
+					"anyOf": [
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "draw"
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"fill": {
+									"type": "string",
+									"enum": ["none", "tint", "background", "solid", "pattern"]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								}
+							},
+							"required": ["_type", "color", "note", "shapeId"],
+							"additionalProperties": false,
+							"title": "Draw Shape",
+							"description": "A draw shape is a freeform shape that was drawn by the pen tool. IMPORTANT: Do not create draw shapes with the \"create\" action. To create new draw shapes, the AI must use the pen event because it gives more control."
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"enum": [
+										"rectangle",
+										"ellipse",
+										"triangle",
+										"diamond",
+										"hexagon",
+										"pill",
+										"cloud",
+										"x-box",
+										"check-box",
+										"heart",
+										"pentagon",
+										"octagon",
+										"star",
+										"parallelogram-right",
+										"parallelogram-left",
+										"trapezoid",
+										"fat-arrow-right",
+										"fat-arrow-left",
+										"fat-arrow-up",
+										"fat-arrow-down"
+									]
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"fill": {
+									"type": "string",
+									"enum": ["none", "tint", "background", "solid", "pattern"]
+								},
+								"h": {
+									"type": "number"
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"text": {
+									"type": "string"
+								},
+								"textAlign": {
+									"type": "string",
+									"enum": ["start", "middle", "end"]
+								},
+								"w": {
+									"type": "number"
+								},
+								"x": {
+									"type": "number"
+								},
+								"y": {
+									"type": "number"
+								}
+							},
+							"required": ["_type", "color", "fill", "h", "note", "shapeId", "w", "x", "y"],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "line"
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"x1": {
+									"type": "number"
+								},
+								"x2": {
+									"type": "number"
+								},
+								"y1": {
+									"type": "number"
+								},
+								"y2": {
+									"type": "number"
+								}
+							},
+							"required": ["_type", "color", "note", "shapeId", "x1", "x2", "y1", "y2"],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "text"
+								},
+								"anchor": {
+									"type": "string",
+									"enum": [
+										"bottom-center",
+										"bottom-left",
+										"bottom-right",
+										"center-left",
+										"center-right",
+										"center",
+										"top-center",
+										"top-left",
+										"top-right"
+									]
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"fontSize": {
+									"type": "number"
+								},
+								"maxWidth": {
+									"type": ["number", "null"]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"text": {
+									"type": "string"
+								},
+								"x": {
+									"type": "number"
+								},
+								"y": {
+									"type": "number"
+								}
+							},
+							"required": [
+								"_type",
+								"anchor",
+								"color",
+								"maxWidth",
+								"note",
+								"shapeId",
+								"text",
+								"x",
+								"y"
+							],
+							"additionalProperties": false,
+							"title": "Text Shape",
+							"description": "A text shape is a shape that contains text. The `anchor` property indicates how the text shape is positioned and aligned. For example, the \"top-left\" anchor means the text shape's x and y coordinates are the top left corner of the text shape, and the text gets left aligned. A shape with the \"bottom-center\" anchor means the text shape's x and y coordinates are the bottom center of the text shape, and the text gets center aligned on the horizontal axis. By default, text shapes auto-size to fit their content. If you provide a `maxWidth`, the text will automatically wrap to the next line if it exceeds that width (there is no need to add manual line breaks for word wrapping)."
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "arrow"
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"fromId": {
+									"type": ["string", "null"]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"text": {
+									"type": "string"
+								},
+								"toId": {
+									"type": ["string", "null"]
+								},
+								"x1": {
+									"type": "number"
+								},
+								"x2": {
+									"type": "number"
+								},
+								"y1": {
+									"type": "number"
+								},
+								"y2": {
+									"type": "number"
+								},
+								"bend": {
+									"type": "number"
+								}
+							},
+							"required": [
+								"_type",
+								"color",
+								"fromId",
+								"note",
+								"shapeId",
+								"toId",
+								"x1",
+								"x2",
+								"y1",
+								"y2"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "note"
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"text": {
+									"type": "string"
+								},
+								"x": {
+									"type": "number"
+								},
+								"y": {
+									"type": "number"
+								}
+							},
+							"required": ["_type", "color", "note", "shapeId", "x", "y"],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "unknown"
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"subType": {
+									"type": "string"
+								},
+								"x": {
+									"type": "number"
+								},
+								"y": {
+									"type": "number"
+								}
+							},
+							"required": ["_type", "note", "shapeId", "subType", "x", "y"],
+							"additionalProperties": false,
+							"title": "Unknown Shape",
+							"description": "A special shape that is not represented by one of the canvas's core shape types. The AI cannot create these shapes, but it *can* interact with them. eg: The AI can move these shapes. The `subType` property contains the internal name of the shape's type."
+						}
+					]
+				}
+			},
+			"required": ["_type", "intent", "shape"],
+			"additionalProperties": false,
+			"title": "Create",
+			"description": "The AI creates a new shape."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "update"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"update": {
+					"anyOf": [
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "draw"
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"fill": {
+									"type": "string",
+									"enum": ["none", "tint", "background", "solid", "pattern"]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								}
+							},
+							"required": ["_type", "color", "note", "shapeId"],
+							"additionalProperties": false,
+							"title": "Draw Shape",
+							"description": "A draw shape is a freeform shape that was drawn by the pen tool. IMPORTANT: Do not create draw shapes with the \"create\" action. To create new draw shapes, the AI must use the pen event because it gives more control."
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"enum": [
+										"rectangle",
+										"ellipse",
+										"triangle",
+										"diamond",
+										"hexagon",
+										"pill",
+										"cloud",
+										"x-box",
+										"check-box",
+										"heart",
+										"pentagon",
+										"octagon",
+										"star",
+										"parallelogram-right",
+										"parallelogram-left",
+										"trapezoid",
+										"fat-arrow-right",
+										"fat-arrow-left",
+										"fat-arrow-up",
+										"fat-arrow-down"
+									]
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"fill": {
+									"type": "string",
+									"enum": ["none", "tint", "background", "solid", "pattern"]
+								},
+								"h": {
+									"type": "number"
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"text": {
+									"type": "string"
+								},
+								"textAlign": {
+									"type": "string",
+									"enum": ["start", "middle", "end"]
+								},
+								"w": {
+									"type": "number"
+								},
+								"x": {
+									"type": "number"
+								},
+								"y": {
+									"type": "number"
+								}
+							},
+							"required": ["_type", "color", "fill", "h", "note", "shapeId", "w", "x", "y"],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "line"
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"x1": {
+									"type": "number"
+								},
+								"x2": {
+									"type": "number"
+								},
+								"y1": {
+									"type": "number"
+								},
+								"y2": {
+									"type": "number"
+								}
+							},
+							"required": ["_type", "color", "note", "shapeId", "x1", "x2", "y1", "y2"],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "text"
+								},
+								"anchor": {
+									"type": "string",
+									"enum": [
+										"bottom-center",
+										"bottom-left",
+										"bottom-right",
+										"center-left",
+										"center-right",
+										"center",
+										"top-center",
+										"top-left",
+										"top-right"
+									]
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"fontSize": {
+									"type": "number"
+								},
+								"maxWidth": {
+									"type": ["number", "null"]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"text": {
+									"type": "string"
+								},
+								"x": {
+									"type": "number"
+								},
+								"y": {
+									"type": "number"
+								}
+							},
+							"required": [
+								"_type",
+								"anchor",
+								"color",
+								"maxWidth",
+								"note",
+								"shapeId",
+								"text",
+								"x",
+								"y"
+							],
+							"additionalProperties": false,
+							"title": "Text Shape",
+							"description": "A text shape is a shape that contains text. The `anchor` property indicates how the text shape is positioned and aligned. For example, the \"top-left\" anchor means the text shape's x and y coordinates are the top left corner of the text shape, and the text gets left aligned. A shape with the \"bottom-center\" anchor means the text shape's x and y coordinates are the bottom center of the text shape, and the text gets center aligned on the horizontal axis. By default, text shapes auto-size to fit their content. If you provide a `maxWidth`, the text will automatically wrap to the next line if it exceeds that width (there is no need to add manual line breaks for word wrapping)."
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "arrow"
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"fromId": {
+									"type": ["string", "null"]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"text": {
+									"type": "string"
+								},
+								"toId": {
+									"type": ["string", "null"]
+								},
+								"x1": {
+									"type": "number"
+								},
+								"x2": {
+									"type": "number"
+								},
+								"y1": {
+									"type": "number"
+								},
+								"y2": {
+									"type": "number"
+								},
+								"bend": {
+									"type": "number"
+								}
+							},
+							"required": [
+								"_type",
+								"color",
+								"fromId",
+								"note",
+								"shapeId",
+								"toId",
+								"x1",
+								"x2",
+								"y1",
+								"y2"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "note"
+								},
+								"color": {
+									"type": "string",
+									"enum": [
+										"red",
+										"light-red",
+										"green",
+										"light-green",
+										"blue",
+										"light-blue",
+										"orange",
+										"yellow",
+										"black",
+										"violet",
+										"light-violet",
+										"grey",
+										"white"
+									]
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"text": {
+									"type": "string"
+								},
+								"x": {
+									"type": "number"
+								},
+								"y": {
+									"type": "number"
+								}
+							},
+							"required": ["_type", "color", "note", "shapeId", "x", "y"],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"_type": {
+									"type": "string",
+									"const": "unknown"
+								},
+								"note": {
+									"type": "string"
+								},
+								"shapeId": {
+									"type": "string"
+								},
+								"subType": {
+									"type": "string"
+								},
+								"x": {
+									"type": "number"
+								},
+								"y": {
+									"type": "number"
+								}
+							},
+							"required": ["_type", "note", "shapeId", "subType", "x", "y"],
+							"additionalProperties": false,
+							"title": "Unknown Shape",
+							"description": "A special shape that is not represented by one of the canvas's core shape types. The AI cannot create these shapes, but it *can* interact with them. eg: The AI can move these shapes. The `subType` property contains the internal name of the shape's type."
+						}
+					]
+				}
+			},
+			"required": ["_type", "intent", "update"],
+			"additionalProperties": false,
+			"title": "Update",
+			"description": "The AI updates an existing shape."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "delete"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"shapeId": {
+					"type": "string"
+				}
+			},
+			"required": ["_type", "intent", "shapeId"],
+			"additionalProperties": false,
+			"title": "Delete",
+			"description": "The AI deletes a shape."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "move"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"anchor": {
+					"type": "string",
+					"enum": [
+						"bottom-center",
+						"bottom-left",
+						"bottom-right",
+						"center-left",
+						"center-right",
+						"center",
+						"top-center",
+						"top-left",
+						"top-right"
+					]
+				},
+				"shapeId": {
+					"type": "string"
+				},
+				"x": {
+					"type": "number"
+				},
+				"y": {
+					"type": "number"
+				}
+			},
+			"required": ["_type", "intent", "anchor", "shapeId", "x", "y"],
+			"additionalProperties": false,
+			"title": "Move",
+			"description": "The agent moves a shape to a new position."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "label"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"shapeId": {
+					"type": "string"
+				},
+				"text": {
+					"type": "string"
+				}
+			},
+			"required": ["_type", "intent", "shapeId", "text"],
+			"additionalProperties": false,
+			"title": "Label",
+			"description": "The AI changes a shape's text."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "resize"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"originX": {
+					"type": "number"
+				},
+				"originY": {
+					"type": "number"
+				},
+				"scaleX": {
+					"type": "number"
+				},
+				"scaleY": {
+					"type": "number"
+				},
+				"shapeIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": ["_type", "intent", "originX", "originY", "scaleX", "scaleY", "shapeIds"],
+			"additionalProperties": false,
+			"title": "Resize",
+			"description": "The AI resizes one or more shapes, with the resize operation being performed relative to an origin point."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "rotate"
+				},
+				"centerY": {
+					"type": "number"
+				},
+				"degrees": {
+					"type": "number"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"originX": {
+					"type": "number"
+				},
+				"originY": {
+					"type": "number"
+				},
+				"shapeIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": ["_type", "centerY", "degrees", "intent", "originX", "originY", "shapeIds"],
+			"additionalProperties": false,
+			"title": "Rotate",
+			"description": "The AI rotates one or more shapes around an origin point."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "align"
+				},
+				"alignment": {
+					"type": "string",
+					"enum": ["top", "bottom", "left", "right", "center-horizontal", "center-vertical"]
+				},
+				"gap": {
+					"type": "number"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"shapeIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": ["_type", "alignment", "gap", "intent", "shapeIds"],
+			"additionalProperties": false,
+			"title": "Align",
+			"description": "The AI aligns shapes to each other on an axis."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "distribute"
+				},
+				"direction": {
+					"type": "string",
+					"enum": ["horizontal", "vertical"]
+				},
+				"intent": {
+					"type": "string"
+				},
+				"shapeIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": ["_type", "direction", "intent", "shapeIds"],
+			"additionalProperties": false,
+			"title": "Distribute",
+			"description": "The AI distributes shapes horizontally or vertically."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "stack"
+				},
+				"direction": {
+					"type": "string",
+					"enum": ["vertical", "horizontal"]
+				},
+				"gap": {
+					"type": "number"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"shapeIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": ["_type", "direction", "gap", "intent", "shapeIds"],
+			"additionalProperties": false,
+			"title": "Stack",
+			"description": "The AI stacks shapes horizontally or vertically. Note that this doesn't align shapes, it only stacks them along one axis."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "place"
+				},
+				"align": {
+					"type": "string",
+					"enum": ["start", "center", "end"]
+				},
+				"alignOffset": {
+					"type": "number"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"referenceShapeId": {
+					"type": "string"
+				},
+				"side": {
+					"type": "string",
+					"enum": ["top", "bottom", "left", "right"]
+				},
+				"sideOffset": {
+					"type": "number"
+				},
+				"shapeId": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"_type",
+				"align",
+				"alignOffset",
+				"intent",
+				"referenceShapeId",
+				"side",
+				"sideOffset",
+				"shapeId"
+			],
+			"additionalProperties": false,
+			"title": "Place",
+			"description": "The AI places a shape relative to another shape."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "bringToFront"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"shapeIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": ["_type", "intent", "shapeIds"],
+			"additionalProperties": false,
+			"title": "Bring to Front",
+			"description": "The AI brings one or more shapes to the front so that they appear in front of everything else."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "sendToBack"
+				},
+				"intent": {
+					"type": "string"
+				},
+				"shapeIds": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"required": ["_type", "intent", "shapeIds"],
+			"additionalProperties": false,
+			"title": "Send to Back",
+			"description": "The AI sends one or more shapes to the back so that they appear behind everything else."
+		},
+		{
+			"type": "object",
+			"properties": {
+				"_type": {
+					"type": "string",
+					"const": "pen"
+				},
+				"shapeId": {
+					"type": "string"
+				},
+				"color": {
+					"type": "string",
+					"enum": [
+						"red",
+						"light-red",
+						"green",
+						"light-green",
+						"blue",
+						"light-blue",
+						"orange",
+						"yellow",
+						"black",
+						"violet",
+						"light-violet",
+						"grey",
+						"white"
+					]
+				},
+				"closed": {
+					"type": "boolean"
+				},
+				"fill": {
+					"type": "string",
+					"enum": ["none", "tint", "background", "solid", "pattern"]
+				},
+				"intent": {
+					"type": "string"
+				},
+				"points": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"x": {
+								"type": "number"
+							},
+							"y": {
+								"type": "number"
+							}
+						},
+						"required": ["x", "y"],
+						"additionalProperties": false
+					}
+				},
+				"style": {
+					"type": "string",
+					"enum": ["smooth", "straight"]
+				}
+			},
+			"required": ["_type", "shapeId", "color", "closed", "fill", "intent", "points", "style"],
+			"additionalProperties": false,
+			"title": "Pen",
+			"description": "The AI draws a freeform line with a pen. This is useful for drawing custom paths that are not available with the other available shapes. The \"smooth\" style will automatically smooth the line between points. The \"straight\" style will render a straight line between points. The \"closed\" property will determine if the drawn line gets automatically closed to form a complete shape or not. Remember that the pen will be *down* until the action is over. If you want to lift up the pen, start a new pen action."
+		}
+	]
+}

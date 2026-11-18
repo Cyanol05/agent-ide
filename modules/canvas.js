@@ -1,25 +1,27 @@
 /**
- * A tldraw canvas for each thread, drawn on by people in the browser and by agents with `canvas_read`, `canvas_create`,
- * `canvas_update` and `canvas_delete`. Off by default; MODULES=+canvas turns it on.
+ * A tldraw canvas for each thread, drawn on by people in the browser and by agents with `canvas_look` and `canvas_act`.
+ * Off by default; MODULES=+canvas turns it on.
  *
  * The server holds one tldraw sync room per thread that someone has open or an agent draws on, and keeps its snapshot in
  * the thread's Canvas doc, so an agent draws with no browser open and a fork starts with the canvas as it was. A browser
- * syncs over the socket at `/api/threads/:id/canvas?user=<name>`. `GET /api/threads/:id/canvas` answers
- * `{shapes, tldraw}`: the shapes as agents see them, and the tldraw version the client loads, the same as the server's,
- * to speak the room's protocol. `POST` with `{shapes}` draws them, as `canvas_create` does; `{update}` changes them, as
- * `canvas_update` does, and `{delete: [ids]}` deletes them.
+ * syncs over the socket at `/api/threads/:id/canvas?user=<name>&tab=<id>`.
  *
- * Agents see shapes simply, as the tldraw agent starter kit does: `{id, type, x, y, w, h, text, color, by}`, where type
- * is a geo kind (rectangle, ellipse, diamond…; `circle` draws an ellipse), `text` or `note`, and any other tldraw shape
- * keeps its own type name. `by` is who drew or changed it last: the person, or the bot's name, or the agent's
- * model@runner, kept in the shape's `meta.by`. An arrow is `{id, type: "arrow", from, to, x1, y1, x2, y2}`: drawn
- * between two shapes, it is bound to both and follows them when they move.
+ * Agents see and change the canvas as tldraw's agent starter kit's own agent does, with its formats, actions,
+ * sanitizers and lints (vendored in apps/client/canvas/agent). Those need a live editor, so the server hands each look
+ * and batch of actions to a browser tab with the canvas open, the one someone used last, and answers what it found or
+ * did. With no tab, or one that closes or doesn't answer within HOST_WAIT, the server does what needs no layout itself:
+ * create, update, delete, move and label, with sizes guessed, and says so; other actions need a tab.
+ *
+ * `by` on a shape is who drew or changed it last: the person, or the bot's name, or the agent's model@runner, kept in its
+ * `meta.by`. `GET /api/threads/:id/canvas` answers `{shapes, tldraw}`: the stored shapes, simply, and the tldraw version
+ * the client loads, the same as the server's, to speak the room's protocol. `POST {actions}` acts and `{look: {bounds}}`
+ * looks, as the tools do; a tab posts `{active: tab}` when it's used and `{answer: {call, result | error}}`.
  *
  * The tab needs the internet the first time it opens, to load tldraw from esm.sh. On localhost or plain http tldraw runs
  * without a licence key and shows its watermark; served over https at a domain it would need a key.
  */
 import { readFileSync } from 'node:fs'
-import { arr, num, obj, oneOf, opt, str } from '@earendil-works/pi-schema'
+import { arr, num, obj, opt } from '@earendil-works/pi-schema'
 import { defineDoc, defineExtension, defineTool } from '@earendil-works/pi-durable'
 import { speaker } from '../util.js'
 import { InMemorySyncStorage, TLSocketRoom } from '@tldraw/sync-core'
@@ -35,42 +37,50 @@ const version = JSON.parse(
 /** A person's edits are saved this long after they stop; an agent's are saved before its tool returns */
 const SAVE = 500
 
-const GEO = [
-	'rectangle',
-	'ellipse',
-	'triangle',
-	'diamond',
-	'pentagon',
-	'hexagon',
-	'octagon',
-	'star',
-	'rhombus',
-	'oval',
-	'trapezoid',
-	'cloud',
-	'heart',
-	'x-box',
-	'check-box',
-	'arrow-right',
-	'arrow-left',
-	'arrow-up',
-	'arrow-down',
-]
-const COLORS = [
-	'black',
-	'grey',
-	'light-violet',
-	'violet',
-	'blue',
-	'light-blue',
-	'yellow',
-	'orange',
-	'green',
-	'light-green',
-	'light-red',
-	'red',
-	'white',
-]
+/** How long a tab has to answer a look or a batch of actions before the server does what it can alone */
+const HOST_WAIT = 5000
+/** How long after its actions land a tab's changes are still the agent's, for the sync that brings them */
+const ACTED = 5000
+
+/** The actions agents get, as the starter kit's schemas; scripts/vendor-canvas-agent.js writes it */
+const ACTIONS = JSON.parse(
+	readFileSync(new URL('../apps/client/canvas/agent/actions.schema.json', import.meta.url), 'utf8'),
+)
+/** What the server does with no tab to ask: what needs no layout */
+const ALONE = ['create', 'update', 'delete', 'move', 'label']
+
+/** The starter kit's shape types and tldraw's geo kinds, both ways (its convertFocusedShapeToTldrawShape) */
+const GEO = {
+	rectangle: 'rectangle',
+	ellipse: 'ellipse',
+	triangle: 'triangle',
+	diamond: 'diamond',
+	hexagon: 'hexagon',
+	pill: 'oval',
+	cloud: 'cloud',
+	'x-box': 'x-box',
+	'check-box': 'check-box',
+	heart: 'heart',
+	pentagon: 'pentagon',
+	octagon: 'octagon',
+	star: 'star',
+	'parallelogram-right': 'rhombus',
+	'parallelogram-left': 'rhombus-2',
+	trapezoid: 'trapezoid',
+	'fat-arrow-right': 'arrow-right',
+	'fat-arrow-left': 'arrow-left',
+	'fat-arrow-up': 'arrow-up',
+	'fat-arrow-down': 'arrow-down',
+}
+const FOCUSED = Object.fromEntries(Object.entries(GEO).map(([focused, geo]) => [geo, focused]))
+/** The starter kit's fills and tldraw's (its FocusedFill) */
+const FILLS = {
+	none: 'none',
+	solid: 'lined-fill',
+	background: 'semi',
+	tint: 'solid',
+	pattern: 'pattern',
+}
 /** A note is a fixed square, scaled */
 const NOTE = 200
 
@@ -122,15 +132,23 @@ export function server(core) {
 		})
 		/** Shapes a person changed whose `by` names someone else, until the room says so */
 		const touched = new Map()
+		/** Session → its tab and when it was last used, while its socket is open */
+		const tabs = new Map()
+		/** Session → the agent whose actions it is applying, and until when its changes are that agent's */
+		const acting = new Map()
+		const whose = (session) => {
+			const agent = acting.get(session.sessionId)
+			return agent && agent.until > Date.now() ? agent.by : session.meta.by
+		}
 		const room = new TLSocketRoom({
 			schema,
 			storage,
 			// A person's new shape is theirs as it lands; a change to someone else's is stamped right after
 			authorizeRecord: {
 				shape: ({ session, type, prev, next }) => {
-					if (type === 'create') return { ...next, meta: { ...next.meta, by: session.meta.by } }
-					if (type === 'update' && next.meta?.by !== session.meta.by)
-						touched.set(next.id, session.meta.by)
+					const by = whose(session)
+					if (type === 'create') return { ...next, meta: { ...next.meta, by } }
+					if (type === 'update' && next.meta?.by !== by) touched.set(next.id, by)
 					return next ?? prev
 				},
 			},
@@ -152,7 +170,7 @@ export function server(core) {
 				if (!numSessionsRemaining) close(threadId)
 			},
 		})
-		return { room, storage, save }
+		return { room, storage, save, tabs, acting }
 	}
 
 	/** A room nobody is in saves and closes; the next to come opens it from its snapshot */
@@ -169,20 +187,6 @@ export function server(core) {
 	/** Every record in the room, by id */
 	const recordsOf = (storage) =>
 		storage.transaction((txn) => Object.fromEntries(txn.entries())).result
-
-	async function read(threadId, bounds) {
-		const { storage } = await open(threadId)
-		const records = recordsOf(storage)
-		close(threadId)
-		return Object.values(records)
-			.filter((record) => record.typeName === 'shape')
-			.map((shape) => simple(shape, records))
-			.filter((shape) => !bounds || overlaps(shape, bounds))
-			.sort(
-				(one, other) =>
-					(one.y ?? one.y1) - (other.y ?? other.y1) || (one.x ?? one.x1) - (other.x ?? other.x1),
-			)
-	}
 
 	/**
 	 * One change to a thread's canvas: `make(records)` answers the records to set and the ids to delete, and what to
@@ -204,53 +208,326 @@ export function server(core) {
 		}
 	}
 
-	const create = (threadId, shapes, by) =>
+	/**
+	 * A batch of actions done here, with no tab to ask: create, update, delete, move and label, one at a time on the
+	 * stored shapes, with sizes guessed, since only an editor lays text out. The rest need a tab.
+	 */
+	const alone = (threadId, actions, by) =>
 		change(threadId, (records) => {
-			const page = Object.values(records)
-				.filter((record) => record.typeName === 'page')
-				.sort(byIndex)[0]
-			if (!page) throw new Error('This canvas has no page')
+			const all = { ...records }
+			const gone = new Set()
+			const touched = new Set()
+			const renamed = {}
+			const applied = actions.map((action) => {
+				const type = action?._type
+				if (!ALONE.includes(type))
+					return { _type: type, skipped: 'needs the canvas open in a browser' }
+				try {
+					for (const record of apply(action, all, by, renamed)) {
+						if (record.gone) {
+							delete all[record.id]
+							gone.add(record.id)
+						} else {
+							all[record.id] = record
+							touched.add(record.id)
+						}
+					}
+					return { _type: type, ok: true }
+				} catch (error) {
+					return { _type: type, skipped: error.message }
+				}
+			})
+			return {
+				set: [...touched].filter((id) => all[id]).map((id) => all[id]),
+				remove: [...gone],
+				answer: (now) => ({
+					applied,
+					shapes: [...touched]
+						.filter((id) => now[id]?.typeName === 'shape')
+						.map((id) => blurry(simple(now[id], now))),
+					deleted: [...gone].filter((id) => id.startsWith('shape:')).map(short),
+					renamed,
+					lints: [],
+				}),
+			}
+		})
+
+	async function read(threadId, bounds) {
+		const { storage } = await open(threadId)
+		const records = recordsOf(storage)
+		close(threadId)
+		return Object.values(records)
+			.filter((record) => record.typeName === 'shape')
+			.map((shape) => simple(shape, records))
+			.filter((shape) => !bounds || overlaps(shape, bounds))
+			.sort(
+				(one, other) =>
+					(one.y ?? one.y1) - (other.y ?? other.y1) || (one.x ?? one.x1) - (other.x ?? other.x1),
+			)
+	}
+
+	/** Call → what waits for a tab's answer */
+	const calls = new Map()
+
+	/** The tab someone used last, of those with this thread's canvas open */
+	async function hostOf(threadId) {
+		const room = rooms.get(threadId) && (await rooms.get(threadId))
+		const [sessionId] =
+			[...(room?.tabs ?? [])].sort(([, one], [, other]) => other.active - one.active)[0] ?? []
+		return sessionId && { ...room, sessionId }
+	}
+
+	/**
+	 * Hands a look or a batch of actions to the thread's host tab, and answers what it found or did; undefined when no
+	 * tab is open, or the one asked closed, failed or took longer than HOST_WAIT.
+	 */
+	async function relay(threadId, request, by) {
+		const host = await hostOf(threadId)
+		if (!host) return { why: 'no browser has the canvas open' }
+		const call = crypto.randomUUID()
+		if (request.act) host.acting.set(host.sessionId, { by, until: Infinity })
+		try {
+			return await new Promise((resolve) => {
+				const timer = setTimeout(
+					() => settle({ why: `the browser didn't answer in ${HOST_WAIT / 1000} s` }),
+					HOST_WAIT,
+				)
+				const settle = (answer) => {
+					clearTimeout(timer)
+					calls.delete(call)
+					resolve(answer)
+				}
+				calls.set(call, { sessionId: host.sessionId, settle })
+				host.room.sendCustomMessage(host.sessionId, { call, ...request })
+			})
+		} finally {
+			if (request.act) host.acting.set(host.sessionId, { by, until: Date.now() + ACTED })
+		}
+	}
+
+	async function look(threadId, bounds) {
+		const answer = await relay(threadId, { look: { bounds } })
+		if (answer.result) return answer.result
+		return {
+			bounds: bounds ?? null,
+			shapes: (await read(threadId, bounds)).map(blurry),
+			estimated: `Sizes are guessed and there are no lints: ${answer.why ?? answer.error}.`,
+		}
+	}
+
+	async function act(threadId, actions, by) {
+		const answer = await relay(threadId, { act: { actions } }, by)
+		if (answer.result) return answer.result
+		return {
+			...(await alone(threadId, actions, by)),
+			estimated: `Done on the stored canvas, sizes guessed: ${answer.why ?? answer.error}.`,
+		}
+	}
+
+	/** Who a tool call is: the bot's name, or the agent's model@runner, and its thread */
+	const caller = async (api) => {
+		const found = await core.home(api.conversationId)
+		return { threadId: found?.thread, by: found?.name ?? 'an agent' }
+	}
+	const text = (value) => ({ output: [{ type: 'text', text: value }] })
+
+	const canvasLook = defineTool({
+		name: 'canvas_look',
+		description:
+			"Look at your thread's canvas, where people in the thread draw with you. Answers the shapes in `bounds` (by default the area the person has in view) as {shapeId, type, x, y, w, h, text, by}, `by` naming who drew or changed it last; the rest as clusters, {bounds, numberOfShapes}, to look at next; and lints: text overflowing its shape, labels overlapping, arrows joined to nothing. Look before you change what's there, and again after.",
+		parameters: obj({
+			bounds: opt(obj({ x: num(), y: num(), w: num(), h: num() })),
+		}),
+		replay: 'safe',
+		execute: async ({ bounds }, api) =>
+			text(JSON.stringify(await look((await caller(api)).threadId, bounds))),
+	})
+
+	const canvasAct = defineTool({
+		name: 'canvas_act',
+		description:
+			"Change your thread's canvas with tldraw's agent actions, in order, in one step a person can undo: create, update, delete, move, label, resize, rotate, align, distribute, stack, place, bringToFront, sendToBack, pen. Refer to shapes by the shapeId canvas_look gives; an arrow created with fromId and toId stays joined to them when they move. Answers what each action did, the shapes it touched as they landed, with their real bounds, and the lints they now have: fix those in place, never by drawing again somewhere else.",
+		parameters: obj({ actions: arr(ACTIONS) }),
+		replay: 'unsafe',
+		execute: async ({ actions }, api) => {
+			const { threadId, by } = await caller(api)
+			const done = await act(threadId, actions, by)
+			return text(`${summary(done.applied)}\n${JSON.stringify(done)}`)
+		},
+	})
+
+	return {
+		extension: defineExtension({ name: 'ade.canvas', tools: [canvasLook, canvasAct] }),
+		/**
+		 * GET: the stored shapes, simply, and the tldraw version. POST {actions}: canvas_act as the person asking;
+		 * {look: {bounds}}: canvas_look. And from a tab: {active: tab} says it's being used, {answer} answers a call.
+		 */
+		async serve(threadId, query, body, user) {
+			if (threadId === undefined) throw new Error('A canvas belongs to a thread')
+			if (body === undefined) return { shapes: await read(threadId), tldraw: version }
+			if (Array.isArray(body.actions)) return act(threadId, body.actions, user)
+			if (body.look) return look(threadId, body.look.bounds)
+			if (body.active) {
+				const room = rooms.get(threadId) && (await rooms.get(threadId))
+				for (const [, tab] of room?.tabs ?? []) if (tab.tab === body.active) tab.active = Date.now()
+				return {}
+			}
+			if (body.answer) {
+				const { call, result, error } = body.answer
+				calls.get(call)?.settle(result ? { result } : { error: error ?? 'no answer' })
+				return {}
+			}
+			throw new Error('POST {actions}, {look}, {active} or {answer}')
+		},
+		/** A browser's tldraw sync socket; `user` says who is drawing, `tab` which tab it is */
+		async connect(threadId, socket, url) {
+			const sessionId = url.searchParams.get('sessionId')
+			if (!sessionId) return socket.close(4000, 'no sessionId')
+			const { room, tabs } = await open(threadId)
+			room.handleSocketConnect({
+				sessionId,
+				socket,
+				meta: { by: speaker(url.searchParams.get('user')) },
+			})
+			const tab = url.searchParams.get('tab')
+			if (!tab) return
+			tabs.set(sessionId, { tab, active: Date.now() })
+			socket.on('close', () => {
+				if (tabs.get(sessionId)?.tab !== tab) return
+				tabs.delete(sessionId)
+				for (const [, waiting] of calls)
+					if (waiting.sessionId === sessionId)
+						waiting.settle({ why: 'the browser closed the canvas' })
+			})
+		},
+	}
+}
+
+/** What a batch did, in a few words: "moved 3, deleted 1; 1 skipped" */
+function summary(applied) {
+	const counts = new Map()
+	for (const { _type, ok } of applied) if (ok) counts.set(_type, (counts.get(_type) ?? 0) + 1)
+	const skipped = applied.filter((one) => !one.ok).length
+	const done = [...counts].map(([type, n]) => `${type} ${n}`).join(', ')
+	return `${done || 'nothing done'}${skipped ? `; ${skipped} skipped` : ''}`
+}
+
+/** A stored shape as the starter kit's blurry shape: its id, type, bounds and text */
+function blurry(shape) {
+	const box =
+		shape.type === 'arrow'
+			? {
+					x: Math.min(shape.x1, shape.x2),
+					y: Math.min(shape.y1, shape.y2),
+					w: Math.abs(shape.x2 - shape.x1),
+					h: Math.abs(shape.y2 - shape.y1),
+				}
+			: { x: shape.x, y: shape.y, w: shape.w ?? 0, h: shape.h ?? 0 }
+	return {
+		shapeId: shape.id,
+		type: FOCUSED[shape.type] ?? shape.type,
+		...box,
+		...(shape.text && { text: shape.text }),
+		...(shape.by && { by: shape.by }),
+	}
+}
+
+/** An id no shape has, as the starter kit's ensureShapeIdIsUnique makes one: box, box-1, box-2 */
+function unique(id, records) {
+	let next = id
+	while (records[`shape:${next}`])
+		next = /\d+$/.test(next) ? next.replace(/\d+$/, (n) => String(+n + 1)) : `${next}-1`
+	return next
+}
+
+/** Where an anchor sits on a box, as the starter kit's move has it */
+function anchored(anchor = 'top-left', { w = 0, h = 0 }) {
+	const [vertical, horizontal] = anchor === 'center' ? ['center', 'center'] : anchor.split('-')
+	return {
+		x: { left: 0, center: w / 2, right: w }[horizontal] ?? 0,
+		y: { top: 0, center: h / 2, bottom: h }[vertical] ?? 0,
+	}
+}
+
+/** One action on the stored records, as the records it changes; a deleted one is {id, gone: true} */
+function apply(action, records, by, renamed) {
+	const page = Object.values(records)
+		.filter((record) => record.typeName === 'page')
+		.sort(byIndex)[0]
+	const shapeOf = (id) => {
+		if (records[`shape:${id}`]?.typeName !== 'shape') throw new Error(`no shape ${id}`)
+		return records[`shape:${id}`]
+	}
+	switch (action._type) {
+		case 'create': {
+			const shape = action.shape ?? {}
 			const top = Object.values(records)
 				.filter((record) => record.typeName === 'shape' && record.parentId === page.id)
 				.sort(byIndex)
 				.at(-1)?.index
-			const indices = getIndicesAbove(top, shapes.length)
-			// Arrows last, so they can point at shapes made in the same call
-			const order = shapes
-				.map((shape, at) => ({ shape, index: indices[at] }))
-				.sort((one, other) => (one.shape.type === 'arrow') - (other.shape.type === 'arrow'))
-			const all = { ...records }
-			const made = []
-			for (const { shape, index } of order) {
-				const drawn =
-					shape.type === 'arrow'
-						? arrow(shape, page.id, index, all, by)
-						: [record(shape, page.id, index, all, by)]
-				for (const one of drawn) all[one.id] = one
-				made.push(...drawn)
+			const [index] = getIndicesAbove(top, 1)
+			const id = shape.shapeId && unique(shape.shapeId, records)
+			if (id !== shape.shapeId) renamed[shape.shapeId] = id
+			if (shape._type === 'arrow') {
+				if (!shape.fromId || !shape.toId)
+					throw new Error('an arrow not joined to two shapes needs the canvas open in a browser')
+				return arrow(
+					{ from: shape.fromId, to: shape.toId, text: shape.text, color: shape.color, id },
+					page.id,
+					index,
+					records,
+					by,
+				)
 			}
-			return {
-				set: made,
-				answer: (now) =>
-					made.filter((one) => one.typeName === 'shape').map((one) => simple(now[one.id], now)),
-			}
-		})
-
-	const update = (threadId, shapes, by) =>
-		change(threadId, (records) => {
-			const changed = shapes.map((shape) => updated(shape, records, by))
-			return {
-				set: changed,
-				answer: (now) => changed.map((one) => simple(now[one.id], now)),
-			}
-		})
-
-	/** Shapes go with what's inside them and the bindings that hold them; an arrow bound to one stays, loose */
-	const remove = (threadId, ids, by) =>
-		change(threadId, (records) => {
-			const missing = ids.filter((id) => records[`shape:${id}`]?.typeName !== 'shape')
-			if (missing.length) throw new Error(`No shape ${missing.join(', ')}`)
-			const gone = new Set(ids.map((id) => `shape:${id}`))
+			const type = GEO[shape._type] ?? shape._type
+			if (!['note', 'text', ...Object.values(GEO)].includes(type))
+				throw new Error(`a ${shape._type} needs the canvas open in a browser`)
+			return [
+				record(
+					{
+						...shape,
+						type,
+						id,
+						fill: FILLS[shape.fill],
+						w: shape.w ?? shape.maxWidth ?? undefined,
+					},
+					page.id,
+					index,
+					records,
+					by,
+				),
+			]
+		}
+		case 'update': {
+			const { shapeId, x, y, w, h, text, color, _type } = action.update ?? {}
+			shapeOf(shapeId)
+			return [
+				updated(
+					_type === 'arrow'
+						? { id: shapeId, text, color }
+						: { id: shapeId, x, y, w, h, text, color },
+					records,
+					by,
+				),
+			]
+		}
+		case 'label':
+			shapeOf(action.shapeId)
+			return [updated({ id: action.shapeId, text: action.text }, records, by)]
+		case 'move': {
+			const shape = shapeOf(action.shapeId)
+			const offset = anchored(action.anchor, sizeOf(shape))
+			return [
+				updated(
+					{ id: action.shapeId, x: action.x - offset.x, y: action.y - offset.y },
+					records,
+					by,
+				),
+			]
+		}
+		case 'delete': {
+			shapeOf(action.shapeId)
+			const gone = new Set([`shape:${action.shapeId}`])
 			for (let more = true; more;) {
 				more = false
 				for (const record of Object.values(records))
@@ -267,125 +544,11 @@ export function server(core) {
 					bindings.filter((binding) => !gone.has(binding.fromId)).map((binding) => binding.fromId),
 				),
 			].map((id) => stamped(records[id], by))
-			return {
-				set: loosened,
-				remove: [...gone, ...bindings.map((binding) => binding.id)],
-				answer: () => [...gone].map((id) => id.replace(/^shape:/, '')),
-			}
-		})
-
-	/** Who a tool call is: the bot's name, or the agent's model@runner, and its thread */
-	const caller = async (api) => {
-		const found = await core.home(api.conversationId)
-		return { threadId: found?.thread, by: found?.name ?? 'an agent' }
-	}
-	const text = (value) => ({ output: [{ type: 'text', text: value }] })
-
-	const canvasRead = defineTool({
-		name: 'canvas_read',
-		description:
-			'Read your thread\'s canvas: its shapes as JSON, {id, type, x, y, w, h, text, color, by}, top to bottom, `by` naming who drew or changed it last. An arrow is {id, type: "arrow", from, to, x1, y1, x2, y2, text}: the shapes it joins, and where its ends are now. Give `bounds` to read only the shapes in that area.',
-		parameters: obj({
-			bounds: opt(obj({ x: num(), y: num(), w: num(), h: num() })),
-		}),
-		replay: 'safe',
-		execute: async ({ bounds }, api) => {
-			const shapes = await read((await caller(api)).threadId, bounds)
-			return text(shapes.length ? JSON.stringify(shapes) : 'The canvas is empty.')
-		},
-	})
-
-	const canvasCreate = defineTool({
-		name: 'canvas_create',
-		description: `Draw shapes on your thread's canvas, where people in the thread see them at once. x and y are the top-left corner, in pixels; y grows downward. A shape's text is its label. An arrow joins two shapes by id, \`from\` and \`to\`, and follows them when they move; it needs no x or y. Answers with the shapes as drawn, with their ids.`,
-		parameters: obj({
-			shapes: arr(
-				obj({
-					type: oneOf([...GEO, 'circle', 'text', 'note', 'arrow']),
-					x: opt(num({ description: 'Left edge; every shape but an arrow has one' })),
-					y: opt(num({ description: 'Top edge; every shape but an arrow has one' })),
-					w: opt(num({ description: 'Width; 160 by default, a note is 200 square' })),
-					h: opt(num({ description: 'Height; 100 by default' })),
-					text: opt(str()),
-					color: opt(oneOf(COLORS)),
-					id: opt(str({ description: 'Your own id for the shape, to refer to it later' })),
-					from: opt(str({ description: "An arrow's start: a shape's id" })),
-					to: opt(str({ description: "An arrow's end: a shape's id" })),
-				}),
-			),
-		}),
-		replay: 'unsafe',
-		execute: async ({ shapes }, api) => {
-			const { threadId, by } = await caller(api)
-			const drawn = await create(threadId, shapes, by)
-			return text(
-				`Drew ${drawn.length} shape${drawn.length === 1 ? '' : 's'}: ${JSON.stringify(drawn)}`,
-			)
-		},
-	})
-
-	const canvasUpdate = defineTool({
-		name: 'canvas_update',
-		description:
-			"Change shapes on your thread's canvas by id: give only what changes. x and y move it, w and h resize it, text relabels it. Arrows bound to a shape follow it. Answers with the shapes as they are now.",
-		parameters: obj({
-			shapes: arr(
-				obj({
-					id: str(),
-					x: opt(num()),
-					y: opt(num()),
-					w: opt(num()),
-					h: opt(num()),
-					text: opt(str()),
-					color: opt(oneOf(COLORS)),
-				}),
-			),
-		}),
-		replay: 'safe',
-		execute: async ({ shapes }, api) => {
-			const { threadId, by } = await caller(api)
-			const changed = await update(threadId, shapes, by)
-			return text(`Changed ${changed.length}: ${JSON.stringify(changed)}`)
-		},
-	})
-
-	const canvasDelete = defineTool({
-		name: 'canvas_delete',
-		description:
-			"Delete shapes from your thread's canvas by id, with whatever is inside them. An arrow bound to one stays, loose.",
-		parameters: obj({ ids: arr(str()) }),
-		replay: 'safe',
-		execute: async ({ ids }, api) => {
-			const { threadId, by } = await caller(api)
-			const gone = await remove(threadId, ids, by)
-			return text(`Deleted ${gone.join(', ')}`)
-		},
-	})
-
-	return {
-		extension: defineExtension({
-			name: 'ade.canvas',
-			tools: [canvasRead, canvasCreate, canvasUpdate, canvasDelete],
-		}),
-		async serve(threadId, query, body, user) {
-			if (threadId === undefined) throw new Error('A canvas belongs to a thread')
-			if (body === undefined) return { shapes: await read(threadId), tldraw: version }
-			if (Array.isArray(body.shapes)) return { shapes: await create(threadId, body.shapes, user) }
-			if (Array.isArray(body.update)) return { shapes: await update(threadId, body.update, user) }
-			if (Array.isArray(body.delete)) return { deleted: await remove(threadId, body.delete, user) }
-			throw new Error('POST {shapes} draws, {update} changes, {delete: [ids]} deletes')
-		},
-		/** A browser's tldraw sync socket; `user` says who is drawing */
-		async connect(threadId, socket, url) {
-			const sessionId = url.searchParams.get('sessionId')
-			if (!sessionId) return socket.close(4000, 'no sessionId')
-			const { room } = await open(threadId)
-			room.handleSocketConnect({
-				sessionId,
-				socket,
-				meta: { by: speaker(url.searchParams.get('user')) },
-			})
-		},
+			return [
+				...loosened,
+				...[...gone, ...bindings.map((binding) => binding.id)].map((id) => ({ id, gone: true })),
+			]
+		}
 	}
 }
 
@@ -512,16 +675,16 @@ const base = (id, x, y, index, parentId, by) => ({
 	meta: { by },
 })
 
-/** A tldraw record from a simple shape */
-function record({ type, x, y, w, h, text = '', color, id }, parentId, index, records, by) {
+/** A tldraw record from a simple shape, with the starter kit's defaults */
+function record({ type, x, y, w, h, text = '', color, fill, id }, parentId, index, records, by) {
 	if (typeof x !== 'number' || typeof y !== 'number') throw new Error(`A ${type} needs x and y`)
-	const geo = type === 'circle' ? 'ellipse' : type
+	const geo = type
 	const richText = toRichText(text)
 	const props =
 		type === 'text'
 			? {
 					color: color ?? 'black',
-					size: 'm',
+					size: 's',
 					font: 'draw',
 					textAlign: 'start',
 					w: w ?? 200,
@@ -533,7 +696,7 @@ function record({ type, x, y, w, h, text = '', color, id }, parentId, index, rec
 				? {
 						color: color ?? 'yellow',
 						labelColor: 'black',
-						size: 'm',
+						size: 's',
 						font: 'draw',
 						fontSizeAdjustment: 1,
 						align: 'middle',
@@ -548,7 +711,7 @@ function record({ type, x, y, w, h, text = '', color, id }, parentId, index, rec
 						geo,
 						dash: 'draw',
 						url: '',
-						w: w ?? 160,
+						w: w ?? 100,
 						h: h ?? 100,
 						growY: 0,
 						scale: 1,
@@ -556,8 +719,8 @@ function record({ type, x, y, w, h, text = '', color, id }, parentId, index, rec
 						flipY: false,
 						labelColor: 'black',
 						color: color ?? 'black',
-						fill: 'none',
-						size: 'm',
+						fill: fill ?? 'none',
+						size: 's',
 						font: 'draw',
 						align: 'middle',
 						verticalAlign: 'middle',

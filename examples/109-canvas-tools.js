@@ -1,4 +1,4 @@
-/** Agents change and delete what's on the canvas, bound arrows follow the shapes they join, and each shape says who drew or changed it last. */
+/** Agents act on the canvas through the tab someone used last, or on the stored shapes when no tab answers; a bound arrow follows its shapes, and each shape says who drew or changed it last. */
 import { getTlsyncProtocolVersion } from '@tldraw/sync-core'
 import { createTLSchema, toRichText } from '@tldraw/tlschema'
 import {
@@ -27,6 +27,7 @@ await scriptedRunner('box', (request) => {
 const {
 	json: { id },
 } = await api('POST', '/api/threads', { title: 'Canvas tools' })
+const path = `/api/threads/${id}/canvas`
 let asked = 0
 const ask = async (tool, args) => {
 	await api('POST', `/api/threads/${id}/entries`, {
@@ -36,69 +37,170 @@ const ask = async (tool, args) => {
 	return answers(await answered(id, ++asked)).at(-1).data.body
 }
 const shapes = async () =>
-	Object.fromEntries(
-		(await api('GET', `/api/threads/${id}/canvas`)).json.shapes.map((shape) => [shape.id, shape]),
-	)
+	Object.fromEntries((await api('GET', path)).json.shapes.map((shape) => [shape.id, shape]))
+const geo = (shapeId, x, y, more = {}) => ({
+	_type: 'rectangle',
+	shapeId,
+	x,
+	y,
+	w: 100,
+	h: 100,
+	color: 'black',
+	fill: 'none',
+	note: '',
+	...more,
+})
 
-const drew = await ask('canvas_create', {
-	shapes: [
-		{ type: 'rectangle', x: 0, y: 0, w: 100, h: 100, id: 'a', text: 'A' },
-		{ type: 'circle', x: 400, y: 0, w: 100, h: 100, id: 'b' },
-		{ type: 'arrow', from: 'a', to: 'b', id: 'ab', text: 'calls' },
+// No tab: what needs no layout, done on the stored shapes
+const drew = await ask('canvas_act', {
+	actions: [
+		{ _type: 'create', intent: 'a', shape: geo('a', 0, 0, { text: 'A' }) },
+		{ _type: 'create', intent: 'b', shape: geo('b', 400, 0, { _type: 'ellipse' }) },
+		{
+			_type: 'create',
+			intent: 'a calls b',
+			shape: {
+				_type: 'arrow',
+				shapeId: 'ab',
+				fromId: 'a',
+				toId: 'b',
+				x1: 0,
+				y1: 0,
+				x2: 0,
+				y2: 0,
+				color: 'black',
+				note: '',
+				text: 'calls',
+			},
+		},
+		{ _type: 'align', intent: 'line up', alignment: 'top', gap: 0, shapeIds: ['a', 'b'] },
 	],
 })
 let all = await shapes()
-check(all.b?.type === 'ellipse', 'a circle is drawn as an ellipse', drew)
 check(
-	all.ab?.from === 'a' &&
-		all.ab.to === 'b' &&
-		all.ab.x1 === 50 &&
-		all.ab.x2 === 450 &&
-		all.ab.text === 'calls',
-	'an arrow joins two shapes, middle to middle, even ones drawn in the same call',
+	all.ab?.from === 'a' && all.ab.to === 'b' && all.ab.x1 === 50 && all.ab.x2 === 450,
+	'an arrow joins two shapes, middle to middle',
 	JSON.stringify(all.ab),
 )
+check(all.a.by === 'echo@box', 'a shape says which agent drew it', JSON.stringify(all.a))
 check(
-	all.a.by === 'echo@box',
-	'a shape says which agent drew it, by the name the thread knows it by',
-	JSON.stringify(all.a),
+	drew.startsWith('create 3; 1 skipped') && drew.includes('needs the canvas open in a browser'),
+	'what needs a laid-out editor says it needs a browser, and the rest is done',
+	drew,
 )
 
-await ask('canvas_update', { shapes: [{ id: 'b', x: 400, y: 300, text: 'B', color: 'red' }] })
+await ask('canvas_act', {
+	actions: [
+		{ _type: 'move', intent: 'down', shapeId: 'b', x: 450, y: 350, anchor: 'center' },
+		{ _type: 'label', intent: 'name it', shapeId: 'b', text: 'B' },
+		{
+			_type: 'update',
+			intent: 'wider',
+			update: geo('a', 0, 0, { w: 200, text: 'A', color: 'red' }),
+		},
+	],
+})
 all = await shapes()
 check(
-	all.b.y === 300 && all.b.text === 'B' && all.b.color === 'red' && all.b.w === 100,
-	'an update moves, relabels and recolours, keeping the rest',
+	all.b.x === 400 && all.b.y === 300 && all.b.text === 'B',
+	'move puts its anchor where it says, and label relabels',
 	JSON.stringify(all.b),
 )
+check(all.a.w === 200 && all.a.color === 'red', 'update changes a shape to what it gives')
 check(
 	all.ab.y2 === 350 && all.ab.to === 'b',
 	'the arrow follows the shape it points at',
 	JSON.stringify(all.ab),
 )
-await ask('canvas_update', { shapes: [{ id: 'a', w: 200 }] })
-check((await shapes()).a.w === 200, 'and resizes')
 
-const wrong = await ask('canvas_update', { shapes: [{ id: 'nope', x: 1 }] })
-check(/No shape nope/.test(wrong), 'a shape that is not there is said so', wrong)
+// A tab: the room's socket as tldraw's client speaks it, answering what the server hands it as a host would
+function tab(name, user, answer) {
+	const socket = new WebSocket(
+		`${base.replace(/^http/, 'ws')}${path}?sessionId=${name}&tab=${name}&user=${user}`,
+	)
+	const heard = []
+	socket.onmessage = async (event) => {
+		const frame = String(event.data)
+		heard.push(frame)
+		const message = JSON.parse(frame)
+		for (const one of Array.isArray(message) ? message : [message])
+			if (one.type === 'custom' && one.data?.call) answer(one.data, socket)
+	}
+	const opened = new Promise((resolve) => (socket.onopen = resolve)).then(() =>
+		socket.send(
+			JSON.stringify({
+				type: 'connect',
+				connectRequestId: name,
+				schema: createTLSchema().serialize(),
+				protocolVersion: getTlsyncProtocolVersion(),
+				lastServerClock: 0,
+			}),
+		),
+	)
+	return { socket, heard, opened, use: () => api('POST', path, { active: name }) }
+}
+const handed = []
+const reply = (from) => (data) => {
+	handed.push({ from, ...data })
+	api('POST', path, {
+		answer: {
+			call: data.call,
+			result: data.look
+				? {
+						shapes: [{ shapeId: 'a', type: 'rectangle', x: 0, y: 0, w: 200, h: 140 }],
+						lints: [{ type: 'growY-on-shape', shapeIds: ['a'] }],
+					}
+				: {
+						applied: data.act.actions.map(({ _type }) => ({ _type, ok: true })),
+						shapes: [],
+						deleted: [],
+						lints: [],
+					},
+		},
+	})
+}
+const one = tab('one', 'ana', reply('one'))
+const two = tab('two', 'ana', reply('two'))
+await Promise.all([one.opened, two.opened])
+await until(async () => one.heard.length && two.heard.length)
+await one.use()
 
-// A person in the browser: the room's socket, as tldraw's client speaks it
-const socket = new WebSocket(
-	`${base.replace(/^http/, 'ws')}/api/threads/${id}/canvas?sessionId=ana-tab&user=ana`,
+const seen = await ask('canvas_look', {})
+check(
+	handed.at(-1)?.from === 'one' && seen.includes('"h":140') && seen.includes('growY-on-shape'),
+	'a look goes to the tab used last, and answers what its editor found',
+	seen,
 )
-const heard = []
-socket.onmessage = (event) => heard.push(String(event.data))
-await new Promise((resolve) => (socket.onopen = resolve))
-socket.send(
-	JSON.stringify({
-		type: 'connect',
-		connectRequestId: 'one',
-		schema: createTLSchema().serialize(),
-		protocolVersion: getTlsyncProtocolVersion(),
-		lastServerClock: 0,
-	}),
+await two.use()
+const done_ = await ask('canvas_act', {
+	actions: [
+		{ _type: 'stack', intent: 'tidy', direction: 'vertical', gap: 20, shapeIds: ['a', 'b'] },
+	],
+})
+check(
+	handed.at(-1)?.from === 'two' &&
+		handed.at(-1).act.actions[0]._type === 'stack' &&
+		done_.startsWith('stack 1'),
+	'so do actions, even those only an editor can do',
+	done_,
 )
-await until(async () => heard.some((frame) => frame.includes('"connect"')))
+
+// A tab that closes while it's asked: the server does what it can alone, and says why
+two.socket.onmessage = () => two.socket.close()
+const fell = await ask('canvas_act', {
+	actions: [{ _type: 'label', intent: 'rename', shapeId: 'a', text: 'Alpha' }],
+})
+check(
+	fell.includes('the browser closed the canvas') && (await shapes()).a.text === 'Alpha',
+	'a tab that closes mid-call leaves it to the server, which says so',
+	fell,
+)
+one.socket.close()
+
+// Who drew it: a person's new shape is theirs; moving an agent's makes it theirs
+const ana = tab('ana-tab', 'ana', () => {})
+await ana.opened
+await until(async () => ana.heard.some((frame) => frame.includes('"connect"')))
 const note = {
 	id: 'shape:ana',
 	typeName: 'shape',
@@ -126,13 +228,14 @@ const note = {
 		textLastEditedBy: null,
 	},
 }
-socket.send(JSON.stringify({ type: 'push', clientClock: 1, diff: { 'shape:ana': ['put', note] } }))
+ana.socket.send(
+	JSON.stringify({ type: 'push', clientClock: 1, diff: { 'shape:ana': ['put', note] } }),
+)
 check(
 	await until(async () => (await shapes()).ana?.by === 'ana'),
 	'a shape a person draws is theirs',
-	JSON.stringify((await shapes()).ana),
 )
-socket.send(
+ana.socket.send(
 	JSON.stringify({
 		type: 'push',
 		clientClock: 2,
@@ -145,22 +248,25 @@ check(
 		return a.y === 40 && a.by === 'ana'
 	}),
 	"moving an agent's shape makes it the person's",
-	JSON.stringify((await shapes()).a),
 )
-socket.close()
+ana.socket.close()
 
-const gone = await ask('canvas_delete', { ids: ['b'] })
+const gone = await api('POST', path, {
+	actions: [{ _type: 'delete', intent: 'drop', shapeId: 'b' }],
+})
 all = await shapes()
-check(!all.b && /Deleted b/.test(gone), 'a delete removes the shape', gone)
+check(
+	!all.b && gone.json.deleted[0] === 'b',
+	'a delete removes the shape',
+	JSON.stringify(gone.json),
+)
 check(
 	all.ab && !all.ab.to && all.ab.from === 'a',
 	'an arrow pointing at it stays, loose at that end',
-	JSON.stringify(all.ab),
 )
-
-const drawn = await api('POST', `/api/threads/${id}/canvas`, {
-	shapes: [{ type: 'rectangle', x: 0, y: 800 }],
-})
-check(drawn.json.shapes[0].by === 'oskar', 'through the API, the person is whoever asks')
+check(
+	gone.json.estimated?.includes('sizes guessed'),
+	'and with no tab left, the server says the sizes are its guess',
+)
 
 done()
