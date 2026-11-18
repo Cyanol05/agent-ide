@@ -29,6 +29,10 @@ import './agent/client/actions/PenActionUtil.js'
 const PERIPHERAL_PADDING = 75
 /** A look's picture is at most this many pixels on its longest side */
 const PICTURE = 1000
+/** A drawing that fits in this many pixels each way is looked at whole by default; a bigger one, where the person is */
+const WHOLE = 3000
+/** Room around a whole drawing, so its edges show */
+const MARGIN = 40
 
 /** What the starter kit's code asks of its agent: the editor, and where its coordinates start (the page's origin here) */
 const agentOf = (editor) => ({ editor, chatOrigin: { getOrigin: () => ({ x: 0, y: 0 }) } })
@@ -58,11 +62,12 @@ const round = (box) => ({
 
 /**
  * What's in an area, as the starter kit shows a model: shapes in view blurry, the rest as clusters, the lints, and a
- * picture of it; with what the person has selected and the area they have in view, so "this box" means theirs.
+ * picture of it; with what the person has selected and the area they have in view, so "this box" means theirs. With no
+ * area given, the whole drawing when it's small enough, else what the person has in view.
  */
 export async function look(editor, { bounds } = {}) {
 	const viewport = round(editor.getViewportPageBounds())
-	const area = bounds ?? viewport
+	const area = bounds ?? whole(editor) ?? viewport
 	const { inside, outside } = split(editor, area)
 	const agent = agentOf(editor)
 	const blurry = (shape) => {
@@ -83,6 +88,13 @@ export async function look(editor, { bounds } = {}) {
 		lints: new AgentLintManager(agent).detectCanvasLints(inside),
 		...(inside.length && { picture: await picture(editor, inside, area) }),
 	}
+}
+
+/** Everything on the page, with a margin, when it's small enough to take in at once */
+function whole(editor) {
+	const all = editor.getCurrentPageBounds()
+	if (!all || all.w > WHOLE || all.h > WHOLE) return undefined
+	return round(all.clone().expandBy(MARGIN))
 }
 
 /** The area as a JPEG, the starter kit's screenshot made small enough to read cheaply */

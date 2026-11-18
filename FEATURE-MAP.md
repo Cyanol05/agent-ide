@@ -106,7 +106,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
                          a React island synced over /api/threads/:id/canvas (board), which also makes the tab a host: it answers the
                          server's looks and actions, and says when it's used; CanvasRow, a canvas_act call's row in the chat
                          ("moved 3, deleted 1"), which opens the canvas on what changed (showOnCanvas)
-  canvas/host.js         look and act against the live editor, with the starter kit's code: blurry shapes, peripheral clusters, lints;
+  canvas/host.js         look and act against the live editor, with the starter kit's code: the whole drawing by default (whole),
+                         blurry shapes, peripheral clusters, lints, a picture, the person's selection and view;
                          a batch of actions in one undo step, answering what landed
   canvas/agent/          tldraw's agent starter kit, the parts used, ported to JS (README there; scripts/vendor-canvas-agent.js refreshes it)
   canvas/tldraw.js, canvas/zod.js   tldraw and zod from esm.sh, the one place their versions are named for the browser
