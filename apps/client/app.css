@@ -1950,70 +1950,10 @@ body.resizing {
 	gap: var(--space-1);
 }
 
-/* A thread's overview. Its child threads are the family's rows, each with its page's first line under its title. */
-.overview .pane-body {
-	> p.summary {
-		margin: 0 0 var(--space-4);
-	}
-
-	> details {
-		margin-bottom: var(--space-3);
-
-		/* A group's head sits like its rows: its mark in their dots' column, its name where their titles start, its disclosure after it in the same muted small type as a step's. */
-		> summary {
-			display: flex;
-			align-items: center;
-			padding-inline: var(--space-2);
-			color: var(--mute);
-			font-size: var(--text-small);
-			line-height: var(--text-small-line);
-
-			> h3 {
-				display: flex;
-				align-items: center;
-				gap: var(--space-2);
-				margin: 0;
-				font: inherit;
-
-				/* Done's check, centred on the dots' column however much wider than a dot it is. */
-				> svg.icon {
-					margin-inline: calc((var(--dot) - 14px) / 2);
-				}
-			}
-		}
-
-		/* A topic is a line; its bullets sit where the rows' titles start. */
-		> .markdown {
-			margin: var(--space-2) 0 var(--space-3);
-
-			ul {
-				margin: 0;
-				padding-left: calc(2 * var(--space-2) + var(--dot));
-				list-style: none;
-			}
-
-			li + li {
-				margin-top: var(--space-2);
-			}
-		}
-
-		.row {
-			align-items: start;
-
-			> .dot {
-				margin-top: 0.4em;
-			}
-		}
-
-		.row > span {
-			white-space: normal;
-
-			> small {
-				display: block;
-				color: var(--mute);
-			}
-		}
-	}
+/* A thread's overview: its recap, and while it's rewritten, the refresh icon breathing like a live turn. */
+.overview button.writing > svg.icon {
+	--blink-low: 0.55;
+	animation: blink 2.4s ease-in-out infinite;
 }
 
 /* A canvas takes the column's whole height and more of its width; tldraw draws everything inside its board. */

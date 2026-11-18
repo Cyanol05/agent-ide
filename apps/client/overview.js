@@ -1,131 +1,38 @@
 /**
- * A thread's overview, as a column beside it: its page's first line, then its topics and the threads it started together,
- * grouped by where they stand, waiting on you first, each thread with its own page's first line. Where each child stands
- * comes from the thread list; only the lines and the page are the model's, and a Working line whose threads have stopped
- * since it was written doesn't stay under Working. The column being open is what keeps the page written.
+ * A thread's overview, as a column beside it: a short recap of where the thread stands, its links scrolling the
+ * thread to the message behind a claim. The column being open is what keeps the recap written; while it's rewritten,
+ * the refresh button's icon pulses.
  */
 import html from '@solidjs/html'
-import { createMemo, createSignal, For, onSettled, refresh, Show, untrack } from 'solid-js'
+import { createMemo, createSignal, onSettled, refresh, Show, untrack } from 'solid-js'
 import { openSide, PageTabs } from './side.js'
 import { Panes } from './panes.js'
 import { Icon } from './icons.js'
-import { Dot } from './dot.js'
-import { api, followThread, hrefOf, threads } from './server.js'
+import { api, followThread } from './server.js'
 import { markdown } from './markdown.js'
 import { report } from './notice.js'
 import { threadLink } from './thread.js'
-
-/**
- * The column's groups, in order: the page's sections and the child threads in the same state share one, each drawn with
- * the mark the sidebar gives that state. Idle has only threads; a group longer than FOLDED, and Done, start folded.
- */
-const GROUPS = [
-	{ key: 'waiting', label: 'Waiting on you', state: 'blocked' },
-	{ key: 'working', label: 'Working', state: 'working' },
-	{ key: 'idle', label: 'Idle', state: '' },
-	{ key: 'done', label: 'Done', check: true },
-]
-const FOLDED = 8
-/** A child's group, from its status and its own page */
-const groupOf = (thread, page) =>
-	page?.waiting
-		? 'waiting'
-		: ['working', 'blocked'].includes(thread.status)
-			? 'working'
-			: !page || page.open
-				? 'idle'
-				: 'done'
-const running = (thread) => ['working', 'blocked'].includes(thread?.status)
-/** A page as its first line and each section's bullets, by group, each bullet with the lines under it */
-function parse(page) {
-	const [summary = '', ...rest] = (page ?? '').split('\n')
-	const sections = {}
-	let at
-	for (const line of rest) {
-		const heading = line.match(/^##\s+(.*?)\s*$/)?.[1]
-		if (heading !== undefined)
-			at = GROUPS.find((group) => group.label.toLowerCase() === heading.toLowerCase())?.key
-		else if (!at || (!line.trim() && !sections[at]?.length)) continue
-		else if (/^\s*[-*] /.test(line) || !sections[at]?.length) (sections[at] ??= []).push(line)
-		else sections[at][sections[at].length - 1] += `\n${line}`
-	}
-	return { summary: summary.trim(), sections }
-}
-/** The threads a bullet names as @"title" */
-const named = (bullet) =>
-	[...bullet.matchAll(/@"([^"]+)"/g)]
-		.map((match) => threads.find((thread) => thread.title === match[1]))
-		.filter(Boolean)
 
 export function Overview(props) {
 	// One thread for this column's whole life
 	const id = untrack(() => props.id)
 	// Fetched with ?open, so the server knows someone's looking: a page behind catches up, and answers keep it current
 	const page = createMemo(() => api(`/api/threads/${id}/overview?open`))
-	const pages = createMemo(() => api('/api/overview'))
 	onSettled(() => {
-		const timer = setInterval(() => {
-			refresh(page)
-			refresh(pages)
-		}, 5000)
+		const timer = setInterval(() => refresh(page), 5000)
 		return () => clearInterval(timer)
 	})
-	const children = createMemo(() =>
-		threads
-			.filter((thread) => thread.parent === id && !thread.archived)
-			.toSorted((one, other) => other.id - one.id),
-	)
-	const parsed = createMemo(() => parse(page().page))
-	/**
-	 * Working as it stands now, not as it was written: a line whose threads have all stopped leaves it, dropped when
-	 * they are rows here that say where they stand, else under Idle until the page catches up.
-	 */
-	const sections = createMemo(() => {
-		const { working = [], idle = [], ...rest } = parsed().sections
-		const ours = new Set(children().map((thread) => thread.id))
-		const stopped = (bullet) => named(bullet).length && !named(bullet).some(running)
-		return {
-			...rest,
-			working: working.filter((bullet) => !stopped(bullet)),
-			idle: [
-				...idle,
-				...working.filter(
-					(bullet) => stopped(bullet) && !named(bullet).every((thread) => ours.has(thread.id)),
-				),
-			],
-		}
-	})
-	const groups = createMemo(() => {
-		const all = pages()
-		const self = threads.find((thread) => thread.id === id)
-		return GROUPS.map((group) => {
-			const rows = children().filter((thread) => groupOf(thread, all[thread.id]) === group.key)
-			const bullets = sections()[group.key] ?? []
-			// Working's dot says what its threads, and this thread itself, are doing now: working, else blocked, else still
-			const now = [self, ...rows].map((thread) => thread?.status)
-			const state =
-				group.key !== 'working'
-					? group.state
-					: (['working', 'blocked'].find((status) => now.includes(status)) ?? '')
-			return {
-				...group,
-				state,
-				threads: rows,
-				text: bullets.join('\n').trim(),
-				count: rows.length + bullets.length,
-			}
-		}).filter((group) => group.count)
-	})
-	const [writing, setWriting] = createSignal(false)
+	const [asked, setAsked] = createSignal(false)
+	const writing = () => asked() || page().writing
 	const rewrite = async () => {
-		setWriting(true)
+		setAsked(true)
 		try {
 			await api(`/api/threads/${id}/overview`, {})
 			refresh(page)
 		} catch (error) {
 			report(error)
 		} finally {
-			setWriting(false)
+			setAsked(false)
 		}
 	}
 	return html`
@@ -135,75 +42,26 @@ export function Overview(props) {
 				head=${html`<${PageTabs} id=${id} />`}
 				actions=${html`<button
 					type="button"
-					class="ghost small"
-					aria-label=${() => (writing() || page().writing ? 'Writing the page' : 'Write it now')}
-					title=${() => (writing() || page().writing ? 'Writing…' : 'Write the page now')}
-					disabled=${() => writing()}
+					class=${() => (writing() ? 'ghost small writing' : 'ghost small')}
+					aria-label=${() => (writing() ? 'Writing the recap' : 'Write it now')}
+					title=${() => (writing() ? 'Writing…' : 'Write the recap now')}
+					disabled=${() => asked()}
 					onClick=${(_event) => rewrite()}
 				>
-					<${Show}
-						when=${() => writing() || page().writing}
-						fallback=${html`<${Icon} name="again" />`}
-					>
-						<${Dot} state="working" />
-					<//>
+					<${Icon} name="again" />
 				</button>`}
 				onClose=${(_event) => openSide(id, null)}
 			>
 				<${Show}
-					when=${() => parsed().summary}
+					when=${() => page().page}
 					fallback=${html`<p class="mute">
 						${() =>
 							page().writing
-								? 'Writing the page…'
-								: 'No page yet. It is written after the next answer, or now with ↻.'}
+								? 'Writing the recap…'
+								: 'No recap yet. It is written after the next answer, or now with ↻.'}
 					</p>`}
 				>
-					<p class="summary">${() => parsed().summary}</p>
-				<//>
-				<${For} each=${groups}>
-					${(group) => html`
-						<details
-							class=${() => group.key}
-							open=${group.key === 'waiting' || (group.key !== 'done' && group.count <= FOLDED)}
-						>
-							<summary>
-								<h3>
-									<${Show}
-										when=${() => group.check}
-										fallback=${html`<${Dot} state=${() => group.state} />`}
-									>
-										<${Icon} name="check" />
-									<//>
-									${() => `${group.label} · ${group.count}`}
-								</h3>
-							</summary>
-							<${Show} when=${() => group.text}>
-								<${Page} text=${() => group.text} thread=${id} />
-							<//>
-							<${Show} when=${() => group.threads.length}>
-								<ul class="thread-family">
-									<${For} each=${() => group.threads}>
-										${(thread) => html`
-											<li title=${() => thread.title}>
-												<a
-													class="row"
-													href=${() => hrefOf(thread.id)}
-													onClick=${(event) => followThread(event, thread.id)}
-												>
-													<${Dot} state=${() => thread.status} />
-													<span>
-														${() => thread.title}
-														<small>${() => pages()[thread.id]?.summary ?? ''}</small>
-													</span>
-												</a>
-											</li>
-										`}
-									<//>
-								</ul>
-							<//>
-						</details>
-					`}
+					<${Page} text=${() => page().page} thread=${id} />
 				<//>
 				<${Show} when=${() => page().writtenAt}>
 					<p class="mute">

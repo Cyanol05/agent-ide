@@ -1,4 +1,4 @@
-/** A thread's overview page is rewritten after each answer from the page before and the messages since, and when a thread it says is working stops; agents can read it. */
+/** A thread's overview is a recap, rewritten after each answer from the recap before and the messages since; agents can read it. */
 import {
 	answered,
 	api,
@@ -15,15 +15,14 @@ import {
 await server({ MODULES: '+overview,-auto-title,-director' })
 const handed = []
 let pages = 0
-let side = false
 await scriptedRunner('box', (request) => {
 	const system = text(request.messages[0] ?? { content: '' })
 	if (system.startsWith('# Overview')) {
 		handed.push(text(request.messages.at(-1)))
 		pages++
-		return say(
-			`Page ${pages}: where it stands.\n\n## Working\n- Going on [#0](#message-0)${side ? '\n- On the side in @"Side job" [#1](#message-1)' : ''}\n\n## Done\n${Array.from({ length: 12 }, (_, at) => `- Thing ${at}`).join('\n')}`,
-		)
+		// The first try lists what's done; told that's not the shape, it writes the recap alone
+		if (pages === 1) return say('Page 1: where it stands.\n\n## Done\n- Thing 0')
+		return say(`Page ${pages}: where it stands. ${'And more. '.repeat(120)}`)
 	}
 	const latest = request.messages.at(-1)
 	if (latest.role === 'user' && text(latest).includes('read your overview'))
@@ -53,13 +52,13 @@ check(handed[0].includes('[0] oskar (person): Nobody looks'), 'from its messages
 
 const first = (await api('GET', path)).json
 check(
-	first.summary === 'Page 1: where it stands.' && first.open === 1 && first.waiting === 0,
-	'the page, its first line and its counts come back',
+	pages === 2 && first.page.startsWith('Page 2: where it stands.') && !first.page.includes('##'),
+	'a page with sections is sent back once, and the recap alone is kept',
 	JSON.stringify(first),
 )
 check(
-	first.page.includes('- Thing 9') && !first.page.includes('- Thing 10'),
-	'Done keeps its newest ten',
+	first.page.length <= 1024 && first.page.endsWith('And more.'),
+	'a long recap is cut at a sentence',
 )
 
 await api('POST', `/api/threads/${id}/entries`, { body: 'More, please', to: ['echo/echo@box'] })
@@ -69,20 +68,11 @@ check(
 	'while someone looks, the next answer rewrites it',
 )
 check(
-	handed[1].includes('Page 1: where it stands.') &&
-		handed[1].includes('[2] oskar (person): More, please') &&
-		!handed[1].includes('Nobody looks'),
+	handed[2].includes('Page 2: where it stands.') &&
+		handed[2].includes('[2] oskar (person): More, please') &&
+		!handed[2].includes('Nobody looks'),
 	'a rewrite reads the page before and only the messages since',
-	handed[1],
-)
-
-const summaries = (await api('GET', '/api/overview')).json
-check(
-	summaries[id]?.summary === 'Page 2: where it stands.' &&
-		summaries[id].open === 1 &&
-		summaries[id].waiting === 0,
-	'each thread’s first line and open topics, by id',
-	JSON.stringify(summaries),
+	handed[2],
 )
 
 await api('POST', `/api/threads/${id}/entries`, {
@@ -93,7 +83,7 @@ await answered(id, 3)
 check(
 	(await api('GET', `/api/threads/${id}`)).json.entries
 		.at(-1)
-		.data.body.startsWith('I read: Page 2'),
+		.data.body.startsWith('I read: Page 3'),
 	'the agent reads its page with the overview tool',
 )
 await until(async () => !(await api('GET', path)).json.writing)
@@ -104,22 +94,8 @@ check(now.status === 201 && pages === asked, 'asking with nothing new spends no 
 
 const fresh = (await api('POST', path, { fresh: true })).json
 check(
-	pages === asked + 1 && handed.at(-1).includes('no page yet') && fresh.through > 0,
+	pages === asked + 1 && handed.at(-1).includes('no recap yet') && fresh.through > 0,
 	'fresh writes the page again from the messages alone',
 )
 
-await api('POST', '/api/threads', { title: 'Side job' })
-side = true
-await api('POST', path, { fresh: true })
-side = false
-const halted = pages
-const after = (await api('POST', path, {})).json
-check(
-	pages === halted + 1 &&
-		handed.at(-1).includes('stopped running: @"Side job"') &&
-		handed.at(-1).includes('No new messages since the page') &&
-		!after.page.includes('Side job'),
-	'a thread Working names that has stopped is behind too: asking rewrites it with nothing new',
-	handed.at(-1),
-)
 done()

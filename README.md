@@ -56,7 +56,7 @@ So, what's different about this one? Not much, but it adds patterns I've found u
 - threads get a short title once their first message is answered (`auto-title`)
 - agents can search the web (`web-search`, off by default)
 - Matrix rooms become threads (`matrix`, off by default)
-- a short page per thread says where it stands and what waits on you (`overview`, off by default)
+- a short recap per thread says where it stands (`overview`, off by default)
 - a canvas per thread that people and agents draw on together, with tldraw (`canvas`, off by default)
 - move threads to and from pi (`pi-sessions`, off by default)
 

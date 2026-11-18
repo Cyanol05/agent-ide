@@ -46,9 +46,9 @@ modules/
   director.js            the `direct` hook: @mentions ask that bot, by default a model picks the thread's agent, bots or nobody (decide), with a short, visible fallback to the thread agent on failure;
                          those asked take turns (`turns`); a bot's answer @mentioning a bot asks it, resting
                          after three bot answers in a row (botTurns); tells bots to @mention, not post (section)
-  overview.js            a thread's overview page: WRITER (the prompt and its shape), Overview doc, Write task (one writer, rounds
-                         while more is new), since (the new messages, numbered), misshapen (one retry), tidy (Done's ten, the cap),
-                         counts, looking (who has it open), serve, the `overview` tool; off by default
+  overview.js            a thread's recap: WRITER (the prompt), Overview doc, Write task (one writer, rounds while more is new),
+                         since (the new messages, numbered), misshapen (one retry), tidy (the cap), looking (who has it open),
+                         serve, the `overview` tool; off by default
   canvas.js              a tldraw canvas per thread: Canvas doc (the room's snapshot; a fork copies it), rooms (one TLSocketRoom per
                          thread in use, saved shortly after a person's edits and before an agent's tool returns, closed when empty),
                          `canvas_look` and `canvas_act`; relay hands them to the host tab (hostOf: the tab used last, tabs), alone does
@@ -110,8 +110,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
                          a batch of actions in one undo step, answering what landed
   canvas/agent/          tldraw's agent starter kit, the parts used, ported to JS (README there; scripts/vendor-canvas-agent.js refreshes it)
   canvas/tldraw.js, canvas/zod.js   tldraw and zod from esm.sh, the one place their versions are named for the browser
-  overview.js            the side column's Overview tab: the page's sections (parse) and child threads (groupOf) in one set of GROUPS,
-                         each drawn with a status dot or the check icon; Page, whose #message-N links scroll the thread there
+  overview.js            the side column's Overview tab: the recap, Page, whose #message-N links scroll the thread there; the
+                         refresh icon pulses while it's rewritten
   side.js                the side column: its pages (pagesOf: details, overview, canvas when on), which one each thread shows
                          (sideOf, openSide, toggleSide), its tabs (PageTabs) and the thread head's buttons (SideButtons);
                          system.js puts the page beside the thread
@@ -157,7 +157,7 @@ examples/96-one-executable.js installed executable dispatch, including leading C
 examples/101-the-walkthrough-writes-memory.js   tutorial loader opens with recorded, zoomable memory and no runner
 examples/102-import-memory.js     recorded-line import, existing lines preserved, invalid spans rejected
 examples/100-post-without-a-title.js optional post titles with auto-title on/off; both talk tools address threads by id or exact title and reject ambiguity
-examples/105-overview-page.js     the overview page: written after answers from the page before and what's new, read by the tool, switched off
+examples/105-overview-page.js     the overview recap: written after answers from the recap before and what's new, one paragraph, read by the tool
 examples/106-one-store-per-person.js ade.sqlite, ade.log and ade.json live in ~/.config/ade, whatever folder the server starts in
 examples/107-a-missing-folder-says-so.js   a renamed folder stops the run with one line; another folder takes what waited
 examples/110-a-group-message-asks-the-thread.js   @Jeroen then an unaddressed question reaches the thread agent; failed picks never stick to a bot
@@ -171,7 +171,7 @@ Where a feature lives:
 - Talk between threads: modules/talk.js (post, threads, reply), server.js append/whom, client thread.js `Cross` (a crossed message as a step row), run.js `Exchange`.
 - Asking a model / switching it: composer.js pick/choose, model-picker.js, server.js whom/reconfigure.
 - Live work you watch: server.js work/doing/watch, client agent.js doing, run.js Turn.
-- Overview pages: modules/overview.js, client overview.js, side.js (its tab and header button), thread.js (data-message), system.js (the column).
+- Overview recaps: modules/overview.js, client overview.js, side.js (its tab and header button), thread.js (data-message), system.js (the column).
 - Canvas: modules/canvas.js (rooms, tools, relay, the socket), client canvas.js and canvas/ (host, vendored starter kit), server.js upgrade (a module's `connect` takes /api/threads/:id/<module> sockets), client canvas.js, side.js PageTabs, system.js (which page the column shows).
 - Memory and compaction: modules/memory.js, server.js compact/compactingAt, client agent-memory.js, thread.js rows (cuts, folded lines), run.js cutsOf.
 - Bots: modules/bots.js, client bot.js, composer.js PickerBot, client server.js homeBot/botAgent; a bot's colour is server.js `colorOf` (its picked `color` hue, else by the order bots were made), picked in bot.js `BotSettings` `.colors`.
