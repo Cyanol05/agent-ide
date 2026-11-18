@@ -7,7 +7,15 @@ import { recipients } from './composer.js'
 import { Dot } from './dot.js'
 import { Runner } from './runner.js'
 import { Thread } from './thread.js'
-import { detailsPushed, Overview, overviewOpen, popDetails, toggleOverview } from './overview.js'
+import { Canvas } from './canvas.js'
+import {
+	detailsPushed,
+	Overview,
+	overviewOpen,
+	pageOf,
+	popDetails,
+	toggleOverview,
+} from './overview.js'
 import { DetailsPage } from './thread-details.js'
 import { ThreadList } from './thread-list.js'
 import { Wires } from './wires.js'
@@ -91,10 +99,16 @@ export function System() {
 									<${Show}
 										when=${() => detailsPushed(id) && current() === id}
 										fallback=${() =>
-											html`<${Loading}
-												fallback=${html`<aside class="overview"><p class="mute">Reading the page…</p></aside>`}
+											html`<${Show}
+												when=${() => pageOf(id)?.key === 'canvas'}
+												fallback=${() =>
+													html`<${Loading}
+														fallback=${html`<aside class="overview"><p class="mute">Reading the page…</p></aside>`}
+													>
+														<${Overview} id=${id} />
+													<//>`}
 											>
-												<${Overview} id=${id} />
+												<${Canvas} id=${id} />
 											<//>`}
 									>
 										<${DetailsPage}

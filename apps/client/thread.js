@@ -61,7 +61,7 @@ import { Dot } from './dot.js'
 import { report } from './notice.js'
 import { imageUrl } from './images.js'
 import { markdown } from './markdown.js'
-import { Overview, overviewOpen, pushDetails, toggleOverview } from './overview.js'
+import { Overview, overviewOpen, pageOf, pagesOn, pushDetails, toggleOverview } from './overview.js'
 
 /** A folded summary's text, without the literal <summary> wrapper tags some memories still carry */
 const stripSummaryTag = (text) =>
@@ -499,15 +499,18 @@ export function Thread(props) {
 						<${Dot} state=${() => thread()?.status} />
 					</button>
 				</h2>
-				<${Show} when=${() => props.id && server().modules.includes('overview')}>
+				<${Show} when=${() => props.id && pagesOn().length}>
 					<button
 						type="button"
 						class=${() => ['ghost', 'small', 'overview-toggle', { on: overviewOpen(props.id) }]}
-						title="Where this thread stands"
+						title=${() =>
+							pageOf(props.id)?.key === 'canvas'
+								? "This thread's canvas"
+								: 'Where this thread stands'}
 						aria-pressed=${() => String(overviewOpen(props.id))}
 						onClick=${(_event) => toggleOverview(props.id)}
 					>
-						Overview
+						${() => pageOf(props.id)?.label}
 					</button>
 				<//>
 				<${Show} when=${() => props.id && columns().length > 1}>

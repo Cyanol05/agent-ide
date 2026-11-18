@@ -1993,6 +1993,29 @@ body.resizing {
 	}
 }
 
+/* The column's tabs, when more than one page is on, stand where a page's name would. */
+.page-head > nav.tabs {
+	display: flex;
+	flex: 1;
+	gap: var(--space-1);
+}
+
+/* A canvas takes the column's whole height and more of its width; tldraw draws everything inside its board. */
+.overview.canvas {
+	flex-basis: 44rem;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	padding-bottom: 0;
+
+	> .board {
+		position: relative;
+		flex: 1;
+		min-height: 0;
+		margin-inline: calc(-1 * var(--space-4));
+	}
+}
+
 .app-bar > .overview-toggle {
 	justify-self: end;
 }

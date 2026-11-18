@@ -23,7 +23,7 @@ server.js                the server: Pi Durable store, tasks, HTTP API, /ws, run
   receipt, once                     a retried request does its work once
   routes                            every HTTP route, as the README lists them
   watch, rewatch, told, doing       /ws: a browser watching one thread and its agents' live work
-  mintKey, revoke, upgrade          runner keys and the runner's socket
+  mintKey, revoke, upgrade          runner keys and the runner's socket; a module's own thread socket (its `connect`)
   saveSettings, restart, connectSelf   settings, restart, the server lending its own machine, under the name it first got
 echo.js                  echo/try scripted model responses: file tools, slow commands, posts, bots and director
 runner.js                a runner: offers its models and folders, connects, runs agents for the server
@@ -49,6 +49,10 @@ modules/
   overview.js            a thread's overview page: WRITER (the prompt and its shape), Overview doc, Write task (one writer, rounds
                          while more is new), since (the new messages, numbered), misshapen (one retry), tidy (Done's ten, the cap),
                          counts, looking (who has it open), serve, the `overview` tool; off by default
+  canvas.js              a tldraw canvas per thread: Canvas doc (the room's snapshot; a fork copies it), rooms (one TLSocketRoom per
+                         thread in use, saved shortly after a person's edits and before an agent's tool returns, closed when empty),
+                         `canvas_read` and `canvas_create` over simple shapes (simple, record), serve, connect (the browser's sync socket);
+                         off by default
   web-search.js          `web_search`
   status.js              Program Status Protocol (OSC 7501) on the runner's terminal
   matrix.js              Matrix rooms as threads (MatrixSend, relay, sync)
@@ -95,9 +99,12 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   thread-details.js      title, people, family, tools and the memory switch for the open thread;
                          a bot's threads as a page under them; DetailsPage is the side column's page, pushed onto the overview or on its own
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
+  canvas.js              a thread's canvas as a page of the side column: tldraw and React loaded once from esm.sh (load), at the
+                         server's tldraw version, mounted as a React island synced over /api/threads/:id/canvas (board)
   overview.js            a thread's overview column: the page's sections (parse) and child threads (groupOf) in one set of GROUPS,
                          each drawn with a status dot or the check icon; Page, whose #message-N links scroll the thread there;
-                         toggleOverview/overviewOpen; pushDetails/popDetails make the column a navigation stack (the pill pushes the
+                         toggleOverview/overviewOpen; the column's pages and their tabs (pagesOn, pageOf, PageTabs: overview, canvas);
+                         pushDetails/popDetails make the column a navigation stack (the pill pushes the
                          thread's details over the page, back pops them); system.js puts it beside the thread
   agent-memory.js        memory popover and compaction view for the visible thread
   icons.js               Icon: the client's stroke icons (up, back, plus, close, next, check, again), one viewBox and weight
@@ -142,6 +149,7 @@ examples/100-post-without-a-title.js optional post titles with auto-title on/off
 examples/105-overview-page.js     the overview page: written after answers from the page before and what's new, read by the tool, switched off
 examples/106-one-store-per-person.js ade.sqlite, ade.log and ade.json live in ~/.config/ade, whatever folder the server starts in
 examples/107-a-missing-folder-says-so.js   a renamed folder stops the run with one line; another folder takes what waited
+examples/108-canvas.js            an agent draws with no browser open, a watching socket sees it, a hard restart keeps it, a fork copies it
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 
@@ -151,6 +159,7 @@ Where a feature lives:
 - Asking a model / switching it: composer.js pick/choose, model-picker.js, server.js whom/reconfigure.
 - Live work you watch: server.js work/doing/watch, client agent.js doing, run.js Turn.
 - Overview pages: modules/overview.js, client overview.js, thread.js (header button, data-message), system.js (the column).
+- Canvas: modules/canvas.js (rooms, tools, the socket), server.js upgrade (a module's `connect` takes /api/threads/:id/<module> sockets), client canvas.js, overview.js PageTabs, system.js (which page the column shows).
 - Memory and compaction: modules/memory.js, server.js compact/compactingAt, client agent-memory.js, thread.js rows (cuts, folded lines), run.js cutsOf.
 - Bots: modules/bots.js, client bot.js, composer.js PickerBot, client server.js homeBot/botAgent; a bot's colour is server.js `colorOf` (its picked `color` hue, else by the order bots were made), picked in bot.js `BotSettings` `.colors`.
 - Runners and keys: remote.js, runner.js, server.js mintKey/revoke/upgrade, client runner.js.

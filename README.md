@@ -57,6 +57,7 @@ So, what's different about this one? Not much, but it adds patterns I've found u
 - agents can search the web (`web-search`, off by default)
 - Matrix rooms become threads (`matrix`, off by default)
 - a short page per thread says where it stands and what waits on you (`overview`, off by default)
+- a canvas per thread that people and agents draw on together, with tldraw (`canvas`, off by default)
 - move threads to and from pi (`pi-sessions`, off by default)
 
 For each module's settings, see the top of its file in [modules/](modules). A module there with `export const on = true` is on by default; a new file there is a new module.

@@ -8,7 +8,7 @@ import html from '@solidjs/html'
 import { createMemo, createSignal, For, onSettled, refresh, Show, untrack } from 'solid-js'
 import { Icon } from './icons.js'
 import { Dot } from './dot.js'
-import { api, followThread, hrefOf, threads } from './server.js'
+import { api, followThread, hrefOf, server, threads } from './server.js'
 import { markdown } from './markdown.js'
 import { report } from './notice.js'
 import { threadLink } from './thread.js'
@@ -21,6 +21,41 @@ export const toggleOverview = (id) => {
 	setShown((ids) => (ids.has(id) ? without(ids, id) : new Set([...ids, id])))
 }
 const without = (ids, id) => new Set([...ids].filter((other) => other !== id))
+
+/** The column's pages, those whose modules are on; with more than one, its head is their tabs */
+const PAGES = [
+	{ key: 'overview', label: 'Overview' },
+	{ key: 'canvas', label: 'Canvas' },
+]
+export const pagesOn = () => PAGES.filter((page) => server().modules.includes(page.key))
+/** The page each thread's column shows, the first by default */
+const [chosen, setChosen] = createSignal(new Map())
+export const pageOf = (id) =>
+	pagesOn().find((page) => page.key === chosen().get(id)) ?? pagesOn()[0]
+const choose = (id, key) => setChosen((pages) => new Map(pages).set(id, key))
+
+/** A page's name, or the tabs between the pages */
+export const PageTabs = (props) => html`
+	<${Show}
+		when=${() => pagesOn().length > 1}
+		fallback=${html`<h2>${() => pageOf(props.id)?.label}</h2>`}
+	>
+		<nav class="tabs">
+			<${For} each=${pagesOn}>
+				${(page) => html`
+					<button
+						type="button"
+						class="ghost small"
+						aria-pressed=${() => String(pageOf(props.id)?.key === page.key)}
+						onClick=${(_event) => choose(props.id, page.key)}
+					>
+						${page.label}
+					</button>
+				`}
+			<//>
+		</nav>
+	<//>
+`
 
 /**
  * The column is one page at a time, like a phone's: the thread's details push onto the overview in its place, and back
@@ -148,7 +183,7 @@ export function Overview(props) {
 	return html`
 		<aside class="overview" aria-label="Overview">
 			<header class="page-head">
-				<h2>Overview</h2>
+				<${PageTabs} id=${id} />
 				<button
 					type="button"
 					class="ghost small"

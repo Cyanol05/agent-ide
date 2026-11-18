@@ -14,7 +14,7 @@ import {
 	titleOf,
 	threadOf,
 } from './server.js'
-import { overviewOpen, pushDetails, toggleOverview } from './overview.js'
+import { overviewOpen, pageOf, pagesOn, pushDetails, toggleOverview } from './overview.js'
 import { Dot } from './dot.js'
 import { System } from './system.js'
 import { Tutorial } from './tutorial.js'
@@ -103,14 +103,14 @@ function Client() {
 						<${Dot} state=${() => threadOf(current())?.status} />
 						<span>${() => (current() ? titleOf(current()) : 'New thread')}</span>
 					</button>
-					<${Show} when=${() => current() && server().modules.includes('overview')}>
+					<${Show} when=${() => current() && pagesOn().length}>
 						<button
 							type="button"
 							class=${() => ['ghost', 'small', 'overview-toggle', { on: overviewOpen(current()) }]}
 							aria-pressed=${() => String(overviewOpen(current()))}
 							onClick=${(_event) => toggleOverview(current())}
 						>
-							Overview
+							${() => pageOf(current())?.label}
 						</button>
 					<//>
 				</header>
