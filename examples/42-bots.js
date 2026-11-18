@@ -24,6 +24,8 @@ const route = (runner) => (request) => {
 	if (t.includes('make wren')) return call('bot', { name: 'wren', instructions: 'Review diffs.' })
 	if (t.includes('ask wren'))
 		return call('post', { to: 'wren', title: 'a diff', body: 'look at this' })
+	if (t.includes('nudge wren')) return call('post', { title: 'again', body: '@wren look again' })
+	if (t.includes('ask anyone')) return call('post', { title: 'anyone', body: 'look at this' })
 	return say(`${runner}: ${t}`)
 }
 await scriptedRunner('laptop', route('laptop'))
@@ -137,6 +139,22 @@ check(
 		told.startsWith('[You now run as echo/echo on desk,'),
 	'asked as another model, a bot switches in place like any agent, keeps her name and is told',
 	JSON.stringify([atHome, v.agents, told]),
+)
+
+await post(home, 'nudge wren', 'ada')
+await answered(home, 7)
+await post(home, 'ask anyone', 'ada')
+v = await answered(home, 8)
+const again = (await api('GET', '/api/threads')).json.find(
+	(t) => t.parent === home && t.title === 'again',
+)
+check(
+	again?.agents.map((a) => a.name).join() === 'wren' &&
+		answers(await (await api('GET', `/api/threads/${again.id}`)).json)[0]?.data.author === 'wren' &&
+		answers(v).at(-1).data.body.includes('Say who should answer') &&
+		!(await api('GET', '/api/threads')).json.some((t) => t.title === 'anyone'),
+	'a new thread asks whom `to` names or the bots its body @mentions; with neither, post refuses',
+	JSON.stringify([again, answers(v).at(-1)?.data.body]),
 )
 
 const hide = await api('POST', `/api/threads/${home}/archive`, { archived: true })

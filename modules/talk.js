@@ -66,7 +66,7 @@ export function server(core) {
 					description:
 						"Who should answer. A bot by its name. From anywhere, 12 is thread 12's agent and 12/ada a bot there, which also picks the thread. " +
 						"Or model@runner, where model is anything `pi --model` takes, or a runner alone for its default model: it starts the thread's agent as that, or switches the one there, which keeps its conversation. " +
-						'Or "nobody". Leave out for whom the thread last asked, or whom its director picks; a new thread needs it.',
+						'Or "nobody". Leave out for whom the thread last asked, or whom its director picks; a new thread needs it, or a bot @mentioned in the body.',
 				}),
 			),
 		}),
@@ -79,7 +79,12 @@ export function server(core) {
 				(await resolveThread(args.thread)) ??
 				(Number(args.to?.match(/^(\d+)(?:\/|$)/)?.[1]) || undefined)
 			if (thread === from) throw new Error('That is your own thread; just answer')
-			if (thread === undefined && args.to === undefined)
+			/** A new thread says who should answer, by `to` or by @mentioning bots */
+			const asks =
+				thread === undefined && args.to === undefined
+					? mentioned(args.body, await core.botNames()).filter((bot) => bot !== name)
+					: []
+			if (thread === undefined && args.to === undefined && !asks.length)
 				throw new Error(
 					'Say who should answer: a bot by name, or model@runner (e.g. anthropic/claude-opus-5-5:medium@oskar).',
 				)
@@ -187,8 +192,12 @@ export function server(core) {
 				{ author: name, body: args.body },
 				{
 					director: thread !== undefined && !asked,
-					explicit:
-						args.to === undefined
+					explicit: asks.length
+						? () =>
+								Promise.all(
+									asks.map((bot) => core.whom(undefined, bot, false, context.abortSignal)),
+								)
+						: args.to === undefined
 							? undefined
 							: async () =>
 									args.to === 'nobody'
