@@ -47,7 +47,7 @@ The server's address, port and data file come from the environment (`HOST`, `POR
 
 So, what's different about this one? Not much, but it adds patterns I've found useful enough to write down. Each is a module; you can switch any of them on or off.
 
-- bots are agents with a name, instructions and a hands-off home thread (`bots`)
+- bots are agents with a name, instructions and a home thread; they look things up themselves and hand every change to a worker (`bots`)
 - agents and bots message each other (`talk`)
 - group messages go to the thread, not the last bot you asked; the director picks who answers, including the thread's agent (`director`)
 - bots remember long threads as short summary lines they can zoom back into, so they can stick around for good (`memory`)

@@ -40,10 +40,10 @@ let v = await answered(home)
 check(
 	made.status === 201 &&
 		homeRow?.title === 'ada' &&
-		homeRow.tools.join() === '-write,-edit,-bash' &&
+		homeRow.tools === null &&
 		v.agents.map((a) => a.name).join() === 'ada' &&
 		prompt.laptop.includes("You're new"),
-	'one call makes ada and her home, hands off; asked there, she joins as her model and knows she is new',
+	'one call makes ada and her home, with every tool; asked there, she joins as her model and knows she is new',
 	JSON.stringify([made.json, homeRow, prompt.laptop]),
 )
 
