@@ -12,3 +12,5 @@ bun.lock
 
 # what try.js's scripted bot writes in the folder it runs in
 /notes.md
+
+/.scratch/
