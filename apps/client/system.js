@@ -96,6 +96,7 @@ export function System() {
 								<${Show}
 									when=${() => (id && overviewOpen(id)) || (detailsPushed(id) && current() === id)}
 								>
+									<${SideEdge} />
 									<${Show}
 										when=${() => detailsPushed(id) && current() === id}
 										fallback=${() =>
@@ -135,19 +136,53 @@ export function System() {
 function ListEdge() {
 	const fit = (px) => Math.round(Math.min(Math.max(px, 160), Math.min(640, innerWidth / 2)))
 	const list = (el) => el.parentElement.querySelector('.thread-list')
+	return Edge({
+		label: 'Thread list width',
+		width: (edge) => list(edge).offsetWidth,
+		drag: (edge) => {
+			const left = list(edge).getBoundingClientRect().left
+			return (pointer) => listWidth.set(fit(pointer.clientX - left))
+		},
+		set: (px) => listWidth.set(px && fit(px)),
+		grow: 1,
+		edge: 'list-edge',
+	})
+}
+
+/** The side column's left edge drags the same way: the overview, details and canvas share its width. */
+function SideEdge() {
+	const fit = (px) => Math.round(Math.min(Math.max(px, 288), innerWidth * 0.7))
+	const page = (el) => el.nextElementSibling
+	return Edge({
+		label: 'Side column width',
+		width: (edge) => page(edge).offsetWidth,
+		drag: (edge) => {
+			const right = page(edge).getBoundingClientRect().right
+			// The thread keeps its own least width, so the page stops where it would squeeze it.
+			return (pointer) => {
+				sideWidth.set(fit(right - pointer.clientX))
+				sideWidth.set(Math.min(fit(right - pointer.clientX), page(edge).offsetWidth))
+			}
+		},
+		set: (px) => sideWidth.set(px && fit(px)),
+		grow: -1,
+		edge: 'side-edge',
+	})
+}
+
+function Edge({ label, width, drag, set, grow, edge: name }) {
 	return html`
 		<div
-			class="list-edge"
+			class=${name}
 			role="separator"
 			aria-orientation="vertical"
-			aria-label="Thread list width"
+			aria-label=${label}
 			tabindex="0"
 			title="Drag to resize; double-click to reset"
 			onPointerDown=${(event) => {
-				const edge = event.currentTarget,
-					left = list(edge).getBoundingClientRect().left
+				const edge = event.currentTarget
 				edge.setPointerCapture(event.pointerId)
-				const move = (pointer) => setWidth(fit(pointer.clientX - left))
+				const move = drag(edge)
 				const up = () => {
 					edge.removeEventListener('pointermove', move)
 					edge.removeEventListener('pointerup', up)
@@ -158,28 +193,35 @@ function ListEdge() {
 				document.body.classList.add('resizing')
 				event.preventDefault()
 			}}
-			onDblClick=${() => setWidth(null)}
+			onDblClick=${(_event) => set(null)}
 			onKeyDown=${(event) => {
 				const step = { ArrowLeft: -16, ArrowRight: 16 }[event.key]
 				if (!step) return
 				event.preventDefault()
-				setWidth(fit(list(event.currentTarget).offsetWidth + step))
+				set(width(event.currentTarget) + grow * step)
 			}}
 		></div>
 	`
 }
 
-/** The chat's thread list is as wide as you drag it, here, on this device; a double-click puts it back. */
-const WIDTH = 'agent-ide.list-width'
-const setWidth = (px) => {
-	if (px) document.documentElement.style.setProperty('--list-width', `${px}px`)
-	else document.documentElement.style.removeProperty('--list-width')
+/** A dragged width stays here, on this device; a double-click puts it back. */
+function width(key, property) {
+	const apply = (px) => {
+		if (px) document.documentElement.style.setProperty(property, `${px}px`)
+		else document.documentElement.style.removeProperty(property)
+	}
 	try {
-		if (px) localStorage.setItem(WIDTH, String(px))
-		else localStorage.removeItem(WIDTH)
+		apply(Number(localStorage.getItem(key)))
 	} catch {}
+	return {
+		set(px) {
+			apply(px)
+			try {
+				if (px) localStorage.setItem(key, String(px))
+				else localStorage.removeItem(key)
+			} catch {}
+		},
+	}
 }
-try {
-	const saved = Number(localStorage.getItem(WIDTH))
-	if (saved) document.documentElement.style.setProperty('--list-width', `${saved}px`)
-} catch {}
+const listWidth = width('ade.list-width', '--list-width')
+const sideWidth = width('ade.side-width', '--side-width')

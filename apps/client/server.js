@@ -28,7 +28,7 @@ const DEFAULT_SERVER = {
 /** What's on screen survives a reload: read before first paint, written after every answer */
 const cached = (key, fallback) => {
 	try {
-		const found = localStorage.getItem(`agent-ide.${key}`)
+		const found = localStorage.getItem(`ade.${key}`)
 		return found === null ? fallback : JSON.parse(found)
 	} catch {
 		return fallback
@@ -36,7 +36,7 @@ const cached = (key, fallback) => {
 }
 const cache = (key, value) => {
 	try {
-		localStorage.setItem(`agent-ide.${key}`, JSON.stringify(value))
+		localStorage.setItem(`ade.${key}`, JSON.stringify(value))
 	} catch {}
 }
 export const url = params.get('server') || location.origin

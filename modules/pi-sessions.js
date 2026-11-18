@@ -33,10 +33,10 @@ export async function server(core) {
 	const { AGENT, speaker, writtenTo } = await import('../util.js')
 	const { defaultTitle } = await import('../apps/client/title.js')
 	/** The thread's first entry says which pi session it came from; its messages are the other kind, so nothing else reads it */
-	const SOURCE = 'agent-ide.pi-session'
+	const SOURCE = 'ade.pi-session'
 	// The thread contract's two kinds of entry, as server.js writes them
-	const MESSAGE = 'agent-ide.message'
-	const DELIVERY = 'agent-ide.delivery'
+	const MESSAGE = 'ade.message'
+	const DELIVERY = 'ade.delivery'
 	const followed = new Map()
 	const touched = new Set()
 	/** Pi has no place for a reset, and a system message would put ade's tools where pi's own belong */

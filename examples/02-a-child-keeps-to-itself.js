@@ -48,7 +48,7 @@ await api('POST', `/api/threads/${stopped.id}/entries`, {
 const placed = await until(
 	async () =>
 		(await conversationOf(await view(stopped.id), 'echo/echo@slow')).entries?.some(
-			(e) => e.kind === 'agent-ide.delivery',
+			(e) => e.kind === 'ade.delivery',
 		),
 	8000,
 	20,

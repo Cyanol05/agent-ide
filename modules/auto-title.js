@@ -74,7 +74,7 @@ function sanitizeThreadTitle(raw) {
 export function server(core) {
 	const modelName = core.config?.['auto-title']?.model
 	const Title = defineDoc({
-		kind: 'agent-ide.auto-title',
+		kind: 'ade.auto-title',
 		version: 1,
 		scope: 'conversation',
 		history: 'latest',
@@ -83,7 +83,7 @@ export function server(core) {
 		initial: () => ({ scheduled: false }),
 	})
 	const AutoTitle = defineTask({
-		name: 'agent-ide.auto-title',
+		name: 'ade.auto-title',
 		version: 1,
 		initial: () => ({ phase: 'write' }),
 		phases: {
@@ -159,7 +159,7 @@ export function server(core) {
 	}
 	return {
 		serve,
-		extension: defineExtension({ name: 'agent-ide.auto-title', tasks: [AutoTitle] }),
+		extension: defineExtension({ name: 'ade.auto-title', tasks: [AutoTitle] }),
 		async posted(tx, threadId, entry) {
 			if (!entry.data.answer) return
 			const state = await tx.doc(Title, threadId)

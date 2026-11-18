@@ -137,7 +137,7 @@ export const conversationOf = async (thread, name) =>
 /** A thread's memory lines, from its raw Pi conversation */
 export const linesOf = async (id) =>
 	(await api('GET', `/api/conversations/${id}`)).json.entries
-		.filter((entry) => entry.kind === 'agent-ide.line')
+		.filter((entry) => entry.kind === 'ade.line')
 		.map((entry) => ({ id: entry.id, ...entry.data }))
 export const answers = (thread) => thread.entries.filter((entry) => entry.data.answer)
 export const brief = (thread) =>

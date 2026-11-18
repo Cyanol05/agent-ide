@@ -51,7 +51,7 @@ const v = await until(async () => {
 }, 30000)
 const conversation = await conversationOf(v, 'echo/echo@bot')
 const inputs = conversation.entries
-	.filter((e) => e.kind === 'agent-ide.delivery')
+	.filter((e) => e.kind === 'ade.delivery')
 	.map((e) => text(e.model[0]))
 const input = inputs[0] ?? ''
 check(inputs.length === 1, 'the agent gets one input', inputs.length)

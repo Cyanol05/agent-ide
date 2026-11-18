@@ -17,7 +17,13 @@ import path from 'node:path'
 const [server, ...given] = process.argv.slice(2)
 const updates = !given.includes('--no-update')
 const args = given.filter((arg) => arg !== '--no-update')
-const home = process.env.ADE_HOME || path.join(os.homedir(), '.agent-ide', 'runner')
+const home =
+	process.env.ADE_HOME ||
+	path.join(
+		process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'),
+		'ade',
+		'runner',
+	)
 const bun = Boolean(process.versions.bun)
 if (!server) throw new Error('usage: runner-updater.js <server> [runner options]')
 if (!bun && Number(process.versions.node.split('.')[0]) < 24)

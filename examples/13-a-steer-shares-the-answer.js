@@ -45,7 +45,7 @@ const second = (
 ).json.entry
 const v = (await answered(id)) ?? (await view(id))
 const inputs = (await conversationOf(v, 'echo/echo@bot')).entries
-	.filter((e) => e.kind === 'agent-ide.delivery')
+	.filter((e) => e.kind === 'ade.delivery')
 	.map((e) => text(e.model[0]))
 check(inputs.includes('second'), 'Pi placed the steer', JSON.stringify(inputs))
 check(answers(v).length === 1, 'both inputs share one answer')
@@ -132,7 +132,7 @@ const {
 } = await api('POST', '/api/threads', { title: 'gap' })
 const cyInputs = async () =>
 	(await conversationOf(await view(gap), 'echo/echo@cy')).entries
-		?.filter((e) => e.kind === 'agent-ide.delivery')
+		?.filter((e) => e.kind === 'ade.delivery')
 		.map((e) => text(e.model[0])) ?? []
 await api('POST', `/api/threads/${gap}/entries`, { body: 'work', to: toCy })
 await until(

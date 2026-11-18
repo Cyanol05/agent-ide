@@ -309,9 +309,7 @@ export function cutsOf(conversation) {
 		.filter((entry) => entry.kind === 'pi.compaction')
 		.slice(-1)
 		.flatMap((entry) => {
-			const kept = all.find(
-				(other) => other.kind === 'agent-ide.delivery' && other.id >= entry.head,
-			)
+			const kept = all.find((other) => other.kind === 'ade.delivery' && other.id >= entry.head)
 			const first = Math.min(...(kept?.data?.held ?? []))
 			if (!Number.isFinite(first)) return []
 			const summary = messageText(entry.model?.[0]) || ''
@@ -341,7 +339,7 @@ export function turnsOf(conversation) {
 	const turns = []
 	for (const entry of conversations[conversation] ?? []) {
 		const message = entry.model?.[0]
-		if (entry.kind === 'agent-ide.delivery') {
+		if (entry.kind === 'ade.delivery') {
 			turns.push({
 				key: `${conversation}:${entry.id}`,
 				delivery: entry.id,

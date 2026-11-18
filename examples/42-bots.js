@@ -127,7 +127,7 @@ const atHome = (await api('GET', `/api/threads/${home}`)).json.agents[0]
 await post(home, 'where are you now?', { runner: 'desk', model: 'echo/echo', name: 'ada' })
 v = await answered(home, 6)
 const own = (await api('GET', `/api/conversations/${atHome.conversation}`)).json.entries
-const told = text(own.filter((e) => e.kind === 'agent-ide.delivery').at(-1)?.model[0])
+const told = text(own.filter((e) => e.kind === 'ade.delivery').at(-1)?.model[0])
 check(
 	atHome.to.runner === 'laptop' &&
 		v.agents.length === 1 &&
@@ -166,7 +166,7 @@ await post(shed, 'what did ada say?', 'echo/echo@desk')
 v = await answered(shed, 4)
 const plain = v.agents.find((a) => !a.to.name)
 const handed = (await api('GET', `/api/conversations/${plain?.conversation}`)).json.entries
-	?.filter((e) => e.kind === 'agent-ide.delivery')
+	?.filter((e) => e.kind === 'ade.delivery')
 	.map((e) => text(e.model[0]))
 check(
 	v.agents.map((a) => a.name).join() === 'ada,echo@desk' &&

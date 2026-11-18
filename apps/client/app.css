@@ -1588,6 +1588,25 @@ button.foot-toggle {
 	}
 }
 
+/* The side column's left edge drags the same way; it takes no room between the thread and the page. */
+.side-edge {
+	flex: none;
+	align-self: stretch;
+	position: relative;
+	z-index: 2;
+	width: 7px;
+	margin-inline: -3px -4px;
+	cursor: col-resize;
+	touch-action: none;
+
+	&:hover,
+	&:focus-visible,
+	body.resizing & {
+		outline: none;
+		background: linear-gradient(to right, transparent 3px, var(--edge) 3px 5px, transparent 5px);
+	}
+}
+
 body.resizing {
 	cursor: col-resize;
 	user-select: none;
@@ -1886,7 +1905,7 @@ body.resizing {
 		padding-left: var(--space-2);
 	}
 
-	.list-edge {
+	:is(.list-edge, .side-edge) {
 		display: none;
 	}
 
@@ -1906,7 +1925,7 @@ body.resizing {
 
 /* A thread's overview: a column beside it, as wide as a narrow thread, scrolling on its own. Its child threads are the family's rows, each with its page's first line under its title. */
 .overview {
-	flex: 0 1 26rem;
+	flex: 0 1 var(--side-width, 26rem);
 	min-width: 18rem;
 	align-self: stretch;
 	overflow-y: auto;
@@ -2002,7 +2021,7 @@ body.resizing {
 
 /* A canvas takes the column's whole height and more of its width; tldraw draws everything inside its board. */
 .overview.canvas {
-	flex-basis: 44rem;
+	flex-basis: var(--side-width, 44rem);
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;

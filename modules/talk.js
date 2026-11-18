@@ -388,7 +388,7 @@ export function server(core) {
 
 	return {
 		extension: defineExtension({
-			name: 'agent-ide.talk',
+			name: 'ade.talk',
 			tools: [post, threads],
 			sections: [section],
 		}),

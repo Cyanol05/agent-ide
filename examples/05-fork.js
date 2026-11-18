@@ -82,7 +82,7 @@ check(
 	brief(fv),
 )
 const inputs = (await conversationOf(fv, 'echo/echo@laptop')).entries
-	.filter((e) => e.kind === 'agent-ide.delivery')
+	.filter((e) => e.kind === 'ade.delivery')
 	.map((e) => text(e.model[0]))
 check(
 	JSON.stringify(inputs) ===
@@ -148,7 +148,7 @@ check(
 	early.agents.length === 1 &&
 		early.agents[0].name === asking.agents[0]?.name &&
 		early.agents[0].conversation !== asking.agents[0]?.conversation &&
-		!earlyHome.entries?.some((e) => e.kind === 'agent-ide.delivery'),
+		!earlyHome.entries?.some((e) => e.kind === 'ade.delivery'),
 	'forked before its first answer, the agent comes along in a conversation of its own that has seen nothing',
 	JSON.stringify([early.agents, earlyHome.entries]),
 )
@@ -188,7 +188,7 @@ const settled = await answered(early.id)
 const earlyInputs = (
 	await conversationOf(settled ?? (await view(early.id)), 'echo/echo@bot')
 ).entries
-	.filter((e) => e.kind === 'agent-ide.delivery')
+	.filter((e) => e.kind === 'ade.delivery')
 	.map((e) => text(e.model[0]))
 check(
 	routed.json.to?.[0] === 'echo@bot' &&

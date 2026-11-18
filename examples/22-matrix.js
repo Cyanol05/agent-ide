@@ -367,7 +367,7 @@ check(
 )
 check(fromBot().length === 10, 'every answer reached the room once', JSON.stringify(fromBot()))
 check(
-	sends.every((s) => /^agent-ide-[0-9a-f-]{36}-\d+-\d+$/.test(s.txn)),
+	sends.every((s) => /^ade-[0-9a-f-]{36}-\d+-\d+$/.test(s.txn)),
 	"transaction ids carry the store's salt, so a fresh store never reuses one",
 	sends[0]?.txn,
 )

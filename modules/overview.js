@@ -82,7 +82,7 @@ export function server(core) {
 
 	/** A thread's page; one written before the column became the switch may still carry `on`, which nothing reads */
 	const Overview = defineDoc({
-		kind: 'agent-ide.overview',
+		kind: 'ade.overview',
 		version: 1,
 		scope: 'conversation',
 		history: 'latest',
@@ -238,7 +238,7 @@ export function server(core) {
 
 	/** One writer per thread: a rewrite asked for while one runs makes it go round once more */
 	const Write = defineTask({
-		name: 'agent-ide.overview',
+		name: 'ade.overview',
 		version: 1,
 		initial: () => ({ phase: 'write', round: 0 }),
 		phases: {
@@ -362,7 +362,7 @@ export function server(core) {
 
 	return {
 		serve,
-		extension: defineExtension({ name: 'agent-ide.overview', tasks: [Write], tools: [tool] }),
+		extension: defineExtension({ name: 'ade.overview', tasks: [Write], tools: [tool] }),
 		/** An agent's finished answer, here or from a thread it was asked in, rewrites the page while someone looks at it */
 		async posted(tx, threadId, entry) {
 			if (byAgent(entry.data) && !entry.data.error && looked(threadId)) await ask(tx, threadId)

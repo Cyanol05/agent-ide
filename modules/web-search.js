@@ -51,5 +51,5 @@ export function server() {
 			return { output: [{ type: 'text', text: text || 'Nothing found.' }] }
 		},
 	})
-	return { extension: defineExtension({ name: 'agent-ide.web-search', tools: [search] }) }
+	return { extension: defineExtension({ name: 'ade.web-search', tools: [search] }) }
 }

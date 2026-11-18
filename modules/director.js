@@ -179,6 +179,6 @@ export function server(core) {
 		direct,
 		turns: true,
 		settings: { picks: name || null },
-		extension: defineExtension({ name: 'agent-ide.director', sections: [section] }),
+		extension: defineExtension({ name: 'ade.director', sections: [section] }),
 	}
 }

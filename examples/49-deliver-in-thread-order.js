@@ -55,7 +55,7 @@ writeFileSync(release, '')
 check(Boolean(await answered(id, 2)), 'both accepted messages get answers after restart')
 const v = await view(id)
 const c = await conversationOf(v, 'echo/echo@bot')
-const inputs = c.entries.filter((e) => e.kind === 'agent-ide.delivery').map((e) => text(e.model[0]))
+const inputs = c.entries.filter((e) => e.kind === 'ade.delivery').map((e) => text(e.model[0]))
 check(
 	JSON.stringify(inputs) === JSON.stringify(['oskar: first', 'oskar: second']),
 	'the slow first input reaches the agent first, each exactly once',

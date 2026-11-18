@@ -136,7 +136,7 @@ check(
 	new Set(streamed.map(({ entry }) => entry.id)).size === streamed.length,
 	'each conversation entry comes once',
 )
-const delivery = streamed.find(({ entry }) => entry.kind === 'agent-ide.delivery')?.entry
+const delivery = streamed.find(({ entry }) => entry.kind === 'ade.delivery')?.entry
 check(
 	delivery &&
 		heard
@@ -157,7 +157,7 @@ await until(async () => {
 	return last && !last.run
 })
 const next = (await conversationOf(await view(id), 'echo/echo@bot')).entries.findLast(
-	(entry) => entry.kind === 'agent-ide.delivery',
+	(entry) => entry.kind === 'ade.delivery',
 )
 const nextLives = lives(first.heard.slice(from)).filter((live) => live.run)
 check(

@@ -8,7 +8,7 @@ import { api, base, check, db, dir, done, keyFor, repo, server, until } from './
 
 const home = path.join(path.dirname(db), 'shared home')
 mkdirSync(home)
-const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: '', ADE_KEY: '' }
+const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: '', XDG_DATA_HOME: '', ADE_KEY: '' }
 const procs = []
 process.on('exit', () => {
 	for (const p of procs)

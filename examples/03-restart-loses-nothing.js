@@ -34,7 +34,7 @@ await until(() => api('GET', '/api/runners').then((r) => r.json.every((x) => !x.
 await api('POST', `/api/threads/${id}/entries`, { body: 'while away' }, 'ben')
 const inputs = async () =>
 	(await conversationOf(await view(id), 'echo/echo@laptop')).entries
-		.filter((e) => e.kind === 'agent-ide.delivery')
+		.filter((e) => e.kind === 'ade.delivery')
 		.map((e) => text(e.model[0]))
 check(
 	!(await inputs()).some((t) => t.includes('while away')),

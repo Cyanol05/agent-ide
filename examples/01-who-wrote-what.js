@@ -54,7 +54,7 @@ check(
 )
 
 const own = await conversationOf(view, 'echo/echo@laptop')
-const user = own.entries?.find((e) => e.kind === 'agent-ide.delivery')
+const user = own.entries?.find((e) => e.kind === 'ade.delivery')
 check(
 	text(user?.model[0]) === 'hello' && user.data.held.join() === String(input?.id),
 	"in the agent's conversation the message is a delivery: the text as typed, naming what it held",

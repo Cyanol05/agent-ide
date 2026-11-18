@@ -13,7 +13,7 @@ export const on = true
 
 /** A bot's name → { home, to, instructions, color? }: color is a hue someone picked; without one, a bot gets its hue from the order bots were made */
 const Bots = defineDoc({
-	kind: 'agent-ide.bots',
+	kind: 'ade.bots',
 	version: 1,
 	scope: 'session',
 	checkpointWhen: () => true,
@@ -181,6 +181,6 @@ export function server(core) {
 		botAgent,
 		instructionsOf,
 		botNames,
-		extension: defineExtension({ name: 'agent-ide.bots', tools: [bot], sections: [section] }),
+		extension: defineExtension({ name: 'ade.bots', tools: [bot], sections: [section] }),
 	}
 }

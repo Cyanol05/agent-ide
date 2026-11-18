@@ -74,7 +74,7 @@ const schema = createTLSchema()
 export function server(core) {
 	/** A thread's canvas: the sync room's snapshot, or null for one nobody has drawn on */
 	const Canvas = defineDoc({
-		kind: 'agent-ide.canvas',
+		kind: 'ade.canvas',
 		version: 1,
 		scope: 'conversation',
 		history: 'latest',
@@ -231,7 +231,7 @@ export function server(core) {
 	})
 
 	return {
-		extension: defineExtension({ name: 'agent-ide.canvas', tools: [canvasRead, canvasCreate] }),
+		extension: defineExtension({ name: 'ade.canvas', tools: [canvasRead, canvasCreate] }),
 		async serve(threadId, query, body) {
 			if (threadId === undefined) throw new Error('A canvas belongs to a thread')
 			if (body === undefined) return { shapes: await read(threadId), tldraw: version }

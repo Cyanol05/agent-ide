@@ -65,7 +65,7 @@ import {
  * @property {{ conversation: number, entry: number }} [answer]  The agent's entry it copies.
  * @property {true} [error]  The agent gave no answer.
  * @property {{ runner: string, code: number | null, stdout: string, stderr: string, error?: string }} [shell]  What `$ cmd` printed.
- * @typedef {{ id: number, kind: 'agent-ide.message', data: Message }} Entry
+ * @typedef {{ id: number, kind: 'ade.message', data: Message }} Entry
  * @typedef {{ name: string, conversation: number, to: To | null, status: string, contextWindow?: number }} Agent  An agent or bot, as a thread view shows it.
  * @typedef {{ conversation: number, unseen: number[], admission?: { admit: number, deliver: number }, note?: string }} Recipient
  *   A thread doc's row for its agent or a bot: its conversation, the thread messages it hasn't seen, its latest input's
@@ -132,22 +132,22 @@ const free = (candidate) =>
 if (!process.env.PORT) while (!(await free(port))) port++
 // ── Docs and tasks ────────────────────────────────────────────────────────
 
-const KIND = 'agent-ide.message'
+const KIND = 'ade.message'
 /** An agent's input in its conversation; `held` names the thread messages it gave */
-const DELIVERY = 'agent-ide.delivery'
+const DELIVERY = 'ade.delivery'
 /** How much of a `$ cmd`'s stdout and of its stderr is kept, from the end */
 const TAIL = 20000
 /** Our docs are small, so every change stores the whole doc and a read replays nothing */
 const base = () => true
 const Runners = defineDoc({
-	kind: 'agent-ide.runners',
+	kind: 'ade.runners',
 	version: 1,
 	scope: 'session',
 	checkpointWhen: base,
 	initial: () => ({}),
 })
 const Keys = defineDoc({
-	kind: 'agent-ide.keys',
+	kind: 'ade.keys',
 	version: 1,
 	scope: 'session',
 	checkpointWhen: base,
@@ -155,7 +155,7 @@ const Keys = defineDoc({
 })
 /** The name the server's own runner got the first time, kept so a new hostname doesn't make it another runner */
 const Lent = defineDoc({
-	kind: 'agent-ide.lent',
+	kind: 'ade.lent',
 	version: 1,
 	scope: 'session',
 	checkpointWhen: base,
@@ -163,7 +163,7 @@ const Lent = defineDoc({
 })
 /** `agents` holds a {@link Recipient} for the thread's one agent, at `AGENT`, and for each bot, by name */
 const Thread = defineDoc({
-	kind: 'agent-ide.thread',
+	kind: 'ade.thread',
 	version: 1,
 	scope: 'conversation',
 	history: 'latest',
@@ -182,7 +182,7 @@ const Thread = defineDoc({
 	}),
 })
 const Receipts = defineDocFamily({
-	kind: 'agent-ide.receipt',
+	kind: 'ade.receipt',
 	version: 1,
 	scope: 'session',
 	family: true,
@@ -201,7 +201,7 @@ const waiting = (on, phase) => ({
 
 /** Owns an agent's conversation, so stopping the thread stops the agent */
 const Anchor = defineTask({
-	name: 'agent-ide.anchor',
+	name: 'ade.anchor',
 	version: 1,
 	initial: () => ({ phase: 'own' }),
 	phases: { own: (task, rt, ctx) => rt.commit(() => finished(), ctx) },
@@ -215,7 +215,7 @@ const Anchor = defineTask({
  * starts once that answer has landed and takes all it hasn't seen.
  */
 const Admit = defineTask({
-	name: 'agent-ide.admit',
+	name: 'ade.admit',
 	version: 1,
 	initial: ({ after, turn }) => ({ phase: after || turn ? 'wait' : 'ask' }),
 	phases: {
@@ -295,7 +295,7 @@ async function skillCommand(row, entry, agent, signal) {
 
 /** A durable wait observes admission faults too; onReport is only diagnostic. */
 const Deliver = defineTask({
-	name: 'agent-ide.deliver',
+	name: 'ade.deliver',
 	version: 1,
 	initial: () => ({ phase: 'wait' }),
 	phases: {
@@ -336,7 +336,7 @@ const Deliver = defineTask({
 
 /** `$ cmd` as an effect sandwich: commit, run, post */
 const Shell = defineTask({
-	name: 'agent-ide.shell',
+	name: 'ade.shell',
 	version: 1,
 	initial: () => ({ phase: 'run' }),
 	phases: {
@@ -1727,7 +1727,8 @@ set -e
 if command -v bun >/dev/null 2>&1; then run=bun; elif command -v node >/dev/null 2>&1; then run=node; else
   echo "ade's runner needs Node.js 24 or newer"; exit 1
 fi
-mkdir -p "$HOME/.agent-ide"
+data="\${XDG_DATA_HOME:-$HOME/.local/share}/ade"
+mkdir -p "$data"
 if [ -n "$ADE_KEY" ]; then
   config="\${XDG_CONFIG_HOME:-$HOME/.config}/ade"
   name=$("$run" -e "process.stdout.write(require('node:os').hostname())")
@@ -1742,11 +1743,11 @@ if [ -n "$ADE_KEY" ]; then
   (umask 077 && printf %s "$ADE_KEY" > "$keyfile")
   set -- "$@" --key-file "$keyfile"
 fi
-curl -fsSL "${server}/runner/updater.js" -o "$HOME/.agent-ide/runner-updater.js"
-printf 'Next time, without curl: %s ~/.agent-ide/runner-updater.js %s' "$run" '${server}'
+curl -fsSL "${server}/runner/updater.js" -o "$data/runner-updater.js"
+printf "Next time, without curl: %s '%s' '%s'" "$run" "$data/runner-updater.js" '${server}'
 for arg do printf " '%s'" "$(printf %s "$arg" | sed "s/'/'\\\\''/g")"; done
 printf '\\n'
-exec "$run" "$HOME/.agent-ide/runner-updater.js" "${server}" "$@"
+exec "$run" "$data/runner-updater.js" "${server}" "$@"
 `
 
 // ── WebSocket: notify, watch ──────────────────────────────────────────────

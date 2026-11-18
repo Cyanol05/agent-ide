@@ -21,7 +21,7 @@ import {
 const tmp = path.dirname(db)
 const HOME = path.join(tmp, 'installed-home')
 mkdirSync(HOME)
-const installed = path.join(HOME, '.agent-ide', 'runner')
+const installed = path.join(HOME, '.local', 'share', 'ade', 'runner')
 const procs = []
 process.on('exit', () => {
 	for (const p of procs)
@@ -50,7 +50,7 @@ let srv = await server()
 const port = new URL(base).port
 const key = await keyFor('fresh')
 start('sh', ['-c', `curl -fsSL ${base}/connect-runner | sh -s -- --dir ${dir} --name fresh`], {
-	env: { ...process.env, HOME, XDG_CONFIG_HOME: '', ADE_KEY: key },
+	env: { ...process.env, HOME, XDG_CONFIG_HOME: '', XDG_DATA_HOME: '', ADE_KEY: key },
 })
 check(
 	await until(async () => (await runnerOf('fresh'))?.online, 60000),

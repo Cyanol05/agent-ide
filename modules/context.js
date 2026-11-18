@@ -55,7 +55,7 @@ export function server({ runners, known, reach }) {
 	return {
 		serve,
 		expand,
-		extension: defineExtension({ name: 'agent-ide.context', sections: [section] }),
+		extension: defineExtension({ name: 'ade.context', sections: [section] }),
 	}
 }
 

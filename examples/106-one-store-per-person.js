@@ -13,7 +13,7 @@ const { file } = (await api('GET', '/api/server')).json
 check(file === path.join(config, 'ade.sqlite'), 'the store is ~/.config/ade/ade.sqlite', file)
 check(existsSync(path.join(config, 'ade.log')), 'its log is ade.log beside it')
 check(
-	!readdirSync(dir).some((name) => /^(ade|agent-ide)\./.test(name)),
+	!readdirSync(dir).some((name) => /^ade\./.test(name)),
 	'nothing lands in the folder it starts in',
 )
 const {

@@ -1,7 +1,7 @@
 /** Recorded from modules/memory.js through ade, using gpt-6-luna:low@oskar.
  * The loader posted SHED verbatim with to:null, then POST /api/threads/:id/memory {on:true},
  * on a scratch server with MEMORY_MODEL=gpt-6-luna:low@oskar. These are all 63 resulting
- * agent-ide.line entries, exported as {id: i * 2**l, n: 2**l, text}, not edited by hand.
+ * ade.line entries, exported as {id: i * 2**l, n: 2**l, text}, not edited by hand.
  * To regenerate, repeat that run on the SHED messages and wait for its 0+32 line.
  */
 export const lines = [

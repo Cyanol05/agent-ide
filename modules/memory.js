@@ -26,7 +26,7 @@ import { AGENT, agentTo, byAgent, collect, written, finished, background } from 
 
 export const on = true
 
-const KIND = 'agent-ide.line'
+const KIND = 'ade.line'
 const RETRY = { enabled: true, maxRetries: 10, baseDelayMs: 2000 }
 const LINE = 512,
 	PANEL = 64 * 1024,
@@ -152,7 +152,7 @@ export function server(core) {
 	}
 
 	const Line = defineTask({
-		name: 'agent-ide.line',
+		name: 'ade.line',
 		version: 1,
 		initial: ({ backfill }) => ({ phase: backfill ? 'backfill' : 'write' }),
 		phases: {
@@ -166,7 +166,7 @@ export function server(core) {
 						)
 					).filter(
 						(message) =>
-							message.kind === 'agent-ide.message' &&
+							message.kind === 'ade.message' &&
 							(input.entry === undefined || message.id < input.entry),
 					)
 					for (const [i, message] of earlier.entries())
@@ -391,7 +391,7 @@ export function server(core) {
 
 	return {
 		extension: defineExtension({
-			name: 'agent-ide.memory',
+			name: 'ade.memory',
 			tasks: [Line],
 			tools: [zoom],
 			sections: [{ key: 'memory', tag: false, render: section }],
@@ -423,7 +423,7 @@ export async function lines(tx, threadId) {
 			cursor,
 		),
 	)
-	const shown = upTo.filter((entry) => entry.kind === 'agent-ide.message').length
+	const shown = upTo.filter((entry) => entry.kind === 'ade.message').length
 	for (const [coordinates, line] of await lines(tx, parent.conversationId))
 		if ((line.i + 1) * 2 ** line.l <= shown && !map.has(coordinates)) map.set(coordinates, line)
 	return map

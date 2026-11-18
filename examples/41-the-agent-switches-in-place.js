@@ -53,7 +53,7 @@ const post = (body, to, who) =>
 	api('POST', `/api/threads/${id}/entries`, { body, ...(to === undefined ? {} : { to }) }, who)
 const deliveries = async (v) =>
 	(await conversationOf(v, v.agents[0].name)).entries
-		.filter((e) => e.kind === 'agent-ide.delivery')
+		.filter((e) => e.kind === 'ade.delivery')
 		.map((e) => text(e.model[0]))
 
 await post('remember the number 7', { runner: 'laptop', model: 'echo/one' })
@@ -158,7 +158,7 @@ const askThere = async (body, to, n) => {
 	return {
 		v,
 		answer: answers(v).at(-1)?.data.body,
-		told: text(own.entries.filter((e) => e.kind === 'agent-ide.delivery').at(-1)?.model[0]),
+		told: text(own.entries.filter((e) => e.kind === 'ade.delivery').at(-1)?.model[0]),
 		cwd: own.docs['pi.agent'].cwd,
 	}
 }

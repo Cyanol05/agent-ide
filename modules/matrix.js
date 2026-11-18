@@ -17,7 +17,7 @@ import { agentTo, speaker, finished, background } from '../util.js'
 
 // `threads` keys a room by its id and a Matrix thread by its root event; `last` is each room's newest send.
 const MatrixBridge = defineDoc({
-	kind: 'agent-ide.matrix.bridge',
+	kind: 'ade.matrix.bridge',
 	version: 1,
 	scope: 'session',
 	checkpointWhen: () => true,
@@ -69,7 +69,7 @@ export function server(core) {
 	const roomPath = (room) => `/v3/rooms/${encodeURIComponent(room)}`
 
 	const MatrixSend = defineTask({
-		name: 'agent-ide.matrix.send',
+		name: 'ade.matrix.send',
 		version: 1,
 		initial: ({ after }) => ({ phase: after ? 'wait' : 'send' }),
 		phases: {
@@ -147,7 +147,7 @@ export function server(core) {
 			{
 				room,
 				root,
-				txn: `agent-ide-${bridge.salt}-${threadId}-${id}`,
+				txn: `ade-${bridge.salt}-${threadId}-${id}`,
 				entry: id,
 				body: data.body,
 				after: bridge.last[room],
@@ -339,5 +339,5 @@ export function server(core) {
 	}
 	sync()
 
-	return { extension: defineExtension({ name: 'agent-ide.matrix', tasks: [MatrixSend] }), posted }
+	return { extension: defineExtension({ name: 'ade.matrix', tasks: [MatrixSend] }), posted }
 }
