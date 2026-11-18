@@ -90,9 +90,9 @@ export function Wires(props) {
 				pointer-events: none; overflow: visible; fill: none;
 			"
 		>
-			<${For} each=${() => paths()} keyed=${false}>${(path) => html`
-				<path d=${() => path().d} class=${() => [path().state]} />
-			`}<//>
+			<${For} each=${() => paths()} keyed=${false}>
+				${(path) => html` <path d=${() => path().d} class=${() => [path().state]} /> `}
+			<//>
 		</svg>
 	`
 }

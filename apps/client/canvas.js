@@ -301,12 +301,12 @@ export function CanvasRow(props) {
 						<div class="whole">
 							<pre>
 ${() =>
-									actions()
-										.map(
-											({ action, done }) =>
-												`${action._type}${action.intent ? `: ${action.intent}` : ''}${done?.skipped ? ` (skipped: ${done.skipped})` : ''}`,
-										)
-										.join('\n')}</pre>
+	actions()
+		.map(
+			({ action, done }) =>
+				`${action._type}${action.intent ? `: ${action.intent}` : ''}${done?.skipped ? ` (skipped: ${done.skipped})` : ''}`,
+		)
+		.join('\n')}</pre>
 						</div>
 					</details>
 				</li>

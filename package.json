@@ -9,7 +9,7 @@
 		"start": "node server.js",
 		"runner": "node runner.js",
 		"examples": "node examples/all.js",
-		"check": "oxlint --type-aware --type-check"
+		"check": "oxfmt && oxlint --type-aware --type-check"
 	},
 	"engines": {
 		"node": ">=24"
@@ -49,6 +49,7 @@
 	"devDependencies": {
 		"@nkzw/oxlint-config": "^2.0.1",
 		"@types/ws": "^8.18.2",
+		"oxfmt": "^0.79.0",
 		"oxlint": "^1.94.0",
 		"tsrs": "0.25.0-ts7.1.0-beta"
 	}

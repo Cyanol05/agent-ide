@@ -19,5 +19,8 @@ declare module 'https://esm.sh/zod@*' {
 	export default z
 }
 declare module 'https://esm.sh/diff@*' {
-	export function diffWords(before: string, after: string): Array<{ added?: boolean; removed?: boolean; value: string }>
+	export function diffWords(
+		before: string,
+		after: string,
+	): Array<{ added?: boolean; removed?: boolean; value: string }>
 }

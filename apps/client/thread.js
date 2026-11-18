@@ -925,8 +925,7 @@ const Body = (props) => html`
 				const link = event.target.closest('a[data-thread]')
 				if (link) followThread(event, Number(link.dataset.thread))
 			}}
-		/>
-	<//>
+		/><//>
 `
 
 const Images = (props) => html`

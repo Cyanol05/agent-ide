@@ -212,7 +212,11 @@ export function createRunners({ onChange }) {
 				.filter((call) => call.runner === name)
 				.map(({ op, what }) => ({ op, what })),
 		/** A connection that has yet to show its key; `end` closes its socket, with a code or at once */
-		connection: (name, end = (code = undefined, reason = undefined) => {}) => ({ name, phase: 'authenticating', end }),
+		connection: (name, end = (code = undefined, reason = undefined) => {}) => ({
+			name,
+			phase: 'authenticating',
+			end,
+		}),
 		/** Its key held: it takes the name, and the name's older connection ends */
 		register(connection) {
 			if (connection.phase !== 'authenticating') return false
@@ -359,7 +363,10 @@ export function runnerProvider(runners, name, resolved = {}) {
 
 /** @returns {import('@earendil-works/pi-durable/env').ExecutionEnv} */
 export function remoteEnv(runners, name, cwd) {
-	const env = /** @type {import('@earendil-works/pi-durable/env').ExecutionEnv} */ ({ id: `runner:${name}`, cwd })
+	const env = /** @type {import('@earendil-works/pi-durable/env').ExecutionEnv} */ ({
+		id: `runner:${name}`,
+		cwd,
+	})
 	const request = (message, context) =>
 		runners
 			.call(name, message, { signal: context?.abortSignal })

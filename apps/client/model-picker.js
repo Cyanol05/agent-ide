@@ -134,7 +134,9 @@ function PickerRunner(runner, props, search) {
 	const scoped = () => modelsOf(runner, to())
 	const scopedFound = () => scoped().filter(found)
 	const rest = () =>
-		search() || all() ? available().filter((model) => !scoped().includes(model) && found(model)) : []
+		search() || all()
+			? available().filter((model) => !scoped().includes(model) && found(model))
+			: []
 	const choice = (model) => html`
 		<button
 			type="button"

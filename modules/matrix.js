@@ -72,7 +72,8 @@ export function server(core) {
 	const MatrixSend = defineTask({
 		name: 'ade.matrix.send',
 		version: 1,
-		initial: /** @returns {{ phase: 'wait', wait?: number } | { phase: 'send', wait?: number }} */
+		initial:
+			/** @returns {{ phase: 'wait', wait?: number } | { phase: 'send', wait?: number }} */
 			({ after }) => ({ phase: after ? 'wait' : 'send' }),
 		phases: {
 			wait: ({ input: { after } }, rt, ctx) =>

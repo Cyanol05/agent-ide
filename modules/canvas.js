@@ -164,7 +164,8 @@ export function server(core) {
 					storage.transaction((txn) => {
 						for (const [id, by] of stamps) {
 							const shape = txn.get(id)
-							if (shape?.typeName === 'shape' && shape.meta?.by !== by) txn.set(id, stamped(shape, by))
+							if (shape?.typeName === 'shape' && shape.meta?.by !== by)
+								txn.set(id, stamped(shape, by))
 						}
 					}),
 				)
@@ -328,7 +329,15 @@ export function server(core) {
 			return {
 				output: [
 					{ type: 'text', text: JSON.stringify(seen) },
-					...(picture ? [{ type: /** @type {const} */ ('image'), data: picture.data, mimeType: picture.mimeType }] : []),
+					...(picture
+						? [
+								{
+									type: /** @type {const} */ ('image'),
+									data: picture.data,
+									mimeType: picture.mimeType,
+								},
+							]
+						: []),
 				],
 			}
 		},

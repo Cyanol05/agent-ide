@@ -213,7 +213,17 @@ export function done() {
 /** A runner in this process, reconnecting like runner.js, serving `models` as `serveRunner` does */
 export async function localRunner(
 	name,
-	{ models, resolve, echo, onTell = undefined, model = '', query = [], readOnly = false, ops = undefined, readable = undefined },
+	{
+		models,
+		resolve,
+		echo,
+		onTell = undefined,
+		model = '',
+		query = [],
+		readOnly = false,
+		ops = undefined,
+		readable = undefined,
+	},
 ) {
 	let socket,
 		closing = false

@@ -281,7 +281,10 @@ const Admit = defineTask({
 async function gone(agent, signal) {
 	const { model, cwd } = await harness.snapshot(AgentDoc, agent, context)
 	const runner = model.provider.replace(/^runner:/, '')
-	const found = await remoteEnv(runners, runner, cwd).exists(cwd, { ...context, abortSignal: signal })
+	const found = await remoteEnv(runners, runner, cwd).exists(cwd, {
+		...context,
+		abortSignal: signal,
+	})
 	return found.ok && !found.value ? cwd : undefined
 }
 
@@ -368,7 +371,8 @@ const Shell = defineTask({
 				},
 				ctx,
 			)
-			const output = result.ok === true ? { code: result.value.exitCode } : { error: result.error.message }
+			const output =
+				result.ok === true ? { code: result.value.exitCode } : { error: result.error.message }
 			await rt.commit(
 				async (tx) => (await printed(tx, threadId, input, { ...run, ...output }), finished()),
 				ctx,
@@ -803,7 +807,12 @@ async function post(tx, threadId, message, options = {}) {
 }
 
 /** Already-authorized answers return to their askers; new requests enter through post. */
-async function append(tx, threadId, { to = undefined, ...message }, { steer = false, empty = false } = {}) {
+async function append(
+	tx,
+	threadId,
+	{ to = undefined, ...message },
+	{ steer = false, empty = false } = {},
+) {
 	const row = await tx.doc(Thread, threadId)
 	const names = (to ?? []).map(writtenTo)
 	const data = { ...message, ...(to ? { to: names } : {}) }
@@ -1606,29 +1615,32 @@ const routes = /** @type {[string, Function][]} */ ([
 	],
 	['POST /api/threads/:id/compact', async (req, id) => ({ compacted: await compact(id) })],
 	['GET /api/conversations/:id', (req, id) => conversationView(id)],
-	...modules
-		.flatMap((module) => module.serve ? [
-			[
-				`GET /api/${module.name}`,
-				(req, _, url) => module.serve(undefined, url.searchParams, undefined, user(req)),
-			],
-			[
-				`POST /api/${module.name}`,
-				async (req, _, url) =>
-					module.serve(undefined, url.searchParams, await input(req), user(req)),
-			],
-			...(module.remove
-				? [[`DELETE /api/${module.name}/:name`, (req, name) => module.remove(name)]]
-				: []),
-			[
-				`GET /api/threads/:id/${module.name}`,
-				(req, id, url) => module.serve(id, url.searchParams, undefined, user(req)),
-			],
-			[
-				`POST /api/threads/:id/${module.name}`,
-				async (req, id, url) => module.serve(id, url.searchParams, await input(req), user(req)),
-			],
-		] : []),
+	...modules.flatMap((module) =>
+		module.serve
+			? [
+					[
+						`GET /api/${module.name}`,
+						(req, _, url) => module.serve(undefined, url.searchParams, undefined, user(req)),
+					],
+					[
+						`POST /api/${module.name}`,
+						async (req, _, url) =>
+							module.serve(undefined, url.searchParams, await input(req), user(req)),
+					],
+					...(module.remove
+						? [[`DELETE /api/${module.name}/:name`, (req, name) => module.remove(name)]]
+						: []),
+					[
+						`GET /api/threads/:id/${module.name}`,
+						(req, id, url) => module.serve(id, url.searchParams, undefined, user(req)),
+					],
+					[
+						`POST /api/threads/:id/${module.name}`,
+						async (req, id, url) => module.serve(id, url.searchParams, await input(req), user(req)),
+					],
+				]
+			: [],
+	),
 ]).map(([key, handle]) => [
 	new RegExp(`^${key.replace(':id', String.raw`(\d+)`).replace(':name', '([^/]+)')}$`),
 	handle,
@@ -1836,14 +1848,23 @@ async function rewatch(socket, id) {
 	const old = socket.watching
 	socket.watching = socket.pages = undefined
 	for (const watch of old ?? []) await watch.stop()
-	const row = typeof id === 'number' && (await harness.watchDoc(Thread, /** @type {import("@earendil-works/pi-durable").ConversationId} */ (id), context))
+	const row =
+		typeof id === 'number' &&
+		(await harness.watchDoc(
+			Thread,
+			/** @type {import("@earendil-works/pi-durable").ConversationId} */ (id),
+			context,
+		))
 	if (!row) return
 	const watches = (socket.watching = [row])
 	/** A watch that comes back after the socket moved on is stopped instead */
 	const keep = (watch) =>
 		socket.watching === watches ? (watches.push(watch), true) : (watch.stop(), false)
 	const send = (message) => socket.send(JSON.stringify({ thread: id, ...message }))
-	const handle = await harness.conversation(/** @type {import("@earendil-works/pi-durable").ConversationId} */ (id), context)
+	const handle = await harness.conversation(
+		/** @type {import("@earendil-works/pi-durable").ConversationId} */ (id),
+		context,
+	)
 	const messages = await handle.watch(context)
 	if (!keep(messages)) return
 	/** Who's there changes with a message, or a read */
@@ -1928,7 +1949,12 @@ async function rewatch(socket, id) {
  * says, then each new batch once; the first batch says whether more lie `earlier`. `then` hears every update after
  * its batch. `back(enough)` loads further back and answers the entries it added, oldest first.
  */
-async function told(handle, watch, send, { then, enough = (_) => /** @type {boolean} */ (true) } = {}) {
+async function told(
+	handle,
+	watch,
+	send,
+	{ then, enough = (_) => /** @type {boolean} */ (true) } = {},
+) {
 	const transcript = new ConversationTranscript(
 		(query, limit, ctx) => handle.entries(query, limit, undefined, ctx),
 		{ pageSize: 200 },
@@ -2230,7 +2256,11 @@ for (const host of process.env.HOST ? [process.env.HOST] : ['127.0.0.1', '::1'])
 		}),
 	)
 	server.on('error', (error) => {
-		if (host === '::1' && ['EAFNOSUPPORT', 'EADDRNOTAVAIL'].includes(/** @type {NodeJS.ErrnoException} */ (error).code)) return
+		if (
+			host === '::1' &&
+			['EAFNOSUPPORT', 'EADDRNOTAVAIL'].includes(/** @type {NodeJS.ErrnoException} */ (error).code)
+		)
+			return
 		console.error(error)
 		process.exit(1)
 	})

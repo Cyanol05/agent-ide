@@ -32,7 +32,9 @@ marked.use({
 					close > 1;
 					close = line.lastIndexOf('"', close - 1)
 				) {
-					const link = (/** @type {LinkOptions} */ (this.lexer.options)).threadLink?.(line.slice(2, close))
+					const link = /** @type {LinkOptions} */ (this.lexer.options).threadLink?.(
+						line.slice(2, close),
+					)
 					if (link) return { type: 'threadMention', raw: line.slice(0, close + 1), ...link }
 				}
 			},
@@ -46,7 +48,7 @@ marked.use({
 			start: (src) => src.match(/(?<![\w.@])@[\w]/)?.index,
 			tokenizer(src) {
 				const name = src.match(/^@([\w.-]+)/)?.[1].replace(/\.+$/, '')
-				const style = name && (/** @type {LinkOptions} */ (this.lexer.options)).botColor?.(name)
+				const style = name && /** @type {LinkOptions} */ (this.lexer.options).botColor?.(name)
 				if (style) return { type: 'botMention', raw: `@${name}`, name, style }
 			},
 			renderer: ({ name, style }) =>
