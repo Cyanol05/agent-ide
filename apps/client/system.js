@@ -147,7 +147,8 @@ function SideEdge({ after }) {
 		width: (edge) => page(edge).offsetWidth,
 		drag: (edge) => {
 			const rect = page(edge).getBoundingClientRect()
-			const wanted = (pointer) => (after ? pointer.clientX - rect.left : rect.right - pointer.clientX)
+			const wanted = (pointer) =>
+				after ? pointer.clientX - rect.left : rect.right - pointer.clientX
 			// The threads beside it keep their own least width, so the page stops where it would squeeze one.
 			return (pointer) => {
 				sideWidth.set(fit(wanted(pointer)))
