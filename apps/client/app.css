@@ -1975,13 +1975,13 @@ body.resizing {
 	}
 }
 
-/* An editor brought up for an agent with no canvas on screen: laid out, so text measures, but out of sight. */
+/* An editor brought up for an agent with no canvas on screen: laid out and drawn, so text measures and exports, but off the page. */
 .unseen-canvas {
 	position: fixed;
 	top: 0;
 	left: -10000px;
 	width: 1200px;
 	height: 800px;
-	visibility: hidden;
+	opacity: 0;
 	pointer-events: none;
 }

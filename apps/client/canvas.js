@@ -89,7 +89,7 @@ function board({ react, dom, tldraw, sync, host }, element, id, { hidden = false
 		let answer
 		try {
 			if (!editor) throw new Error('the canvas is still loading')
-			answer = { call, result: look ? await host.look(editor, look) : host.act(editor, act) }
+			answer = { call, result: await (look ? host.look(editor, look) : host.act(editor, act)) }
 		} catch (error) {
 			answer = { call, error: error.message }
 		}
@@ -169,12 +169,13 @@ const USED = 2000
  * page, so the server asks the one used last. Answers how to stop.
  */
 export function offerToHost() {
+	const page = crypto.randomUUID()
 	let socket,
 		retry,
 		said = 0,
 		stopped = false
 	const connect = () => {
-		socket = new WebSocket(`${url.replace(/^http/, 'ws')}/api/canvas`)
+		socket = new WebSocket(`${url.replace(/^http/, 'ws')}/api/canvas?page=${page}`)
 		socket.onmessage = (event) => {
 			const { host } = JSON.parse(event.data)
 			if (host) bringUp(host).catch((error) => console.error(`canvas ${host}: ${error.message}`))
@@ -186,7 +187,7 @@ export function offerToHost() {
 	const used = () => {
 		if (Date.now() - said < USED || socket?.readyState !== WebSocket.OPEN) return
 		said = Date.now()
-		socket.send(JSON.stringify({ active: true }))
+		api('/api/canvas', { active: page }).catch(() => {})
 	}
 	connect()
 	const kinds = ['pointerdown', 'keydown', 'focusin']

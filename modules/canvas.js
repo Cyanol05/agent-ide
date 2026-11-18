@@ -279,12 +279,14 @@ export function server(core) {
 		const room = rooms.get(threadId) && (await rooms.get(threadId))
 		const [sessionId] =
 			[...(room?.tabs ?? [])]
-				.filter(([, tab]) => tab.ready)
+				.filter(([, tab]) => tab.ready && listening(tab.socket))
 				.sort(([, one], [, other]) => other.active - one.active)[0] ?? []
 		return sessionId && { ...room, sessionId }
 	}
 
-	/** Every ade page open with this module on, by its id: its socket and when someone last used it */
+	/** Counts each use of a page or tab, so the one used last is the highest: two in one millisecond still have an order */
+	let used = 0
+	/** Every ade page open with this module on, by its id: its socket and the count when someone last used it */
 	const pages = new Map()
 	/** What waits for a tab to say it's ready */
 	const arrivals = new Set()
@@ -294,7 +296,9 @@ export function server(core) {
 	 * that is the host until it goes. Undefined when no page is open, or none came up within SUMMON_WAIT.
 	 */
 	async function summon(threadId) {
-		const [page] = [...pages.values()].sort((one, other) => other.active - one.active)
+		const [page] = [...pages.values()]
+			.filter((page) => listening(page.socket))
+			.sort((one, other) => other.active - one.active)
 		if (!page) return undefined
 		await open(threadId)
 		try {
@@ -418,15 +422,23 @@ export function server(core) {
 		 * {look: {bounds}}: canvas_look. And from a tab: {active: tab} says it's being used, {answer} answers a call.
 		 */
 		async serve(threadId, query, body, user) {
-			if (threadId === undefined)
-				throw new Error('A canvas belongs to a thread: /api/threads/:id/canvas')
+			if (threadId === undefined) {
+				// An ade page someone just used, answered once it counts, so whoever asks next asks it
+				const page = body?.active && pages.get(body.active)
+				if (!page)
+					throw new Error(
+						'POST /api/canvas {active: page} from an open page; a canvas is at /api/threads/:id/canvas',
+					)
+				page.active = ++used
+				return {}
+			}
 			if (body === undefined) return { shapes: await read(threadId), tldraw: version }
 			if (Array.isArray(body.actions)) return act(threadId, body.actions, user)
 			if (body.look) return look(threadId, body.look.bounds)
 			if (body.active) {
 				const room = rooms.get(threadId) && (await rooms.get(threadId))
 				for (const [, tab] of room?.tabs ?? [])
-					if (tab.tab === body.active) Object.assign(tab, { active: Date.now(), ready: true })
+					if (tab.tab === body.active) Object.assign(tab, { active: ++used, ready: true })
 				for (const arrived of arrivals) arrived()
 				return {}
 			}
@@ -439,19 +451,16 @@ export function server(core) {
 		},
 		/**
 		 * A browser's tldraw sync socket, at /api/threads/:id/canvas; `user` says who is drawing, `tab` which tab it is.
-		 * Or, at /api/canvas, an ade page offering to bring up an editor for a canvas it isn't showing; it sends
-		 * `{active: true}` when someone uses it, and is sent `{host: threadId}`.
+		 * Or, at /api/canvas?page=<id>, an ade page offering to bring up an editor for a canvas it isn't showing; it
+		 * posts `{active: page}` to /api/canvas when someone uses it, and is sent `{host: threadId}`.
 		 */
 		async connect(threadId, socket, url) {
 			if (threadId === undefined) {
-				const id = crypto.randomUUID()
-				pages.set(id, { socket, active: Date.now() })
-				socket.on('message', (data) => {
-					try {
-						if (JSON.parse(String(data)).active) pages.get(id).active = Date.now()
-					} catch {}
-				})
-				socket.on('close', () => pages.delete(id))
+				const id = url.searchParams.get('page')
+				if (!id) return socket.close(4000, 'no page')
+				const page = { socket, active: ++used }
+				pages.set(id, page)
+				socket.on('close', () => pages.get(id) === page && pages.delete(id))
 				return
 			}
 			const sessionId = url.searchParams.get('sessionId')
@@ -464,7 +473,7 @@ export function server(core) {
 			})
 			const tab = url.searchParams.get('tab')
 			if (!tab) return
-			tabs.set(sessionId, { tab, active: Date.now(), ready: false })
+			tabs.set(sessionId, { tab, socket, active: ++used, ready: false })
 			socket.on('close', () => {
 				if (tabs.get(sessionId)?.tab !== tab) return
 				tabs.delete(sessionId)
@@ -475,6 +484,12 @@ export function server(core) {
 		},
 	}
 }
+
+/**
+ * Whether a socket still takes messages. A browser that closes one hears back before the server's `close` event comes,
+ * so a call right after must already pass it by.
+ */
+const listening = (socket) => socket.readyState === socket.OPEN
 
 /** Each action's past tense, for the line that says what a batch did */
 const DID = {

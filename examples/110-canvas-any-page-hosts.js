@@ -48,7 +48,7 @@ const opened = (socket) => new Promise((resolve) => (socket.onopen = resolve))
  * tldraw's client connects, says it's ready, and answers each call with its own name
  */
 function page(name) {
-	const socket = ws('/api/canvas')
+	const socket = ws(`/api/canvas?page=${name}`)
 	const asked = []
 	const tabs = []
 	socket.onmessage = async (event) => {
@@ -92,16 +92,15 @@ function page(name) {
 		await until(async () => heard.some((frame) => frame.includes('"connect"')))
 		await api('POST', `/api/threads/${host}/canvas`, { active: `${name}-${host}` })
 	}
-	return { socket, asked, tabs, used: () => socket.send(JSON.stringify({ active: true })) }
+	// Answered once the server counts it, so the next call sees it
+	return { socket, asked, tabs, used: () => api('POST', '/api/canvas', { active: name }) }
 }
 
 const one = page('one')
 const two = page('two')
 await Promise.all([opened(one.socket), opened(two.socket)])
-one.used()
-await new Promise((resolve) => setTimeout(resolve, 20))
-two.used()
-await until(async () => true)
+await one.used()
+await two.used()
 
 const looked = (await api('POST', path, { look: {} })).json
 check(

@@ -3,7 +3,7 @@
  * with tldraw's agent starter kit's own formats, actions, sanitizers and lints (vendored in ./agent). Only what an agent
  * asks for runs here; ade's agent loop, models and chat stay where they are.
  */
-import { Box, FileHelpers } from './tldraw.js'
+import { allDefaultFontFaces, Box, FileHelpers } from './tldraw.js'
 import { AgentHelpers } from './agent/client/AgentHelpers.js'
 import { AgentLintManager } from './agent/client/agent/managers/AgentLintManager.js'
 import { getAgentActionUtilsRecordForMode } from './agent/client/actions/AgentActionUtil.js'
@@ -33,6 +33,26 @@ const PICTURE = 1000
 const WHOLE = 3000
 /** Room around a whole drawing, so its edges show */
 const MARGIN = 40
+
+/**
+ * tldraw's fonts, loaded once per editor before anything is measured, linted or pictured: an editor nobody looks at
+ * never loads them itself, and measures its labels in a stand-in font until it does.
+ */
+const fonts = new WeakMap()
+const fontsLoaded = (editor) => {
+	if (!fonts.has(editor))
+		fonts.set(
+			editor,
+			Promise.all(allDefaultFontFaces.map((face) => editor.fonts.ensureFontIsLoaded(face)))
+				.then(() => document.fonts.ready)
+				// tldraw re-measures on the next frame after a font lands; a page in the background may not draw one soon
+				.then(
+					() =>
+						new Promise((resolve) => (requestAnimationFrame(resolve), setTimeout(resolve, 100))),
+				),
+		)
+	return fonts.get(editor)
+}
 
 /** What the starter kit's code asks of its agent: the editor, and where its coordinates start (the page's origin here) */
 const agentOf = (editor) => ({ editor, chatOrigin: { getOrigin: () => ({ x: 0, y: 0 }) } })
@@ -66,6 +86,7 @@ const round = (box) => ({
  * area given, the whole drawing when it's small enough, else what the person has in view.
  */
 export async function look(editor, { bounds } = {}) {
+	await fontsLoaded(editor)
 	const viewport = round(editor.getViewportPageBounds())
 	const area = bounds ?? whole(editor) ?? viewport
 	const { inside, outside } = split(editor, area)
@@ -118,7 +139,8 @@ async function picture(editor, shapes, area) {
  * each did, the shapes they touched as they landed (full, with their real bounds), what was deleted, ids changed to
  * stay unique, and the lints that touch them.
  */
-export function act(editor, { actions }) {
+export async function act(editor, { actions }) {
+	await fontsLoaded(editor)
 	const agent = agentOf(editor)
 	const utils = getAgentActionUtilsRecordForMode(agent, 'default')
 	const helpers = new AgentHelpers(agent)
