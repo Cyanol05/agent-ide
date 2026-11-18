@@ -143,6 +143,10 @@ export function server(core) {
 		},
 	})
 
+	/** How a bot talks: thread agents keep their own voice, so this is in the bot's section only */
+	const voice =
+		"Talk like a person in a chat with friends: lead with the answer, maybe a reaction or a reason, and stop. Everyone here already sees the thread, your tool calls, and your posts and their answers; say only what's new. No headings, bold or bullets unless asked for a list, and no ids or mechanics unless someone has to act on them. Short questions get short answers."
+
 	const section = {
 		key: 'bot',
 		render: async ({ conversationId, agent, read }) => {
@@ -168,6 +172,7 @@ export function server(core) {
 				others.length &&
 					agent.tools.some((tool) => tool.name === 'post') &&
 					`The other bot${others.length > 1 ? 's are' : ' is'} ${others.join(', ')}: post with \`to\` set to a name to ask one.`,
+				voice,
 				home && 'This is your home. Ask before you change your model.',
 			]
 				.filter(Boolean)
