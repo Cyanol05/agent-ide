@@ -1970,3 +1970,14 @@ body.resizing {
 		min-height: 0;
 	}
 }
+
+/* An editor brought up for an agent with no canvas on screen: laid out, so text measures, but out of sight. */
+.unseen-canvas {
+	position: fixed;
+	top: 0;
+	left: -10000px;
+	width: 1200px;
+	height: 800px;
+	visibility: hidden;
+	pointer-events: none;
+}

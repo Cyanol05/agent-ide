@@ -87,7 +87,7 @@ check(
 	answer.includes('"shapeId":"server"') &&
 		answer.includes('"text":"Server"') &&
 		!answer.includes('Runner') &&
-		answer.includes('no browser has the canvas open'),
+		answer.includes('no ade page is open in a browser'),
 	'with no browser, the agent draws and looks at only the shapes within its bounds, told the sizes are guessed',
 	answer,
 )

@@ -1,13 +1,13 @@
 /** The client, server, threads and runners, with the routes between them. */
 import html from '@solidjs/html'
-import { createMemo, For, Loading, Show } from 'solid-js'
-import { columns, connected, current, runners, threads, url } from './server.js'
+import { createEffect, createMemo, For, Loading, Show } from 'solid-js'
+import { columns, connected, current, runners, server, threads, url } from './server.js'
 import { rowOf } from './agent.js'
 import { recipients } from './composer.js'
 import { Dot } from './dot.js'
 import { Runner } from './runner.js'
 import { Thread } from './thread.js'
-import { Canvas } from './canvas.js'
+import { Canvas, offerToHost } from './canvas.js'
 import { Overview } from './overview.js'
 import { sideOf } from './side.js'
 import { DetailsPage } from './thread-details.js'
@@ -15,6 +15,11 @@ import { ThreadList } from './thread-list.js'
 import { Wires } from './wires.js'
 
 export function System() {
+	// With the canvas on, this page can bring up an editor for an agent when no tab shows that canvas
+	createEffect(
+		() => server().modules.includes('canvas'),
+		(on) => (on ? offerToHost() : undefined),
+	)
 	const shown = createMemo(() => threads.filter((thread) => columns().includes(thread.id)))
 	const agents = createMemo(() =>
 		shown().flatMap((thread) => thread.agents.map((agent) => ({ ...agent, thread: thread.id }))),

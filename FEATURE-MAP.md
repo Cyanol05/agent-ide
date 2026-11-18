@@ -51,7 +51,8 @@ modules/
                          serve, the `overview` tool; off by default
   canvas.js              a tldraw canvas per thread: Canvas doc (the room's snapshot; a fork copies it), rooms (one TLSocketRoom per
                          thread in use, saved shortly after a person's edits and before an agent's tool returns, closed when empty),
-                         `canvas_look` and `canvas_act`; relay hands them to the host tab (hostOf: the tab used last, tabs), alone does
+                         `canvas_look` and `canvas_act`; relay hands them to the host tab (hostOf: the tab used last, tabs), else summon asks the
+                         ade page used last (pages, its /api/canvas socket) to bring an editor up, alone does
                          create/update/delete/move/label on the stored shapes when no tab answers (apply, record, arrow, updated);
                          who drew it (`meta.by`, whose: the acting agent, else the session's user, stamped by authorizeRecord and
                          onCommittedChanges); serve (GET shapes, POST actions/look/active/answer), connect; off by default
@@ -105,7 +106,8 @@ apps/client/             the web client, Solid 2, no build (README.md there)
   pi-sessions.js         the thread list's "From a pi session" popover (PiSessions), and in thread details where one came from (PiSource)
   canvas.js              a thread's canvas as a page of the side column: tldraw and React loaded once from esm.sh (load), mounted as
                          a React island synced over /api/threads/:id/canvas (board), which also makes the tab a host: it answers the
-                         server's looks and actions, and says when it's used; CanvasRow, a canvas_act call's row in the chat
+                         server's looks and actions, and says when it's used; offerToHost and bringUp, an editor out of sight for a
+                         canvas no tab shows, kept a minute; CanvasRow, a canvas_act call's row in the chat
                          ("moved 3, deleted 1"), which opens the canvas on what changed (showOnCanvas)
   canvas/host.js         look and act against the live editor, with the starter kit's code: the whole drawing by default (whole),
                          blurry shapes, peripheral clusters, lints, a picture, the person's selection and view;
@@ -165,6 +167,7 @@ examples/107-a-missing-folder-says-so.js   a renamed folder stops the run with o
 examples/110-a-group-message-asks-the-thread.js   @Jeroen then an unaddressed question reaches the thread agent; failed picks never stick to a bot
 examples/108-canvas.js            an agent draws with no browser open, a watching socket sees it, a hard restart keeps it, a fork copies it
 examples/109-canvas-tools.js      actions through the tab used last, or on the stored shapes with none; a tab closing mid-call; bound arrows; who drew it
+examples/110-canvas-any-page-hosts.js   with no tab on a canvas, the page used last brings an editor up; with no page, what wasn't done is named
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 

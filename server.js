@@ -1946,15 +1946,15 @@ async function revoke(name) {
 const wss = new WebSocketServer({ noServer: true, perMessageDeflate: true })
 async function upgrade(req, raw, head) {
 	const url = new URL(req.url, 'http://localhost')
-	/** A module's own socket for a thread, at /api/threads/:id/<module>: the module's `connect` takes it */
-	const [, threadId, named] = url.pathname.match(/^\/api\/threads\/(\d+)\/([\w-]+)$/) ?? []
+	/** A module's own socket, at /api/<module> or for a thread at /api/threads/:id/<module>: the module's `connect` takes it */
+	const [, threadId, named] = url.pathname.match(/^\/api\/(?:threads\/(\d+)\/)?([\w-]+)$/) ?? []
 	const taker = modules.find((module) => module.name === named && module.connect)
 	if (url.pathname !== '/ws' && !taker) return raw.destroy()
 	if (req.headers.origin && req.headers.origin !== origin(req))
 		return raw.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
 	const socket = await new Promise((resolve) => wss.handleUpgrade(req, raw, head, resolve))
 	if (taker)
-		return taker.connect(Number(threadId), socket, url).catch((error) => {
+		return taker.connect(threadId && Number(threadId), socket, url).catch((error) => {
 			console.error(`${named} socket: ${error.message}`)
 			socket.close(4004, error.message.slice(0, 120))
 		})

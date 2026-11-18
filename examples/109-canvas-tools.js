@@ -87,7 +87,7 @@ check(
 )
 check(all.a.by === 'echo@box', 'a shape says which agent drew it', JSON.stringify(all.a))
 check(
-	drew.startsWith('drew 3; 1 skipped') && drew.includes('needs the canvas open in a browser'),
+	drew.startsWith('drew 3; not done: align (needs an ade page open in a browser)'),
 	'what needs a laid-out editor says it needs a browser, and the rest is done',
 	drew,
 )

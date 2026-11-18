@@ -9,8 +9,11 @@
  * Agents see and change the canvas as tldraw's agent starter kit's own agent does, with its formats, actions,
  * sanitizers and lints (vendored in apps/client/canvas/agent). Those need a live editor, so the server hands each look
  * and batch of actions to a browser tab with the canvas open, the one someone used last, and answers what it found or
- * did: a look brings a picture of the area, at most 1000 px across, and what the person has selected and in view. With no tab, or one that closes or doesn't answer within HOST_WAIT, the server does what needs no layout itself:
- * create, update, delete, move and label, with sizes guessed, and says so; other actions need a tab.
+ * did: a look brings a picture of the area, at most 1000 px across, and what the person has selected and in view. With
+ * no tab showing that canvas, the ade page someone used last (each offers itself over the socket at /api/canvas) brings
+ * up an editor for it out of sight, within SUMMON_WAIT, and keeps it a minute. A tab that closes or doesn't answer within
+ * HOST_WAIT, or no ade page open at all, leaves the server to do what needs no layout itself: create, update, delete,
+ * move and label, with sizes guessed, and it says so, naming each action it couldn't do.
  *
  * `by` on a shape is who drew or changed it last: the person, or the bot's name, or the agent's model@runner, kept in its
  * `meta.by`. `GET /api/threads/:id/canvas` answers `{shapes, tldraw}`: the stored shapes, simply, and the tldraw version
@@ -39,6 +42,8 @@ const SAVE = 500
 
 /** How long a tab has to answer a look or a batch of actions before the server does what it can alone */
 const HOST_WAIT = 5000
+/** How long an ade page has to bring up an editor it wasn't showing, before the server does what it can alone */
+const SUMMON_WAIT = 10000
 /** How long after its actions land a tab's changes are still the agent's, for the sync that brings them */
 const ACTED = 5000
 
@@ -221,7 +226,7 @@ export function server(core) {
 			const applied = actions.map((action) => {
 				const type = action?._type
 				if (!ALONE.includes(type))
-					return { _type: type, skipped: 'needs the canvas open in a browser' }
+					return { _type: type, skipped: 'needs an ade page open in a browser' }
 				try {
 					for (const record of apply(action, all, by, renamed)) {
 						if (record.gone) {
@@ -269,12 +274,49 @@ export function server(core) {
 	/** Call → what waits for a tab's answer */
 	const calls = new Map()
 
-	/** The tab someone used last, of those with this thread's canvas open */
+	/** The tab someone used last, of those with this thread's canvas open and ready */
 	async function hostOf(threadId) {
 		const room = rooms.get(threadId) && (await rooms.get(threadId))
 		const [sessionId] =
-			[...(room?.tabs ?? [])].sort(([, one], [, other]) => other.active - one.active)[0] ?? []
+			[...(room?.tabs ?? [])]
+				.filter(([, tab]) => tab.ready)
+				.sort(([, one], [, other]) => other.active - one.active)[0] ?? []
 		return sessionId && { ...room, sessionId }
+	}
+
+	/** Every ade page open with this module on, by its id: its socket and when someone last used it */
+	const pages = new Map()
+	/** What waits for a tab to say it's ready */
+	const arrivals = new Set()
+
+	/**
+	 * No tab shows this thread's canvas: the ade page someone used last brings up an editor for it out of sight, and
+	 * that is the host until it goes. Undefined when no page is open, or none came up within SUMMON_WAIT.
+	 */
+	async function summon(threadId) {
+		const [page] = [...pages.values()].sort((one, other) => other.active - one.active)
+		if (!page) return undefined
+		await open(threadId)
+		try {
+			return await new Promise((resolve) => {
+				const settle = (host) => {
+					clearTimeout(timer)
+					arrivals.delete(arrived)
+					resolve(host)
+				}
+				const arrived = async () => {
+					const host = await hostOf(threadId)
+					if (host) settle(host)
+				}
+				const timer = setTimeout(() => settle(undefined), SUMMON_WAIT)
+				arrivals.add(arrived)
+				// A page that closes first won't bring it up
+				page.socket.once('close', () => settle(undefined))
+				page.socket.send(JSON.stringify({ host: threadId }))
+			})
+		} finally {
+			close(threadId)
+		}
 	}
 
 	/**
@@ -282,8 +324,14 @@ export function server(core) {
 	 * tab is open, or the one asked closed, failed or took longer than HOST_WAIT.
 	 */
 	async function relay(threadId, request, by) {
-		const host = await hostOf(threadId)
-		if (!host) return { why: 'no browser has the canvas open' }
+		const anyPage = pages.size
+		const host = (await hostOf(threadId)) ?? (await summon(threadId))
+		if (!host)
+			return {
+				why: anyPage
+					? 'the ade page asked to bring the canvas up closed, or took too long'
+					: 'no ade page is open in a browser',
+			}
 		const call = crypto.randomUUID()
 		if (request.act) host.acting.set(host.sessionId, { by, until: Infinity })
 		try {
@@ -370,13 +418,16 @@ export function server(core) {
 		 * {look: {bounds}}: canvas_look. And from a tab: {active: tab} says it's being used, {answer} answers a call.
 		 */
 		async serve(threadId, query, body, user) {
-			if (threadId === undefined) throw new Error('A canvas belongs to a thread')
+			if (threadId === undefined)
+				throw new Error('A canvas belongs to a thread: /api/threads/:id/canvas')
 			if (body === undefined) return { shapes: await read(threadId), tldraw: version }
 			if (Array.isArray(body.actions)) return act(threadId, body.actions, user)
 			if (body.look) return look(threadId, body.look.bounds)
 			if (body.active) {
 				const room = rooms.get(threadId) && (await rooms.get(threadId))
-				for (const [, tab] of room?.tabs ?? []) if (tab.tab === body.active) tab.active = Date.now()
+				for (const [, tab] of room?.tabs ?? [])
+					if (tab.tab === body.active) Object.assign(tab, { active: Date.now(), ready: true })
+				for (const arrived of arrivals) arrived()
 				return {}
 			}
 			if (body.answer) {
@@ -386,8 +437,23 @@ export function server(core) {
 			}
 			throw new Error('POST {actions}, {look}, {active} or {answer}')
 		},
-		/** A browser's tldraw sync socket; `user` says who is drawing, `tab` which tab it is */
+		/**
+		 * A browser's tldraw sync socket, at /api/threads/:id/canvas; `user` says who is drawing, `tab` which tab it is.
+		 * Or, at /api/canvas, an ade page offering to bring up an editor for a canvas it isn't showing; it sends
+		 * `{active: true}` when someone uses it, and is sent `{host: threadId}`.
+		 */
 		async connect(threadId, socket, url) {
+			if (threadId === undefined) {
+				const id = crypto.randomUUID()
+				pages.set(id, { socket, active: Date.now() })
+				socket.on('message', (data) => {
+					try {
+						if (JSON.parse(String(data)).active) pages.get(id).active = Date.now()
+					} catch {}
+				})
+				socket.on('close', () => pages.delete(id))
+				return
+			}
 			const sessionId = url.searchParams.get('sessionId')
 			if (!sessionId) return socket.close(4000, 'no sessionId')
 			const { room, tabs } = await open(threadId)
@@ -398,7 +464,7 @@ export function server(core) {
 			})
 			const tab = url.searchParams.get('tab')
 			if (!tab) return
-			tabs.set(sessionId, { tab, active: Date.now() })
+			tabs.set(sessionId, { tab, active: Date.now(), ready: false })
 			socket.on('close', () => {
 				if (tabs.get(sessionId)?.tab !== tab) return
 				tabs.delete(sessionId)
@@ -428,14 +494,19 @@ const DID = {
 	sendToBack: 'sent back',
 }
 
-/** What a batch did, in a few words: "moved 3, deleted 1; 1 skipped"; the chat shows it as the call's row */
+/**
+ * What a batch did, in a few words, and what it didn't and why: "moved 3, deleted 1; not done: align, stack (needs an
+ * ade page open in a browser)"; the chat shows it as the call's row
+ */
 function summary(applied) {
 	const counts = new Map()
-	for (const { _type, ok } of applied)
+	const why = new Map()
+	for (const { _type, ok, skipped } of applied)
 		if (ok) counts.set(DID[_type] ?? _type, (counts.get(DID[_type] ?? _type) ?? 0) + 1)
-	const skipped = applied.filter((one) => !one.ok).length
+		else why.set(skipped, [...(why.get(skipped) ?? []), _type])
 	const done = [...counts].map(([verb, n]) => `${verb} ${n}`).join(', ')
-	return `${done || 'did nothing'}${skipped ? `; ${skipped} skipped` : ''}`
+	const not = [...why].map(([reason, types]) => `${[...new Set(types)].join(', ')} (${reason})`)
+	return `${done || 'did nothing'}${not.length ? `; not done: ${not.join('; ')}` : ''}`
 }
 
 /** A stored shape as the starter kit's blurry shape: its id, type, bounds and text */
@@ -496,7 +567,7 @@ function apply(action, records, by, renamed) {
 			if (id !== shape.shapeId) renamed[shape.shapeId] = id
 			if (shape._type === 'arrow') {
 				if (!shape.fromId || !shape.toId)
-					throw new Error('an arrow not joined to two shapes needs the canvas open in a browser')
+					throw new Error('an arrow not joined to two shapes needs an ade page open in a browser')
 				return arrow(
 					{ from: shape.fromId, to: shape.toId, text: shape.text, color: shape.color, id },
 					page.id,
@@ -507,7 +578,7 @@ function apply(action, records, by, renamed) {
 			}
 			const type = GEO[shape._type] ?? shape._type
 			if (!['note', 'text', ...Object.values(GEO)].includes(type))
-				throw new Error(`a ${shape._type} needs the canvas open in a browser`)
+				throw new Error(`a ${shape._type} needs an ade page open in a browser`)
 			return [
 				record(
 					{
@@ -600,8 +671,22 @@ function sizeOf(shape) {
 	const scale = props.scale ?? 1
 	if (shape.type === 'geo') return { w: props.w, h: props.h + (props.growY ?? 0) }
 	if (shape.type === 'note') return { w: NOTE * scale, h: (NOTE + (props.growY ?? 0)) * scale }
+	if (shape.type === 'text') return textSize(shape)
 	if (props.w !== undefined && props.h !== undefined) return { w: props.w, h: props.h }
 	return {}
+}
+
+/** tldraw's font sizes, for guessing a text's size with no editor to lay it out */
+const FONT = { s: 18, m: 24, l: 36, xl: 44 }
+/** A text's size as a guess: its lines at tldraw's line height, as wide as its longest line or its set width */
+function textSize({ props }) {
+	const lines = plain(props.richText ?? { type: 'doc' }).split('\n')
+	const size = (FONT[props.size] ?? FONT.m) * (props.scale ?? 1)
+	const longest = Math.max(...lines.map((line) => line.length))
+	return {
+		w: Math.round(props.autoSize ? Math.max(longest * size * 0.55, size) + 16 : props.w),
+		h: Math.round(lines.length * size * 1.35 + 8),
+	}
 }
 
 /** The middle of a shape on the page, where a bound arrow points */
