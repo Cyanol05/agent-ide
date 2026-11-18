@@ -51,8 +51,9 @@ modules/
                          counts, looking (who has it open), serve, the `overview` tool; off by default
   canvas.js              a tldraw canvas per thread: Canvas doc (the room's snapshot; a fork copies it), rooms (one TLSocketRoom per
                          thread in use, saved shortly after a person's edits and before an agent's tool returns, closed when empty),
-                         `canvas_read` and `canvas_create` over simple shapes (simple, record), serve, connect (the browser's sync socket);
-                         off by default
+                         the tools over simple shapes, `canvas_read`, `canvas_create`, `canvas_update`, `canvas_delete` (change: one write,
+                         saved; simple, record, arrow and its bindings, updated), who drew it (`meta.by`: the tool's caller, the API's user,
+                         or a browser session's `user`, stamped by authorizeRecord and onCommittedChanges), serve, connect; off by default
   web-search.js          `web_search`
   status.js              Program Status Protocol (OSC 7501) on the runner's terminal
   matrix.js              Matrix rooms as threads (MatrixSend, relay, sync)
@@ -151,6 +152,7 @@ examples/106-one-store-per-person.js ade.sqlite, ade.log and ade.json live in ~/
 examples/107-a-missing-folder-says-so.js   a renamed folder stops the run with one line; another folder takes what waited
 examples/110-a-group-message-asks-the-thread.js   @Jeroen then an unaddressed question reaches the thread agent; failed picks never stick to a bot
 examples/108-canvas.js            an agent draws with no browser open, a watching socket sees it, a hard restart keeps it, a fork copies it
+examples/109-canvas-tools.js      update, delete, circles, a bound arrow following a moved shape, and who drew or changed each shape
 examples/94-head-matches-get.js    HEAD on a static file matches GET: same status, headers, no body
 ```
 
