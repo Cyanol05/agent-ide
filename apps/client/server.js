@@ -154,6 +154,7 @@ export const {
 	runners,
 	server,
 	bots,
+	threadOf,
 	family,
 	columns,
 	closeColumn,
@@ -203,6 +204,7 @@ export const {
 			() => setConnected(false),
 		)
 	})
+	const threadOf = (id) => threads.find((thread) => thread.id === id)
 	/** The open thread's family, as the server sends it: one thread until the list has it, `[null]` for a new one */
 	const family = createMemo(() =>
 		current() ? (threadOf(current())?.family.map((member) => member.id) ?? [current()]) : [null],
@@ -233,6 +235,7 @@ export const {
 		runners,
 		server,
 		bots,
+		threadOf,
 		family,
 		columns,
 		closeColumn,
@@ -278,5 +281,4 @@ export const colorOf = (name, property = 'color') => {
 	return hue === undefined ? '' : `${property}: ${paint(hue)}`
 }
 export const forkedFrom = (thread) => thread?.conversation?.parent?.conversationId
-export const threadOf = (id) => threads.find((thread) => thread.id === id)
 export const titleOf = (id) => threadOf(id)?.title ?? `thread ${id}`

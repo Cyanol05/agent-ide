@@ -1956,6 +1956,12 @@ body.resizing {
 		flex-direction: column;
 		overflow: hidden;
 		padding: 0;
+
+		/* Loading or failing, it reads like the other pages' text, at their inset. */
+		> p {
+			margin: 0;
+			padding: var(--space-2) var(--space-4);
+		}
 	}
 
 	.board {
