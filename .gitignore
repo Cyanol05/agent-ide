@@ -9,3 +9,6 @@ bun.lock
 *.log
 
 .work/
+
+# what try.js's scripted bot writes in the folder it runs in
+/notes.md
