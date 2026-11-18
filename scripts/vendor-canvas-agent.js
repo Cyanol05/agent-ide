@@ -7,7 +7,7 @@
  *   node scripts/vendor-canvas-agent.js <upstream> <tools>
  *
  * In the browser `tldraw` and `zod` come from the canvas's own shims, which load them from esm.sh; the schema is made in
- * Node from <tools>' copies. Then `bun fmt`, read the diff, and bump UPSTREAM in canvas/agent/README.md.
+ * Node from <tools>' copies. Then read the diff, and bump UPSTREAM in canvas/agent/README.md.
  */
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync, cpSync } from 'node:fs'
@@ -131,5 +131,5 @@ writeFileSync(path.join(out, 'actions.schema.json'), `${JSON.stringify(schema, n
 const commit = execFileSync('git', ['-C', upstream, 'rev-parse', 'HEAD'], {
 	encoding: 'utf8',
 }).trim()
-console.log(`ported ${FILES.length} files from ${commit}; now bun fmt`)
+console.log(`ported ${FILES.length} files from ${commit}`)
 process.exit(0)

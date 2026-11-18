@@ -44,5 +44,10 @@
 		"pele": "^1.13.0",
 		"solid-js": "2.0.0-rc.20",
 		"ws": "8.21.0"
+	},
+	"devDependencies": {
+		"@nkzw/oxlint-config": "^2.0.1",
+		"oxlint": "^1.94.0",
+		"tsrs": "0.25.0-ts7.1.0-beta"
 	}
 }
