@@ -33,6 +33,7 @@
 ## Code
 
 - Prove logic in `examples/`, one file per idea, through the API, socket or CLI, never server internals. `examples/00-the-api.js` is the README's walkthrough: change both together. No unit or UI tests, no TypeScript, no build step, no migrations or shims.
+- No backwards compatibility: rename and change things outright, no fallbacks for old names.
 - Durability, ordering, retries and cancellation are Pi Durable's: find its primitive before writing your own. A tool's cancellation is `execute`'s third argument's `abortSignal`; pass it through runner calls and settle locally.
 - In a Pi commit, `submit(tx, ...)` comes before table writes; after the first write it can't scan entries or snapshot. A snapshot inside a commit deadlocks silently. Copy document values before they leave the commit. A doc's value is a live proxy: `structuredClone` throws "could not be cloned", so copy it with `JSON.parse(JSON.stringify(…))`.
 - Pi forks restore `pi.agent` at the fork entry, so the creating commit applies the thread's tools and identity without replacing the inherited model, thinking or folder.

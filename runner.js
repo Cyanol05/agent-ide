@@ -22,7 +22,7 @@ const { values: args } = parseArgs({
 	options: {
 		server: {
 			type: 'string',
-			default: (process.env.ADE_SERVER ?? process.env.AGENT_IDE_SERVER) || 'http://localhost:3000',
+			default: process.env.ADE_SERVER || 'http://localhost:3000',
 		},
 		name: { type: 'string', default: os.hostname() },
 		dir: { type: 'string', multiple: true, default: [process.cwd()] },
@@ -30,7 +30,7 @@ const { values: args } = parseArgs({
 		owner: { type: 'string', default: '' },
 		'read-only': { type: 'boolean', default: false },
 		allow: { type: 'string', multiple: true, default: [] },
-		key: { type: 'string', default: process.env.ADE_KEY ?? process.env.AGENT_IDE_KEY },
+		key: { type: 'string', default: process.env.ADE_KEY },
 		'key-file': { type: 'string' },
 		help: { type: 'boolean', short: 'h' },
 	},
@@ -112,7 +112,7 @@ async function offers() {
 
 /** Sent to the server, which asks a runner its updater started to update when the server's differs */
 const { version } = await runnerBundle(import.meta.dirname).catch(() => ({ version: '' }))
-const launched = (process.env.ADE_LAUNCHER ?? process.env.AGENT_IDE_LAUNCHER) === '1'
+const launched = process.env.ADE_LAUNCHER === '1'
 
 const modules = await load('runner', { name, server, dir, roots })
 
@@ -194,7 +194,7 @@ async function connect() {
 	const from = args.owner ? `, to ${[args.owner, ...args.allow].join(', ')}` : ''
 	const online = () =>
 		// The server's own runner: the server already printed its row
-		(process.env.ADE_LENT ?? process.env.AGENT_IDE_LENT) ||
+		process.env.ADE_LENT ||
 		console.log(
 			`${name} online at ${server}, offering pi's logins and ${roots.join(', ')}${args['read-only'] ? ' to read only' : ''}${from}`,
 		)

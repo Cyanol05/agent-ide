@@ -1728,7 +1728,7 @@ if command -v bun >/dev/null 2>&1; then run=bun; elif command -v node >/dev/null
   echo "ade's runner needs Node.js 24 or newer"; exit 1
 fi
 mkdir -p "$HOME/.agent-ide"
-if [ -n "\${ADE_KEY:-$AGENT_IDE_KEY}" ]; then
+if [ -n "$ADE_KEY" ]; then
   config="\${XDG_CONFIG_HOME:-$HOME/.config}/ade"
   name=$("$run" -e "process.stdout.write(require('node:os').hostname())")
   next_name=
@@ -1739,7 +1739,7 @@ if [ -n "\${ADE_KEY:-$AGENT_IDE_KEY}" ]; then
   case "$name" in ''|*[!a-zA-Z0-9._-]*) echo 'Invalid runner name' >&2; exit 1 ;; esac
   mkdir -p "$config"
   keyfile="$config/key.$name"
-  (umask 077 && printf %s "\${ADE_KEY:-$AGENT_IDE_KEY}" > "$keyfile")
+  (umask 077 && printf %s "$ADE_KEY" > "$keyfile")
   set -- "$@" --key-file "$keyfile"
 fi
 curl -fsSL "${server}/runner/updater.js" -o "$HOME/.agent-ide/runner-updater.js"

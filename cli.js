@@ -49,7 +49,7 @@ const {
 } = parse({
 	server: {
 		type: 'string',
-		default: (process.env.ADE_SERVER ?? process.env.AGENT_IDE_SERVER) || 'http://127.0.0.1:3000',
+		default: process.env.ADE_SERVER || 'http://127.0.0.1:3000',
 	},
 	as: { type: 'string', default: defaultAs() },
 	thread: { type: 'string' },
